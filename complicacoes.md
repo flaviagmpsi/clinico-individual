@@ -325,6 +325,42 @@ Catálogo inicial:
 - Todo lançamento exige comprovante para ser aceito pela Receita: o modelo precisa prever
   anexo desde o início.
 
+## ADR-012 — Precisão fiscal é opcional e progressiva
+
+**Status:** ✅ Aceita — Rodada 5
+**Contexto:** As rodadas anteriores vinham empurrando o módulo fiscal para um cadastro pesado —
+outras fontes de renda, INSS, dependentes, pensão alimentícia — como pré-requisito de uso. Isso
+colide frontalmente com o requisito de produto declarado (ADR-004: a simplicidade do Hamilton
+original) e é o tipo de tela que faz o usuário desistir no primeiro dia. O usuário levantou a
+questão perguntando se o módulo não estaria ficando complexo demais.
+
+**Diagnóstico:** havia três coisas embrulhadas numa só, com custos muito diferentes:
+
+| Peça | Custo para o usuário | Valor | Veredito |
+|---|---|---|---|
+| **Registro de despesas** (livro caixa) | Baixo — escolher tipo, valor, data | Alto: sem despesa não existe "faturamento líquido", só faturamento bruto | Mantida no MVP |
+| **Geração do CSV do Receita Saúde** | Nenhum — os dados já estão no sistema | Alto: substitui digitar recibo a recibo no e-CAC | Mantida no MVP |
+| **Previsão de imposto** | **Alto** — exige 4 dados que o sistema não tem | Alto, mas concentrado na hora certa | Mantida, com precisão opcional |
+
+A complexidade não estava no código. Estava no **número de perguntas feitas ao usuário antes de
+ele conseguir usar o sistema**.
+
+**Decisão:** A estimativa fiscal funciona com o que o sistema já sabe — receita registrada menos
+despesas dedutíveis — e **declara na tela o que ela não sabe**: *"estimativa considerando apenas
+a renda registrada aqui"*. Os dados que refinam o cálculo (outras fontes de renda, INSS,
+dependentes, pensão alimentícia) são **campos opcionais** numa área de configuração, nunca
+barreira de entrada. A estimativa fica mais precisa conforme forem preenchidos.
+
+**Consequências:**
+- P-25 e P-26 deixam de ser decisões de arquitetura e viram campos opcionais.
+- O rótulo passa a ter duas formas: sem os dados extras, avisa que só enxerga a renda daqui;
+  com eles, some o aviso. O usuário entende a diferença sem ler manual.
+- Nenhuma pergunta fiscal no onboarding.
+- Não cortamos a previsão: ser pego de surpresa pelo imposto é uma das dores mais fortes do
+  autônomo e um motivo real de compra. Também não inventamos precisão que não temos (ADR-010).
+- **Princípio geral do projeto, extraído daqui:** quando uma feature exigir dados que o usuário
+  não tem à mão, o padrão é **degradar com honestidade**, não bloquear nem chutar.
+
 ## Impeditivos
 
 | # | Impeditivo | Situação |
