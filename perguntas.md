@@ -111,3 +111,11 @@ Status: 🔴 aberta · 🟡 em discussão · 🟢 resolvida (migra para `documen
 | P-32 | Prontuário / Ético | Responsável legal tem direito ao **estritamente necessário**, não ao prontuário inteiro. Como a exportação distingue isso? | 🔴 |
 | P-33 | Prontuário / Ético | **Sigilo do adolescente perante os pais.** O produto não pode assumir que responsável vê tudo. Qual o desenho? | 🔴 |
 | P-34 | Cadastro | Paciente nascido **antes de 2018** pode não ter CPF. O sistema bloqueia, avisa, ou permite cadastro sem CPF? | 🟡 |
+
+## Abertas na Rodada 8
+
+| # | Tema | Pergunta | Status |
+|---|---|---|---|
+| P-35 | Contratos | Provedor de assinatura eletrônica: a Autentique é herança do original, não decisão nossa. Comparar custo por documento com D4Sign, Clicksign, ZapSign antes de virar dependência. | 🔴 |
+| P-36 | Lembretes | **Canal de entrega** do lembrete: in-app, e-mail, evento no Google Agenda, push web ou WhatsApp. Decisão separada da propriedade do dado (ADR-017). | 🔴 |
+| P-37 | Infra | **Onde ficam os arquivos?** O disco do Render é efêmero (I-04). Bytes no Postgres, object storage (S3/R2) ou Neon storage? Áudio de relato pesa muito mais que PDF de contrato. | 🔴 Bloqueia modelagem |

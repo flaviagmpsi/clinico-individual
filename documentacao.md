@@ -41,14 +41,15 @@ supervisão / "view-as" do original é funcionalidade **proibida** aqui.
 ### 3.2 Apps Django
 🟡 **Proposta — Rodada 7, aguardando validação.**
 
-Nove apps: um de infraestrutura, sete de domínio e um de leitura. O critério de fronteira é
+Dez apps: um de infraestrutura, oito de domínio e um de leitura. O critério de fronteira é
 **quem é dono do dado**, não em que tela ele aparece.
 
 | App | É dono de | Não é dono de |
 |---|---|---|
 | `core` | Base multi-tenant: `TenantOwnedModel`, `TenantManager`, middleware de RLS, trilha de auditoria. **Nenhum domínio.** | Qualquer regra de negócio |
 | `contas` | `User`, `Psicologo` (CRP, CPF, regime tributário, dados fiscais opcionais). **Raiz do tenant.** | Pacientes |
-| `pacientes` | `Paciente`, `ResponsavelLegal`, `Pagador`, `AutorizacaoAtendimento` | Consultas, cobranças |
+| `pacientes` | `Paciente`, `ResponsavelLegal`, `Pagador` | Consultas, cobranças, contratos |
+| `contratos` | `Contrato` (texto usado, PDF assinado, signatários, status), integração de assinatura eletrônica | Quem é o paciente |
 | `agenda` | `HorarioDisponivel`, bloqueios, integração Google Agenda | Consulta realizada |
 | `atendimentos` | `Consulta`, `Desfecho` (alta/desistência) | O texto clínico |
 | `prontuarios` | `Relato` (áudio ou texto), `Prontuario`, versões, assinatura, exportação | Quando a sessão ocorreu |

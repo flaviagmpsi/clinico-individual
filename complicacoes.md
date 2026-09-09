@@ -453,10 +453,81 @@ Podem ser a mesma pessoa (adulto pagando a própria terapia), duas ou três pess
 - ⚠️ Adolescente tem expectativa de sigilo perante os próprios pais. O produto não pode assumir
   que "responsável vê tudo". Ver P-33.
 
+## ADR-015 — Contrato terapêutico como app próprio, com assinatura eletrônica
+
+**Status:** ✅ Aceita — Rodada 7
+**Contexto:** Requisito novo trazido pelo usuário: um lugar para o contrato terapêutico, ligado
+ao cadastro do paciente. Para menores de idade, **a autorização dos pais vive dentro do
+contrato** — são eles que assinam. Isso simplifica a ADR-014: a autorização não é documento
+separado, é cláusula e assinatura do contrato.
+
+**Fato relevante:** o `hamilton-api` **já resolveu esse problema** em `principais/contratos/`,
+com integração à **Autentique** (assinatura eletrônica) e um `LEIA-ME.md` que documenta as
+armadilhas. É o segundo pedaço do original com valor real de reuso, ao lado do `webmania.py`
+(ADR-013).
+
+**Decisão:** `contratos` é **app próprio**, não uma tabela dentro de `pacientes`. Motivo: tem
+ciclo de vida próprio (pendente → assinado / recusado / expirado / substituído), integração
+externa e regra de retenção jurídica. Embutido em `pacientes`, faria o cadastro depender de um
+provedor de assinatura — acoplamento que não se justifica. A **tela** continua dentro do perfil
+do paciente; dono do dado e lugar na interface são coisas diferentes (mesmo princípio da ADR-004).
+
+**Princípios portados do original** (validados em produção, não inventados aqui):
+
+| Princípio | Por quê |
+|---|---|
+| **Contrato é histórico, nunca substituição** | Apagar o anterior destruiria a prova de qual condição valia em qual período — exatamente o que se pergunta num conflito. |
+| **Guardar o `texto_usado`**, e não só a referência ao modelo | O modelo é editável. Sem isso, ninguém responde "qual redação essa pessoa assinou?". |
+| **Guardar o PDF assinado em bytes no Postgres** | Ver I-04: o disco do Render é efêmero. |
+| **Idempotência na geração** | Reenviar o link não pode gastar crédito novo nem gerar link diferente para o mesmo combinado. |
+| **Guarda de valor antes de qualquer chamada externa** | Impede contrato sair com valor errado; falha barato, antes de gastar crédito. |
+| **Nunca ler o signatário por índice** | Na Autentique, `signatures[0]` é a conta dona do token, não o paciente. O erro é **silencioso**. |
+| **Sandbox ligado por omissão fora de produção** | Documento de teste não consome crédito. Seguro por padrão. |
+| **Token ausente = feature desligada (503)**, sem quebrar o resto | Degradar com honestidade (ADR-012). |
+
+**Consequências:**
+- No contrato de menor, os signatários são os **responsáveis legais** (ADR-014), não o paciente.
+  Com guarda compartilhada, pode haver **mais de um signatário** — o fluxo precisa suportar.
+- O contrato é a peça que resolve a autorização exigida pelo Código de Ética. P-32 e P-33
+  (extensão do acesso do responsável e sigilo do adolescente) continuam abertas.
+- 🔴 A Autentique é escolha do original, não decisão nossa. Custo por documento e alternativas
+  (D4Sign, Clicksign, ZapSign) precisam de comparação antes de virar dependência. Ver P-35.
+
+---
+
+## ADR-016 — Todo prontuário nasce de uma consulta
+
+**Status:** ✅ Aceita — Rodada 7
+**Decisão:** Cadastrar uma consulta **cria automaticamente um prontuário pendente**. Não existe
+prontuário órfão, sem consulta que o justifique.
+
+**Consequências:**
+- A consulta vira o gancho natural do lembrete "você ainda não escreveu este prontuário".
+- `prontuarios` depende de `atendimentos`; nunca o contrário.
+- O prontuário pendente é um estado legítimo e esperado, não um erro — é o que a Res. CFP
+  001/2009 Art. 1º §2º ("permanentemente atualizado") transforma em pendência visível.
+
+---
+
+## ADR-017 — Dois tipos de lembrete, dois donos
+
+**Status:** ✅ Aceita — Rodada 7
+**Decisão:** Lembrete de **cobrança** pertence ao `financeiro`; lembrete de **atendimento**
+pertence à `agenda`. Ambos entram no escopo. A tela pode reuni-los; a propriedade do dado não.
+
+Um terceiro apareceu de graça na ADR-016: **prontuário pendente**, que pertence a `prontuarios`.
+
+**Consequências:**
+- Nenhum app precisa depender do outro para lembrar: cada um sabe o que está pendente no seu
+  próprio domínio. `indicadores` reúne para exibir.
+- A entrega (canal) é decisão separada da propriedade (ver P-36).
+
 ## Impeditivos
 
 | # | Impeditivo | Situação |
 |---|---|---|
 | I-01 | RLS + connection pooling do Neon: a variável de sessão do tenant precisa ser setada por request e **limpa** ao devolver a conexão ao pool, sob risco de uma request herdar o tenant da anterior. Exige prova de conceito antes de virar fundação. | 🔴 A validar |
+| I-04 | **O disco do Render é efêmero.** O `MEDIA_ROOT` é apagado a cada deploy — fato documentado no `hamilton-api`, que por isso guarda o PDF assinado em bytes no Postgres. Afeta **tudo** que planejamos armazenar: áudio dos relatos, PDFs de prontuário, comprovantes de despesa, contratos. Exige decisão de armazenamento (bytes no Postgres vs. object storage) **antes** da primeira linha de código. | 🔴 Bloqueia modelagem |
+| I-05 | **Lembrete por canal externo exige agendador, e agendador custa.** O Render não tem instância gratuita para cron job (mín. ~US$ 1/mês) nem para background worker (~US$ 7/mês). Lembrete só in-app dispensa agendador por completo. | 🟡 Contornável no MVP |
 | I-03 | **Receita Saúde não tem API pública.** A escrituração entra por importação manual de CSV no e-CAC, feita pelo psicólogo. Dependência externa fora do nosso controle: se a Receita mudar o layout, a feature quebra sem aviso. | 🟡 Mitigável (validar layout a cada ano-calendário) |
 | I-02 | `gh` CLI não autenticado na máquina (`gh auth status`). Git funciona via Credential Manager; só ferramentas que dependem do `gh` ficam indisponíveis. | 🟡 Contornado |
