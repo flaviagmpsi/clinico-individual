@@ -1111,6 +1111,44 @@ consulta na íntegra por quem quiser conferir.
   o caminho seguro é link para a fonte oficial, não cópia.
 - Recomendação: **exibir a resolução e linkar o manual**, com data da versão visível.
 
+## ADR-034 — Escopo dos documentos e acesso da IA ao material clínico
+
+**Status:** ✅ Aceita — Rodada 18 (decisão delegada a mim pelo usuário)
+
+### 1. A IA de documentos tem acesso **por tipo**, nunca acesso geral
+
+| Documento | O que a IA recebe |
+|---|---|
+| **Declaração** | Apenas nome, datas, horários e duração do acompanhamento. **Não vê o prontuário.** |
+| **Relatório Psicológico** | Material clínico do caso |
+| **Atestado / Laudo / Parecer** | Material clínico mais a avaliação psicológica que os fundamenta |
+
+**Por que estrutural e não por instrução:** a Declaração é **proibida** de conter sintomas ou
+estados psicológicos (Res. 06/2019, Art. 9º, §1º). Se a IA tiver o prontuário à mão e apenas for
+instruída a não usá-lo, um dia ela usa — e o resultado é documento em desacordo com a resolução,
+assinado pelo psicólogo. Não entregar o dado é a única garantia que não depende de comportamento.
+
+### 2. Avaliação psicológica é módulo próprio, depois do MVP
+
+Tem norma própria (Res. CFP 31/2022), SATEPSI, instrumentos com validade e fluxo de aplicação.
+**Consequência assumida:** **Atestado e Laudo saem do MVP junto com ela**, porque ambos
+"resultam de um processo de avaliação psicológica" e o CRP pode exigir a fundamentação em até
+cinco anos (Art. 10, §4º). Oferecer geração de documento cuja fundamentação o sistema não sabe
+registrar seria expor o psicólogo, não ajudá-lo.
+
+### 3. Escopo final dos documentos
+
+| Documento | Quando | Por quê |
+|---|---|---|
+| **Declaração** | ✅ MVP | A mais pedida no dia a dia, a mais simples e a de menor risco |
+| **Relatório Psicológico** | ✅ MVP | Comum quando escola, outro profissional ou o Judiciário pede |
+| **Atestado Psicológico** | ⏸️ Com o módulo de avaliação | Exige diagnóstico fundamentado |
+| **Laudo Psicológico** | ⏸️ Com o módulo de avaliação | É o produto da avaliação; exige referências |
+| **Parecer Psicológico** | ⏸️ Baixa prioridade | Documento de especialista; exige titulação comprovada no assunto |
+| **Relatório Multiprofissional** | ❌ Fora | Pressupõe equipe. Não faz sentido em produto para quem trabalha sozinho |
+
+Fecha P-57, P-58 e P-59. P-56 vira módulo futuro.
+
 ## Impeditivos
 
 | # | Impeditivo | Situação |

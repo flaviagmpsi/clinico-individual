@@ -136,3 +136,4 @@ encaminhamento entre profissionais.
 | 2026-09-08 | 4 | ADR-009 (pagador ≠ beneficiário), ADR-010 (previsão fiscal é estimativa) e ADR-011 (catálogo de despesas). |
 | 2026-09-08 | 5 | ADR-012: precisão fiscal opcional e progressiva. Princípio geral — degradar com honestidade. |
 | 2026-09-08 | 6 | ADR-013: carnê-leão e NFS-e fora do MVP. Cliente-alvo é PF **e** PJ. Núcleo financeiro serve os dois regimes. |
+| 2026-09-09 | 7–18 | Estrutura de dez apps proposta. ADR-014 a ADR-034: infantil, contrato, lembretes, armazenamento, agenda de mão única, recorrência com exceção, comparecimento × cobrança, `Caso`, painel × análise, IA de documentos pela Res. CFP 06/2019. `demandas.md` escrito. |
