@@ -825,6 +825,79 @@ a cada cadastro, algo que ele já respondeu uma vez.
 terapia infantil costuma ser mais curta, casal mais longa, avaliação psicológica bem mais.
 Fecha P-49.
 
+## ADR-026 — `Caso` como unidade de atendimento (casal, família, grupo)
+
+**Status:** 🟡 Proposta — Rodada 13, aguardando validação
+**Contexto:** Confirmado que haverá atendimento de casal. Isso quebra a premissa silenciosa de
+que **uma consulta pertence a um paciente**, herdada do `hamilton-api` (`Consulta.fk_paciente`).
+A Res. CFP 001/2009, Art. 5º, III exige que, em atendimento de grupo não eventual, o psicólogo
+mantenha **documentação individual de cada usuário**, além dos registros do atendimento.
+
+**O problema com as saídas óbvias:**
+- *Casal como um "paciente" de nome composto* — some a documentação individual exigida pelo CFP,
+  e o CPF do beneficiário (ADR-008) fica impossível.
+- *Consulta ligada a vários pacientes direto* — resolve a sessão, mas deixa sem dono o que é do
+  **vínculo**: o valor acordado, a modalidade de cobrança, a recorrência e o contrato. Numa
+  terapia de casal, o valor é do casal, não de cada um.
+
+**Decisão proposta:** introduzir **`Caso`** — o vínculo terapêutico, que reúne de 1 a N pacientes.
+
+| Pertence ao `Caso` | Pertence ao `Paciente` | Pertence à `Consulta` |
+|---|---|---|
+| Valor acordado e modalidade de cobrança (ADR-002) | Dados pessoais, CPF, endereço | Data, hora, duração, estado |
+| Recorrência (ADR-022) | Responsável legal (ADR-014) | `contabilizada` (ADR-023) |
+| Contrato (ADR-015) | **Prontuário** — um por paciente, por sessão | Conta a receber |
+| Pagador (ADR-009) | | |
+
+**Por que isso é melhor do que parece:** uma mesma pessoa pode ser paciente individual **e**
+integrar um casal atendido pelo mesmo psicólogo. Sem `Caso`, esses dois vínculos colidem — mesmo
+paciente, dois valores, duas recorrências, dois contratos. Com `Caso`, são dois vínculos
+distintos da mesma pessoa, que é exatamente a realidade clínica.
+
+**Custo, e como pagá-lo:** é um conceito a mais. A interface **não o expõe** no caso comum:
+cadastrar um paciente cria, em silêncio, um caso de um. A palavra "caso" só aparece para quem
+atende casal ou família.
+
+**Consequências:**
+- `Consulta` deixa de apontar para `Paciente` e passa a apontar para `Caso`. A presença é
+  registrada por participante — num casal, um pode faltar e o outro não.
+- **Um prontuário por paciente por sessão** (CFP Art. 5º, III). Numa sessão de casal, o
+  psicólogo escreve dois — ou um relato que a IA divide. Ver P-53.
+- O bloqueio de colisão (ADR-024) deixa de disparar no caso de casal: é **uma** consulta com dois
+  participantes, não duas consultas no mesmo horário. O problema que motivou esta ADR se dissolve.
+- Cobrança continua sendo uma por consulta, ligada ao pagador do caso — não uma por participante.
+- ⚠️ Divergência estrutural em relação ao `hamilton-api`, que é rigidamente um-paciente-por-consulta.
+
+---
+
+## ADR-027 — Painel operacional e análise são telas diferentes
+
+**Status:** ✅ Aceita — Rodada 13
+**Contexto:** "Dashboard" vinha nomeando duas coisas com ritmos e propósitos distintos.
+
+**Decisão:**
+
+| Tela | Pergunta que responde | Ritmo | Formato |
+|---|---|---|---|
+| **Painel** | "O que eu preciso fazer?" | diário | pendências e ação; curto, sem rolagem |
+| **Análise** | "Como eu estou indo?" | mensal ou eventual | tendência e comparação; pode ser denso |
+
+**Conteúdo do painel** (decisão do usuário):
+- Pacientes ativos, com último atendimento e dias sem atender (herdado do original)
+- Resumo por paciente: sessões do mês e pendência de pagamento
+- Pendências de ação: cobranças em aberto, **prontuários não escritos** (ADR-016)
+- Três indicadores de cabeçalho: **receita líquida**, **ocupação da agenda**, **entradas × saídas**
+
+**Conteúdo da análise:** as perguntas mais profundas, para quem quiser investigar.
+
+**Consequências:**
+- Se o painel ganhar gráfico decorativo, deixa de ser ferramenta de trabalho. Densidade é
+  requisito, não gosto (ADR-004).
+- `indicadores` (o app) serve as duas telas, mas com consultas diferentes: o painel lê o estado
+  **agora**, a análise agrega **histórico**.
+- **Princípio:** a análise usa apenas dado administrativo — sessões, valores, datas, desfechos.
+  **Nunca conteúdo de prontuário.** Não se faz estatística com o que o paciente falou.
+
 ## Impeditivos
 
 | # | Impeditivo | Situação |
