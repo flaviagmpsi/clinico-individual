@@ -243,6 +243,88 @@ até **1000 linhas**, todos os pagamentos do **mesmo ano**.
   no e-CAC — dependência externa que não controlamos.
 - O limite de 1000 linhas por arquivo exige particionar lotes grandes.
 
+## ADR-009 — Pagador e beneficiário são entidades distintas
+
+**Status:** ✅ Aceita — Rodada 4
+**Contexto:** O CSV do Receita Saúde (ADR-008) exige `CPF do pagador` e `CPF do beneficiário`
+em campos separados — a Receita separa porque quem paga é quem deduz no próprio IRPF. O escopo
+inicial do cadastro previa um CPF só. Confirmado pelo usuário que o caso existe na prática:
+pai pagando pelo filho, cônjuge, empresa custeando funcionário.
+
+**Decisão:** O **pagador** é modelado separadamente do **paciente**, com o CPF do próprio
+paciente como padrão.
+
+**Consequências:**
+- Na interface o caso comum não muda: preencheu o CPF do paciente, acabou. O segundo campo só
+  aparece quando o psicólogo marcar "quem paga é outra pessoa".
+- A cobrança e o recibo apontam para o **pagador**; o atendimento e o prontuário, para o
+  **paciente**. São eixos diferentes e não devem ser fundidos.
+- Paciente menor de idade sem CPF próprio é caso a tratar: o campo `CPF do beneficiário` é
+  obrigatório no arquivo.
+- Evita migration sobre recibo já emitido, que seria irreversível.
+
+---
+
+## ADR-010 — A previsão fiscal é estimativa informativa, nunca cálculo oficial
+
+**Status:** ✅ Aceita — Rodada 4
+**Contexto:** O dashboard prevê "previsão de impostos". O recibo emitido no Receita Saúde já
+alimenta automaticamente o cálculo mensal oficial do Carnê-Leão (ADR-008), então refazer essa
+conta seria duplicar de graça algo que a Receita faz — assumindo o risco de errar.
+
+**Decisão:** O número exibido é **estimativa**, rotulada explicitamente na tela e não em rodapé.
+O valor oficial é sempre o do Carnê-Leão Web.
+
+**Consequências:**
+- Errar para menos faria o cliente pagar imposto a menor e cair na malha fina, com o nosso nome
+  no erro. O rótulo é proteção do cliente e nossa.
+- Nosso valor não está em calcular: está em **avisar em 12 de setembro** que vai haver imposto a
+  pagar — algo que a Receita não faz.
+- A estimativa depende de dados que hoje não estão no sistema: INSS, dependentes, pensão
+  alimentícia e **outras fontes de renda** do psicólogo (ver P-25 e P-26). Sem eles, a previsão
+  é estruturalmente otimista, porque o Carnê-Leão é progressivo sobre a renda **total** do mês.
+
+---
+
+## ADR-011 — Catálogo de despesas com marca de dedutibilidade
+
+**Status:** 🟡 Proposta — aguardando validação (Rodada 4)
+**Contexto:** A lista informada pelo usuário ("imposto, sala, anuidade, supervisão") mistura
+dedutível com não dedutível, e ele não tem a lista real. Levantamento feito nas fontes da
+Receita Federal.
+
+**Decisão proposta:** Toda despesa tem um **tipo**, e todo tipo carrega a marca `dedutivel`.
+Catálogo inicial:
+
+| Tipo de despesa | Dedutível | Observação |
+|---|---|---|
+| Aluguel de sala / consultório | ✅ | Despesa de custeio indispensável à atividade. |
+| Condomínio, água, luz, internet do consultório | ✅ | Vinculados ao espaço de atendimento. |
+| Anuidade do CRP | ✅ | Contribuição a conselho profissional. |
+| Material de consumo e de expediente | ✅ | |
+| Serviços de terceiros (contador, secretária, recepcionista) | ✅ | Inclui encargos, se houver vínculo. |
+| Software de gestão / prontuário eletrônico | ✅ | Inclui a própria assinatura do Hamilton. |
+| Publicações técnicas necessárias à atividade | ✅ | |
+| Benfeitorias em imóvel **alugado** | ✅ | Como compensação contratual de aluguel. |
+| **Supervisão clínica** | ⚠️ | Enquadra como serviço de terceiro necessário à atividade, mas não há menção expressa nas fontes. **Confirmar com contador.** |
+| **Cursos e formação** | ⚠️ | Fontes vedam "cursos genéricos". Formação diretamente ligada à atividade é zona cinzenta. |
+| **Plano de saúde do profissional** | ⚠️ | Uma fonte secundária afirma que sim; a regra geral trata plano de saúde como despesa médica na declaração anual, **não** como custeio de livro caixa. **Não incluir sem parecer contábil.** |
+| **Imposto pago (DARF)** | ❌ | **Não é despesa dedutível.** Lançá-lo reduziria a base indevidamente — o oposto do que o psicólogo quer. |
+| Transporte, combustível, estacionamento, IPVA, seguro do carro | ❌ | Vedado, salvo representante comercial autônomo. |
+| Depreciação de bens | ❌ | |
+| Arrendamento mercantil (leasing) | ❌ | |
+| Consertos e benfeitorias em imóvel **próprio** | ❌ | |
+| Despesas pessoais (alimentação, roupas, cursos genéricos) | ❌ | |
+| INSS do próprio psicólogo | ❌ no livro caixa | É dedução do Carnê-Leão, mas em **linha própria**, não como despesa de custeio. |
+
+**Consequências:**
+- Duas contas diferentes e ambas úteis: a **base de imposto** usa só as dedutíveis; o
+  **faturamento líquido** do dashboard usa tudo que saiu do bolso.
+- Despesa fora do catálogo é cadastrável, com o psicólogo marcando a dedutibilidade — e o
+  sistema não deve afirmar o que não sabe.
+- Todo lançamento exige comprovante para ser aceito pela Receita: o modelo precisa prever
+  anexo desde o início.
+
 ## Impeditivos
 
 | # | Impeditivo | Situação |
