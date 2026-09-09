@@ -29,7 +29,7 @@ estética (ADR-004).
 | Banco | Neon (PostgreSQL) |
 | Deploy | Render |
 | Cobrança da assinatura | Asaas (o psicólogo assinante paga o Hamilton) |
-| Fiscal do psicólogo | Recibo de pessoa física + regras do Carnê-Leão |
+| Fiscal do psicólogo | 🚫 Fora do MVP (ADR-013). Cliente-alvo é **PF e PJ**; carnê-leão e NFS-e ficam para depois do núcleo. |
 
 ## 3. Arquitetura
 
@@ -70,7 +70,8 @@ REGULAR / ATENÇÃO / CRÍTICO em 7 e 30 dias, `choices` de alta e desistência.
 **O que não aproveitamos:** o schema legado (`db_table` em português, PKs `pk_*`, colunas
 `fk_*`/`dat_*`/`vlr_*`, herdados de um banco anterior ao Django), a estrutura de dois apps com
 `views.py` de 5.639 linhas, as migrations git-ignored, e toda a camada financeira (Stripe +
-NFS-e WebmaniaBR), incompatível com Asaas + recibo de PF.
+NFS-e WebmaniaBR). ⚠️ **Ressalva (ADR-013):** `acessorios/webmania.py` é uma integração de NFS-e
+em funcionamento e volta a ter valor de reuso se atendermos psicólogos PJ.
 
 **Telas do original que não existem no Individual**, por serem de clínica coletiva: match
 paciente↔terapeuta, seleção e supervisão de terapeutas, plantão, controle de novos pacientes e
@@ -94,3 +95,7 @@ encaminhamento entre profissionais.
 | 2026-09-08 | Setup | Repositórios clonados, artefatos criados, Grill-Me configurado como padrão do projeto. |
 | 2026-09-08 | 1 | ADR-001 (isolamento total) e ADR-002 (modalidade de cobrança) aceitas. ADR-003 reaberta para reformulação. |
 | 2026-09-08 | 2 | ADR-003 (projeto novo), ADR-004 (reuso de interface, não de código) e ADR-005 (prontuário pela Res. CFP 001/2009) aceitas. ADR-002 refinada: no modo por sessão, cobrança sessão a sessão. |
+| 2026-09-08 | 3 | ADR-006 (relato do psicólogo, sem gravar sessão), ADR-007 (exportação e descarte) e ADR-008 (Receita Saúde: não emitimos recibo, geramos CSV). |
+| 2026-09-08 | 4 | ADR-009 (pagador ≠ beneficiário), ADR-010 (previsão fiscal é estimativa) e ADR-011 (catálogo de despesas). |
+| 2026-09-08 | 5 | ADR-012: precisão fiscal opcional e progressiva. Princípio geral — degradar com honestidade. |
+| 2026-09-08 | 6 | ADR-013: carnê-leão e NFS-e fora do MVP. Cliente-alvo é PF **e** PJ. Núcleo financeiro serve os dois regimes. |

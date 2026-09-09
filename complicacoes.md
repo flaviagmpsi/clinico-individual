@@ -361,6 +361,55 @@ barreira de entrada. A estimativa fica mais precisa conforme forem preenchidos.
 - **Princípio geral do projeto, extraído daqui:** quando uma feature exigir dados que o usuário
   não tem à mão, o padrão é **degradar com honestidade**, não bloquear nem chutar.
 
+## ADR-013 — Saídas fiscais fora do MVP; o núcleo financeiro serve os dois regimes
+
+**Status:** ✅ Aceita — Rodada 6
+**Contexto:** O usuário levantou se o carnê-leão dentro do sistema não seria complexidade
+desnecessária, sugerindo que uma API de nota fiscal compensaria mais. A premissa trazida era de
+que existiria um teto legal de R$ 5 mil, acima do qual o psicólogo seria obrigado a ter CNPJ.
+
+**Fatos verificados:**
+- **Não existe limite legal.** Nenhuma regra obriga psicólogo a abrir CNPJ por faturamento. O
+  que existe é **ponto de equilíbrio econômico**, em torno de **R$ 81 mil/ano (~R$ 6.700/mês)**.
+  Caso concreto de fonte: a R$ 7 mil mensais, ~R$ 2.071 de carga como PF contra ~R$ 635 como PJ.
+- Psicólogo **não pode ser MEI** (profissão regulamentada). PJ aqui é **ME no Simples Nacional**,
+  entrando no **Anexo V (15,5%)** e só caindo para o **Anexo III (6%)** com **Fator R ≥ 28%**,
+  o que exige folha ou pró-labore. Nem todo PJ paga 6%.
+- Logo, o mercado **não se divide** entre "pequeno é PF, grande é PJ". A escolha de regime é
+  estratégica e frequentemente movida por inércia.
+- A NFS-e Nacional **tem API**, mas é tributo **municipal**, com o padrão em transição (a
+  conversão de lotes de RPS por arquivo é descontinuada em **28/02/2026**). Integra-se via
+  agregador (Focus NFe, TecnoSpeed, WebmaniaBR), que **cobra por nota emitida** — custo unitário
+  recorrente, não apenas esforço de desenvolvimento.
+
+**Correção de raciocínio registrada:** a exportação para o carnê-leão **não acrescenta** um passo
+de trabalho, ela remove vários. O psicólogo PF é obrigado a emitir recibo no Receita Saúde a cada
+pagamento recebido; com cobrança por sessão (ADR-002), 20 pacientes semanais geram ~80 recibos
+por mês, hoje digitados um a um. O CSV troca 80 lançamentos por 1 importação. A diferença real
+frente à NFS-e é outra: o carnê-leão automatiza ~90% (o psicólogo ainda entra no e-CAC), a NFS-e
+automatiza 100%.
+
+**Decisão:** **Carnê-leão e NFS-e ficam fora do MVP**, e a escolha entre elas não é feita agora.
+Ambas são pontas de saída do mesmo cano. O que as alimenta — consultas, contas a receber,
+pagamentos recebidos, despesas, líquido — é **idêntico e independe do regime**. Construído esse
+núcleo, qualquer uma das duas pluga depois sem retrabalho.
+
+**Cliente-alvo:** **PF e PJ**, sem exclusão de segmento.
+
+**Consequências:**
+- Nenhum trabalho jogado fora: ADR-008 (layout do CSV do Receita Saúde) e ADR-011 (catálogo de
+  despesas) permanecem válidos como especificação pronta para quando a ponta for construída.
+- ⚠️ **Consequência do cliente ser PF e PJ:** "previsão de impostos" **não é uma feature, são
+  duas**. PF calcula por tabela progressiva do carnê-leão; PJ calcula por alíquota do Simples
+  Nacional, com Anexo V ou III conforme o Fator R. Ver P-30.
+- O **regime tributário** vira campo do perfil do psicólogo. Barato agora, caro depois.
+- **Correção à documentação anterior:** estava registrado que a camada financeira do
+  `hamilton-api` era integralmente inaproveitável. Falso no cenário PJ — `acessorios/webmania.py`
+  é uma integração de NFS-e em funcionamento e passa a ser o único pedaço financeiro do original
+  com valor de reuso.
+- Decidir com clientes reais, não por dedução: os psicólogos da Allos são o público exato e
+  respondem quantos são PF e quantos são PJ hoje.
+
 ## Impeditivos
 
 | # | Impeditivo | Situação |
