@@ -54,5 +54,16 @@ Status: 🔴 aberta · 🟡 em discussão · 🟢 resolvida (migra para `documen
 
 | # | Tema | Pergunta | Status |
 |---|---|---|---|
-| P-08 | Financeiro | Formato da conta a receber gerada por consulta (modalidade `POR_SESSAO`): registro por sessão ou agrupamento mensal para cobrança única? | 🟡 |
+| P-08 | Financeiro | Formato da conta a receber no modo `POR_SESSAO`. | ✅ Resolvida: cobrança por sessão, agrupamento apenas na apresentação (ADR-002). |
 | P-09 | Financeiro | Trocar a modalidade de cobrança de um paciente no meio do mês afeta cobranças já geradas? | 🔴 |
+
+## Abertas na Rodada 3
+
+| # | Tema | Pergunta | Status |
+|---|---|---|---|
+| P-10 | Prontuário / Legal | O CFP exige guarda de **no mínimo 5 anos** (Res. 001/2009, Art. 4º §1º). O que acontece com os prontuários quando o psicólogo **cancela a assinatura**? | 🔴 |
+| P-11 | Prontuário / Legal | O Art. 5º, II garante ao paciente **acesso integral** ao próprio prontuário. Como o sistema atende esse direito? (não estava no escopo declarado) | 🔴 |
+| P-12 | Prontuário / Legal | Conflito de prazos: CFP diz 5 anos, Lei nº 13.787/2018 diz **20 anos** para prontuário de paciente em saúde. Qual prazo o sistema adota? | 🔴 |
+| P-13 | Prontuário / IA | Destino do **áudio** após a transcrição: descartar ou arquivar? | 🔴 |
+| P-14 | Prontuário / IA | Consentimento do paciente para gravação e para processamento por IA de terceiro. | 🔴 |
+| P-15 | Financeiro | Vencimento do modo `MENSAL`: assunção adotada é padrão no perfil, sobrescrevível por paciente. Confirmar. | 🟡 |
