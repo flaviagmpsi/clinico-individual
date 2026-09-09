@@ -827,7 +827,7 @@ Fecha P-49.
 
 ## ADR-026 — `Caso` como unidade de atendimento (casal, família, grupo)
 
-**Status:** 🟡 Proposta — Rodada 13, aguardando validação
+**Status:** ✅ Aceita — Rodada 15 (proposta na Rodada 13, esclarecida e validada na 15)
 **Contexto:** Confirmado que haverá atendimento de casal. Isso quebra a premissa silenciosa de
 que **uma consulta pertence a um paciente**, herdada do `hamilton-api` (`Consulta.fk_paciente`).
 A Res. CFP 001/2009, Art. 5º, III exige que, em atendimento de grupo não eventual, o psicólogo
@@ -867,6 +867,31 @@ atende casal ou família.
   participantes, não duas consultas no mesmo horário. O problema que motivou esta ADR se dissolve.
 - Cobrança continua sendo uma por consulta, ligada ao pagador do caso — não uma por participante.
 - ⚠️ Divergência estrutural em relação ao `hamilton-api`, que é rigidamente um-paciente-por-consulta.
+
+**Esclarecimento — Rodada 15 (pergunta do usuário: a separação só existe quando for casal?):**
+
+**Uma forma só no banco, duas formas na tela.**
+
+| Camada | Individual | Casal |
+|---|---|---|
+| **Tela** | Nenhum campo a mais. A palavra "caso" não aparece em lugar nenhum. | Aparece a seleção de participantes. |
+| **Banco** | O caso **existe**, com um participante, criado em silêncio. | O mesmo caso, com dois. |
+
+**Por que a estrutura não pode ser opcional:**
+1. **Conversão em produção.** Paciente individual de oito meses que passa a fazer terapia de
+   casal é caso corriqueiro. Com a estrutura sempre presente, é criar um atendimento novo. Sem
+   ela, é migração de dados com o sistema no ar, arriscando histórico de sessões e pagamentos.
+2. **Dois caminhos em toda parte.** Estrutura opcional obrigaria cobrança, agenda, prontuário e
+   relatórios a perguntarem "isto é caso ou paciente solto?", cada um com dois ramos. É
+   exatamente assim que nasce o `views.py` de 5.639 linhas do original.
+
+A complexidade fica onde é barata — no modelo — e não onde é cara: na frente do usuário.
+Mesma lógica da ADR-025.
+
+**A pessoa é única entre atendimentos.** Maria paciente individual e Maria integrante do casal
+são **o mesmo cadastro**: mesmo CPF, mesmo endereço, mesmo histórico pessoal. O que se separa por
+atendimento é o **prontuário**, porque a sessão individual e a sessão de casal são sessões
+distintas.
 
 ---
 
