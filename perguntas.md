@@ -133,5 +133,11 @@ Status: 🔴 aberta · 🟡 em discussão · 🟢 resolvida (migra para `documen
 
 | # | Tema | Pergunta | Status |
 |---|---|---|---|
-| P-42 | Agenda | Divergência silenciosa: se o psicólogo editar o evento direto no Google, a mudança não volta. Como o produto avisa em vez de esconder? | 🔴 |
-| P-43 | Agenda | Risco de adoção: o psicólogo que hoje vive no Google Agenda terá de reorganizar **no Hamilton**. Mudança de hábito é o maior risco deste módulo. | 🔴 |
+| P-42 | Agenda | Divergência silenciosa: se o psicólogo editar o evento direto no Google, a mudança não volta. Como o produto avisa em vez de esconder? | ✅ Resolvida: detectar e oferecer atualização (adendo à ADR-020). |
+| P-43 | Agenda | Risco de adoção: o psicólogo que hoje vive no Google Agenda terá de reorganizar **no Hamilton**. Mudança de hábito é o maior risco deste módulo. | 🟡 Mitigado por ADR-022: o caso comum é fixo e cadastrado uma vez só. Validar com a Allos (P-31). |
+
+| # | Tema | Pergunta | Status |
+|---|---|---|---|
+| P-44 | Agenda / Financeiro | **Falta do paciente gera cobrança?** É cláusula típica de contrato terapêutico e muda o que o estado `FALTA` dispara. | 🔴 |
+| P-45 | Agenda | Alterar a **regra** de recorrência: vale a partir de quando? Precisa do equivalente a "este / este e os seguintes / todos". | 🔴 |
+| P-46 | Agenda | Tamanho da janela de materialização e o momento de empurrá-la (sem agendador, ao abrir a agenda). | 🟡 Decisão técnica |

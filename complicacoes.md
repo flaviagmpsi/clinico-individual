@@ -502,7 +502,9 @@ valor real de reuso.
 ## ADR-016 — Todo prontuário nasce de uma consulta
 
 **Status:** ✅ Aceita — Rodada 7
-**Decisão:** Cadastrar uma consulta **cria automaticamente um prontuário pendente**. Não existe
+⚠️ **Corrigida pela ADR-022 (Rodada 10):** o gatilho é a consulta ficar **`REALIZADA`**, não ser cadastrada.
+
+**Decisão:** Uma consulta realizada **cria automaticamente um prontuário pendente**. Não existe
 prontuário órfão, sem consulta que o justifique.
 
 **Consequências:**
@@ -637,6 +639,75 @@ versões). `contrato` é um `tipo`, não um app.
 - O inciso VI exige campos que o contrato não tem: finalidade e destinatário. São opcionais por
   tipo, não obrigatórios em todo documento.
 - Fecha P-40. O total de apps volta a **dez**.
+
+## ADR-022 — Consulta recorrente com exceção por ocorrência
+
+**Status:** ✅ Aceita — Rodada 10
+**Contexto:** O usuário descreveu como o atendimento clínico realmente funciona: quase sempre é
+**fixo** (mesmo dia e horário toda semana), mas **vez ou outra remarca**. O sistema precisa
+tratar o caso comum sem atrito e o caso excepcional sem gambiarra — e lembrete, prontuário e
+cobrança precisam seguir a data que **de fato** valeu.
+
+Este é o problema clássico de *recorrência com exceções*, o mesmo que o padrão iCalendar resolve
+com regra de repetição mais sobrescrita por ocorrência. Modelar errado aqui contamina agenda,
+prontuário e financeiro de uma vez só.
+
+**Decisão — duas camadas:**
+
+| Camada | O que é | Papel |
+|---|---|---|
+| **Recorrência** | A combinação fixa do paciente: "toda terça, 15h" | Não é atendimento. É a **regra** que gera atendimentos. |
+| **Consulta** | Uma ocorrência concreta, com data e hora próprias | É o que existe de verdade: sincroniza com o Google, recebe prontuário e gera cobrança. |
+
+As consultas são **materializadas** a partir da regra numa janela contínua à frente (ordem de
+grandeza: 8 semanas), e **cada uma é editável isoladamente**. Remarcar uma terça para quinta
+altera aquela consulta e **não toca na regra** — é exatamente a flexibilidade pedida.
+
+**Correção à ADR-016:** estava escrito que "cadastrar consulta cria o prontuário pendente".
+**Errado**, e a recorrência expõe o porquê: materializando 8 semanas à frente, o psicólogo
+acordaria com 8 prontuários pendentes e 8 cobranças de sessões que ainda não aconteceram.
+
+O gatilho correto é o **acontecimento**, não o agendamento. A consulta passa a ter estado:
+
+| Estado | Significa | Dispara |
+|---|---|---|
+| `AGENDADA` | marcada, ainda não aconteceu | evento no Google, lembrete de atendimento |
+| `REALIZADA` | aconteceu | **prontuário pendente** e, no modo por sessão, **conta a receber** |
+| `FALTA` | paciente não veio | ver P-44 |
+| `CANCELADA` | desmarcada com antecedência | nada |
+
+Isso também dá de graça o indicador "sessões previstas × realizadas" que o dashboard do Hamilton
+original já calcula.
+
+**Consequências:**
+- `prontuarios` e `financeiro` dependem do **estado** da consulta, não da sua existência.
+- A materialização precisa de uma janela: gerar tudo até o infinito é inviável, gerar de menos
+  esvazia a agenda. Janela contínua, empurrada para frente conforme o tempo passa — e, sem
+  agendador (ADR-018), ela avança **quando o psicólogo abre a agenda**, não por processo de fundo.
+- Alterar a **regra** ("agora é quinta às 16h") precisa dizer a partir de quando vale, sem
+  reescrever o passado. Ver P-45.
+- Pausa de férias e feriado são ausências de ocorrência, não cancelamentos individuais um a um.
+
+---
+
+## Adendo à ADR-020 — Edição no Google volta por confirmação
+
+**Status:** ✅ Aceita — Rodada 10
+**Decisão:** Confirmada a opção **(a)**: o Hamilton **detecta** que o evento foi movido no Google
+e oferece atualizar aqui também.
+
+Isso reconcilia a mão única (ADR-020) com o pedido de que alterar **em qualquer um dos dois
+lados** mantenha lembrete, prontuário e cobrança amarrados à data certa. O Google continua sem
+poder criar consulta do nada — o que evitaria o bug silencioso da sincronização bidirecional —
+mas **mover** uma consulta existente volta, com um toque de confirmação.
+
+**Consequências:**
+- A detecção acontece na leitura da agenda, que já é feita para evitar marcação sobreposta
+  (ADR-020). Não custa chamada nova.
+- Divergência nunca é resolvida em silêncio: quem decide é o psicólogo, não uma regra nossa
+  de "quem escreveu por último ganha".
+- Evento apagado no Google é caso à parte de evento movido, e não deve ser tratado como
+  cancelamento automático da consulta.
 
 ## Impeditivos
 
