@@ -39,7 +39,43 @@ recusa query sem escopo, e Row-Level Security do PostgreSQL como camada final. O
 supervisão / "view-as" do original é funcionalidade **proibida** aqui.
 
 ### 3.2 Apps Django
-🔴 A definir.
+🟡 **Proposta — Rodada 7, aguardando validação.**
+
+Nove apps: um de infraestrutura, sete de domínio e um de leitura. O critério de fronteira é
+**quem é dono do dado**, não em que tela ele aparece.
+
+| App | É dono de | Não é dono de |
+|---|---|---|
+| `core` | Base multi-tenant: `TenantOwnedModel`, `TenantManager`, middleware de RLS, trilha de auditoria. **Nenhum domínio.** | Qualquer regra de negócio |
+| `contas` | `User`, `Psicologo` (CRP, CPF, regime tributário, dados fiscais opcionais). **Raiz do tenant.** | Pacientes |
+| `pacientes` | `Paciente`, `ResponsavelLegal`, `Pagador`, `AutorizacaoAtendimento` | Consultas, cobranças |
+| `agenda` | `HorarioDisponivel`, bloqueios, integração Google Agenda | Consulta realizada |
+| `atendimentos` | `Consulta`, `Desfecho` (alta/desistência) | O texto clínico |
+| `prontuarios` | `Relato` (áudio ou texto), `Prontuario`, versões, assinatura, exportação | Quando a sessão ocorreu |
+| `financeiro` | `ContaReceber`, `Pagamento`, `Despesa`, `TipoDespesa`, lembretes de cobrança | Preço acordado do paciente |
+| `assinaturas` | Ciclo de vida da assinatura (Asaas), cancelamento, exportação e descarte (ADR-007) | Dados clínicos |
+| `indicadores` | Dashboard, KPIs, análise de desempenho. **Só leitura.** | Absolutamente nada |
+
+**Regras de dependência** (o que impede o `views.py` de 5.639 linhas do original de renascer):
+
+1. `core` não depende de ninguém; todos dependem dele. Toda model de domínio herda
+   `TenantOwnedModel` — é assim que a ADR-001 deixa de ser disciplina e vira estrutura.
+2. `indicadores` depende de todos; **ninguém depende de `indicadores`**. Por isso ele pode ler à
+   vontade sem criar ciclo.
+3. `assinaturas` não toca dado clínico. Ele sabe se a conta está ativa; não sabe o que tem dentro.
+4. Sem dependência circular entre apps de domínio. Quando dois precisarem conversar nos dois
+   sentidos, a conversa sobe para uma camada de serviço, não vira import cruzado.
+5. **A IA fica atrás de um adaptador** em `prontuarios`. O domínio conhece "transformar relato em
+   prontuário"; não conhece provedor, modelo nem chave de API. É o que permite plugar a IA já
+   existente (P-18) ou trocar de provedor (P-19) sem tocar em regra de negócio.
+
+**Fronteiras que a modelagem já impõe:**
+- `Paciente`, `Pagador` e `ResponsavelLegal` são eixos distintos (ADR-009, ADR-014) e vivem
+  juntos em `pacientes`, porque nascem e morrem com o cadastro.
+- O preço acordado é do paciente; a cobrança gerada é do financeiro. `financeiro` lê o preço,
+  não o define.
+- `prontuarios` guarda o texto clínico; `atendimentos` guarda o fato de a sessão ter ocorrido.
+  Separados porque têm ciclos de vida e regras de retenção diferentes (ADR-005: 5 anos).
 
 ### 3.3 Modelo financeiro
 Decidido em **ADR-002**: modalidade de cobrança explícita por paciente.
