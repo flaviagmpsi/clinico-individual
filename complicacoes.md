@@ -673,7 +673,7 @@ O gatilho correto é o **acontecimento**, não o agendamento. A consulta passa a
 |---|---|---|
 | `AGENDADA` | marcada, ainda não aconteceu | evento no Google, lembrete de atendimento |
 | `REALIZADA` | aconteceu | **prontuário pendente** e, no modo por sessão, **conta a receber** |
-| `FALTA` | paciente não veio | ver P-44 |
+| `FALTA` | paciente não veio | depende de `contabilizada` — ver ADR-023 |
 | `CANCELADA` | desmarcada com antecedência | nada |
 
 Isso também dá de graça o indicador "sessões previstas × realizadas" que o dashboard do Hamilton
@@ -708,6 +708,73 @@ mas **mover** uma consulta existente volta, com um toque de confirmação.
   de "quem escreveu por último ganha".
 - Evento apagado no Google é caso à parte de evento movido, e não deve ser tratado como
   cancelamento automático da consulta.
+
+## ADR-023 — Comparecimento e cobrança são eixos independentes
+
+**Status:** ✅ Aceita — Rodada 11
+**Contexto:** Pergunta do usuário: "tem a possibilidade do sistema se adaptar ao estilo do
+psicólogo?" — uns cobram falta, outros não. A resposta dele apontou o mecanismo certo: os dois
+checks do registro de consultas do Hamilton original, **realizada** e **contabilizada**. "As
+consultas contabilizadas serão cobradas."
+
+**Fato:** o `hamilton-api` já modela exatamente isso — `Consulta.is_realizado` e
+`Consulta.is_cont`. São campos **independentes**, e é essa independência que carrega a regra.
+
+**Decisão:** Separar o que **aconteceu** do que **se cobra**:
+
+| Eixo | Campo | Responde | Dispara |
+|---|---|---|---|
+| **Comparecimento** | `estado` | A sessão aconteceu? | `REALIZADA` → **prontuário pendente** |
+| **Cobrança** | `contabilizada` | Esta sessão entra na conta? | verdadeiro → **conta a receber** (modo por sessão) |
+
+A combinação cobre todos os casos sem regra escondida:
+
+| Situação | Estado | Contabilizada | Resultado |
+|---|---|---|---|
+| Sessão normal | `REALIZADA` | ✅ | Prontuário pendente + cobrança |
+| Falta, e o psicólogo cobra falta | `FALTA` | ✅ | Só cobrança — sem prontuário, porque não houve sessão |
+| Falta, e o psicólogo não cobra | `FALTA` | ❌ | Nada |
+| Desmarcada a tempo | `CANCELADA` | ❌ | Nada |
+| Sessão de cortesia / devolutiva | `REALIZADA` | ❌ | Prontuário pendente, sem cobrança |
+
+**Como o sistema se adapta ao estilo:** o valor de `contabilizada` vem de um **padrão no perfil
+do psicólogo** ("cobro falta: sim/não") e é **sobrescrevível em cada consulta**. Mesmo padrão já
+adotado no vencimento da mensalidade (ADR-002): configura uma vez, ajusta na exceção.
+
+**Consequências:**
+- Fecha P-44 sem inventar regra: quem cobra falta marca a falta como contabilizada e a pendência
+  aparece; quem não cobra, não marca.
+- A última linha da tabela — sessão realizada e não cobrada — é caso real (devolutiva, cortesia,
+  sessão de acolhimento gratuita) que um único campo de estado não conseguiria representar.
+- **Prontuário nunca depende de cobrança**, e vice-versa. Falta não gera prontuário mesmo quando
+  gera cobrança, porque não houve atendimento a registrar.
+
+---
+
+## Adendo à ADR-022 — Remarcação avulsa e o que falta modelar
+
+**Status:** ✅ Aceita — Rodada 11
+
+**Remarcação avulsa** (paciente das terças 14h que, numa semana específica, vem na segunda):
+a consulta daquela semana é uma **linha concreta** com data e hora próprias. O psicólogo abre
+aquela ocorrência, muda de terça 03/11 para segunda 02/11, e pronto — a **regra permanece
+intocada** e a semana seguinte volta a ser terça, sozinha.
+
+Para isso funcionar, a ocorrência precisa **lembrar que veio da regra e que foi alterada à mão**.
+Sem essa marca, uma futura mudança na regra passaria por cima da remarcação e devolveria a
+consulta para a terça, desfazendo em silêncio o que o psicólogo combinou com o paciente.
+
+**Escolha de escopo confirmada:** só existem **"só esta"** e **"esta e as próximas"**. "Todas"
+não é oferecida — reescreveria consultas passadas, que são registro histórico ligado a prontuário
+e cobrança, não agenda.
+
+**Lacuna encontrada — a consulta não tem hora.** No `hamilton-api`, `Consulta.dat_consulta` é um
+campo de **data**, sem horário. Para o Individual isso não serve: escrever evento no Google
+Agenda (ADR-020) exige início **e** fim. A consulta passa a ter **data, hora e duração**, com
+duração padrão no perfil do psicólogo (a sessão de 50 minutos é a convenção). Divergência
+deliberada em relação ao original.
+
+**Férias e feriados:** adiados a pedido do usuário. Ver P-47.
 
 ## Impeditivos
 
