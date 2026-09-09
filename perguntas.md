@@ -154,4 +154,9 @@ Status: 🔴 aberta · 🟡 em discussão · 🟢 resolvida (migra para `documen
 |---|---|---|---|
 | P-50 | Modelagem | **Atendimento de casal, família ou grupo.** Nunca foi tratado. A Res. CFP 001/2009, Art. 5º, III exige que, em atendimento em grupo não eventual, o psicólogo mantenha **documentação individual de cada usuário** além dos registros do atendimento. Afeta consulta, prontuário, cobrança e a colisão de horário (ADR-024). | 🟡 Proposta em ADR-026 (`Caso`), aguardando validação. |
 | P-51 | Dashboard | Separar **dashboard operacional** (o que exige ação hoje) de **análise de desempenho** (como estou indo)? | ✅ Resolvida: telas separadas (ADR-027). |
-| P-52 | Dashboard | Quais perguntas a aba de análise deve responder? Definir as perguntas **antes** de escolher gráfico. | 🔴 |
+| P-52 | Dashboard | Quais perguntas a aba de análise deve responder? Definir as perguntas **antes** de escolher gráfico. | ✅ Resolvida: quatro perguntas escolhidas, nenhuma exige campo novo (adendo à ADR-027). |
+
+| # | Tema | Pergunta | Status |
+|---|---|---|---|
+| P-53 | Prontuário / IA | Em sessão de casal, impedir que a fala de um participante migre para o prontuário do outro. Instrução da IA e revisão humana. | 🔴 Risco clínico |
+| P-54 | Análise | Como o sistema sabe as **horas disponíveis** do psicólogo, se declarar a grade não pode ser barreira de entrada (ADR-012)? | 🔴 |

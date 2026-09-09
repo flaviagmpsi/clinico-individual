@@ -898,6 +898,55 @@ atende casal ou família.
 - **Princípio:** a análise usa apenas dado administrativo — sessões, valores, datas, desfechos.
   **Nunca conteúdo de prontuário.** Não se faz estatística com o que o paciente falou.
 
+## ADR-028 — Atendimento coletivo: um relato, um prontuário por paciente
+
+**Status:** ✅ Aceita — Rodada 14
+**Contexto:** A Res. CFP 001/2009, Art. 5º, III exige documentação individual de cada usuário em
+atendimento de grupo não eventual. Cumprir isso pedindo ao psicólogo que dite um relato por
+participante devolveria justamente o trabalho que o produto existe para eliminar.
+
+**Decisão:** O psicólogo grava **um relato** sobre a sessão. A IA gera **um prontuário por
+paciente participante**, com o que é pertinente a cada um. Ele revisa e confirma cada um antes de
+virar registro oficial (ADR-005, rascunho obrigatório).
+
+**Consequências:**
+- Cumpre a exigência do CFP sem custo humano adicional. É um dos usos em que a IA entrega valor
+  que nenhuma automação simples entregaria.
+- 🔴 **Risco clínico específico:** numa sessão de casal, o que um disse sobre o outro não pode
+  migrar para o prontuário do outro sem critério. O prontuário de cada um é acessível a ele
+  (Art. 5º, II) — e vazar a fala de um cônjuge para o prontuário do outro é falha grave. A
+  instrução da IA precisa tratar isso explicitamente, e a revisão humana deixa de ser formalidade.
+- O relato original é insumo único ligado à consulta; os prontuários gerados são N, ligados a
+  cada paciente.
+
+---
+
+## Adendo à ADR-027 — Indicadores escolhidos
+
+**Status:** ✅ Aceita — Rodada 14
+
+**Painel** (diário, ação):
+1. Receita líquida · 2. Ocupação da agenda · 3. Entradas × saídas de pacientes
+— mais pacientes ativos com dias sem atender, resumo por paciente e pendências.
+
+**Análise** (eventual, profundidade):
+
+| Pergunta | De onde sai |
+|---|---|
+| **Quanto do meu faturamento depende de um paciente só?** | Pagamentos agrupados por caso, sobre o total. Revela risco de concentração que ninguém enxerga até o paciente sair. |
+| **Em que momento as pessoas desistem?** | Contagem de sessões realizadas antes do desfecho de desistência. |
+| **Quantas horas trabalho por semana, e quantas tenho disponíveis?** | Soma das durações das consultas `REALIZADAS` contra a grade de horários declarada. **Definição do usuário: trabalhar = só horário de atendimento.** |
+| **Quantas sessões faço por mês?** | Consultas `REALIZADAS` no período. |
+
+**Achado que barateia tudo:** **nenhum dos quatro exige campo novo.** Todos são derivados de dado
+que as ADRs anteriores já mandam guardar. Em particular, "em que momento desistem" é **calculado**
+(quantas sessões houve antes da desistência), e não perguntado — o original guarda um `momento`
+grosseiro por escolha, e derivar dá resposta melhor sem trabalho para o usuário.
+
+**Excluído deliberadamente:** "de onde vêm meus pacientes". Exigiria um campo de origem no
+cadastro, e o usuário não o priorizou. ⚠️ É o único da lista **impossível de preencher
+retroativamente** — daqui a um ano ninguém lembra como cada paciente chegou. Reabrir custa caro.
+
 ## Impeditivos
 
 | # | Impeditivo | Situação |
