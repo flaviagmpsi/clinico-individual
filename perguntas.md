@@ -159,8 +159,8 @@ Status: 🔴 aberta · 🟡 em discussão · 🟢 resolvida (migra para `documen
 | # | Tema | Pergunta | Status |
 |---|---|---|---|
 | P-53 | Prontuário / IA | Em sessão de casal, impedir que a fala de um participante migre para o prontuário do outro. Instrução da IA e revisão humana. | 🔴 Risco clínico |
-| P-54 | Análise | Como o sistema sabe as **horas disponíveis** do psicólogo, se declarar a grade não pode ser barreira de entrada (ADR-012)? | 🔴 |
+| P-54 | Análise | Como o sistema sabe as **horas disponíveis** do psicólogo, se declarar a grade não pode ser barreira de entrada (ADR-012)? | ✅ Resolvida: grade declarada, ocupação derivada (ADR-029). |
 
 | # | Tema | Pergunta | Status |
 |---|---|---|---|
-| P-55 | Interface | Como chamar o `Caso` na tela, quando aparecer para quem atende casal? "Caso", "atendimento", "vínculo" ou outro termo natural para psicólogo. | 🔴 |
+| P-55 | Interface | Como chamar o `Caso` na tela, quando aparecer para quem atende casal? "Caso", "atendimento", "vínculo" ou outro termo natural para psicólogo. | ✅ Resolvida: "Caso" fica também na tela. |

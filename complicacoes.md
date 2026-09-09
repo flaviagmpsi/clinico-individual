@@ -972,6 +972,44 @@ grosseiro por escolha, e derivar dá resposta melhor sem trabalho para o usuári
 cadastro, e o usuário não o priorizou. ⚠️ É o único da lista **impossível de preencher
 retroativamente** — daqui a um ano ninguém lembra como cada paciente chegou. Reabrir custa caro.
 
+## ADR-029 — Horários disponíveis são declarados pelo psicólogo, ocupação é derivada
+
+**Status:** ✅ Aceita — Rodada 16
+**Contexto:** O indicador "quantas horas trabalho × quantas tenho disponíveis" precisa de um
+denominador. O usuário definiu como consegui-lo: na área de horários, o psicólogo registra
+**quais horários da semana ele ainda tem para atender**, adicionando e apagando quando quiser.
+O `hamilton-api` já tem essa peça (`HorarioDisponivel`, com dia da semana, hora de início e fim,
+e a tela `gerenciar_horarios.html`) — reuso direto.
+
+**Decisão:** O psicólogo declara sua grade. Nenhuma pergunta de configuração barra o cadastro
+(ADR-012): quem não declarar perde apenas esse indicador.
+
+**Refinamento sobre o pedido — a manutenção é automática.** Registrar manualmente "quais horários
+ainda tenho livres" tem um defeito conhecido: ao marcar um paciente na terça 15h, o psicólogo
+teria de lembrar de apagar aquele horário da lista de livres. Ninguém lembra, e em duas semanas a
+lista mente — e o indicador de ocupação mente junto.
+
+Por isso a grade declarada é de **disponibilidade**, não de vagas remanescentes, e o sistema
+**subtrai sozinho** o que já tem paciente:
+
+| Vem de | O quê |
+|---|---|
+| Declarado pelo psicólogo | A grade: "atendo terça e quinta, das 14h às 20h" |
+| Derivado pelo sistema | Quais faixas dessa grade já têm consulta recorrente — marcadas como ocupadas |
+| Calculado | **Ocupação** = horas com atendimento ÷ horas da grade |
+
+Ele continua adicionando e apagando à vontade, como pediu. O que ele **não** precisa fazer é
+manutenção dupla.
+
+**Consequências:**
+- A tela de horários deixa de ser uma lista morta e vira o mapa da semana — mostra o que está
+  ocupado, por quem, e o que sobrou. É a mesma tela que responde "tenho vaga para paciente novo?".
+- "Horas trabalhadas" usa a definição do usuário: **só horário de atendimento**, somando as
+  durações das consultas `REALIZADAS`.
+- A grade declarada **não** bloqueia marcação fora dela. O bloqueio existente é só o de colisão
+  (ADR-024); marcar um encaixe num sábado deve continuar possível.
+- Fecha P-54. **`Caso` fica como nome também na interface** — decisão do usuário. Fecha P-55.
+
 ## Impeditivos
 
 | # | Impeditivo | Situação |
