@@ -164,3 +164,13 @@ Status: 🔴 aberta · 🟡 em discussão · 🟢 resolvida (migra para `documen
 | # | Tema | Pergunta | Status |
 |---|---|---|---|
 | P-55 | Interface | Como chamar o `Caso` na tela, quando aparecer para quem atende casal? "Caso", "atendimento", "vínculo" ou outro termo natural para psicólogo. | ✅ Resolvida: "Caso" fica também na tela. |
+
+## Abertas na Rodada 17
+
+| # | Tema | Pergunta | Status |
+|---|---|---|---|
+| P-56 | Avaliação psicológica | **Tema inteiro ainda não tratado.** A Res. CFP 31/2022 rege a avaliação psicológica e o SATEPSI (testes com validade máxima de 15 anos). Ela é pré-requisito do Atestado e do Laudo (ADR-032) e origem dos anexos de acesso exclusivo (ADR-005, inciso V). Entra no MVP ou é módulo próprio depois? | 🔴 |
+| P-57 | Documentos / IA | A IA de documentos tem acesso ao **conteúdo do prontuário**? Um laudo precisa de material clínico; uma declaração, não. | 🔴 |
+| P-58 | Documentos | **Relatório Multiprofissional** pressupõe equipe. Faz sentido num produto para psicólogo individual? | 🟡 |
+| P-59 | Documentos | Atestado e Laudo pressupõem avaliação psicológica realizada, e o CRP pode exigir a fundamentação em até 5 anos. Como amarrar o documento gerado ao registro que o fundamenta? | 🔴 |
+| P-60 | Documentos | Manter norma dentro do produto cria **dever de atualização**. Quem verifica se a resolução exibida ainda é a vigente? | 🟡 |

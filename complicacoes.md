@@ -1010,6 +1010,107 @@ manutenção dupla.
   (ADR-024); marcar um encaixe num sábado deve continuar possível.
 - Fecha P-54. **`Caso` fica como nome também na interface** — decisão do usuário. Fecha P-55.
 
+## ADR-030 — Regime tributário no perfil, e lembrete fiscal ciente do regime
+
+**Status:** ✅ Aceita — Rodada 17
+**Decisão:** O perfil do psicólogo guarda se ele atua como **PF** ou **PJ**, ao lado de CPF, CRP e
+dados fiscais opcionais (ADR-012). Era consequência já prevista na ADR-013 e agora é requisito
+explícito.
+
+**O lembrete fiscal muda conforme o regime:**
+
+| Regime | O que o sistema lembra |
+|---|---|
+| **PF** | "Emita o recibo no Receita Saúde" — obrigatório desde 01/2025 (ADR-008), um por pagamento recebido |
+| **PJ** | "Emita a nota fiscal" |
+
+⚠️ **Ressalva importante ao pedido do usuário.** Foi dito que o sistema "ajuda mais quem é PJ
+porque tem a API de nota fiscal". **A API de NFS-e está fora do MVP** por decisão do próprio
+usuário na ADR-013, junto com o carnê-leão. O que entra aqui é apenas o **lembrete** — que é
+barato, não depende de integração nenhuma e serve aos dois regimes igualmente. Quando a
+integração de NFS-e for construída, o lembrete do PJ vira ação de um clique; até lá, os dois
+regimes recebem aviso e emitem por fora.
+
+Registrado para que a diferença entre *lembrar* e *emitir* não se perca.
+
+---
+
+## ADR-031 — Recorrência quinzenal e outras periodicidades
+
+**Status:** ✅ Aceita — Rodada 17
+**Contexto:** Verificação levantada pelo usuário: o sistema precisa distinguir atendimento
+**semanal** de **quinzenal**.
+
+**Decisão:** A regra de recorrência (ADR-022) carrega **periodicidade**, não apenas dia e hora:
+semanal, quinzenal e mensal. A materialização das consultas respeita o intervalo.
+
+**Consequências:**
+- Quinzenal exige uma **âncora** — a data da primeira ocorrência —, porque "quinzenal" sozinho
+  não diz quais semanas. Sem âncora, o sistema não sabe se é a semana par ou a ímpar.
+- Afeta a **ocupação** (ADR-029): um horário quinzenal ocupa metade de uma faixa semanal, e
+  tratá-lo como semanal faria a agenda parecer mais cheia do que está.
+- Afeta a **previsão de receita**: paciente quinzenal a R$ 200 rende R$ 400 no mês, não R$ 800.
+  O Hamilton original não tem esse conceito, então a conta dele erraria.
+- Semanal permanece o padrão, por ser o caso dominante.
+
+---
+
+## ADR-032 — IA de documentos psicológicos, pela Resolução CFP 06/2019
+
+**Status:** ✅ Aceita — Rodada 17
+**Contexto:** Pedido do usuário: uma IA na aba de documentos que produza documentos conforme as
+normas do CRP, com modelos de **todos** os documentos que um psicólogo pode emitir, para ele não
+precisar caçar como se faz nem montar do zero.
+
+**Fato levantado — a norma é a Resolução CFP nº 06/2019**, que define **seis** modalidades, cada
+uma com estrutura obrigatória:
+
+| Documento | Estrutura obrigatória | Regra que a IA **não pode** violar |
+|---|---|---|
+| **Declaração** | Título · nome · finalidade · local, dias, horários e duração do acompanhamento · encerramento com local, data, carimbo, CRP e assinatura | 🚫 **Vedado registrar sintomas, situações ou estados psicológicos** (Art. 9º, §1º) |
+| **Atestado Psicológico** | Título · nome · solicitante · finalidade · descrição das condições psicológicas | Resulta de **avaliação psicológica**. Texto corrido **sem parágrafos**, para evitar adulteração; se houver, preencher com traços (Art. 10, §5º) |
+| **Relatório Psicológico** | **5 itens**: Identificação · Descrição da demanda · Procedimento · Análise · Conclusão | — |
+| **Relatório Multiprofissional** | Estrutura própria, com equipe | Fora do escopo individual — ver P-58 |
+| **Laudo Psicológico** | **6 itens**: Identificação · Descrição da demanda · Procedimento · Análise · Conclusão · **Referências** | Citação de referências é **obrigatória**. É resultado de processo de avaliação psicológica |
+| **Parecer Psicológico** | **5 itens**: Identificação · Descrição da demanda · Análise · Conclusão · **Referências** | Exige do autor **titulação que comprove conhecimento específico** no assunto |
+
+**Art. 17 — prazo de validade do conteúdo** deve constar no **último parágrafo**, e se aplica a
+Atestado, Laudo e Relatório.
+
+**Decisão:** A IA de documentos é feature do app `documentos`, distinta da IA de prontuário
+(ADR-006). São pipelines diferentes: prontuário **transforma um relato**; documento **preenche
+uma estrutura normativa** a partir de dados do sistema mais entrada do psicólogo.
+
+**Consequências:**
+- Vale a ADR-005: **rascunho obrigatório com revisão e confirmação**. Documento que sai errado
+  não é bug de tela — é o psicólogo respondendo processo no CRP com o nome dele no papel.
+- As vedações são **restrições de geração**, não sugestões. Uma declaração que mencione sintoma
+  viola a resolução, e a instrução da IA precisa impedir isso estruturalmente.
+- Atestado, Laudo e Parecer pressupõem coisas que o sistema não tem: avaliação psicológica
+  realizada, referências bibliográficas, titulação. A IA **não pode inventá-las**.
+- 🔴 Os Conselhos Regionais podem exigir, em até **cinco anos**, a fundamentação técnico-científica
+  de um atestado (Art. 10, §4º). O documento gerado precisa ficar amarrado ao registro que o
+  fundamenta.
+- Priorização sugerida: **Declaração** primeiro — é a mais simples, a mais pedida no dia a dia
+  ("preciso de um documento comprovando que faço terapia") e a de menor risco.
+
+---
+
+## ADR-033 — Diretrizes do CRP consultáveis dentro do sistema
+
+**Status:** ✅ Aceita — Rodada 17
+**Decisão:** A aba de documentos oferece as diretrizes do CFP sobre documentos escritos, para
+consulta na íntegra por quem quiser conferir.
+
+**Consequências:**
+- ⚠️ **Manter texto normativo dentro do produto cria dever de atualização.** A Res. 06/2019
+  revogou a 07/2003; o CFP publicou **Manual Orientativo em novembro de 2025**. Norma exibida
+  desatualizada é pior que norma ausente, porque parece autoridade.
+- Direito autoral: atos oficiais não são protegidos (Lei 9.610/98, Art. 8º, IV), então reproduzir
+  o texto da resolução é lícito. **Manuais e cartilhas do CFP são outra coisa** — para esses,
+  o caminho seguro é link para a fonte oficial, não cópia.
+- Recomendação: **exibir a resolução e linkar o manual**, com data da versão visível.
+
 ## Impeditivos
 
 | # | Impeditivo | Situação |
