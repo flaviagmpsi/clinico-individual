@@ -156,9 +156,97 @@ Outras exigências com efeito direto no produto:
   escopo declarado (ver P-11).
 - ⚠️ **Conflito de prazos a resolver:** a Lei nº 13.787/2018 estabelece **20 anos** para
   prontuários de paciente em saúde, contra os 5 anos do CFP. Precisa de posição definida.
+## ADR-006 — O prontuário nasce do relato do psicólogo, não da sessão gravada
+
+**Status:** ✅ Aceita — Rodada 3
+**Contexto:** "Áudio gravado" era ambíguo entre duas coisas muito diferentes: o psicólogo ditando
+um resumo após o atendimento, ou a sessão inteira gravada com a voz do paciente.
+
+**Decisão:** A entrada é sempre o **relato do próprio psicólogo sobre a sessão**, em duas formas
+equivalentes: **áudio ditado** ou **texto escrito**. A IA transforma esse relato em prontuário
+na estrutura da Res. CFP 001/2009 (ADR-005). **A sessão nunca é gravada.**
+
+**Consequências:**
+- O único falante no áudio é o psicólogo, que consente por si. **Não existe fluxo de
+  consentimento do paciente para gravação** — ele deixa de ser requisito do MVP.
+- O conteúdo já chega filtrado pelo julgamento clínico: não trafega fala bruta do paciente.
+- Áudios são curtos (minutos, não a sessão inteira), o que reduz custo e latência de transcrição.
+- O relato é **insumo**, não documento. Só o prontuário gerado tem valor legal.
+- Áudio e texto são duas portas para o mesmo pipeline — o modelo de dados deve tratá-los como
+  variações de "relato de origem", não como dois fluxos separados.
+
+---
+
+## ADR-007 — Exportação e descarte no cancelamento da assinatura
+
+**Status:** ✅ Aceita — Rodada 3
+**Contexto:** O Art. 4º, §1º da Res. CFP 001/2009 obriga o **psicólogo** a guardar os registros
+por no mínimo 5 anos. Apagar no cancelamento o colocaria em infração; guardar indefinidamente
+faria a plataforma depositária de dado sensível de saúde de quem não é mais cliente.
+
+**Decisão:** No cancelamento, o sistema **gera automaticamente** o pacote completo (todos os
+prontuários em PDF/DOC, mais os dados financeiros), avisa o psicólogo, mantém por um período de
+carência e então **descarta definitivamente**. A obrigação legal de guarda volta a quem a lei
+cobra: o profissional.
+
+**Consequências:**
+- A exportação é **empurrada, não escondida**: pacote pronto no ato do cancelamento e avisos
+  repetidos durante a carência. Um cliente que perde prontuário por não ter lido um e-mail é
+  falha nossa de produto, não descuido dele.
+- 🔴 **Tamanho da carência ainda não definido** (ver P-20). Assunção provisória: 90 dias.
+- O descarte precisa ser real e auditável (backups incluídos), sob pena de a promessa ser falsa.
+- Continua valendo avaliar "conta congelada" como **argumento de venda** futuro, já que o medo
+  de perder o histórico trava a decisão de compra.
+
+---
+
+## ADR-008 — Não emitimos recibo: geramos a escrituração para o Receita Saúde
+
+**Status:** ✅ Aceita — Rodada 3 (imposição legal, não escolha)
+**Contexto:** O escopo inicial previa "emissão de recibos (pessoa física)" pelo sistema. Isso
+**não é legalmente possível**. Desde **1º de janeiro de 2025**, psicólogos que atendem como
+pessoa física emitem recibo **exclusivamente** pelo Receita Saúde (app da Receita Federal /
+Portal e-CAC). O CFP alimenta mensalmente a base da Receita com os profissionais ativos.
+
+**Decisão:** O Hamilton **não emite recibo**. Ele faz o trabalho que sobra, que é justamente o
+chato: mantém os dados prontos e **gera o arquivo CSV de escrituração em lote**, que o psicólogo
+importa no e-CAC em uma única operação (Carnê-Leão → Escrituração → Importar Escrituração).
+
+Formato exigido pelo arquivo (manual Receita Saúde 2.1): CSV separado por **ponto e vírgula**,
+até **1000 linhas**, todos os pagamentos do **mesmo ano**.
+
+| Campo | Valor |
+|---|---|
+| Data do pagamento | `DD/MM/AAAA` — data do **efetivo pagamento** |
+| Código do rendimento | fixo `R01.001.001` |
+| Código da ocupação | `255` (Psicólogo) |
+| Valor do pagamento | > 0, sem separador de milhares |
+| Valor da dedução | vazio |
+| Descrição | até 255 caracteres |
+| Recebido de | fixo `PF` |
+| **CPF do pagador** | 11 dígitos — quem **pagou** |
+| **CPF do beneficiário** | 11 dígitos — quem **foi atendido** |
+| Ind. CPF não informado / CNPJ / Indicador de IRRF / Valor IRRF | vazios |
+| Indicador de recibo | fixo `S` |
+| CPF do profissional | 11 dígitos |
+| Registro profissional | CRP, até 15 caracteres (opcional se houver só um ativo) |
+
+**Consequências:**
+- ⚠️ **Lacuna no cadastro de paciente:** o arquivo exige **CPF do pagador e CPF do beneficiário
+  como campos distintos**. O escopo declarado previa um CPF só. Pai pagando pelo filho é caso
+  comum em clínica (ver P-22).
+- O perfil do psicólogo precisa guardar **CPF e número do CRP** — hoje não previstos.
+- O recibo emitido no Receita Saúde **alimenta automaticamente** o cálculo mensal do
+  Carnê-Leão. Logo, nosso valor não está em calcular o imposto sobre a receita, e sim no
+  **livro caixa das despesas** e na **previsão** (ver P-21).
+- Não existe API pública. A integração é por arquivo, e a importação é ato manual do psicólogo
+  no e-CAC — dependência externa que não controlamos.
+- O limite de 1000 linhas por arquivo exige particionar lotes grandes.
+
 ## Impeditivos
 
 | # | Impeditivo | Situação |
 |---|---|---|
 | I-01 | RLS + connection pooling do Neon: a variável de sessão do tenant precisa ser setada por request e **limpa** ao devolver a conexão ao pool, sob risco de uma request herdar o tenant da anterior. Exige prova de conceito antes de virar fundação. | 🔴 A validar |
+| I-03 | **Receita Saúde não tem API pública.** A escrituração entra por importação manual de CSV no e-CAC, feita pelo psicólogo. Dependência externa fora do nosso controle: se a Receita mudar o layout, a feature quebra sem aviso. | 🟡 Mitigável (validar layout a cada ano-calendário) |
 | I-02 | `gh` CLI não autenticado na máquina (`gh auth status`). Git funciona via Credential Manager; só ferramentas que dependem do `gh` ficam indisponíveis. | 🟡 Contornado |
