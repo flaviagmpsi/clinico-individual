@@ -124,7 +124,14 @@ Status: 🔴 aberta · 🟡 em discussão · 🟢 resolvida (migra para `documen
 
 | # | Tema | Pergunta | Status |
 |---|---|---|---|
-| P-38 | Contratos | "Alterar e apagar" colide com *contrato é histórico*. Aceitável porque o original assinado é o papel — mas apagar sem rastro deixa o psicólogo sem cópia. Exclusão definitiva ou lixeira com histórico? | 🔴 |
-| P-39 | Agenda | ADR-018 exige **escrever** evento na agenda do psicólogo. Isso muda o escopo do OAuth do Google de leitura para leitura e escrita. Confirmar. | 🔴 |
-| P-40 | Documentos | Consolidar `contratos` num app `documentos`? A Res. CFP 001/2009 Art. 2º já exige guardar **anexos de avaliação psicológica** (inciso V, acesso exclusivo do psicólogo) e **cópias de documentos emitidos** (inciso VI). São três necessidades com a mesma forma. | 🔴 |
+| P-38 | Contratos | "Alterar e apagar" colide com *contrato é histórico*. Aceitável porque o original assinado é o papel — mas apagar sem rastro deixa o psicólogo sem cópia. Exclusão definitiva ou lixeira com histórico? | ✅ Resolvida: alterar versiona, apagar vai para lixeira (adendo à ADR-015). |
+| P-39 | Agenda | ADR-018 exige **escrever** evento na agenda do psicólogo. Isso muda o escopo do OAuth do Google de leitura para leitura e escrita. Confirmar. | ✅ Resolvida: escrita necessária, pedida sob demanda (ADR-020). |
+| P-40 | Documentos | Consolidar `contratos` num app `documentos`? A Res. CFP 001/2009 Art. 2º já exige guardar **anexos de avaliação psicológica** (inciso V, acesso exclusivo do psicólogo) e **cópias de documentos emitidos** (inciso VI). São três necessidades com a mesma forma. | ✅ Resolvida: app `documentos` com contrato como tipo (ADR-021). |
 | P-41 | Infra | Provedor de object storage: S3, Cloudflare R2 (sem custo de egresso) ou storage do Neon. Isolamento por tenant exige chave por psicólogo e URL assinada de vida curta. | 🔴 |
+
+## Abertas na Rodada 10
+
+| # | Tema | Pergunta | Status |
+|---|---|---|---|
+| P-42 | Agenda | Divergência silenciosa: se o psicólogo editar o evento direto no Google, a mudança não volta. Como o produto avisa em vez de esconder? | 🔴 |
+| P-43 | Agenda | Risco de adoção: o psicólogo que hoje vive no Google Agenda terá de reorganizar **no Hamilton**. Mudança de hábito é o maior risco deste módulo. | 🔴 |

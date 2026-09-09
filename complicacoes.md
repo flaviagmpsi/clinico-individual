@@ -480,6 +480,15 @@ modelo, marcadores, máquina de estados de assinatura e integração com provedo
 - O contrato guardado cai no armazenamento misto (ADR-019): é pequeno e jurídico, vai para o
   banco.
 
+
+**Adendo — Rodada 9 (exclusão e alteração, decisão delegada a mim):**
+- **Alterar cria versão nova**, nunca sobrescreve. Preserva a resposta a "qual condição valia
+  naquele período?", que é o que se pergunta em conflito sobre valor ou falta.
+- **Apagar move para lixeira**, não destrói. A exclusão definitiva existe, mas só de dentro da
+  lixeira, com confirmação.
+- O psicólogo tem o controle que pediu, sem conseguir destruir a própria defesa com um clique
+  errado. Fecha P-38.
+
 **Especificação preservada, para se a assinatura eletrônica voltar ao escopo:**
 o `hamilton-api` tem em `principais/contratos/` uma integração com a **Autentique** já em
 produção, cujo `LEIA-ME.md` documenta armadilhas caras de descobrir sozinho — entre elas que
@@ -559,6 +568,75 @@ são entregues por dois canais no MVP:
 - Provedor ainda não escolhido (S3, Cloudflare R2, storage do Neon). R2 é candidato por não
   cobrar egresso.
 - A retenção do áudio passa a ser política explícita, não efeito colateral de onde ele caiu.
+
+## ADR-020 — Agenda: o Hamilton é a fonte da verdade, o Google é projeção
+
+**Status:** ✅ Aceita — Rodada 9
+**Contexto:** O usuário descreveu o comportamento desejado: o psicólogo cadastra data e horário
+de atendimento de cada paciente, e todo dia de manhã recebe um alerta com os atendimentos do dia.
+Alterações são feitas por ele mesmo e devem se refletir no aviso.
+
+**Fato verificado:** o Google Agenda tem uma notificação nativa de **"Resumo diário"** (*Daily
+agenda*), enviada por e-mail no início do dia (padrão 5h), ligada uma vez pelo psicólogo nas
+configurações dele. Ou seja, o alerta matinal **já existe e é gratuito** — não precisamos
+construí-lo nem pagar agendador para isso (I-05).
+
+**Decisão:** Sincronização **de mão única**. O `Hamilton` é dono da consulta; o Google Agenda
+recebe uma cópia.
+
+| Direção | O quê | Por quê |
+|---|---|---|
+| **Hamilton → Google** (escrita) | Cada consulta cadastrada vira evento num calendário dedicado, *"Hamilton — Atendimentos"*, dentro da conta do psicólogo | O alarme do celular e o resumo diário passam a funcionar de graça |
+| **Google → Hamilton** (leitura) | Compromissos já existentes na agenda dele | Atende o pedido original — "saber quais já estou realizando no mês" — e evita marcar em cima de outro compromisso |
+
+**Por que o Hamilton é a fonte da verdade, e não o Google:** a consulta é a âncora do prontuário
+(ADR-016) e da cobrança (ADR-002). Uma sessão que só existe no Google não gera prontuário
+pendente nem conta a receber — sumiria do sistema inteiro. O calendário pode espelhar a consulta;
+a consulta não pode viver no calendário.
+
+**Por que mão única, e não sincronização nos dois sentidos:** sincronização bidirecional exige
+resolver conflito quando os dois lados mudam entre uma sincronização e outra, e é uma das fontes
+clássicas de bug caro e silencioso. Mão única não tem conflito porque não tem disputa.
+
+**Consequências:**
+- ⚠️ **Exige permissão de escrita** no OAuth do Google. O psicólogo vê "gerenciar seus
+  calendários" em vez de "ver seus calendários" — passo em que parte das pessoas desiste. Por
+  isso a permissão é pedida **quando ele ativar o recurso**, com a explicação na tela, e não no
+  primeiro minuto do cadastro.
+- **Calendário dedicado, nunca o pessoal dele.** Isola nossas escritas, ele pode ocultar com um
+  clique, e o descarte no cancelamento (ADR-007) vira apagar um calendário só.
+- Lembrete de cada atendimento é configurável **por evento** via API. O resumo matinal é
+  configuração da conta dele: o sistema deve **ensinar a ligar**, não prometer o que não controla.
+- 🔴 Se ele editar o evento direto no Google, a mudança **não volta** para o Hamilton, e os dois
+  lados divergem em silêncio. O produto precisa dizer isso na cara, não escondê-lo. Ver P-42.
+- O pedido "que já vai estar com a data alterada porque o próprio psicólogo já reorganizou" só se
+  cumpre se ele reorganizar **no Hamilton**. Isso é mudança de hábito para quem hoje vive no
+  Google Agenda, e é o principal risco de adoção deste módulo.
+
+---
+
+## ADR-021 — App `documentos`, com contrato sendo um dos tipos
+
+**Status:** ✅ Aceita — Rodada 9
+**Contexto:** São três necessidades com a mesma forma — arquivo ligado a um paciente, com tipo e
+regra de quem vê:
+
+| Origem | O quê |
+|---|---|
+| Pedido do usuário | Contrato terapêutico guardado para conferência (ADR-015) |
+| Res. CFP 001/2009, Art. 2º, **inciso V** | Anexos de avaliação psicológica, em pasta de **acesso exclusivo do psicólogo** |
+| Res. CFP 001/2009, Art. 2º, **inciso VI** | Cópias de documentos emitidos, com **data de emissão, finalidade e destinatário** |
+
+**Decisão:** Um app `documentos`, dono de `Documento` (arquivo, tipo, vigência, visibilidade,
+versões). `contrato` é um `tipo`, não um app.
+
+**Consequências:**
+- Upload, listagem, permissão, versionamento e retenção existem **uma vez**, não três.
+- A regra de **acesso exclusivo do psicólogo** (inciso V) é modelada uma vez, no lugar onde todos
+  os documentos vivem — e é a mesma peça que vai servir ao sigilo do adolescente (P-33).
+- O inciso VI exige campos que o contrato não tem: finalidade e destinatário. São opcionais por
+  tipo, não obrigatórios em todo documento.
+- Fecha P-40. O total de apps volta a **dez**.
 
 ## Impeditivos
 
