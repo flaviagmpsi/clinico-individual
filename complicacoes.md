@@ -453,45 +453,40 @@ Podem ser a mesma pessoa (adulto pagando a própria terapia), duas ou três pess
 - ⚠️ Adolescente tem expectativa de sigilo perante os próprios pais. O produto não pode assumir
   que "responsável vê tudo". Ver P-33.
 
-## ADR-015 — Contrato terapêutico como app próprio, com assinatura eletrônica
+## ADR-015 — Contrato terapêutico: guarda de documento, não geração nem assinatura
 
-**Status:** ✅ Aceita — Rodada 7
-**Contexto:** Requisito novo trazido pelo usuário: um lugar para o contrato terapêutico, ligado
-ao cadastro do paciente. Para menores de idade, **a autorização dos pais vive dentro do
-contrato** — são eles que assinam. Isso simplifica a ADR-014: a autorização não é documento
-separado, é cláusula e assinatura do contrato.
+**Status:** ✅ Aceita — Rodada 8 (**revisa** a primeira versão desta ADR, da Rodada 7)
 
-**Fato relevante:** o `hamilton-api` **já resolveu esse problema** em `principais/contratos/`,
-com integração à **Autentique** (assinatura eletrônica) e um `LEIA-ME.md` que documenta as
-armadilhas. É o segundo pedaço do original com valor real de reuso, ao lado do `webmania.py`
-(ADR-013).
+**O que mudou:** a Rodada 7 desenhou um app de contratos com geração de documento a partir de
+modelo, marcadores e assinatura eletrônica via Autentique, portando o que o `hamilton-api` tem.
+A Rodada 8 corrigiu o rumo: **o psicólogo escreve o próprio contrato, fora do sistema**. O
+Hamilton oferece um **lugar para guardar** — para ele conferir que fez, buscar, alterar e apagar
+quando precisar.
 
-**Decisão:** `contratos` é **app próprio**, não uma tabela dentro de `pacientes`. Motivo: tem
-ciclo de vida próprio (pendente → assinado / recusado / expirado / substituído), integração
-externa e regra de retenção jurídica. Embutido em `pacientes`, faria o cadastro depender de um
-provedor de assinatura — acoplamento que não se justifica. A **tela** continua dentro do perfil
-do paciente; dono do dado e lugar na interface são coisas diferentes (mesmo princípio da ADR-004).
-
-**Princípios portados do original** (validados em produção, não inventados aqui):
-
-| Princípio | Por quê |
-|---|---|
-| **Contrato é histórico, nunca substituição** | Apagar o anterior destruiria a prova de qual condição valia em qual período — exatamente o que se pergunta num conflito. |
-| **Guardar o `texto_usado`**, e não só a referência ao modelo | O modelo é editável. Sem isso, ninguém responde "qual redação essa pessoa assinou?". |
-| **Guardar o PDF assinado em bytes no Postgres** | Ver I-04: o disco do Render é efêmero. |
-| **Idempotência na geração** | Reenviar o link não pode gastar crédito novo nem gerar link diferente para o mesmo combinado. |
-| **Guarda de valor antes de qualquer chamada externa** | Impede contrato sair com valor errado; falha barato, antes de gastar crédito. |
-| **Nunca ler o signatário por índice** | Na Autentique, `signatures[0]` é a conta dona do token, não o paciente. O erro é **silencioso**. |
-| **Sandbox ligado por omissão fora de produção** | Documento de teste não consome crédito. Seguro por padrão. |
-| **Token ausente = feature desligada (503)**, sem quebrar o resto | Degradar com honestidade (ADR-012). |
+**Decisão:** `contratos` deixa de ser fluxo e vira **repositório**. Some do MVP: geração por
+modelo, marcadores, máquina de estados de assinatura e integração com provedor externo.
 
 **Consequências:**
-- No contrato de menor, os signatários são os **responsáveis legais** (ADR-014), não o paciente.
-  Com guarda compartilhada, pode haver **mais de um signatário** — o fluxo precisa suportar.
-- O contrato é a peça que resolve a autorização exigida pelo Código de Ética. P-32 e P-33
-  (extensão do acesso do responsável e sigilo do adolescente) continuam abertas.
-- 🔴 A Autentique é escolha do original, não decisão nossa. Custo por documento e alternativas
-  (D4Sign, Clicksign, ZapSign) precisam de comparação antes de virar dependência. Ver P-35.
+- ✅ **P-35 morre.** Comparar Autentique com D4Sign/Clicksign/ZapSign deixa de ser necessário.
+  Nenhum custo por documento entra na conta do produto.
+- ✅ O trabalho de investigação do original não foi perdido — permanece registrado abaixo como
+  **especificação pronta**, caso a assinatura eletrônica vire feature depois.
+- ⚠️ **Tensão a resolver:** "alterar e apagar" colide com o princípio *contrato é histórico,
+  nunca substituição*. A colisão só é aceitável porque o **original assinado é o papel**, fora do
+  sistema — aqui é cópia de conferência. Se algum dia o Hamilton passar a ser a única via, apagar
+  destrói prova. Ver P-38.
+- Para menor de idade, a autorização dos pais continua **dentro do contrato** (ADR-014), agora
+  como conteúdo do arquivo guardado, não como estado do sistema.
+- O contrato guardado cai no armazenamento misto (ADR-019): é pequeno e jurídico, vai para o
+  banco.
+
+**Especificação preservada, para se a assinatura eletrônica voltar ao escopo:**
+o `hamilton-api` tem em `principais/contratos/` uma integração com a **Autentique** já em
+produção, cujo `LEIA-ME.md` documenta armadilhas caras de descobrir sozinho — entre elas que
+`signatures[0]` é a conta dona do token e não o paciente (erro **silencioso**), que o
+`short_link` volta nulo na criação, e a necessidade de idempotência para não gastar crédito a
+cada reenvio. Junto com `acessorios/webmania.py` (ADR-013), é um dos dois pedaços do original com
+valor real de reuso.
 
 ---
 
@@ -521,13 +516,56 @@ Um terceiro apareceu de graça na ADR-016: **prontuário pendente**, que pertenc
 - Nenhum app precisa depender do outro para lembrar: cada um sabe o que está pendente no seu
   próprio domínio. `indicadores` reúne para exibir.
 - A entrega (canal) é decisão separada da propriedade (ver P-36).
+---
+
+## ADR-018 — Lembretes: in-app e Google Agenda, sem agendador
+
+**Status:** ✅ Aceita — Rodada 8
+**Decisão:** Os três tipos de lembrete (cobrança, atendimento e prontuário pendente — ADR-017)
+são entregues por dois canais no MVP:
+
+| Canal | Como funciona |
+|---|---|
+| **In-app** | A tela pergunta ao banco o que está pendente **no momento em que carrega**. Não existe tabela de lembretes nem registro pré-computado. |
+| **Google Agenda** | O lembrete vira **evento na agenda que o psicólogo já usa**, e o alarme do celular dele faz o trabalho de notificação. |
+
+**Consequências:**
+- **Custo de infraestrutura zero, e o impeditivo I-05 desaparece do MVP**: sem canal que empurra,
+  não há agendador, cron job nem background worker para pagar.
+- Sem tabela de lembretes, não há estado para dessincronizar. O que está pendente é sempre
+  derivado do dado real — cobrança em aberto, consulta futura, prontuário não escrito.
+- WhatsApp fica registrado como o canal mais eficaz e o mais caro. Só entra depois de haver
+  cliente usando para dizer se faz falta.
+- ⚠️ Escrever evento na agenda do psicólogo exige **permissão de escrita** no Google, não só
+  leitura. Ver P-39.
+
+---
+
+## ADR-019 — Armazenamento misto: banco para o jurídico, object storage para o pesado
+
+**Status:** ✅ Aceita — Rodada 8
+**Contexto:** O disco do Render é efêmero (I-04): o `MEDIA_ROOT` é apagado a cada deploy.
+
+**Decisão:**
+
+| Vai para | O quê | Por quê |
+|---|---|---|
+| **Postgres (bytes)** | Contrato guardado, PDF de prontuário, comprovante de despesa | Pequenos, raros e com valor de prova. Backup e isolamento (ADR-001) saem de graça. |
+| **Object storage** | Áudio dos relatos | Grande (~1 MB/min), temporário e descartável depois do prontuário aprovado. Barato por GB e trivial de apagar. |
+
+**Consequências:**
+- 🔴 O isolamento entre psicólogos (ADR-001) **precisa valer também no object storage**. RLS não
+  alcança bucket: exige chave por tenant e URLs assinadas de vida curta, nunca link público.
+- Provedor ainda não escolhido (S3, Cloudflare R2, storage do Neon). R2 é candidato por não
+  cobrar egresso.
+- A retenção do áudio passa a ser política explícita, não efeito colateral de onde ele caiu.
 
 ## Impeditivos
 
 | # | Impeditivo | Situação |
 |---|---|---|
 | I-01 | RLS + connection pooling do Neon: a variável de sessão do tenant precisa ser setada por request e **limpa** ao devolver a conexão ao pool, sob risco de uma request herdar o tenant da anterior. Exige prova de conceito antes de virar fundação. | 🔴 A validar |
-| I-04 | **O disco do Render é efêmero.** O `MEDIA_ROOT` é apagado a cada deploy — fato documentado no `hamilton-api`, que por isso guarda o PDF assinado em bytes no Postgres. Afeta **tudo** que planejamos armazenar: áudio dos relatos, PDFs de prontuário, comprovantes de despesa, contratos. Exige decisão de armazenamento (bytes no Postgres vs. object storage) **antes** da primeira linha de código. | 🔴 Bloqueia modelagem |
-| I-05 | **Lembrete por canal externo exige agendador, e agendador custa.** O Render não tem instância gratuita para cron job (mín. ~US$ 1/mês) nem para background worker (~US$ 7/mês). Lembrete só in-app dispensa agendador por completo. | 🟡 Contornável no MVP |
+| I-04 | **O disco do Render é efêmero.** O `MEDIA_ROOT` é apagado a cada deploy — fato documentado no `hamilton-api`, que por isso guarda o PDF assinado em bytes no Postgres. Afeta **tudo** que planejamos armazenar: áudio dos relatos, PDFs de prontuário, comprovantes de despesa, contratos. Exige decisão de armazenamento (bytes no Postgres vs. object storage) **antes** da primeira linha de código. | ✅ Resolvido por ADR-019 (armazenamento misto). |
+| I-05 | **Lembrete por canal externo exige agendador, e agendador custa.** O Render não tem instância gratuita para cron job (mín. ~US$ 1/mês) nem para background worker (~US$ 7/mês). Lembrete só in-app dispensa agendador por completo. | ✅ Eliminado do MVP por ADR-018 (só in-app e Google Agenda). |
 | I-03 | **Receita Saúde não tem API pública.** A escrituração entra por importação manual de CSV no e-CAC, feita pelo psicólogo. Dependência externa fora do nosso controle: se a Receita mudar o layout, a feature quebra sem aviso. | 🟡 Mitigável (validar layout a cada ano-calendário) |
 | I-02 | `gh` CLI não autenticado na máquina (`gh auth status`). Git funciona via Credential Manager; só ferramentas que dependem do `gh` ficam indisponíveis. | 🟡 Contornado |

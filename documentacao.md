@@ -49,7 +49,7 @@ Dez apps: um de infraestrutura, oito de domínio e um de leitura. O critério de
 | `core` | Base multi-tenant: `TenantOwnedModel`, `TenantManager`, middleware de RLS, trilha de auditoria. **Nenhum domínio.** | Qualquer regra de negócio |
 | `contas` | `User`, `Psicologo` (CRP, CPF, regime tributário, dados fiscais opcionais). **Raiz do tenant.** | Pacientes |
 | `pacientes` | `Paciente`, `ResponsavelLegal`, `Pagador` | Consultas, cobranças, contratos |
-| `contratos` | `Contrato` (texto usado, PDF assinado, signatários, status), integração de assinatura eletrônica | Quem é o paciente |
+| `contratos` | `Contrato` guardado pelo psicólogo (arquivo, vigência, versões) | Quem é o paciente; geração e assinatura do documento |
 | `agenda` | `HorarioDisponivel`, bloqueios, integração Google Agenda | Consulta realizada |
 | `atendimentos` | `Consulta`, `Desfecho` (alta/desistência) | O texto clínico |
 | `prontuarios` | `Relato` (áudio ou texto), `Prontuario`, versões, assinatura, exportação | Quando a sessão ocorreu |
