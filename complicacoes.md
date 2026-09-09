@@ -776,6 +776,55 @@ deliberada em relação ao original.
 
 **Férias e feriados:** adiados a pedido do usuário. Ver P-47.
 
+## ADR-024 — Colisão de horário bloqueia a marcação
+
+**Status:** ✅ Aceita — Rodada 12 (decisão do usuário, **contra** a recomendação registrada)
+**Decisão:** Se a nova data e hora colidirem com outra consulta ou com compromisso lido da agenda
+do Google, o sistema **não deixa salvar**.
+
+**Recomendação que havia sido feita e não acatada:** avisar e permitir salvar, sob o argumento de
+que o psicólogo é o único usuário da própria agenda e sabe mais do que o sistema sobre a própria
+grade. Registrado aqui para que, se o bloqueio incomodar na prática, a alternativa esteja
+documentada e não precise ser redescoberta.
+
+**Consequências:**
+- Fecha P-48.
+- 🔴 **Caso real que vai bater no bloqueio: atendimento de casal ou família** — duas pessoas, um
+  horário. Também o encaixe curto entre sessões. Ver P-50, que é mais amplo que a colisão.
+- A checagem depende da agenda do Google ter sido lida recentemente. Compromisso criado no Google
+  há dois minutos pode não estar visível, e o bloqueio não vê o que não leu.
+
+---
+
+## ADR-025 — Princípio: configura uma vez, ajusta na exceção
+
+**Status:** ✅ Aceita — Rodada 12
+**Contexto:** O mesmo padrão emergiu sozinho em quatro decisões independentes, o que o torna
+princípio e não coincidência:
+
+| Configuração | Padrão em | Sobrescrito em |
+|---|---|---|
+| Vencimento da mensalidade (ADR-002) | perfil do psicólogo | paciente |
+| Cobrança de falta (ADR-023) | perfil do psicólogo | consulta |
+| Duração da sessão | perfil do psicólogo | paciente |
+| Modalidade de cobrança (ADR-002) | — | paciente |
+
+**Decisão:** Toda preferência de comportamento tem **padrão no perfil do psicólogo** e é
+**sobrescrevível no nível mais específico** em que faça sentido. Nunca se pergunta ao usuário,
+a cada cadastro, algo que ele já respondeu uma vez.
+
+**Consequências:**
+- Casa com o requisito de simplicidade (ADR-004) e com a ADR-012: menos perguntas na frente do
+  usuário, sem perder capacidade.
+- O cadastro de paciente fica curto por padrão, com os ajustes finos escondidos atrás de
+  "personalizar".
+- Toda tela de cadastro precisa deixar visível **de onde veio** o valor herdado, ou o psicólogo
+  não entende por que um campo já está preenchido.
+
+**Duração da sessão:** padrão no perfil (convenção de 50 minutos), ajustável por paciente —
+terapia infantil costuma ser mais curta, casal mais longa, avaliação psicológica bem mais.
+Fecha P-49.
+
 ## Impeditivos
 
 | # | Impeditivo | Situação |

@@ -145,5 +145,13 @@ Status: 🔴 aberta · 🟡 em discussão · 🟢 resolvida (migra para `documen
 | # | Tema | Pergunta | Status |
 |---|---|---|---|
 | P-47 | Agenda | Férias, feriados e pausas: suspender ocorrências em bloco. **Adiado a pedido do usuário** — retomar depois do MVP. | ⏸️ Adiada |
-| P-48 | Agenda | **Colisão de horário** na remarcação avulsa: se a nova data cair sobre outro paciente ou compromisso do Google, o sistema bloqueia, avisa ou permite? | 🔴 |
-| P-49 | Agenda | **Duração da sessão**: padrão no perfil (50 min) com ajuste por paciente ou por consulta? | 🟡 |
+| P-48 | Agenda | **Colisão de horário** na remarcação avulsa: se a nova data cair sobre outro paciente ou compromisso do Google, o sistema bloqueia, avisa ou permite? | ✅ Resolvida: bloqueia (ADR-024). |
+| P-49 | Agenda | **Duração da sessão**: padrão no perfil (50 min) com ajuste por paciente ou por consulta? | ✅ Resolvida: padrão no perfil, ajustável por paciente (ADR-025). |
+
+## Abertas na Rodada 12
+
+| # | Tema | Pergunta | Status |
+|---|---|---|---|
+| P-50 | Modelagem | **Atendimento de casal, família ou grupo.** Nunca foi tratado. A Res. CFP 001/2009, Art. 5º, III exige que, em atendimento em grupo não eventual, o psicólogo mantenha **documentação individual de cada usuário** além dos registros do atendimento. Afeta consulta, prontuário, cobrança e a colisão de horário (ADR-024). | 🔴 |
+| P-51 | Dashboard | Separar **dashboard operacional** (o que exige ação hoje) de **análise de desempenho** (como estou indo)? | 🔴 |
+| P-52 | Dashboard | Quais perguntas a aba de análise deve responder? Definir as perguntas **antes** de escolher gráfico. | 🔴 |
