@@ -410,6 +410,49 @@ núcleo, qualquer uma das duas pluga depois sem retrabalho.
 - Decidir com clientes reais, não por dedução: os psicólogos da Allos são o público exato e
   respondem quantos são PF e quantos são PJ hoje.
 
+## ADR-014 — Atendimento infantil: responsável legal é entidade de primeira classe
+
+**Status:** ✅ Aceita — Rodada 7
+**Contexto:** Confirmado que haverá atendimento de público infantil. A dúvida original era
+apenas o CPF do beneficiário exigido pelo CSV do Receita Saúde (ADR-008), mas a investigação
+mostrou que o impacto é muito maior e recai sobre **prontuário e ética**, não sobre o fiscal.
+
+**Fatos verificados:**
+- **CPF de menor deixou de ser problema geral.** Desde **1º/01/2018** (Provimento nº 63 do CNJ),
+  a inclusão do CPF na certidão de nascimento é obrigatória. Todo nascido a partir daí já tem
+  CPF. **Resta uma janela:** nascidos antes de 2018 — hoje com 8 anos ou mais — podem não ter, e
+  nesse caso o CPF precisa ser solicitado (é gratuito).
+- **Autorização é obrigação ética.** O Código de Ética exige autorização de **ao menos um
+  responsável legal** para atendimento não eventual de criança, adolescente ou interdito.
+- **O tipo de guarda muda a regra.** Em guarda **unilateral**, é necessária a autorização de quem
+  detém a guarda. Em guarda **compartilhada**, recomenda-se a de ambos.
+- **Responsáveis legais têm direito de acesso** ao prontuário e a cópia dele, limitado às
+  informações **estritamente necessárias** ao benefício da criança.
+- Quando um responsável **sem a guarda** solicita informações, o detentor da guarda deve ser
+  informado do repasse — feito assim, não configura quebra de sigilo.
+
+**Decisão:** O modelo de paciente ganha três eixos distintos, hoje confundidos num só:
+
+| Eixo | Quem é | Para quê |
+|---|---|---|
+| **Paciente** | quem é atendido | prontuário, consultas, CPF do beneficiário |
+| **Pagador** | quem paga | cobrança e recibo (ADR-009) |
+| **Responsável legal** | quem autoriza e responde | autorização de atendimento, direito de acesso |
+
+Podem ser a mesma pessoa (adulto pagando a própria terapia), duas ou três pessoas distintas.
+
+**Consequências:**
+- `ResponsavelLegal` admite **mais de um por paciente**, com o **tipo de guarda** registrado.
+- A **autorização de atendimento** vira registro com data e autor — é peça de defesa do
+  psicólogo, exatamente como o prontuário (ADR-005).
+- O direito de acesso do responsável é mais restrito que o do paciente adulto: **apenas o
+  estritamente necessário**. Uma exportação que entregue o prontuário inteiro ao responsável
+  pode configurar excesso. Ver P-32.
+- Repasse de informação a responsável sem guarda exige **notificar** quem detém a guarda — ou
+  seja, o sistema precisa de **registro de a quem se deu acesso, quando e do quê**.
+- ⚠️ Adolescente tem expectativa de sigilo perante os próprios pais. O produto não pode assumir
+  que "responsável vê tudo". Ver P-33.
+
 ## Impeditivos
 
 | # | Impeditivo | Situação |
