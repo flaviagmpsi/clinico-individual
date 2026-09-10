@@ -178,3 +178,8 @@ Status: 🔴 aberta · 🟡 em discussão · 🟢 resolvida (migra para `documen
 | # | Tema | Pergunta | Status |
 |---|---|---|---|
 | P-61 | Financeiro | Pagamento **sem cobrança correspondente**: adiantamento, pacote pago à frente, ou dinheiro recebido antes da sessão. Como registrar? | 🔴 |
+
+| # | Tema | Pergunta | Status |
+|---|---|---|---|
+| P-62 | Comercial | Sem teste gratuito, como o psicólogo conhece o produto antes de pagar? Demonstração com dados fictícios, garantia de reembolso, indicação? | 🔴 |
+| P-63 | Assinatura | **Inadimplência** (parou de pagar sem cancelar) é estado diferente de **cancelamento**. O que acontece nesse meio-tempo? | 🔴 |

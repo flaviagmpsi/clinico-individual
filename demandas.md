@@ -168,10 +168,14 @@ Neon, uma request pode herdar o tenant da anterior. É o primeiro código a ser 
 
 | # | História | Camada | Estado | ADR |
 |---|---|---|---|---|
-| S-01 | Cobrança da assinatura via Asaas | ⚙️ | 🟡 | não grilado |
+| S-01 | Assinatura via Asaas: **cartão de crédito e PIX Automático**. Sem boleto | ⚙️ | ✅ | ADR-036 |
+| S-01a | Acesso liberado em `PAYMENT_CONFIRMED`, nunca em `PAYMENT_RECEIVED` — no cartão há 32 dias entre os dois | ⚙️ | ✅ | I-06 |
+| S-01b | Webhook do Asaas como mecanismo de sincronização; sem consulta em laço | ⚙️ | ✅ | §3.5 |
 | S-02 | No cancelamento, **exportação automática** do pacote completo, avisos repetidos e descarte após carência | ⚙️🔒 | 🟡 | ADR-007, P-20 |
 | S-03 | `assinaturas` **não toca dado clínico**: sabe se a conta está ativa, não o que há dentro | ⚙️🔒 | ✅ | §3.2 |
-| S-04 | Onboarding, teste gratuito e inadimplência | — | 🟡 | não grilado |
+| S-04 | **Sem teste gratuito.** Paga antes de usar | 🎨⚙️ | ✅ | ADR-036 |
+| S-05 | E-mail de cancelamento leva **link autenticado**, nunca prontuário anexado | ⚙️🔒 | ✅ | ADR-037 |
+| S-06 | Inadimplência | — | 🟡 | em discussão |
 
 ⚠️ **Módulo ainda não submetido ao Grill-Me.** Inadimplência é delicada: cortar acesso pode deixar
 o psicólogo sem a documentação que a lei o obriga a guardar por 5 anos.

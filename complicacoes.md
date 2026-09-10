@@ -1199,6 +1199,58 @@ automático, o que é pior do que campo vazio.
 - O bug A-02 do original (soma × último pagamento do mês) fica impossível por construção: o saldo
   é sempre devido menos baixas, sobre registros.
 
+## ADR-036 — Assinatura: cartão e PIX Automático, sem teste gratuito
+
+**Status:** ✅ Aceita — Rodada 20
+
+**Meios aceitos: cartão de crédito e PIX Automático.** Ambos cobram sozinhos. Boleto fica de
+fora: exigiria alguém lembrar de pagar todo mês, o que transformaria inadimplência de exceção em
+rotina e nos daria o custo permanente de perseguir pagamento.
+
+**Sem teste gratuito.** O psicólogo paga antes de usar.
+
+**Consequências:**
+- ✅ **Some o problema da conta abandonada com prontuário dentro.** Sem trial, não existe base de
+  gente que testou, guardou dado clínico e sumiu — e com ela some toda a regra de retenção e
+  descarte que essas contas exigiriam. É a maior simplificação desta rodada.
+- ⚠️ **Barreira de entrada alta.** O público é psicólogo autônomo, que costuma desconfiar de
+  software e não tem hábito de assinar o que não experimentou. Sem trial, a conversão depende
+  inteiramente de confiança prévia — o que empurra o peso para demonstração, indicação e prova
+  social. Ver P-62.
+- O acesso é liberado no primeiro pagamento. **No cartão, isso significa `PAYMENT_CONFIRMED`, não
+  `PAYMENT_RECEIVED`** (I-06), sob pena de o assinante ficar um mês bloqueado depois de pagar.
+- `assinaturas` continua sem tocar dado clínico: sabe se a conta está ativa, não o que há dentro.
+
+---
+
+## ADR-037 — Exportação no cancelamento vai por link autenticado, nunca por anexo de e-mail
+
+**Status:** ✅ Aceita — Rodada 20
+**Contexto:** O usuário propôs que, ao cancelar, o sistema **envie por e-mail todos os prontuários
+de todos os pacientes**. A intenção está correta e é a mesma da ADR-007 — entregar tudo de forma
+ativa, sem o psicólogo precisar pedir. O **canal**, porém, não serve.
+
+**Por que anexo de e-mail não pode ser o meio:**
+
+| Problema | Consequência |
+|---|---|
+| E-mail não é canal seguro | Trafega entre servidores sem garantia de criptografia. Estaríamos **nós** transmitindo dado sensível de saúde (LGPD art. 11) por canal inadequado |
+| Fica na caixa para sempre | O prontuário de dezenas de pacientes passa a residir no Gmail ou Outlook do psicólogo, fora de qualquer controle nosso ou dele |
+| Endereço errado ou comprometido | Um e-mail digitado errado entrega prontuário de dezenas de pessoas a um estranho. Não há como recolher |
+| Limite de anexo | Histórico completo de uma clínica ultrapassa com folga os 25 MB do Gmail. O envio falharia justamente para os clientes mais antigos — os que têm mais a perder |
+| E-mail desatualizado | Quem cancela às vezes já trocou de e-mail, e ninguém descobre até ser tarde |
+
+**Decisão:** O e-mail vai, mas **sem conteúdo clínico**. Ele carrega apenas o aviso e um **link de
+download autenticado**, de validade curta, que exige o psicólogo entrar na conta dele. O pacote é
+gerado automaticamente no ato do cancelamento (ADR-007) e fica disponível durante a carência.
+
+**Consequências:**
+- Preserva inteiramente a intenção do pedido: ele não precisa lembrar de exportar, o sistema
+  entrega. Só que entrega com porta trancada.
+- Se o e-mail vazar, vaza um link que sem a senha não abre nada.
+- O aviso é **repetido** durante a carência, não enviado uma vez só.
+- O download precisa ficar registrado na trilha de auditoria: quando foi baixado, e se não foi.
+
 ## Impeditivos
 
 | # | Impeditivo | Situação |
