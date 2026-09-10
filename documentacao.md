@@ -158,3 +158,4 @@ encaminhamento entre profissionais.
 | 2026-09-08 | 5 | ADR-012: precisão fiscal opcional e progressiva. Princípio geral — degradar com honestidade. |
 | 2026-09-08 | 6 | ADR-013: carnê-leão e NFS-e fora do MVP. Cliente-alvo é PF **e** PJ. Núcleo financeiro serve os dois regimes. |
 | 2026-09-09 | 7–18 | Estrutura de dez apps proposta. ADR-014 a ADR-034: infantil, contrato, lembretes, armazenamento, agenda de mão única, recorrência com exceção, comparecimento × cobrança, `Caso`, painel × análise, IA de documentos pela Res. CFP 06/2019. `demandas.md` escrito. |
+| 2026-09-09 | 19–22 | ADR-035 a ADR-039: registro de pagamento com baixa, assinatura (cartão e PIX Automático, sem trial), exportação por link autenticado, ciclo de vida da conta, e a fronteira de que **o sistema não se comunica com pacientes**. `claude.md` escrito. Planejamento do MVP fechado. |
