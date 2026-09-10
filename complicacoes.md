@@ -1325,6 +1325,40 @@ relacionamento com o paciente.* Toda feature futura que proponha falar com o pac
 de sessão por WhatsApp, confirmação de presença, portal de agendamento — colide com esta ADR e
 precisa revogá-la explicitamente antes de existir.
 
+## ADR-040 — Três pendências menores, resolvidas por recomendação
+
+**Status:** ✅ Aceita — Rodada 23 (decididas por mim, sujeitas a objeção)
+
+### P-29 — Comprovante de despesa entra no MVP
+
+A Receita só aceita despesa dedutível **comprovada**. Sem anexo, a marca de dedutibilidade
+(ADR-011) é uma promessa que o psicólogo não consegue cumprir quando for questionado — e ele
+descobre isso justamente na fiscalização.
+
+**Decisão:** anexo **opcional** por despesa, guardado em bytes no Postgres (ADR-019 — comprovante
+é pequeno e tem valor de prova). Opcional porque despesa não dedutível não precisa de comprovante,
+e obrigar geraria upload de qualquer coisa só para passar da tela.
+
+### P-34 — Paciente sem CPF: avisar, nunca bloquear
+
+Nascidos antes de 01/2018 podem não ter CPF (ADR-014). É uma janela estreita e real.
+
+**Decisão:** o cadastro **aceita** paciente sem CPF, com aviso explicando que ele será necessário
+para emitir recibo, e que é gratuito solicitar. Bloquear o cadastro puniria o psicólogo por um
+dado que não é dele e que ele consegue depois. Degradar com honestidade (ADR-012).
+
+### P-61 — Pagamento adiantado vira crédito do caso
+
+Adiantamento, pacote pago à frente e dinheiro recebido antes da sessão são casos reais.
+
+**Decisão:** o pagamento pode ser registrado **sem cobrança correspondente** e fica como
+**crédito do caso**, que **quita automaticamente** as próximas cobranças conforme elas nascem.
+
+**Por que crédito e não pagamento solto:** solto, o valor sumiria da conta de "quem me deve" e o
+paciente apareceria devendo algo que já pagou. Como crédito, o saldo é visível dos dois lados —
+quanto ele tem a favor e quanto ainda deve. Também é o que faz a modalidade `POR_SESSAO` (ADR-002)
+funcionar com quem paga um pacote de dez sessões adiantado.
+
 ## Impeditivos
 
 | # | Impeditivo | Situação |

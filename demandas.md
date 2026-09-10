@@ -55,7 +55,7 @@ Neon, uma request pode herdar o tenant da anterior. É o primeiro código a ser 
 | P-06 | **Responsável legal** (1..N) com tipo de guarda registrado | 🎨🗄️ | ✅ | ADR-014 |
 | P-07 | Valor acordado e modalidade de cobrança pertencem ao **caso**, não ao paciente | 🗄️ | ✅ | ADR-002, ADR-026 |
 | P-08 | Acesso direto, do cadastro, aos prontuários já realizados e à contagem de sessões | 🎨 | ✅ | escopo |
-| P-09 | Paciente nascido antes de 2018 pode não ter CPF: avisar, não bloquear | 🎨 | 🟡 | ADR-014, P-34 |
+| P-09 | Paciente nascido antes de 2018 pode não ter CPF: avisar, não bloquear | 🎨 | ✅ | ADR-040 |
 
 ---
 
@@ -155,7 +155,8 @@ Neon, uma request pode herdar o tenant da anterior. É o primeiro código a ser 
 | N-04b | **Forma de pagamento** opcional: PIX, dinheiro, transferência, cartão | 🎨🗄️ | ✅ | ADR-035 |
 | N-04c | Listagem com busca, filtro por mês e ordenação, portadas do original | 🎨 | ✅ | ADR-035 |
 | N-05 | Despesas com **catálogo de tipos** e marca de dedutibilidade | 🎨🗄️ | ✅ | ADR-011 |
-| N-06 | Anexo de comprovante na despesa | 🎨⚙️ | 🟡 | P-29 |
+| N-06 | Anexo de comprovante na despesa, **opcional** | 🎨⚙️ | ✅ | ADR-040 |
+| N-12 | Pagamento sem cobrança vira **crédito do caso**, que quita as próximas automaticamente | ⚙️ | ✅ | ADR-040 |
 | N-07 | **Faturamento líquido** = receita − despesas. Independe de regime | ⚙️ | ✅ | ADR-013 |
 | N-08 | Lembrete de cobrança: quem deve, quanto e até quando | 🎨⚙️ | ✅ | ADR-017 |
 | N-09 | Lembrete fiscal ciente do regime: PF → Receita Saúde; PJ → nota fiscal | 🎨 | ✅ | ADR-030 |
