@@ -4,6 +4,22 @@ Registro da evolução e da arquitetura do projeto. Atualizado a cada rodada de 
 
 ---
 
+
+## 0. Quem é o cliente — e quem não é
+
+⚠️ **O Hamilton Individual não é um produto da Allos nem para a Allos.** É um projeto próprio,
+que se **inspira** no `hamilton-api` como referência de domínio e de interface, e nada mais.
+
+| | Hamilton original (`hamilton-api`) | Hamilton Individual |
+|---|---|---|
+| Cliente | A associação Allos | **Psicólogos autônomos do mercado**, sem vínculo entre si |
+| Estrutura | Clínica com vários terapeutas, coordenação e supervisão | Um profissional sozinho, replicado N vezes |
+| Acesso de supervisor | Existe (decano vê os supervisionados) | **Não existe. Proibido** (ADR-001) |
+| Validação de produto | — | Conversar com psicólogos autônomos do mercado, não com um grupo específico |
+
+Consequência prática: nenhuma decisão deste projeto pode assumir contexto de associação, de
+supervisão, de coordenação ou de comunidade entre os psicólogos. Cada assinante é uma ilha.
+
 ## 1. O que é
 
 ERP para o **psicólogo clínico autônomo**. Uma única plataforma, vendida individualmente: cada

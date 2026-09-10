@@ -11,9 +11,12 @@ de planejamento registradas em [complicacoes.md](complicacoes.md) (ADRs), [deman
 
 ## 1. O que estamos construindo
 
-ERP para o **psicólogo clínico autônomo**. Um SaaS: muitos psicólogos usam a mesma aplicação,
-cada um com isolamento total dos seus dados. Não confundir com o `hamilton-api`, que gere uma
-clínica com vários terapeutas.
+ERP para o **psicólogo clínico autônomo do mercado**. Um SaaS: muitos psicólogos, **sem vínculo
+entre si**, usam a mesma aplicação,
+cada um com isolamento total dos seus dados. ⚠️ **Não é produto da Allos nem para a Allos** — o
+`hamilton-api` é referência de domínio e de interface, e nada mais. Ele gere uma
+clínica com vários terapeutas, com coordenação e supervisão; aqui **não existe supervisor, e cada
+assinante é uma ilha**.
 
 **Problema central:** devolver tempo ao psicólogo. A referência é o prontuário — hoje ~20 minutos
 de escrita após cada sessão.

@@ -102,7 +102,7 @@ Status: 🔴 aberta · 🟡 em discussão · 🟢 resolvida (migra para `documen
 | # | Tema | Pergunta | Status |
 |---|---|---|---|
 | P-30 | Fiscal | Cliente sendo PF **e** PJ, "previsão de impostos" vira **duas** features: tabela progressiva do carnê-leão vs. alíquota do Simples (Anexo V ou III conforme Fator R). Recomendação: sai do MVP junto com as demais saídas fiscais, restando o **faturamento líquido**, que independe de regime. | 🟡 |
-| P-31 | Validação | Quantos psicólogos da Allos são PF e quantos são PJ hoje? Dado que resolve a priorização das saídas fiscais. Vale 20 min de conversa com cinco deles. | 🔴 |
+| P-31 | Validação | Entre psicólogos autônomos do mercado, quantos são PF e quantos são PJ hoje? Dado que resolve a priorização das saídas fiscais. Vale 20 min de conversa com cinco deles. | 🔴 |
 
 ## Abertas na Rodada 7 — Infantil e estrutura
 
@@ -134,7 +134,7 @@ Status: 🔴 aberta · 🟡 em discussão · 🟢 resolvida (migra para `documen
 | # | Tema | Pergunta | Status |
 |---|---|---|---|
 | P-42 | Agenda | Divergência silenciosa: se o psicólogo editar o evento direto no Google, a mudança não volta. Como o produto avisa em vez de esconder? | ✅ Resolvida: detectar e oferecer atualização (adendo à ADR-020). |
-| P-43 | Agenda | Risco de adoção: o psicólogo que hoje vive no Google Agenda terá de reorganizar **no Hamilton**. Mudança de hábito é o maior risco deste módulo. | 🟡 Mitigado por ADR-022: o caso comum é fixo e cadastrado uma vez só. Validar com a Allos (P-31). |
+| P-43 | Agenda | Risco de adoção: o psicólogo que hoje vive no Google Agenda terá de reorganizar **no Hamilton**. Mudança de hábito é o maior risco deste módulo. | 🟡 Mitigado por ADR-022: o caso comum é fixo e cadastrado uma vez só. Validar com psicólogos autônomos do mercado (P-31). |
 
 | # | Tema | Pergunta | Status |
 |---|---|---|---|

@@ -407,7 +407,7 @@ núcleo, qualquer uma das duas pluga depois sem retrabalho.
   `hamilton-api` era integralmente inaproveitável. Falso no cenário PJ — `acessorios/webmania.py`
   é uma integração de NFS-e em funcionamento e passa a ser o único pedaço financeiro do original
   com valor de reuso.
-- Decidir com clientes reais, não por dedução: os psicólogos da Allos são o público exato e
+- Decidir com clientes reais, não por dedução: conversar com **psicólogos autônomos do mercado**, que
   respondem quantos são PF e quantos são PJ hoje.
 
 ## ADR-014 — Atendimento infantil: responsável legal é entidade de primeira classe
