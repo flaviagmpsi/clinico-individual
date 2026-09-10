@@ -175,7 +175,11 @@ Neon, uma request pode herdar o tenant da anterior. É o primeiro código a ser 
 | S-03 | `assinaturas` **não toca dado clínico**: sabe se a conta está ativa, não o que há dentro | ⚙️🔒 | ✅ | §3.2 |
 | S-04 | **Sem teste gratuito.** Paga antes de usar | 🎨⚙️ | ✅ | ADR-036 |
 | S-05 | E-mail de cancelamento leva **link autenticado**, nunca prontuário anexado | ⚙️🔒 | ✅ | ADR-037 |
-| S-06 | Inadimplência | — | 🟡 | em discussão |
+| S-06 | Máquina de estados da conta: `ATIVA` → `TOLERANCIA` (7d) → `SOMENTE_LEITURA` (30d) → `ARQUIVADA` (60d) → `DESCARTADA` | ⚙️🔒 | ✅ | ADR-038 |
+| S-07 | Em `SOMENTE_LEITURA` ele navega e baixa o que quiser; não cria nada | 🎨⚙️ | ✅ | ADR-038 |
+| S-08 | Notificação repetida durante os 90 dias, explicando a obrigação legal de guarda por 5 anos | 🎨⚙️ | ✅ | ADR-038 |
+| S-09 | Inadimplente que regulariza volta a `ATIVA` sem perder nada | ⚙️ | ✅ | ADR-038 |
+| S-10 | **Demonstração com dados fictícios** para conhecer o produto antes de assinar | 🎨 | ✅ | P-62 |
 
 ⚠️ **Módulo ainda não submetido ao Grill-Me.** Inadimplência é delicada: cortar acesso pode deixar
 o psicólogo sem a documentação que a lei o obriga a guardar por 5 anos.

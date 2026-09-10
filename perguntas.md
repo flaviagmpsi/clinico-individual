@@ -81,7 +81,7 @@ Status: 🔴 aberta · 🟡 em discussão · 🟢 resolvida (migra para `documen
 
 | # | Tema | Pergunta | Status |
 |---|---|---|---|
-| P-20 | Assinatura | Tamanho da carência antes do descarte definitivo no cancelamento. Assunção provisória: **90 dias**. | 🟡 |
+| P-20 | Assinatura | Tamanho da carência antes do descarte. | ✅ Resolvida: 30 dias de leitura + 60 arquivada = 90 (ADR-038). |
 | P-21 | Fiscal | O sistema **calcula** o imposto ou apenas organiza os dados? | ✅ Resolvida: estimativa informativa (ADR-010). |
 | P-22 | Cadastro | **Pagador ≠ beneficiário**: o CSV do Receita Saúde exige os dois CPFs. Pai pagando pelo filho, cônjuge, empresa. Como modelar? | ✅ Resolvida: pagador modelado separado do paciente (ADR-009). |
 | P-23 | Fiscal | Classificação de despesas dedutíveis vs. não dedutíveis. | 🟡 Catálogo levantado e proposto em ADR-011 — aguarda validação. |
@@ -181,5 +181,9 @@ Status: 🔴 aberta · 🟡 em discussão · 🟢 resolvida (migra para `documen
 
 | # | Tema | Pergunta | Status |
 |---|---|---|---|
-| P-62 | Comercial | Sem teste gratuito, como o psicólogo conhece o produto antes de pagar? Demonstração com dados fictícios, garantia de reembolso, indicação? | 🔴 |
-| P-63 | Assinatura | **Inadimplência** (parou de pagar sem cancelar) é estado diferente de **cancelamento**. O que acontece nesse meio-tempo? | 🔴 |
+| P-62 | Comercial | Sem teste gratuito, como o psicólogo conhece o produto antes de pagar? Demonstração com dados fictícios, garantia de reembolso, indicação? | ✅ Resolvida: demonstração com dados fictícios. |
+| P-63 | Assinatura | **Inadimplência** (parou de pagar sem cancelar) é estado diferente de **cancelamento**. O que acontece nesse meio-tempo? | ✅ Resolvida: somente-leitura após tolerância (ADR-038). |
+
+| # | Tema | Pergunta | Status |
+|---|---|---|---|
+| P-64 | Assinatura | **E se o e-mail de aviso não chegar?** Endereço trocado ou caixa cheia fazem o aviso falhar em silêncio, e o descarte acontece sem o psicólogo saber. | 🔴 |

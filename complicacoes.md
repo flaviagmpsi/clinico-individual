@@ -1251,6 +1251,47 @@ gerado automaticamente no ato do cancelamento (ADR-007) e fica disponível duran
 - O aviso é **repetido** durante a carência, não enviado uma vez só.
 - O download precisa ficar registrado na trilha de auditoria: quando foi baixado, e se não foi.
 
+## ADR-038 — Ciclo de vida da conta: um mecanismo, dois gatilhos
+
+**Status:** ✅ Aceita — Rodada 21
+**Contexto:** Duas decisões desta rodada convergiram no mesmo mecanismo. Para **inadimplência**, o
+usuário escolheu modo somente-leitura. Para **cancelamento**, propôs manter a conta em leitura
+por um mês, com notificação intensa explicando os riscos legais de não baixar os prontuários.
+São o mesmo comportamento, acionado por motivos diferentes.
+
+**Decisão — uma máquina de estados só:**
+
+| Estado | Como se chega | O que o psicólogo pode fazer |
+|---|---|---|
+| `ATIVA` | Pagamento confirmado | Tudo |
+| `TOLERANCIA` | Pagamento falhou — **~7 dias** | Tudo. Serve só para absorver cartão recusado por bobagem |
+| `SOMENTE_LEITURA` | Fim da tolerância, **ou cancelamento** — **30 dias** | Lê e baixa tudo. Não cria consulta, prontuário nem cobrança |
+| `ARQUIVADA` | Fim dos 30 dias — **mais 60** | Só o pacote de exportação, por link autenticado (ADR-037) |
+| `DESCARTADA` | Fim dos 90 dias totais | Nada. Apagado de verdade, backups incluídos |
+
+**Por que 30 dias de leitura e não só o pacote:** em leitura ele navega, confere e baixa **o que
+quiser, na ordem que quiser** — um pacote único obriga a aceitar tudo de uma vez e não deixa
+conferir se veio completo. É melhor do que o que estava na ADR-007.
+
+**Por que a carência total continua longa:** do outro lado dela, dado clínico é apagado **para
+sempre**, e o psicólogo tem obrigação legal de guardá-lo por cinco anos (ADR-005). Quem cancela às
+vezes está em crise — doença, esgotamento, mudança de carreira — e pode passar um mês sem abrir
+e-mail. Errar para o lado curto aqui é irreversível; errar para o longo custa armazenamento de
+texto e PDF, com o áudio já descartado (ADR-019).
+
+**Notificação intensa, e por que ela se justifica:** aviso repetido durante os 90 dias, dizendo o
+que acontece e **por quê** — que o CFP obriga a guarda por cinco anos e que, sem esses arquivos,
+ele fica sem a própria defesa. Insistência assim normalmente seria abusiva; aqui é o contrário,
+porque o silêncio é que causaria o dano.
+
+**Consequências:**
+- Um mecanismo, duas portas de entrada. Menos código e menos chance de os dois caminhos
+  divergirem com o tempo.
+- Inadimplente que regulariza volta para `ATIVA` sem perder nada — o dado nunca saiu do lugar.
+- 🔴 **E se o e-mail não chegar?** Endereço trocado ou caixa cheia fazem o aviso falhar em
+  silêncio, e o descarte acontece com o psicólogo sem saber. Ver P-64.
+- O descarte precisa ser real e auditável, sob pena de a promessa ser falsa (ADR-007).
+
 ## Impeditivos
 
 | # | Impeditivo | Situação |
