@@ -187,3 +187,10 @@ Status: 🔴 aberta · 🟡 em discussão · 🟢 resolvida (migra para `documen
 | # | Tema | Pergunta | Status |
 |---|---|---|---|
 | P-64 | Assinatura | **E se o e-mail de aviso não chegar?** Endereço trocado ou caixa cheia fazem o aviso falhar em silêncio, e o descarte acontece sem o psicólogo saber. | ✅ Resolvida: WhatsApp + relógio que congela (ADR-043). |
+
+## Abertas na Rodada 25
+
+| # | Tema | Pergunta | Status |
+|---|---|---|---|
+| P-65 | Cadastro | **Validar o CRP automaticamente** no `cadastro.cfp.org.br`? O CFP não tem API oficial; intermediários cobram por consulta. Vale o custo? | 🔴 |
+| P-66 | Cadastro | Psicólogo PJ tem, além do próprio CRP, o **registro da empresa no CRP**. Exigir também? | 🔴 |

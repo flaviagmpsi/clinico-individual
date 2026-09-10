@@ -1396,7 +1396,12 @@ de organizar o pensamento no primeiro.
 ## ADR-042 — O áudio é apagado; a transcrição fica
 
 **Status:** ✅ Aceita — Rodada 24
-**Decisão do usuário:** o fluxo é **áudio gravado → texto transcrito → IA produz o prontuário nos
+**Correção de redação (Rodada 25):** a versão original desta ADR descreveu só o caminho do áudio,
+dando a impressão de que gravar seria a única entrada. **Não é.** Continuam valendo as duas portas
+da ADR-006: **áudio ditado** e **texto escrito**. O texto **não passa por transcrição** — entra
+direto na geração. A transcrição existe apenas no caminho do áudio.
+
+**Decisão do usuário:** no caminho do áudio, o fluxo é **áudio gravado → texto transcrito → IA produz o prontuário nos
 moldes do CFP**. O áudio é descartado; **a transcrição permanece**, ligada ao prontuário.
 
 **O que isso resolve:** responde "o psicólogo escreveu isso, ou a máquina escreveu por ele?" — a
@@ -1446,6 +1451,52 @@ armazenamento.
 - ⚠️ O WhatsApp **nunca** carrega conteúdo clínico — vale a mesma regra da ADR-037. Só aviso e
   instrução de entrar na conta.
 - Fecha P-64.
+
+## ADR-044 — Perfil do psicólogo e o CRP como porta de entrada
+
+**Status:** ✅ Aceita — Rodada 25
+
+### Campos do perfil
+
+| Campo | Obrigatório | Observação |
+|---|---|---|
+| Nome completo | ✅ | Vai impresso em todo documento emitido (Res. CFP 06/2019) |
+| CPF | ✅ | Exigido na escrituração do Receita Saúde (ADR-008) |
+| **CRP** | ✅ **Obrigatório para se cadastrar** | Ver abaixo |
+| Telefone | ✅ | Necessário para o aviso de descarte por WhatsApp (ADR-043) |
+| E-mail | ✅ | Login e avisos |
+| Regime: PF ou PJ | ✅ | Muda o lembrete fiscal (ADR-030) |
+| CNPJ | ✅ **se PJ** | |
+
+### Sem CRP, não há cadastro
+
+**Decisão:** o CRP é condição de entrada. Quem não tem registro ativo não pode criar conta.
+
+**Por que isso é coerente com o produto:** o CRP aparece impresso em **todo** documento que o
+sistema gera — declaração, relatório, prontuário. Um cadastro sem CRP produziria documento
+inválido desde o primeiro dia. E o produto inteiro é construído em torno de obrigações que só
+existem para quem tem registro: guarda de cinco anos, estrutura do Art. 2º, Receita Saúde.
+
+### Fato levantado — a validação é possível
+
+O CFP mantém o **Cadastro Nacional de Profissionais da Psicologia** em `cadastro.cfp.org.br`,
+com consulta pública em tempo real por **CRP, nome ou CPF**, devolvendo a situação do registro:
+**Ativo**, **Cancelado** ou **Transferido**. A consulta atende tanto pessoa física quanto
+**pessoa jurídica** — clínicas têm registro próprio no CRP.
+
+⚠️ **O CFP não publica API oficial.** Existem intermediários comerciais (Infosimples e outros)
+que oferecem consulta automatizada, com custo por chamada.
+
+**Consequências:**
+- O campo de CRP guarda **região e número** separados (o formato usual é `NN/NNNNN`, com a região
+  de 01 a 24), não uma string livre — senão relatório e busca não funcionam depois.
+- Validação de **formato** é obrigatória e gratuita. Validação de **existência** depende de
+  terceiro pago (ver P-65).
+- Risco de não validar é menor do que parece: quem se cadastrasse com CRP inventado teria acesso
+  apenas à **própria** conta vazia (ADR-001). O motivo real de validar é integridade do produto,
+  não contenção de vazamento.
+- Psicólogo que atua como PJ tem, além do próprio registro, o **registro da empresa no CRP**.
+  Ver P-66.
 
 ## Impeditivos
 

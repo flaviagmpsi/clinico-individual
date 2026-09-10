@@ -34,7 +34,9 @@ Neon, uma request pode herdar o tenant da anterior. É o primeiro código a ser 
 | # | História | Camada | Estado | ADR |
 |---|---|---|---|---|
 | C-01 | Cadastro e login; a conta é a raiz do isolamento | 🎨⚙️ | ✅ | ADR-001 |
-| C-02 | Perfil com CPF, número do CRP, **telefone** e **regime tributário (PF ou PJ)** | 🎨🗄️ | ✅ | ADR-030, ADR-043 |
+| C-02 | Perfil: nome completo, CPF, **CRP (região + número)**, telefone, e-mail, regime PF/PJ e **CNPJ se PJ** | 🎨🗄️ | ✅ | ADR-044 |
+| C-06 | **Sem CRP não há cadastro.** O registro é condição de entrada | 🎨⚙️ | ✅ | ADR-044 |
+| C-07 | Validação de **formato** do CRP no cadastro | ⚙️ | ✅ | ADR-044 |
 | C-03 | Padrões do psicólogo: duração da sessão (50 min), vencimento da mensalidade, cobro falta (sim/não) | 🎨🗄️ | ✅ | ADR-025 |
 | C-04 | Toda tela de cadastro mostra **de onde veio** o valor herdado do perfil | 🎨 | ✅ | ADR-025 |
 | C-05 | Dados fiscais **opcionais** (outras rendas, INSS, dependentes, pensão), fora do onboarding | 🎨 | ✅ | ADR-012 |
@@ -107,7 +109,7 @@ Neon, uma request pode herdar o tenant da anterior. É o primeiro código a ser 
 
 | # | História | Camada | Estado | ADR |
 |---|---|---|---|---|
-| R-01 | Relato de origem em **áudio ditado** ou **texto escrito**, tratados como variações do mesmo insumo | 🎨⚙️ | ✅ | ADR-006 |
+| R-01 | Relato de origem em **áudio ditado** ou **texto escrito** — duas portas para o mesmo pipeline. O texto **não** passa por transcrição | 🎨⚙️ | ✅ | ADR-006, ADR-042 |
 | R-02 | A sessão **nunca** é gravada; o único falante é o psicólogo | 🔒 | ✅ | ADR-006 |
 | R-03 | IA estrutura o relato no formato do Art. 2º da Res. CFP 001/2009 | ⚙️ | ✅ | ADR-005 |
 | R-04 | **Rascunho obrigatório**: revisão e confirmação explícita antes de virar registro oficial | 🎨 | ✅ | ADR-005 |
@@ -116,7 +118,7 @@ Neon, uma request pode herdar o tenant da anterior. É o primeiro código a ser 
 | R-07 | Risco de migração da fala entre prontuários: **eliminado por construção** | 🔒 | ✅ | ADR-041 |
 | R-08 | Exportação de uma sessão ou do histórico completo, em PDF ou DOC | 🎨⚙️ | ✅ | escopo |
 | R-09 | IA atrás de **adaptador**: o domínio não conhece provedor, modelo nem chave | ⚙️ | ✅ | §3.2 |
-| R-10 | Fluxo: áudio → transcrição → prontuário. O **áudio é apagado** assim que transcrito | ⚙️🔒 | ✅ | ADR-042 |
+| R-10 | **No caminho do áudio:** áudio → transcrição → prontuário. O áudio é apagado assim que transcrito | ⚙️🔒 | ✅ | ADR-042 |
 | R-14 | A **transcrição permanece** ligada ao prontuário, como insumo e prova de autoria | 🗄️🔒 | ✅ | ADR-042 |
 | R-11 | Direito de acesso do paciente: obrigação **do psicólogo**, exercida fora do sistema | — | ❌ Fora | ADR-039 |
 | R-12 | Acesso do responsável legal: decidido pelo psicólogo, fora do sistema | — | ❌ Fora | ADR-039 |
