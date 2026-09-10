@@ -36,7 +36,9 @@ Neon, uma request pode herdar o tenant da anterior. É o primeiro código a ser 
 | C-01 | Cadastro e login; a conta é a raiz do isolamento | 🎨⚙️ | ✅ | ADR-001 |
 | C-02 | Perfil: nome completo, CPF, **CRP (região + número)**, telefone, e-mail, regime PF/PJ e **CNPJ se PJ** | 🎨🗄️ | ✅ | ADR-044 |
 | C-06 | **Sem CRP não há cadastro.** O registro é condição de entrada | 🎨⚙️ | ✅ | ADR-044 |
-| C-07 | Validação de **formato** do CRP no cadastro | ⚙️ | ✅ | ADR-044 |
+| C-07 | Validação de **formato** do CRP. **Sem** consulta ao cadastro do CFP | ⚙️ | ✅ | ADR-044 |
+| C-08 | Campos vazios para `situacao_registro` e `verificado_em`, prontos caso a verificação volte | 🗄️ | ✅ | ADR-044 |
+| C-09 | CRP da empresa (PJ): campo **opcional** | 🎨🗄️ | ✅ | ADR-044 |
 | C-03 | Padrões do psicólogo: duração da sessão (50 min), vencimento da mensalidade, cobro falta (sim/não) | 🎨🗄️ | ✅ | ADR-025 |
 | C-04 | Toda tela de cadastro mostra **de onde veio** o valor herdado do perfil | 🎨 | ✅ | ADR-025 |
 | C-05 | Dados fiscais **opcionais** (outras rendas, INSS, dependentes, pensão), fora do onboarding | 🎨 | ✅ | ADR-012 |

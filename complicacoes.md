@@ -1496,6 +1496,25 @@ que oferecem consulta automatizada, com custo por chamada.
   apenas à **própria** conta vazia (ADR-001). O motivo real de validar é integridade do produto,
   não contenção de vazamento.
 - Psicólogo que atua como PJ tem, além do próprio registro, o **registro da empresa no CRP**.
+
+**Adendo — Rodada 26 (validação do CRP e registro da empresa):**
+
+| Decisão | Estado |
+|---|---|
+| **CRP é campo obrigatório** no cadastro, com validação de **formato** | ✅ MVP |
+| **Verificação no cadastro do CFP** (se o registro existe e está ativo) | ⏸️ **Adiada, deliberadamente reversível** — o usuário pode retomar |
+| **CRP da empresa (PJ)** | 🟡 Campo **opcional**, não exigido |
+
+**Consequência de projeto — deixar o caminho aberto sem construí-lo:** como a verificação pode
+voltar, o modelo já nasce com o lugar para guardar **situação do registro** (não verificado /
+ativo / cancelado / transferido) e **data da última verificação**, ambos vazios por ora. Campo
+vazio custa nada; adicioná-lo depois, com base em produção, custa migration. Não construir a
+integração — só não fechar a porta.
+
+**Sobre o CRP da empresa:** não está claro se o registro no CRP é exigido de um psicólogo autônomo
+que abriu ME apenas por razão tributária, ou apenas de quem presta serviço como clínica. É questão
+para contador ou para o próprio CRP, não para pesquisa. Campo opcional resolve os dois cenários
+sem apostar em nenhum.
   Ver P-66.
 
 ## Impeditivos
