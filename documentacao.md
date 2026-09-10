@@ -94,6 +94,27 @@ encaminhamento/encerramento, anexos de avaliação em pasta exclusiva, cópias d
 emitidos). Guarda mínima de 5 anos, direito de acesso integral do paciente, e valor de **meio
 de prova** em processo disciplinar — o que exige trilha de auditoria, não só um campo de texto.
 
+
+### 3.5 Assinatura — fatos levantados sobre o Asaas
+
+O Asaas tem **assinaturas** nativas: criada a assinatura, ele gera as cobranças na periodicidade
+configurada, e **cada cobrança tem ID, status e ciclo próprios**. Meios disponíveis: PIX, boleto,
+cartão de crédito e débito, TED. Há ainda **PIX Automático**, que cobra por autorização do pagador
+em vez de cartão salvo. **Webhooks são o mecanismo principal de sincronização** — não se deve
+consultar a API em laço.
+
+⚠️ **O fluxo de status muda conforme o meio, e isso não é detalhe:**
+
+| Meio | Sequência de eventos |
+|---|---|
+| **PIX** | `PAYMENT_CREATED` → `PAYMENT_RECEIVED` |
+| **Boleto** | `PAYMENT_CREATED` → `PAYMENT_CONFIRMED` → `PAYMENT_RECEIVED` |
+| **Cartão** | `PAYMENT_CREATED` → `PAYMENT_CONFIRMED` → `PAYMENT_RECEIVED` **32 dias depois** |
+
+**Referência do original:** o `hamilton-api` usa Stripe e rastreia sete estados de assinatura
+(`active`, `past_due`, `canceled`, `incomplete`, `incomplete_expired`, `trialing`, `unpaid`).
+O conjunto é bom guia do que precisa existir, mesmo trocando de provedor.
+
 ---
 
 ## 4. Relação com o `hamilton-api`
