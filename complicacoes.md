@@ -1517,13 +1517,72 @@ para contador ou para o próprio CRP, não para pesquisa. Campo opcional resolve
 sem apostar em nenhum.
   Ver P-66.
 
+## ADR-045 — A aplicação roda sob papel sem `BYPASSRLS`
+
+**Status:** ✅ Aceita — Rodada 27 (**achado de execução**, não de planejamento)
+
+**Contexto:** O passo 0 foi escrito e executado contra um Postgres real no Neon. Dos 11 testes
+iniciais, **os 5 de RLS falharam**. A policy estava criada, `FORCE ROW LEVEL SECURITY` estava
+ligado, e mesmo assim a consulta devolvia os pacientes dos dois psicólogos.
+
+**A causa:** o papel dono do banco no Neon (`hamilton_owner`) tem o atributo **`BYPASSRLS`**.
+
+```
+PAPEL:  ('hamilton_owner', rolsuper=False, rolbypassrls=True)
+TABELA: ('pacientes_paciente', rowsecurity=True, forcerowsecurity=True)
+POLICY: isolamento_por_psicologo  ← existia e estava correta
+```
+
+`BYPASSRLS` é atributo **de papel** e passa por cima de tudo — inclusive do
+`FORCE ROW LEVEL SECURITY`, que só resolve o bypass do **dono da tabela**, um problema
+diferente. Eu havia tratado o segundo e não sabia do primeiro.
+
+⚠️ **Por que este é o pior tipo de falha:** nada dava erro. Sem os testes, a aplicação teria ido
+para produção com a terceira camada da ADR-001 puramente decorativa — policy escrita, migração
+aplicada, documentação dizendo que o dado estava protegido, e o vazamento acontecendo em silêncio.
+
+**Decisão:** as migrações continuam rodando como dono (DDL exige), mas **cada requisição desce
+para `hamilton_app`**, papel `NOLOGIN NOBYPASSRLS` criado por migração, com apenas SELECT,
+INSERT, UPDATE e DELETE.
+
+A troca usa `SET LOCAL ROLE`, e não `SET ROLE`, pela mesma razão do `set_config(is_local => true)`:
+o Postgres devolve o papel original ao fim da transação, sem depender de alguém lembrar de
+resetar. No middleware, a ordem é **descer de papel antes de definir o escopo** — o contrário
+deixaria uma janela rodando como dono do banco.
+
+**Verificado, não presumido** (13 testes passando):
+- `hamilton_app` tem `rolbypassrls = false` e `rolsuper = false`.
+- Sem variável de sessão, a consulta devolve **zero** linhas — nega por omissão.
+- SQL cru e `.raw()` do ORM respeitam a fronteira.
+- `INSERT` para outro psicólogo é barrado pelo `WITH CHECK`.
+- A variável de sessão e o papel **morrem no fim da transação** — I-01 resolvido e medido.
+
+**Descoberta secundária, registrada para ninguém "consertar" errado:** o teste de I-01 precisa
+ser `TransactionTestCase`. O `TestCase` do Django envolve cada teste numa transação externa, e ali
+`transaction.atomic()` vira apenas um *savepoint* — `SET LOCAL` se prende à transação **externa**,
+não ao savepoint, e o valor parece vazar. Não é o que acontece em produção, onde cada requisição
+é uma transação de verdade.
+
+**Endurecimento pendente para produção:** o ideal é a aplicação **conectar** com um papel de login
+sem `BYPASSRLS`, em vez de conectar como dono e descer de papel. `SET LOCAL ROLE` protege o
+caminho da requisição; não protege comando de management nem shell, que continuam rodando como
+dono. A camada 2 (o `TenantManager`) cobre esses casos no ORM, mas não SQL cru. Ver P-67.
+
+**Consequências:**
+- I-01 sai da lista de impeditivos: resolvido e com teste que prova.
+- Toda tabela nova precisa da migração de RLS. O `ALTER DEFAULT PRIVILEGES` da migração
+  `core.0001` cuida dos privilégios automaticamente; a **policy** continua sendo por tabela.
+- O ambiente de desenvolvimento passa a exigir PostgreSQL de verdade. SQLite pularia justamente
+  os testes que importam.
+
 ## Impeditivos
 
 | # | Impeditivo | Situação |
 |---|---|---|
-| I-01 | RLS + connection pooling do Neon: a variável de sessão do tenant precisa ser setada por request e **limpa** ao devolver a conexão ao pool, sob risco de uma request herdar o tenant da anterior. Exige prova de conceito antes de virar fundação. | 🔴 A validar |
+| I-01 | RLS + connection pooling do Neon: a variável de sessão do tenant precisa ser setada por request e **limpa** ao devolver a conexão ao pool, sob risco de uma request herdar o tenant da anterior. Exige prova de conceito antes de virar fundação. | ✅ **Resolvido e testado** (ADR-045): `set_config(is_local)` morre com a transação. |
 | I-04 | **O disco do Render é efêmero.** O `MEDIA_ROOT` é apagado a cada deploy — fato documentado no `hamilton-api`, que por isso guarda o PDF assinado em bytes no Postgres. Afeta **tudo** que planejamos armazenar: áudio dos relatos, PDFs de prontuário, comprovantes de despesa, contratos. Exige decisão de armazenamento (bytes no Postgres vs. object storage) **antes** da primeira linha de código. | ✅ Resolvido por ADR-019 (armazenamento misto). |
 | I-05 | **Lembrete por canal externo exige agendador, e agendador custa.** O Render não tem instância gratuita para cron job (mín. ~US$ 1/mês) nem para background worker (~US$ 7/mês). Lembrete só in-app dispensa agendador por completo. | ✅ Eliminado do MVP por ADR-018 (só in-app e Google Agenda). |
+| I-07 | **`BYPASSRLS` no papel dono do Neon** torna a policy decorativa, sem erro nenhum. Resolvido pela ADR-045; fica registrado porque é armadilha silenciosa que pode voltar se alguém trocar o papel de conexão. | ✅ Resolvido, com teste que falha se voltar |
 | I-06 | **Cartão de crédito no Asaas só emite `PAYMENT_RECEIVED` 32 dias após `PAYMENT_CONFIRMED`.** Liberar acesso apenas em `RECEIVED` deixaria todo assinante de cartão bloqueado por um mês depois de pagar. O acesso tem de ser liberado em `CONFIRMED`. | 🔴 Armadilha conhecida |
 | I-03 | **Receita Saúde não tem API pública.** A escrituração entra por importação manual de CSV no e-CAC, feita pelo psicólogo. Dependência externa fora do nosso controle: se a Receita mudar o layout, a feature quebra sem aviso. | 🟡 Mitigável (validar layout a cada ano-calendário) |
 | I-02 | `gh` CLI não autenticado na máquina (`gh auth status`). Git funciona via Credential Manager; só ferramentas que dependem do `gh` ficam indisponíveis. | 🟡 Contornado |

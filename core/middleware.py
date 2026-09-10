@@ -32,6 +32,9 @@ class EscopoDoPsicologoMiddleware:
             return self.get_response(request)
 
         with transaction.atomic():
+            # A ordem importa: primeiro perder o privilégio de ignorar o RLS, depois dizer
+            # de quem é o dado. O contrário deixaria uma janela rodando como dono do banco.
+            db.assumir_papel_da_aplicacao()
             contexto.definir(psicologo_id)
             db.aplicar_escopo(psicologo_id)
             try:

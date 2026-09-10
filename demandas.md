@@ -15,14 +15,16 @@ Cada história é rastreável até a ADR que a originou — se a ADR mudar, a hi
 
 | # | História | Camada | Estado | ADR |
 |---|---|---|---|---|
-| F-01 | Toda model de domínio herda `TenantOwnedModel`, com o dono explícito | 🗄️ | ✅ | ADR-001 |
-| F-02 | `TenantManager` é o manager padrão e **levanta exceção** se a query rodar sem escopo de dono | ⚙️🔒 | ✅ | ADR-001 |
-| F-03 | Middleware seta a variável de sessão do tenant por request e a **limpa** ao devolver a conexão ao pool | ⚙️🔒 | 🟡 | ADR-001, I-01 |
-| F-04 | Row-Level Security no Postgres, com policy amarrada à variável de sessão | 🗄️🔒 | 🟡 | ADR-001, I-01 |
+| F-01 | Toda model de domínio herda `TenantOwnedModel`, com o dono explícito | 🗄️ | ✅ **feito** | ADR-001 |
+| F-02 | `TenantManager` é o manager padrão e **levanta exceção** se a query rodar sem escopo de dono | ⚙️🔒 | ✅ **feito** | ADR-001 |
+| F-03 | Middleware abre transação, desce para `hamilton_app` e define o escopo. `SET LOCAL` morre com a transação | ⚙️🔒 | ✅ **feito** | ADR-001, ADR-045 |
+| F-04 | RLS com `FORCE ROW LEVEL SECURITY` e papel de aplicação **sem `BYPASSRLS`** | 🗄️🔒 | ✅ **feito** | ADR-001, ADR-045 |
 | F-05 | Trilha de auditoria: quem escreveu, quando, o que mudou | ⚙️🔒 | ✅ | ADR-005 |
-| F-06 | Teste que **prova** que uma query sem escopo falha, e que o RLS bloqueia acesso cruzado | ⚙️🔒 | ✅ | ADR-001 |
+| F-06 | Teste que **prova** o isolamento nas três camadas — **13 testes, todos passando** | ⚙️🔒 | ✅ **feito** | ADR-001, ADR-045 |
 
-⚠️ **F-03 e F-04 exigem prova de conceito antes de virarem fundação** (I-01): com o pooling do
+✅ **Passo 0 concluído.** A prova de conceito rodou contra Postgres real e **encontrou uma falha**
+que o planejamento não pegaria: o papel dono do Neon tem `BYPASSRLS` e ignorava a policy em
+silêncio (ADR-045). Corrigido, com teste que falha se voltar. Texto original: com o pooling do
 Neon, uma request pode herdar o tenant da anterior. É o primeiro código a ser escrito.
 
 ---

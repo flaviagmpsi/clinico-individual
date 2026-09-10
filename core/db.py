@@ -17,6 +17,22 @@ from django.db import connection
 
 from core.rls import VARIAVEL_SESSAO
 
+PAPEL_APLICACAO = "hamilton_app"
+
+
+def assumir_papel_da_aplicacao() -> None:
+    """Desce para o papel que **não pode** ignorar o RLS.
+
+    Descoberto ao rodar o passo 0: o papel dono do banco no Neon tem o atributo
+    `BYPASSRLS`, que passa por cima da policy e até do `FORCE ROW LEVEL SECURITY`. Conectar
+    como dono e confiar no RLS é confiar em nada.
+
+    `SET LOCAL` — e não `SET` — pela mesma razão do `set_config` abaixo: o papel volta ao
+    original quando a transação fecha, sem depender de alguém lembrar de resetar.
+    """
+    with connection.cursor() as cursor:
+        cursor.execute(f"SET LOCAL ROLE {PAPEL_APLICACAO}")
+
 
 def aplicar_escopo(psicologo_id: int) -> None:
     """Define o dono da sessão, válido só até o fim da transação corrente."""

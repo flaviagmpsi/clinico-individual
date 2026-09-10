@@ -194,3 +194,9 @@ Status: 🔴 aberta · 🟡 em discussão · 🟢 resolvida (migra para `documen
 |---|---|---|---|
 | P-65 | Cadastro | **Validar o CRP automaticamente** no `cadastro.cfp.org.br`? O CFP não tem API oficial; intermediários cobram por consulta. Vale o custo? | ⏸️ **Adiada, reversível por escolha do usuário.** Formato sim, verificação não. O modelo guarda o lugar (ADR-044). |
 | P-66 | Cadastro | Psicólogo PJ tem, além do próprio CRP, o **registro da empresa no CRP**. Exigir também? | ✅ Resolvida: campo opcional, não exigido (ADR-044). |
+
+## Abertas na Rodada 27
+
+| # | Tema | Pergunta | Status |
+|---|---|---|---|
+| P-67 | Infra / Segurança | **Endurecimento de produção:** conectar com papel de login sem `BYPASSRLS`, em vez de conectar como dono e usar `SET LOCAL ROLE`. O `SET LOCAL ROLE` protege a requisição, mas não comando de management nem shell. | 🔴 |
