@@ -62,7 +62,7 @@ Status: 🔴 aberta · 🟡 em discussão · 🟢 resolvida (migra para `documen
 | # | Tema | Pergunta | Status |
 |---|---|---|---|
 | P-10 | Assinatura | O CFP exige guarda de **no mínimo 5 anos** (Res. 001/2009, Art. 4º §1º). O que acontece com os prontuários quando o psicólogo **cancela a assinatura**? Recomendação: exportação automática + carência, com tamanho da carência a definir. | ✅ Resolvida: exportação e descarte (ADR-007). |
-| P-11 | Prontuário / Legal | O Art. 5º, II garante ao paciente **acesso integral** ao próprio prontuário. Como o sistema atende esse direito? (não estava no escopo declarado) | 🔴 |
+| P-11 | Prontuário / Legal | O Art. 5º, II garante ao paciente **acesso integral** ao próprio prontuário. Como o sistema atende esse direito? (não estava no escopo declarado) | ❌ Fora de escopo: o sistema não se comunica com pacientes (ADR-039). |
 | P-12 | Prontuário / Legal | Conflito de prazos: CFP diz 5 anos, Lei nº 13.787/2018 diz **20 anos** para prontuário de paciente em saúde. Qual prazo o sistema adota? | 🔴 |
 | P-13 | Prontuário / IA | Destino do **áudio** após a transcrição: descartar ou arquivar? Depende de P-16. | ⏸️ Adiada |
 | P-14 | Prontuário / IA | Consentimento do paciente para gravação e para processamento por IA de terceiro. Só é necessário se P-16 for "sessão gravada". | ✅ Descartada: sem gravação de sessão, não há consentimento de paciente a coletar (ADR-006). |
@@ -108,8 +108,8 @@ Status: 🔴 aberta · 🟡 em discussão · 🟢 resolvida (migra para `documen
 
 | # | Tema | Pergunta | Status |
 |---|---|---|---|
-| P-32 | Prontuário / Ético | Responsável legal tem direito ao **estritamente necessário**, não ao prontuário inteiro. Como a exportação distingue isso? | 🔴 |
-| P-33 | Prontuário / Ético | **Sigilo do adolescente perante os pais.** O produto não pode assumir que responsável vê tudo. Qual o desenho? | 🔴 |
+| P-32 | Prontuário / Ético | Responsável legal tem direito ao **estritamente necessário**, não ao prontuário inteiro. Como a exportação distingue isso? | ❌ Fora de escopo (ADR-039). |
+| P-33 | Prontuário / Ético | **Sigilo do adolescente perante os pais.** O produto não pode assumir que responsável vê tudo. Qual o desenho? | ❌ Fora de escopo (ADR-039). |
 | P-34 | Cadastro | Paciente nascido **antes de 2018** pode não ter CPF. O sistema bloqueia, avisa, ou permite cadastro sem CPF? | 🟡 |
 
 ## Abertas na Rodada 8

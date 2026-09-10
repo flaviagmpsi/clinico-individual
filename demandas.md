@@ -117,9 +117,9 @@ Neon, uma request pode herdar o tenant da anterior. É o primeiro código a ser 
 | R-08 | Exportação de uma sessão ou do histórico completo, em PDF ou DOC | 🎨⚙️ | ✅ | escopo |
 | R-09 | IA atrás de **adaptador**: o domínio não conhece provedor, modelo nem chave | ⚙️ | ✅ | §3.2 |
 | R-10 | Áudio descartado após aprovação do prontuário; retenção como política explícita | ⚙️🔒 | 🟡 | ADR-019, P-13 |
-| R-11 | Direito de acesso do paciente ao próprio prontuário (Art. 5º, II) | — | 🟡 | P-11 |
-| R-12 | Acesso do responsável legal: apenas o **estritamente necessário**, não o documento inteiro | — | 🟡 | P-32 |
-| R-13 | Sigilo do adolescente perante os pais | — | 🟡 | P-33 |
+| R-11 | Direito de acesso do paciente: obrigação **do psicólogo**, exercida fora do sistema | — | ❌ Fora | ADR-039 |
+| R-12 | Acesso do responsável legal: decidido pelo psicólogo, fora do sistema | — | ❌ Fora | ADR-039 |
+| R-13 | Sigilo do adolescente perante os pais: decisão clínica do psicólogo, não do software | — | ❌ Fora | ADR-039 |
 
 ---
 

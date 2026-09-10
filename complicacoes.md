@@ -1292,6 +1292,39 @@ porque o silêncio é que causaria o dano.
   silêncio, e o descarte acontece com o psicólogo sem saber. Ver P-64.
 - O descarte precisa ser real e auditável, sob pena de a promessa ser falsa (ADR-007).
 
+## ADR-039 — O sistema não se comunica com pacientes. Nunca.
+
+**Status:** ✅ Aceita — Rodada 22
+**Contexto:** Discutia-se como o sistema entregaria prontuário ou documento ao paciente ou ao
+responsável legal, e como limitar isso ao "estritamente necessário". O usuário cortou a premissa:
+**não é papel do sistema enviar nada a paciente ou responsável.** O psicólogo baixa o documento e
+decide, por fora, se envia e como envia. A responsabilidade é inteiramente dele.
+
+**Decisão:** O Hamilton **não tem superfície voltada ao paciente**. Sem portal do paciente, sem
+login do paciente, sem envio automático, sem link compartilhável de prontuário ou documento. O
+único destinatário de qualquer coisa que sai do sistema é **o próprio psicólogo**.
+
+**Consequências — e são grandes:**
+- ✅ **P-11, P-32 e P-33 desaparecem.** Direito de acesso do paciente, limite do acesso do
+  responsável e sigilo do adolescente deixam de ser problema de arquitetura. Continuam sendo
+  obrigações éticas **do psicólogo**, exercidas fora do sistema, onde sempre estiveram. As
+  histórias R-11, R-12 e R-13 saem do escopo.
+- ✅ **A superfície de ataque cai drasticamente.** Não existe rota autenticável por terceiro, nem
+  link público, nem fluxo de compartilhamento — as três origens mais comuns de vazamento em
+  sistema de saúde. O isolamento da ADR-001 passa a ter só uma porta para defender.
+- ✅ Nenhum fluxo de consentimento de envio, nenhuma decisão automática sobre o que um pai pode
+  ver. O sistema não toma decisão clínica no lugar de quem é responsável por ela.
+- ⚠️ **Reforça a importância da ADR-038.** Se o sistema nunca envia, o modo somente-leitura de 30
+  dias no cancelamento é a **única** via pela qual o conteúdo sai daqui. Ela não pode falhar.
+- ⚠️ O psicólogo provavelmente enviará por WhatsApp ou e-mail, que não são canais seguros. Está
+  fora do nosso alcance e da nossa responsabilidade — mas é oportunidade futura de ajudá-lo, por
+  exemplo exportando em formato protegido por senha. Não entra no MVP.
+
+**Princípio derivado:** *o Hamilton é ferramenta de trabalho do psicólogo, não canal de
+relacionamento com o paciente.* Toda feature futura que proponha falar com o paciente — lembrete
+de sessão por WhatsApp, confirmação de presença, portal de agendamento — colide com esta ADR e
+precisa revogá-la explicitamente antes de existir.
+
 ## Impeditivos
 
 | # | Impeditivo | Situação |
