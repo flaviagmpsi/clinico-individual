@@ -64,7 +64,7 @@ Status: 🔴 aberta · 🟡 em discussão · 🟢 resolvida (migra para `documen
 | P-10 | Assinatura | O CFP exige guarda de **no mínimo 5 anos** (Res. 001/2009, Art. 4º §1º). O que acontece com os prontuários quando o psicólogo **cancela a assinatura**? Recomendação: exportação automática + carência, com tamanho da carência a definir. | ✅ Resolvida: exportação e descarte (ADR-007). |
 | P-11 | Prontuário / Legal | O Art. 5º, II garante ao paciente **acesso integral** ao próprio prontuário. Como o sistema atende esse direito? (não estava no escopo declarado) | ❌ Fora de escopo: o sistema não se comunica com pacientes (ADR-039). |
 | P-12 | Prontuário / Legal | Conflito de prazos: CFP diz 5 anos, Lei nº 13.787/2018 diz **20 anos** para prontuário de paciente em saúde. Qual prazo o sistema adota? | 🔴 |
-| P-13 | Prontuário / IA | Destino do **áudio** após a transcrição: descartar ou arquivar? Depende de P-16. | ⏸️ Adiada |
+| P-13 | Prontuário / IA | Destino do **áudio** após a transcrição: descartar ou arquivar? Depende de P-16. | ✅ Resolvida: áudio apagado, transcrição fica (ADR-042). |
 | P-14 | Prontuário / IA | Consentimento do paciente para gravação e para processamento por IA de terceiro. Só é necessário se P-16 for "sessão gravada". | ✅ Descartada: sem gravação de sessão, não há consentimento de paciente a coletar (ADR-006). |
 | P-15 | Financeiro | Vencimento do modo `MENSAL`: assunção adotada é padrão no perfil, sobrescrevível por paciente. Confirmar. | 🟡 |
 
@@ -158,7 +158,7 @@ Status: 🔴 aberta · 🟡 em discussão · 🟢 resolvida (migra para `documen
 
 | # | Tema | Pergunta | Status |
 |---|---|---|---|
-| P-53 | Prontuário / IA | Em sessão de casal, impedir que a fala de um participante migre para o prontuário do outro. Instrução da IA e revisão humana. | 🔴 Risco clínico |
+| P-53 | Prontuário / IA | Em sessão de casal, impedir que a fala de um participante migre para o prontuário do outro. Instrução da IA e revisão humana. | ❌ Deixa de existir: um relato por participante (ADR-041). |
 | P-54 | Análise | Como o sistema sabe as **horas disponíveis** do psicólogo, se declarar a grade não pode ser barreira de entrada (ADR-012)? | ✅ Resolvida: grade declarada, ocupação derivada (ADR-029). |
 
 | # | Tema | Pergunta | Status |
@@ -186,4 +186,4 @@ Status: 🔴 aberta · 🟡 em discussão · 🟢 resolvida (migra para `documen
 
 | # | Tema | Pergunta | Status |
 |---|---|---|---|
-| P-64 | Assinatura | **E se o e-mail de aviso não chegar?** Endereço trocado ou caixa cheia fazem o aviso falhar em silêncio, e o descarte acontece sem o psicólogo saber. | 🔴 |
+| P-64 | Assinatura | **E se o e-mail de aviso não chegar?** Endereço trocado ou caixa cheia fazem o aviso falhar em silêncio, e o descarte acontece sem o psicólogo saber. | ✅ Resolvida: WhatsApp + relógio que congela (ADR-043). |

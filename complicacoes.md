@@ -925,7 +925,7 @@ distintas.
 
 ## ADR-028 — Atendimento coletivo: um relato, um prontuário por paciente
 
-**Status:** ✅ Aceita — Rodada 14
+**Status:** ⚠️ **Revisada pela ADR-041 (Rodada 24)** — a IA não divide mais o relato. Passa a ser um relato gravado por participante.
 **Contexto:** A Res. CFP 001/2009, Art. 5º, III exige documentação individual de cada usuário em
 atendimento de grupo não eventual. Cumprir isso pedindo ao psicólogo que dite um relato por
 participante devolveria justamente o trabalho que o produto existe para eliminar.
@@ -1358,6 +1358,94 @@ Adiantamento, pacote pago à frente e dinheiro recebido antes da sessão são ca
 paciente apareceria devendo algo que já pagou. Como crédito, o saldo é visível dos dois lados —
 quanto ele tem a favor e quanto ainda deve. Também é o que faz a modalidade `POR_SESSAO` (ADR-002)
 funcionar com quem paga um pacote de dez sessões adiantado.
+
+## ADR-041 — Um relato por prontuário (revisa a ADR-028)
+
+**Status:** ✅ Aceita — Rodada 24. **Revisa a ADR-028.**
+**Contexto:** A ADR-028 decidiu "um relato, um prontuário por participante" — a IA dividiria o
+relato de casal. Isso trouxe o risco P-53: a fala de um cônjuge migrar para o prontuário do outro,
+que tem direito de lê-lo. A tentativa de mitigar era instruir a IA e reforçar a revisão humana.
+
+O usuário propôs a saída melhor: **um áudio para cada prontuário**.
+
+**Decisão:** `Relato` passa a ser **1:1 com `Prontuario`**. Em sessão de casal, o psicólogo grava
+um relato por participante.
+
+**Por que isto é superior:**
+- **Elimina o risco em vez de mitigá-lo.** A IA nunca tem material dos dois em mãos, então não
+  existe o que vazar. É o princípio 5 do produto: restrição estrutural vence instrução. Confiar
+  no modelo para julgar o que é sensível seria delegar juízo clínico a software.
+- **Some a lógica de divisão**, a revisão lado a lado e toda a instrução de atribuição. Menos
+  código, e menos código no lugar mais perigoso do sistema.
+- O modelo fica simples: um relato, um prontuário, um paciente.
+
+**Custo assumido:** o psicólogo dita duas vezes numa sessão de casal, e parte do conteúdo — o
+processo do casal — se repete. É trabalho a mais, contra o objetivo do produto. Aceitável porque
+casal é minoria da prática clínica típica, e porque o segundo relato tende a ser curto: ele acabou
+de organizar o pensamento no primeiro.
+
+**Consequências:**
+- **P-53 morre.** Não é mais mitigado: deixa de existir.
+- A história R-06 muda de "a IA divide" para "um relato por participante".
+- Se um dia a repetição incomodar na prática, a alternativa registrada é ditar em blocos rotulados
+  ("sobre a Maria… sobre o João…") — mas ela reintroduz o risco e não deve ser adotada sem motivo
+  forte.
+
+---
+
+## ADR-042 — O áudio é apagado; a transcrição fica
+
+**Status:** ✅ Aceita — Rodada 24
+**Decisão do usuário:** o fluxo é **áudio gravado → texto transcrito → IA produz o prontuário nos
+moldes do CFP**. O áudio é descartado; **a transcrição permanece**, ligada ao prontuário.
+
+**O que isso resolve:** responde "o psicólogo escreveu isso, ou a máquina escreveu por ele?" — a
+pergunta que aparece se o CRP questionar um registro. Com a transcrição guardada, existe prova de
+que o conteúdo partiu dele, e não de invenção do modelo. Reforça diretamente a ADR-005, que trata
+o prontuário como meio de defesa.
+
+**O que isso custa, e precisa estar claro:** a transcrição é **conteúdo clínico bruto, não
+revisado**. Pode conter erro de transcrição — nome de medicamento trocado é o caso clássico — e
+pode conter o que o psicólogo deliberadamente **não** levou ao prontuário. Guardá-la é uma segunda
+cópia de material sensível.
+
+**Guardas que tornam isso aceitável:**
+1. A transcrição é **insumo**, nunca documento. O registro oficial é o prontuário confirmado.
+2. Vive sob a mesma proteção do prontuário: mesmo isolamento, mesma trilha de auditoria, mesma
+   exportação e mesmo descarte (ADR-038).
+3. O áudio é apagado **assim que a transcrição existe** — não espera a confirmação do prontuário,
+   porque a transcrição já permite refazer a geração.
+
+---
+
+## ADR-043 — Aviso de descarte por WhatsApp, e o relógio que congela
+
+**Status:** ✅ Aceita — Rodada 24
+**Decisão do usuário:** o aviso do descarte pode e deve ser feito **intensamente por WhatsApp**.
+
+**Por que aqui faz sentido, tendo sido recusado na ADR-018:** lá o WhatsApp foi descartado para
+lembretes do dia a dia, por custo por mensagem e volume alto. Aqui o volume é **mínimo** — só
+contas canceladas ou inadimplentes — e o que está em jogo é dado clínico apagado para sempre. O
+custo por conversa some diante disso.
+
+**Vantagem que não é óbvia:** o WhatsApp devolve **confirmação de entrega e de leitura**. É
+justamente a prova que o item seguinte exige, e que o e-mail não dá com confiabilidade.
+
+**Decisão complementar — o relógio do descarte só corre com prova de aviso:** se não houver
+entrega confirmada em nenhum canal, nem acesso do psicólogo à conta no período, o prazo
+**congela** em vez de correr, e a conta fica pendente de revisão manual. Apagar em silêncio o que
+alguém precisava e não sabia que ia perder é o pior desfecho possível; guardar demais custa
+armazenamento.
+
+**Consequências:**
+- Reintroduz dependência de **Meta Cloud API** e de provedor, com template aprovado previamente.
+  Volume baixo, mas é integração a construir.
+- O perfil do psicólogo passa a precisar de **telefone**, hoje não previsto.
+- Canais em camadas: **in-app** (ele ainda entra em modo leitura), **e-mail** (com link
+  autenticado, ADR-037) e **WhatsApp**. Nenhum sozinho é suficiente.
+- ⚠️ O WhatsApp **nunca** carrega conteúdo clínico — vale a mesma regra da ADR-037. Só aviso e
+  instrução de entrar na conta.
+- Fecha P-64.
 
 ## Impeditivos
 

@@ -35,6 +35,7 @@ O usuário não se perde. Herdado do Hamilton original (ADR-004).
 | Arquivos jurídicos | Bytes no Postgres (contrato, PDF, comprovante) |
 | Assinatura | Asaas — cartão e PIX Automático |
 | IA | Atrás de adaptador. O domínio não conhece provedor |
+| Aviso crítico | WhatsApp (Meta Cloud API) — só para descarte de conta, nunca conteúdo clínico |
 
 ---
 

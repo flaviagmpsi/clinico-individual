@@ -34,7 +34,7 @@ Neon, uma request pode herdar o tenant da anterior. É o primeiro código a ser 
 | # | História | Camada | Estado | ADR |
 |---|---|---|---|---|
 | C-01 | Cadastro e login; a conta é a raiz do isolamento | 🎨⚙️ | ✅ | ADR-001 |
-| C-02 | Perfil com CPF, número do CRP e **regime tributário (PF ou PJ)** | 🎨🗄️ | ✅ | ADR-030 |
+| C-02 | Perfil com CPF, número do CRP, **telefone** e **regime tributário (PF ou PJ)** | 🎨🗄️ | ✅ | ADR-030, ADR-043 |
 | C-03 | Padrões do psicólogo: duração da sessão (50 min), vencimento da mensalidade, cobro falta (sim/não) | 🎨🗄️ | ✅ | ADR-025 |
 | C-04 | Toda tela de cadastro mostra **de onde veio** o valor herdado do perfil | 🎨 | ✅ | ADR-025 |
 | C-05 | Dados fiscais **opcionais** (outras rendas, INSS, dependentes, pensão), fora do onboarding | 🎨 | ✅ | ADR-012 |
@@ -112,11 +112,12 @@ Neon, uma request pode herdar o tenant da anterior. É o primeiro código a ser 
 | R-03 | IA estrutura o relato no formato do Art. 2º da Res. CFP 001/2009 | ⚙️ | ✅ | ADR-005 |
 | R-04 | **Rascunho obrigatório**: revisão e confirmação explícita antes de virar registro oficial | 🎨 | ✅ | ADR-005 |
 | R-05 | Versão congelada na confirmação, com trilha de auditoria — é meio de prova em processo disciplinar | ⚙️🔒 | ✅ | ADR-005 |
-| R-06 | Sessão de casal: **um relato, um prontuário por participante**, gerados pela IA | ⚙️ | ✅ | ADR-028 |
-| R-07 | A fala de um participante **não pode migrar** para o prontuário do outro | ⚙️🔒 | 🟡 | P-53 |
+| R-06 | Sessão de casal: **um relato gravado por participante**; `Relato` é 1:1 com `Prontuario` | 🎨⚙️ | ✅ | ADR-041 |
+| R-07 | Risco de migração da fala entre prontuários: **eliminado por construção** | 🔒 | ✅ | ADR-041 |
 | R-08 | Exportação de uma sessão ou do histórico completo, em PDF ou DOC | 🎨⚙️ | ✅ | escopo |
 | R-09 | IA atrás de **adaptador**: o domínio não conhece provedor, modelo nem chave | ⚙️ | ✅ | §3.2 |
-| R-10 | Áudio descartado após aprovação do prontuário; retenção como política explícita | ⚙️🔒 | 🟡 | ADR-019, P-13 |
+| R-10 | Fluxo: áudio → transcrição → prontuário. O **áudio é apagado** assim que transcrito | ⚙️🔒 | ✅ | ADR-042 |
+| R-14 | A **transcrição permanece** ligada ao prontuário, como insumo e prova de autoria | 🗄️🔒 | ✅ | ADR-042 |
 | R-11 | Direito de acesso do paciente: obrigação **do psicólogo**, exercida fora do sistema | — | ❌ Fora | ADR-039 |
 | R-12 | Acesso do responsável legal: decidido pelo psicólogo, fora do sistema | — | ❌ Fora | ADR-039 |
 | R-13 | Sigilo do adolescente perante os pais: decisão clínica do psicólogo, não do software | — | ❌ Fora | ADR-039 |
@@ -178,7 +179,8 @@ Neon, uma request pode herdar o tenant da anterior. É o primeiro código a ser 
 | S-05 | E-mail de cancelamento leva **link autenticado**, nunca prontuário anexado | ⚙️🔒 | ✅ | ADR-037 |
 | S-06 | Máquina de estados da conta: `ATIVA` → `TOLERANCIA` (7d) → `SOMENTE_LEITURA` (30d) → `ARQUIVADA` (60d) → `DESCARTADA` | ⚙️🔒 | ✅ | ADR-038 |
 | S-07 | Em `SOMENTE_LEITURA` ele navega e baixa o que quiser; não cria nada | 🎨⚙️ | ✅ | ADR-038 |
-| S-08 | Notificação repetida durante os 90 dias, explicando a obrigação legal de guarda por 5 anos | 🎨⚙️ | ✅ | ADR-038 |
+| S-08 | Notificação repetida durante os 90 dias, em três camadas: in-app, e-mail e **WhatsApp** | 🎨⚙️ | ✅ | ADR-043 |
+| S-11 | O relógio do descarte **congela** sem prova de aviso entregue ou acesso à conta | ⚙️🔒 | ✅ | ADR-043 |
 | S-09 | Inadimplente que regulariza volta a `ATIVA` sem perder nada | ⚙️ | ✅ | ADR-038 |
 | S-10 | **Demonstração com dados fictícios** para conhecer o produto antes de assinar | 🎨 | ✅ | P-62 |
 
