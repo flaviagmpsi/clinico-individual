@@ -1149,6 +1149,56 @@ registrar seria expor o psicólogo, não ajudá-lo.
 
 Fecha P-57, P-58 e P-59. P-56 vira módulo futuro.
 
+## ADR-035 — Registro de pagamento: herda a tela do original, ganha a baixa
+
+**Status:** ✅ Aceita — Rodada 19 (decisão delegada a mim nas duas questões)
+**Contexto:** O usuário confirmou que gosta das informações pedidas no registro de pagamentos do
+Hamilton original. Levantamento do `PagamentoForm` e da listagem: o formulário pede **terapeuta,
+paciente, nome de quem pagou, valor, data do pagamento e observação**; a lista mostra data,
+paciente, quem pagou, terapeuta, valor e origem, com busca, filtro por mês e ordenação.
+
+**Mapeamento para o Individual:**
+
+| Campo do original | Destino |
+|---|---|
+| `fk_terapeuta` | **Removido.** Há um psicólogo só; o campo é ruído em toda tela |
+| `fk_paciente` | Mantido; por baixo aponta para o **caso** (ADR-026) |
+| `nome` (quem pagou) | Mantido, porém **preenchido a partir do Pagador** (ADR-009) em vez de digitado à mão a cada registro |
+| `vlr_pago` | Mantido |
+| `dat_pagamento` | Mantido. É o campo mais importante do fiscal — o regime é de **caixa** |
+| `observacao` | Mantido |
+| Origem (Stripe / manual) | Substituído por **forma de pagamento** |
+
+Busca, filtro por mês e ordenação da listagem são portados como estão.
+
+### 1. O pagamento dá baixa numa cobrança, com parcial permitida
+
+No original o pagamento é **solto**: registra-se que entraram R$ 200 do Fulano e pronto. Isso
+funciona lá porque não existe conta a receber. Aqui existe (ADR-002), e sem amarrar o pagamento à
+cobrança o sistema nunca saberia se aqueles R$ 200 quitaram a sessão de setembro ou a de agosto
+que estava atrasada — e a tela de pendências passaria a mentir.
+
+**Baixa parcial é permitida:** paciente que deve R$ 200 e paga R$ 150 deixa saldo de R$ 50, que
+continua aparecendo como devido. É o comportamento que o psicólogo espera, e o único que mantém
+o lembrete de cobrança (ADR-017) correto.
+
+### 2. Forma de pagamento, opcional
+
+PIX, dinheiro, transferência, cartão. No original o campo "origem" existia só para separar Stripe
+de manual; aqui todo pagamento do paciente é manual, então o campo é reaproveitado com outra
+função: conferência de extrato e separação entre o que passou pela conta bancária e o que foi em
+espécie — distinção que importa na prestação de contas ao contador.
+
+**Opcional por decisão:** campo obrigatório que ninguém quer preencher vira lixo digitado no
+automático, o que é pior do que campo vazio.
+
+**Consequências:**
+- O pagamento passa a ter dois vínculos: a **cobrança** que ele quita e o **pagador** que o fez.
+- Pagamento sem cobrança correspondente (adiantamento, pacote pago à frente) é caso a tratar.
+  Ver P-61.
+- O bug A-02 do original (soma × último pagamento do mês) fica impossível por construção: o saldo
+  é sempre devido menos baixas, sobre registros.
+
 ## Impeditivos
 
 | # | Impeditivo | Situação |

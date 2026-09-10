@@ -150,7 +150,10 @@ Neon, uma request pode herdar o tenant da anterior. É o primeiro código a ser 
 | N-01 | Modalidade por caso: `MENSAL` (uma cobrança, vencimento no início ou no fim) ou `POR_SESSAO` | 🎨🗄️ | ✅ | ADR-002 |
 | N-02 | `POR_SESSAO` gera cobrança **por consulta contabilizada**, cobrada logo após | ⚙️ | ✅ | ADR-002, ADR-023 |
 | N-03 | Registros permanecem **granulares**; o agrupamento por paciente existe só na apresentação | ⚙️🎨 | ✅ | ADR-002 |
-| N-04 | Registro de pagamento recebido, com quem pagou e quando | 🎨🗄️ | ✅ | escopo |
+| N-04 | Registro de pagamento: paciente, quem pagou, valor, data e observação. Sem campo de terapeuta | 🎨🗄️ | ✅ | ADR-035 |
+| N-04a | Pagamento **dá baixa** numa cobrança, com **baixa parcial** permitida e saldo remanescente visível | ⚙️ | ✅ | ADR-035 |
+| N-04b | **Forma de pagamento** opcional: PIX, dinheiro, transferência, cartão | 🎨🗄️ | ✅ | ADR-035 |
+| N-04c | Listagem com busca, filtro por mês e ordenação, portadas do original | 🎨 | ✅ | ADR-035 |
 | N-05 | Despesas com **catálogo de tipos** e marca de dedutibilidade | 🎨🗄️ | ✅ | ADR-011 |
 | N-06 | Anexo de comprovante na despesa | 🎨⚙️ | 🟡 | P-29 |
 | N-07 | **Faturamento líquido** = receita − despesas. Independe de regime | ⚙️ | ✅ | ADR-013 |

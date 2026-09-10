@@ -174,3 +174,7 @@ Status: 🔴 aberta · 🟡 em discussão · 🟢 resolvida (migra para `documen
 | P-58 | Documentos | **Relatório Multiprofissional** pressupõe equipe. Faz sentido num produto para psicólogo individual? | ✅ Resolvida: fora do escopo (ADR-034). |
 | P-59 | Documentos | Atestado e Laudo pressupõem avaliação psicológica realizada, e o CRP pode exigir a fundamentação em até 5 anos. Como amarrar o documento gerado ao registro que o fundamenta? | ✅ Resolvida: Atestado e Laudo saem do MVP com a avaliação (ADR-034). |
 | P-60 | Documentos | Manter norma dentro do produto cria **dever de atualização**. Quem verifica se a resolução exibida ainda é a vigente? | 🟡 |
+
+| # | Tema | Pergunta | Status |
+|---|---|---|---|
+| P-61 | Financeiro | Pagamento **sem cobrança correspondente**: adiantamento, pacote pago à frente, ou dinheiro recebido antes da sessão. Como registrar? | 🔴 |
