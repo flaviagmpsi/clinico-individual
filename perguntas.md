@@ -199,4 +199,13 @@ Status: 🔴 aberta · 🟡 em discussão · 🟢 resolvida (migra para `documen
 
 | # | Tema | Pergunta | Status |
 |---|---|---|---|
-| P-67 | Infra / Segurança | **Endurecimento de produção:** conectar com papel de login sem `BYPASSRLS`, em vez de conectar como dono e usar `SET LOCAL ROLE`. O `SET LOCAL ROLE` protege a requisição, mas não comando de management nem shell. | 🔴 |
+| P-67 | Infra / Segurança | **Endurecimento de produção:** conectar com papel de login sem `BYPASSRLS`, em vez de conectar como dono e usar `SET LOCAL ROLE`. O `SET LOCAL ROLE` protege a requisição, mas não comando de management nem shell. | ✅ Resolvida: três papéis, `hamilton_web` como papel de conexão (ADR-046). |
+
+## Abertas na Rodada 28 — auditoria adversarial do passo 0
+
+| # | Tema | Pergunta | Status |
+|---|---|---|---|
+| P-68 | Infra / Segurança | **Escopo Python e escopo Postgres podem divergir fora do middleware.** `contexto.como()` mexe só no Python; `db.aplicar_escopo()` mexe só no banco. Dentro de uma requisição o middleware seta os dois; fora dela, o primeiro comando de management que use só um fica com o ORM enxergando um psicólogo e o SQL cru enxergando outro. Falta um ponto de entrada único. Recomendação: `contexto.como()` passar a setar os dois quando houver conexão ativa, ou um `core.escopo.como()` que substitua ambos. | 🔴 |
+| P-69 | Cadastro / Validação | **`full_clean()` no `save()`** está prometido no `claude.md` §6 e não existe. Os `RegexValidator` de CPF, telefone e CRP só rodam em `ModelForm`, e não há formulário nenhum. Hoje `cpf="111.111.111"` e `cpf="1"` gravam. O custo de ligar é toda gravação passar a validar. Três testes ficam `skip` em `test_seguranca.py` descrevendo o comportamento desejado. | 🔴 |
+| P-70 | Cadastro / Legal | **`on_delete=CASCADE` no dono vs. guarda mínima de 5 anos** (Res. CFP 001/2009, Art. 4º). Apagar o psicólogo apaga o prontuário junto, em silêncio, e a ADR-038 desenha um ciclo de descarte que pressupõe o contrário. Recomendação: `PROTECT`, com o descarte sendo operação explícita do app `assinaturas`. | 🔴 |
+| P-71 | Infra | **Transação por requisição inteira.** O middleware envolve tudo em `transaction.atomic()`, o que é necessário para o `SET LOCAL`, mas segura a conexão do pool pelo tempo da view e é incompatível com `StreamingHttpResponse` — que é justamente a forma de exportar prontuário e histórico sem carregar tudo em memória. Decisão adiável, mas não até o passo 3. | 🔴 |

@@ -1575,6 +1575,100 @@ dono. A camada 2 (o `TenantManager`) cobre esses casos no ORM, mas não SQL cru.
 - O ambiente de desenvolvimento passa a exigir PostgreSQL de verdade. SQLite pularia justamente
   os testes que importam.
 
+## ADR-046 — Três papéis de banco: o RLS passa a valer fora da requisição
+
+**Contexto:** a ADR-045 rebaixava a requisição autenticada para `hamilton_app` e considerava o
+isolamento fechado. Uma bateria de testes adversariais (`core/tests/test_seguranca.py`, 21 testes
+escritos para *atravessar* a fronteira) mostrou que faltavam quatro coisas, e que as quatro tinham
+a mesma raiz: **a aplicação continuava conectada como dono do banco.**
+
+1. **A requisição anônima nunca descia de papel.** O middleware devolvia cedo quando não havia
+   usuário. Login, cadastro, healthcheck e — no futuro — o webhook do Asaas rodavam como dono,
+   com `BYPASSRLS`. Um `SELECT` cru numa view pública devolveu a tabela de pacientes inteira.
+2. **`SET LOCAL ROLE` é reversível.** A conexão seguia *autenticada* como dono; um `RESET ROLE`
+   emendado numa injeção de SQL devolvia tudo. Rebaixar o papel corrente não adianta enquanto o
+   papel de origem for privilegiado.
+3. **`contas_psicologo` não tinha policy.** Ela não tem coluna de dono — ela *é* o dono —, então
+   ficou de fora da migração de RLS. Sob o escopo de um psicólogo, um `SELECT` devolvia e-mail,
+   CPF, telefone e **hash de senha** de todos os assinantes. A tabela mais sensível do sistema era
+   a única sem a terceira camada.
+4. **`django_session` guarda o `session_key` em claro.** Lê-la é se passar por qualquer psicólogo
+   logado. Policy não resolve: a tabela não tem dono.
+
+**Decisão:** separar **papel de conexão** de **papel de requisição**.
+
+| Papel | Usado quando | Alcança |
+|---|---|---|
+| `hamilton_owner` | só migração (DDL exige) | tudo |
+| `hamilton_web` | **conexão da aplicação** e requisição anônima | login e sessão. Nada de clínico |
+| `hamilton_app` | `SET LOCAL ROLE` na requisição autenticada | domínio, filtrado pelo RLS |
+
+`hamilton_web` é **`NOINHERIT`**: ele pode *virar* `hamilton_app`, mas não *é* `hamilton_app`. É
+o que transforma a fuga de proibida em impossível — `RESET ROLE` agora cai num papel sem grant
+nenhum nas tabelas clínicas, e o erro é `permission denied`, não uma lista de pacientes alheios.
+
+`contas_psicologo` ganhou policy endereçada a papel: `hamilton_app` enxerga a própria linha,
+`hamilton_web` enxerga a tabela toda. A exceção é o preço do login — autenticar é, por definição,
+procurar um usuário que ainda não se sabe qual é —, e é o motivo de `hamilton_web` não ter
+permissão em mais nada. `django_session` foi **revogada** de `hamilton_app` pelo mesmo raciocínio.
+
+**Duas armadilhas descobertas ao implementar, registradas para não voltarem:**
+- **Papéis são globais ao cluster, não ao banco.** Um `CREATE ROLE ... IF NOT EXISTS` pula a
+  criação quando o papel sobrou de outro banco, e a migração reporta sucesso com os atributos
+  errados. Declarar com `ALTER ROLE` é mais barato que confiar no histórico.
+- **Desde o PG16 a concessão de membro carrega a própria opção de herança**, fixada quando foi
+  criada. Uma concessão emitida enquanto o papel ainda era `INHERIT` continua herdando depois do
+  `ALTER ROLE ... NOINHERIT`. Só refazer a concessão resolve. Foi assim que o primeiro
+  `NOINHERIT` passou em falso.
+
+**`manage.py check --deploy` vira gate obrigatório** (`core/checks.py`): ele reprova o arranque se
+a `DATABASE_URL` apontar para um papel com `BYPASSRLS`. O erro que a ADR-046 previne não está no
+código, está no ambiente — nenhum teste de repositório pega uma variável errada no Render. O check
+**avisa** quando não consegue verificar, em vez de aprovar em silêncio: uma primeira versão
+devolvia "nenhum problema" com o banco fora do ar, e foi exatamente assim que ela passou em falso.
+
+**Consequências:**
+- P-67 sai do backlog: resolvido.
+- O deploy tem dois segredos de banco, não um: aplicação e migração.
+- `SET LOCAL ROLE` vira redundância defensiva em vez de única linha de defesa.
+- 38 testes verdes, 3 pulados de propósito (dependem de P-69).
+
+---
+
+## ADR-047 — A camada Python é cinto de segurança, não blindagem
+
+**Contexto:** a ADR-001 promete três camadas. A do meio — `TenantManager` — tinha buracos que os
+testes adversariais abriram: `bulk_create`, `.update()` e `QuerySet.delete()` não passam por
+`Model.save()`, e a camada 1 some sem aviso nesses caminhos.
+
+A pergunta não é como tapar cada um. É **o que a camada promete**.
+
+**Decisão:** ela é cinto de segurança do desenvolvedor — existe para o erro aparecer no teste, com
+stack trace. Quem protege de verdade é o RLS. Perseguir cada saída do ORM é uma corrida que o
+Django sempre ganha, e a cada versão nova haveria um método a mais para cobrir.
+
+O que **não** é aceitável é a camada prometer mais do que entrega. Três correções:
+
+- **`sem_escopo()` foi removido.** Era `return self` sobre um queryset já filtrado: não escapava
+  de nada. Pior, a mensagem de `EscopoNaoDefinido` mandava usá-lo — quem seguisse a instrução
+  continuaria tomando exceção e concluiria que a fundação estava quebrada. O caminho deliberado é
+  `objetos_todos`, que já existia, tem nome próprio e é visível na revisão de código.
+- **A checagem do `save()` parou de se desligar sozinha.** O `elif` antigo terminava em
+  `and contexto.atual() is not None`, o que pulava a comparação justamente **fora de requisição** —
+  comando de management, tarefa agendada, shell —, que é onde não há middleware para corrigir o
+  engano. Gravar registro de outro psicólogo passava em silêncio. Agora usa `contexto.exigir()`.
+- **`core/db.py` recusa rodar fora de transação.** `SET LOCAL` e `set_config(is_local => true)` não
+  existem em autocommit: o efeito morre no ponto e vírgula. A docstring de `limpar_escopo` prometia
+  ser "o que impede o vazamento no dia em que alguém rodar código fora de transação" — era
+  exatamente o cenário em que ela não fazia nada. Levantar `ForaDeTransacao` é honesto; devolver
+  `None` era uma rede de segurança pintada na parede.
+
+**Consequência:** `bulk_create` sem escopo falha com `IntegrityError`, e há teste garantindo que a
+falha continue barulhenta. Se `psicologo_id` um dia virar nulável, esse caminho passa a gravar
+paciente órfão em silêncio — o teste é o que avisa.
+
+---
+
 ## Impeditivos
 
 | # | Impeditivo | Situação |
@@ -1585,4 +1679,4 @@ dono. A camada 2 (o `TenantManager`) cobre esses casos no ORM, mas não SQL cru.
 | I-07 | **`BYPASSRLS` no papel dono do Neon** torna a policy decorativa, sem erro nenhum. Resolvido pela ADR-045; fica registrado porque é armadilha silenciosa que pode voltar se alguém trocar o papel de conexão. | ✅ Resolvido, com teste que falha se voltar |
 | I-06 | **Cartão de crédito no Asaas só emite `PAYMENT_RECEIVED` 32 dias após `PAYMENT_CONFIRMED`.** Liberar acesso apenas em `RECEIVED` deixaria todo assinante de cartão bloqueado por um mês depois de pagar. O acesso tem de ser liberado em `CONFIRMED`. | 🔴 Armadilha conhecida |
 | I-03 | **Receita Saúde não tem API pública.** A escrituração entra por importação manual de CSV no e-CAC, feita pelo psicólogo. Dependência externa fora do nosso controle: se a Receita mudar o layout, a feature quebra sem aviso. | 🟡 Mitigável (validar layout a cada ano-calendário) |
-| I-02 | `gh` CLI não autenticado na máquina (`gh auth status`). Git funciona via Credential Manager; só ferramentas que dependem do `gh` ficam indisponíveis. | 🟡 Contornado |
+| I-02 | `gh` CLI não autenticado na máquina. | ✅ **Resolvido**: `gh auth status` confirma login como `PauloHenriqueL`, e o remote `origin` aponta para `github.com/PauloHenriqueL/clinico-individual`. |

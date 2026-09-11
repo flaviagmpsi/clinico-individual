@@ -4,6 +4,73 @@ Registro da evolução e da arquitetura do projeto. Atualizado a cada rodada de 
 
 ---
 
+## ⚡ Estado do código — passos 0 e 1
+
+> Para saber **o que falta construir**, o documento é [demandas.md](demandas.md). Este aqui
+> registra o que existe e por quê.
+
+**54 testes verdes contra PostgreSQL real.** 3 pulados de propósito (dependem de P-69).
+
+### Apps que existem
+
+| App | Contém |
+|---|---|
+| `core` | `TenantOwnedModel`, `TenantManager`, middleware de escopo, RLS, `dispensa_escopo`, check de deploy, painel provisório |
+| `contas` | `Psicologo` (é o `AUTH_USER_MODEL`), login, logout, perfil |
+| `pacientes` | `Paciente` com cadastro completo, lista, busca, ficha, edição e exclusão |
+
+Os outros sete apps do plano (`agenda`, `atendimentos`, `prontuarios`, `documentos`,
+`financeiro`, `assinaturas`, `indicadores`) **não existem** — nem o diretório.
+
+### Isolamento: três camadas e três papéis
+
+A ADR-001 promete que nenhum psicólogo alcança dado de outro. A promessa se apoia em três
+camadas independentes, e a terceira depende de uma separação de papéis no Postgres que só ficou
+certa depois de uma auditoria adversarial (ADR-046):
+
+| Camada | Onde | Protege contra |
+|---|---|---|
+| 1. Dono explícito | `TenantOwnedModel` | Model sem dono; gravar com dono errado |
+| 2. Manager que explode | `TenantManager` | Query sem escopo — quebra no teste, não vaza em produção |
+| 3. Row-Level Security | Postgres | `.raw()`, `cursor.execute()`, shell, view escrita às pressas |
+
+| Papel de banco | Quando | Alcança |
+|---|---|---|
+| `hamilton_owner` | só `migrate` (DDL exige) | tudo |
+| `hamilton_web` | **conexão da aplicação** e requisição anônima | login e sessão. Nada de clínico |
+| `hamilton_app` | `SET LOCAL ROLE` na requisição autenticada | domínio, filtrado pelo RLS |
+
+`hamilton_web` é `NOINHERIT`: pode *virar* `hamilton_app`, mas não *é*. É o que faz `RESET ROLE`
+— a fuga clássica de uma injeção de SQL — cair num papel sem permissão nenhuma no domínio.
+
+### Interface
+
+Bootstrap 5 por CDN, sem build nem pipeline de assets. Herda do original a **estrutura** que a
+ADR-004 manda portar (sidebar de ícones, header fixo, densidade alta) e **nada** da identidade
+visual da Allos — o produto não é dela.
+
+Duas decisões de interface que valem para as telas futuras:
+
+- **A tela declara o que não sabe** (ADR-012). O painel mostra "Faturamento do mês — depende do
+  financeiro (passo 4)" em vez de esconder o widget ou inventar número. Os módulos futuros
+  aparecem na barra lateral apagados, com o passo no tooltip.
+- **Não existe campo de dono em formulário nenhum.** `psicologo` é `editable=False` e vem do
+  contexto da requisição. Quem editar o HTML e injetar `psicologo=<id do outro>` não muda nada —
+  há teste provando.
+
+### Dívidas registradas
+
+| O quê | Onde |
+|---|---|
+| `full_clean()` no `save()` não existe; só o `ModelForm` valida | P-69 |
+| Escopo Python e Postgres podem divergir fora do middleware | P-68 |
+| `CASCADE` no dono × guarda de 5 anos do CFP | P-70 |
+| Transação por requisição × `StreamingHttpResponse` na exportação | P-71 |
+| Trilha de auditoria (F-05) não construída — pré-requisito do passo 3 | demandas.md §0 |
+| `/admin/` registrado é superfície de conferência do passo 0, não produto | `contas/admin.py` |
+
+---
+
 
 ## 0. Quem é o cliente — e quem não é
 
