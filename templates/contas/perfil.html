@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block titulo %}Meu perfil{% endblock %}
+{% block secao %}Meu perfil{% endblock %}
+
+{% block conteudo %}
+<h1 class="h5 mb-3">Meu perfil</h1>
+
+<form method="post" novalidate style="max-width:760px">
+  {% csrf_token %}
+  <div class="card mb-3">
+    <div class="card-header bg-white py-2 fw-semibold">Identificação</div>
+    <div class="card-body">
+      <div class="row g-3">
+        <div class="col-md-7">{% include "components/_campo.html" with campo=form.nome_completo %}</div>
+        <div class="col-md-5">{% include "components/_campo.html" with campo=form.email %}</div>
+        <div class="col-md-4">{% include "components/_campo.html" with campo=form.cpf %}</div>
+        <div class="col-md-4">{% include "components/_campo.html" with campo=form.telefone %}</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card mb-3">
+    <div class="card-header bg-white py-2 fw-semibold">Registro profissional</div>
+    <div class="card-body">
+      <div class="row g-3">
+        <div class="col-md-3">{% include "components/_campo.html" with campo=form.crp_regiao %}</div>
+        <div class="col-md-5">{% include "components/_campo.html" with campo=form.crp_numero %}</div>
+      </div>
+      {% comment %}
+      ADR-044: o CRP é obrigatório no formato, mas a verificação no cadastro do CFP ficou
+      adiada — e reversível. A tela declara a situação em vez de sugerir uma validação que o
+      sistema não faz.
+      {% endcomment %}
+      <div class="alert alert-light border mt-3 py-2 small mb-0">
+        Situação do registro: <strong>{{ user.get_situacao_registro_display }}</strong>.
+        O sistema guarda o CRP, mas ainda não consulta o cadastro do CFP — o número não é
+        verificado.
+      </div>
+    </div>
+  </div>
+
+  <div class="card mb-3">
+    <div class="card-header bg-white py-2 fw-semibold">Regime</div>
+    <div class="card-body">
+      <div class="row g-3">
+        <div class="col-md-4">{% include "components/_campo.html" with campo=form.regime %}</div>
+        <div class="col-md-4">{% include "components/_campo.html" with campo=form.cnpj %}</div>
+        <div class="col-md-4">{% include "components/_campo.html" with campo=form.crp_empresa %}</div>
+      </div>
+    </div>
+  </div>
+
+  <button type="submit" class="btn btn-primary">Salvar</button>
+</form>
+{% endblock %}

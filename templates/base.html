@@ -1,0 +1,77 @@
+{% comment %}
+Layout base. Herda do Hamilton original a **estrutura** que a ADR-004 manda portar — sidebar de
+ícones, header fixo, densidade alta — e nada da identidade visual da Allos: este produto não é
+dela, e o `claude.md` é explícito nisso.
+
+Bootstrap puro, via CDN. Sem build, sem pipeline de assets, sem framework de front. É MVP: o que
+importa é a tela existir e não mentir, não o CSS ser autoral.
+{% endcomment %}
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block titulo %}Hamilton{% endblock %} · Hamilton</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+  <style>
+    :root { --barra: 60px; --topo: 52px; --tinta: #1f6f68; }
+    body { background: #f6f7f9; font-size: .9rem; padding-top: var(--topo); }
+    .btn-primary, .bg-primary { background-color: var(--tinta) !important; border-color: var(--tinta) !important; }
+    .btn-outline-primary { color: var(--tinta); border-color: var(--tinta); }
+    .btn-outline-primary:hover { background-color: var(--tinta); border-color: var(--tinta); }
+    a { color: var(--tinta); }
+    .text-primary { color: var(--tinta) !important; }
+
+    .topo { position: fixed; top: 0; left: 0; right: 0; height: var(--topo); z-index: 1030;
+            background: #fff; border-bottom: 1px solid #dee2e6; }
+    .barra { position: fixed; top: var(--topo); left: 0; width: var(--barra);
+             height: calc(100vh - var(--topo)); background: #fff; border-right: 1px solid #dee2e6;
+             display: flex; flex-direction: column; align-items: center; padding: 8px 0; gap: 2px; z-index: 1020; }
+    .barra a, .barra button { display: flex; align-items: center; justify-content: center;
+             width: 40px; height: 40px; border-radius: 10px; color: #6c757d; font-size: 1.15rem;
+             text-decoration: none; border: 0; background: transparent; }
+    .barra a:hover, .barra button:hover { background: #eef2f1; color: var(--tinta); }
+    .barra a.ativo { background: var(--tinta); color: #fff; }
+    .barra .adiado { opacity: .35; cursor: not-allowed; }
+    .barra .separador { width: 24px; height: 1px; background: #dee2e6; margin: 6px 0; }
+    .barra .espaco { flex: 1; }
+    .conteudo { margin-left: var(--barra); padding: 1.25rem 1.5rem 3rem; }
+    .card { border-color: #e4e7ea; }
+    .table > :not(caption) > * > * { padding: .5rem .6rem; }
+    .rotulo { font-size: .72rem; text-transform: uppercase; letter-spacing: .04em; color: #8a9299; }
+    @media (max-width: 768px) { .conteudo { margin-left: 0; padding: 1rem; } .barra { display: none; } }
+  </style>
+</head>
+<body>
+
+<header class="topo d-flex align-items-center px-3">
+  <a href="{% url 'painel' %}" class="fw-semibold text-decoration-none me-3" style="color: var(--tinta)">
+    <i class="bi bi-clipboard2-pulse"></i> Hamilton
+  </a>
+  <span class="text-muted small d-none d-md-inline">{% block secao %}{% endblock %}</span>
+  <div class="ms-auto d-flex align-items-center gap-2">
+    {% if user.is_authenticated %}
+      <a href="{% url 'contas:perfil' %}" class="text-decoration-none small text-muted">
+        {{ user.nome_completo }} <span class="text-black-50">· CRP {{ user.crp }}</span>
+      </a>
+    {% endif %}
+  </div>
+</header>
+
+{% if user.is_authenticated %}{% include "components/_barra.html" %}{% endif %}
+
+<main class="conteudo">
+  {% if messages %}
+    {% for m in messages %}
+      <div class="alert alert-{{ m.tags|default:'info' }} alert-dismissible fade show py-2" role="alert">
+        {{ m }}<button type="button" class="btn-close btn-sm" data-bs-dismiss="alert"></button>
+      </div>
+    {% endfor %}
+  {% endif %}
+  {% block conteudo %}{% endblock %}
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

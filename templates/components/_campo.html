@@ -1,0 +1,7 @@
+{% comment %}Um campo de formulário com rótulo, erro e ajuda. Evita repetir isso 15 vezes.{% endcomment %}
+<label class="form-label small mb-1" for="{{ campo.id_for_label }}">
+  {{ campo.label }}{% if campo.field.required %} <span class="text-danger">*</span>{% endif %}
+</label>
+{{ campo }}
+{% if campo.help_text %}<div class="form-text small">{{ campo.help_text }}</div>{% endif %}
+{% for erro in campo.errors %}<div class="text-danger small">{{ erro }}</div>{% endfor %}

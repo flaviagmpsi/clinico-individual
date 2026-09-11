@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% block titulo %}Pacientes{% endblock %}
+{% block secao %}Pacientes{% endblock %}
+
+{% block conteudo %}
+<div class="d-flex align-items-center mb-3">
+  <h1 class="h5 mb-0">Pacientes <span class="text-muted fw-normal">({{ page_obj.paginator.count|default:pacientes|length }})</span></h1>
+  <a href="{% url 'pacientes:novo' %}" class="btn btn-primary btn-sm ms-auto">
+    <i class="bi bi-plus-lg"></i> Novo paciente</a>
+</div>
+
+<form method="get" class="mb-3">
+  <div class="input-group input-group-sm" style="max-width:420px">
+    <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
+    <input type="search" name="q" value="{{ busca }}" class="form-control"
+           placeholder="Buscar por nome, CPF ou e-mail">
+    {% if busca %}<a href="{% url 'pacientes:lista' %}" class="btn btn-outline-secondary">Limpar</a>{% endif %}
+    <button class="btn btn-outline-primary">Buscar</button>
+  </div>
+</form>
+
+{% if pacientes %}
+<div class="card">
+  <div class="table-responsive">
+    <table class="table table-sm table-hover align-middle mb-0">
+      <thead class="table-light">
+        <tr>
+          <th>Nome</th><th>CPF</th><th>Idade</th><th>Telefone</th>
+          <th>1ª sessão</th><th class="text-end">Ações</th>
+        </tr>
+      </thead>
+      <tbody>
+      {% for p in pacientes %}
+        <tr>
+          <td><a href="{% url 'pacientes:detalhe' p.pk %}" class="text-decoration-none fw-medium">{{ p.nome }}</a></td>
+          <td class="text-muted">{{ p.cpf|default:"—" }}</td>
+          <td class="text-muted">{{ p.idade|default:"—" }}</td>
+          <td class="text-muted">{{ p.telefone|default:"—" }}</td>
+          <td class="text-muted">{{ p.data_primeira_sessao|date:"d/m/Y"|default:"—" }}</td>
+          <td class="text-end">
+            <a href="{% url 'pacientes:editar' p.pk %}" class="btn btn-sm btn-link p-0 me-2" title="Editar">
+              <i class="bi bi-pencil"></i></a>
+            <a href="{% url 'pacientes:excluir' p.pk %}" class="btn btn-sm btn-link p-0 text-danger" title="Excluir">
+              <i class="bi bi-trash"></i></a>
+          </td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% if is_paginated %}
+<nav class="mt-3"><ul class="pagination pagination-sm mb-0">
+  {% if page_obj.has_previous %}
+    <li class="page-item"><a class="page-link" href="?q={{ busca }}&page={{ page_obj.previous_page_number }}">Anterior</a></li>
+  {% endif %}
+  <li class="page-item disabled"><span class="page-link">
+    {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span></li>
+  {% if page_obj.has_next %}
+    <li class="page-item"><a class="page-link" href="?q={{ busca }}&page={{ page_obj.next_page_number }}">Próxima</a></li>
+  {% endif %}
+</ul></nav>
+{% endif %}
+
+{% else %}
+<div class="card"><div class="card-body text-center text-muted py-5">
+  {% if busca %}
+    Nenhum paciente encontrado para <strong>{{ busca }}</strong>.
+  {% else %}
+    <p class="mb-2">Nenhum paciente cadastrado.</p>
+    <a href="{% url 'pacientes:novo' %}" class="btn btn-primary btn-sm">Cadastrar o primeiro</a>
+  {% endif %}
+</div></div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+{% block titulo %}{{ paciente.nome }}{% endblock %}
+{% block secao %}Pacientes{% endblock %}
+
+{% block conteudo %}
+<div class="d-flex align-items-center mb-3">
+  <div>
+    <h1 class="h5 mb-0">{{ paciente.nome }}</h1>
+    <div class="text-muted small">
+      {% if paciente.idade %}{{ paciente.idade }} anos · {% endif %}
+      cadastrado em {{ paciente.criado_em|date:"d/m/Y" }}
+    </div>
+  </div>
+  <div class="ms-auto">
+    <a href="{% url 'pacientes:editar' paciente.pk %}" class="btn btn-sm btn-outline-primary">
+      <i class="bi bi-pencil"></i> Editar</a>
+    <a href="{% url 'pacientes:lista' %}" class="btn btn-sm btn-outline-secondary">Voltar</a>
+  </div>
+</div>
+
+{% if not paciente.cpf %}
+  <div class="alert alert-warning py-2 small">
+    <i class="bi bi-exclamation-triangle"></i>
+    Sem CPF. Aceito hoje (quem nasceu antes de 2018 pode não ter), mas o recibo pelo Receita
+    Saúde vai exigir. Fica registrado para quando a saída fiscal existir.
+  </div>
+{% endif %}
+
+<div class="row g-3">
+  <div class="col-lg-5">
+    <div class="card">
+      <div class="card-header bg-white py-2 fw-semibold">Cadastro</div>
+      <div class="card-body py-2">
+        <dl class="row mb-0 small">
+          <dt class="col-5 fw-normal text-muted py-1">CPF</dt>
+          <dd class="col-7 py-1">{{ paciente.cpf|default:"—" }}</dd>
+          <dt class="col-5 fw-normal text-muted py-1">Nascimento</dt>
+          <dd class="col-7 py-1">{{ paciente.data_nascimento|date:"d/m/Y"|default:"—" }}</dd>
+          <dt class="col-5 fw-normal text-muted py-1">Telefone</dt>
+          <dd class="col-7 py-1">{{ paciente.telefone|default:"—" }}</dd>
+          <dt class="col-5 fw-normal text-muted py-1">E-mail</dt>
+          <dd class="col-7 py-1">{{ paciente.email|default:"—" }}</dd>
+          <dt class="col-5 fw-normal text-muted py-1">Endereço</dt>
+          <dd class="col-7 py-1">{{ paciente.endereco|default:"—" }}</dd>
+          <dt class="col-5 fw-normal text-muted py-1">1ª sessão</dt>
+          <dd class="col-7 py-1">{{ paciente.data_primeira_sessao|date:"d/m/Y"|default:"—" }}</dd>
+        </dl>
+      </div>
+    </div>
+
+    {% if paciente.medicamento or paciente.observacoes %}
+    <div class="card mt-3">
+      <div class="card-header bg-white py-2 fw-semibold">Notas</div>
+      <div class="card-body py-2 small">
+        {% if paciente.medicamento %}
+          <div class="rotulo">Medicamento em uso</div>
+          <p class="mb-2">{{ paciente.medicamento|linebreaksbr }}</p>
+        {% endif %}
+        {% if paciente.observacoes %}
+          <div class="rotulo">Observações</div>
+          <p class="mb-0">{{ paciente.observacoes|linebreaksbr }}</p>
+        {% endif %}
+      </div>
+    </div>
+    {% endif %}
+  </div>
+
+  <div class="col-lg-7">
+    {% comment %}
+    As abas que o original tem e este passo ainda não: mostradas desabilitadas, com o passo que
+    as constrói. Some do caminho, mas não some da vista — quem abre a ficha entende que o
+    prontuário vem aqui, e não que o produto esqueceu dele.
+    {% endcomment %}
+    <ul class="nav nav-tabs">
+      <li class="nav-item"><a class="nav-link active" href="#">Cadastro</a></li>
+      <li class="nav-item"><span class="nav-link disabled" title="passo 2">Consultas</span></li>
+      <li class="nav-item"><span class="nav-link disabled" title="passo 3">Prontuários</span></li>
+      <li class="nav-item"><span class="nav-link disabled" title="passo 4">Financeiro</span></li>
+    </ul>
+    <div class="card border-top-0 rounded-top-0">
+      <div class="card-body">
+        <div class="text-muted small">
+          <p class="mb-2">O histórico deste paciente aparece aqui conforme os módulos chegam:</p>
+          <ul class="mb-2">
+            <li><strong>Consultas</strong> (passo 2) — data, hora, duração e comparecimento.
+                É a consulta <em>realizada</em> que dispara o prontuário pendente (ADR-023).</li>
+            <li><strong>Prontuários</strong> (passo 3) — um por paciente, por sessão. Versão
+                congelada na confirmação, com trilha de auditoria (ADR-005).</li>
+            <li><strong>Financeiro</strong> (passo 4) — cobranças e baixas, com saldo. O valor
+                acordado pertence ao <em>Caso</em>, não ao paciente (ADR-026).</li>
+          </ul>
+          <p class="mb-0">
+            <a href="{% url 'pacientes:excluir' paciente.pk %}" class="text-danger text-decoration-none">
+              <i class="bi bi-trash"></i> Excluir este paciente</a>
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

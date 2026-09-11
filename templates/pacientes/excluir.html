@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block titulo %}Excluir paciente{% endblock %}
+{% block secao %}Pacientes{% endblock %}
+
+{% block conteudo %}
+<div class="card mx-auto" style="max-width:560px">
+  <div class="card-body">
+    <h1 class="h6">Excluir {{ paciente.nome }}?</h1>
+    <p class="small text-muted">
+      A exclusão é definitiva e não há lixeira. Hoje isso é aceitável porque o cadastro não tem
+      histórico clínico preso a ele — a partir do prontuário (passo 3) não será, porque a guarda
+      mínima é de 5 anos (Res. CFP 001/2009, Art. 4º), e este botão vira arquivamento.
+    </p>
+    <form method="post">
+      {% csrf_token %}
+      <button type="submit" class="btn btn-danger btn-sm">Excluir definitivamente</button>
+      <a href="{% url 'pacientes:detalhe' paciente.pk %}" class="btn btn-link btn-sm text-muted">Cancelar</a>
+    </form>
+  </div>
+</div>
+{% endblock %}

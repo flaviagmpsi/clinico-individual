@@ -1,0 +1,31 @@
+{% comment %}
+Navegação. Os módulos que ainda não existem aparecem **apagados**, com o passo que os constrói
+no tooltip — em vez de sumirem ou de levarem a uma tela vazia. É a ADR-012 aplicada à navegação:
+mostrar a forma do produto e declarar o que ainda não está pronto vale mais que esconder.
+{% endcomment %}
+<nav class="barra">
+  <a href="{% url 'painel' %}" title="Painel"
+     class="{% if request.resolver_match.url_name == 'painel' %}ativo{% endif %}">
+    <i class="bi bi-speedometer2"></i></a>
+  <a href="{% url 'pacientes:lista' %}" title="Pacientes"
+     class="{% if request.resolver_match.app_name == 'pacientes' %}ativo{% endif %}">
+    <i class="bi bi-people"></i></a>
+
+  <div class="separador"></div>
+
+  <span class="adiado" title="Agenda — passo 2"><i class="bi bi-calendar-week"></i></span>
+  <span class="adiado" title="Consultas — passo 2"><i class="bi bi-clipboard-check"></i></span>
+  <span class="adiado" title="Prontuários — passo 3"><i class="bi bi-journal-medical"></i></span>
+  <span class="adiado" title="Financeiro — passo 4"><i class="bi bi-cash-stack"></i></span>
+  <span class="adiado" title="Documentos — passo 5"><i class="bi bi-file-earmark-text"></i></span>
+
+  <div class="espaco"></div>
+
+  <a href="{% url 'contas:perfil' %}" title="Meu perfil"
+     class="{% if request.resolver_match.url_name == 'perfil' %}ativo{% endif %}">
+    <i class="bi bi-person-gear"></i></a>
+  <form action="{% url 'contas:sair' %}" method="post" class="m-0">
+    {% csrf_token %}
+    <button type="submit" title="Sair"><i class="bi bi-box-arrow-right"></i></button>
+  </form>
+</nav>
