@@ -7,8 +7,17 @@ from dotenv import load_dotenv
 BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR / ".env")
 
-SECRET_KEY = os.getenv("SECRET_KEY", "inseguro-apenas-para-desenvolvimento")
 DEBUG = os.getenv("DEBUG", "False") == "True"
+
+SECRET_KEY = os.getenv("SECRET_KEY", "")
+if not SECRET_KEY:
+    # Sem o `raise`, uma variável de ambiente esquecida no Render subia a aplicação com uma
+    # chave que está no repositório — e quem conhece a chave assina cookie de sessão e token
+    # de recuperação de senha de qualquer psicólogo. Falhar no arranque é barulhento; o padrão
+    # inseguro era silencioso.
+    if not DEBUG:
+        raise RuntimeError("SECRET_KEY não definida. A aplicação não sobe sem ela.")
+    SECRET_KEY = "inseguro-apenas-para-desenvolvimento-nao-use-com-DEBUG=False"
 ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
 
 INSTALLED_APPS = [
@@ -66,8 +75,9 @@ DATABASES = {
     )
 }
 
-# ⚠️ O RLS depende de a aplicação **não** conectar como dono das tabelas, ou de
-# `FORCE ROW LEVEL SECURITY` estar ligado (core/rls.py trata disso). Ver ADR-001.
+# ⚠️ A `DATABASE_URL` da aplicação aponta para `hamilton_web`, que **não** tem BYPASSRLS.
+# O papel dono fica reservado às migrações, numa URL separada. `core/checks.py` recusa o
+# arranque se esta regra for violada com DEBUG=False. Ver ADR-001 e ADR-046.
 
 AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
@@ -89,6 +99,10 @@ STORAGES = {
 }
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+LOGIN_URL = "contas:entrar"
+LOGIN_REDIRECT_URL = "painel"
+LOGOUT_REDIRECT_URL = "contas:entrar"
 
 if not DEBUG:
     SECURE_SSL_REDIRECT = True

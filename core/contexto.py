@@ -37,7 +37,8 @@ def exigir() -> int:
         raise EscopoNaoDefinido(
             "Consulta a dado de domínio sem escopo de psicólogo definido. "
             "Use `core.contexto.como(psicologo_id)` ou deixe o middleware defini-lo. "
-            "Se a intenção é realmente ignorar o dono, use `.sem_escopo()` e explique por quê."
+            "Se a intenção é realmente ignorar o dono, use o manager `objetos_todos` "
+            "e explique por quê — ele é deliberado e visível na revisão de código."
         )
     return psicologo_id
 

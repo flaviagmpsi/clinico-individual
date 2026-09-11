@@ -5,7 +5,7 @@ Postgres e protege contra **tudo o mais**: `.raw()`, `cursor.execute()`, shell d
 uma view nova escrita às pressas. Se a policy está no lugar, a linha do outro psicólogo não
 volta — nem que a consulta peça.
 
-Duas armadilhas que tornam RLS inútil se ignoradas, e por isso estão tratadas aqui:
+Três armadilhas que tornam RLS inútil se ignoradas, e por isso estão tratadas aqui:
 
 1. **O dono da tabela ignora RLS por padrão.** No Neon, a aplicação costuma conectar com o
    papel que criou as tabelas. Sem `FORCE ROW LEVEL SECURITY`, a policy existe e não vale
@@ -13,15 +13,26 @@ Duas armadilhas que tornam RLS inútil se ignoradas, e por isso estão tratadas 
 
 2. **A variável de sessão vaza pelo pool** (I-01). Resolvido em `core/db.py` usando
    `set_config(..., is_local => true)`, que o Postgres descarta ao fim da transação.
+
+3. **A policy vale para quem?** Uma policy sem `TO` vale para todos os papéis, inclusive o
+   que precisa ler a tabela *antes* de existir um psicólogo autenticado — é o caso do login,
+   que consulta `contas_psicologo` sem saber ainda quem é o dono. Por isso as policies aqui
+   são **endereçadas a papéis** (ADR-046).
 """
 
 VARIAVEL_SESSAO = "hamilton.psicologo_id"
 
+PAPEL_APLICACAO = "hamilton_app"
+PAPEL_WEB = "hamilton_web"
+
 _NOME_POLICY = "isolamento_por_psicologo"
+_NOME_POLICY_AUTENTICACAO = "autenticacao"
+
+_DONO_DA_SESSAO = f"NULLIF(current_setting('{VARIAVEL_SESSAO}', true), '')::bigint"
 
 
 def ativar_rls(tabela: str, coluna_dono: str = "psicologo_id") -> str:
-    """SQL que tranca uma tabela ao dono da sessão.
+    """SQL que tranca uma tabela de domínio ao dono da sessão.
 
     O `current_setting(..., true)` usa `missing_ok = true` para devolver NULL em vez de erro
     quando a variável não foi definida. NULL faz a comparação falhar e a policy não devolver
@@ -33,14 +44,45 @@ def ativar_rls(tabela: str, coluna_dono: str = "psicologo_id") -> str:
 
         DROP POLICY IF EXISTS {_NOME_POLICY} ON {tabela};
         CREATE POLICY {_NOME_POLICY} ON {tabela}
-            USING ({coluna_dono} = NULLIF(current_setting('{VARIAVEL_SESSAO}', true), '')::bigint)
-            WITH CHECK ({coluna_dono} = NULLIF(current_setting('{VARIAVEL_SESSAO}', true), '')::bigint);
+            USING ({coluna_dono} = {_DONO_DA_SESSAO})
+            WITH CHECK ({coluna_dono} = {_DONO_DA_SESSAO});
+    """
+
+
+def ativar_rls_no_tenant_raiz(tabela: str, coluna_id: str = "id") -> str:
+    """Tranca a tabela do próprio psicólogo — a única sem coluna de dono.
+
+    Ela *é* o dono, então a comparação é com a própria chave. Sem isto, a tabela que guarda
+    CPF, telefone e **hash de senha** de todos os assinantes ficava legível por qualquer
+    caminho que chegasse a SQL cru dentro de uma requisição autenticada.
+
+    A exceção endereçada a `hamilton_web` existe porque autenticar é, por definição, procurar
+    um usuário que ainda não se sabe qual é. Essa permissão é o preço do login — e o motivo
+    de `hamilton_web` não ter grant nenhum em tabela clínica: a superfície anônima do sistema
+    (login, cadastro, webhook) precisa do cadastro e de nada mais.
+    """
+    return f"""
+        ALTER TABLE {tabela} ENABLE ROW LEVEL SECURITY;
+        ALTER TABLE {tabela} FORCE ROW LEVEL SECURITY;
+
+        DROP POLICY IF EXISTS {_NOME_POLICY} ON {tabela};
+        CREATE POLICY {_NOME_POLICY} ON {tabela}
+            TO {PAPEL_APLICACAO}
+            USING ({coluna_id} = {_DONO_DA_SESSAO})
+            WITH CHECK ({coluna_id} = {_DONO_DA_SESSAO});
+
+        DROP POLICY IF EXISTS {_NOME_POLICY_AUTENTICACAO} ON {tabela};
+        CREATE POLICY {_NOME_POLICY_AUTENTICACAO} ON {tabela}
+            TO {PAPEL_WEB}
+            USING (true)
+            WITH CHECK (true);
     """
 
 
 def desativar_rls(tabela: str) -> str:
     """Reverso de `ativar_rls`, para a migração poder voltar atrás."""
     return f"""
+        DROP POLICY IF EXISTS {_NOME_POLICY_AUTENTICACAO} ON {tabela};
         DROP POLICY IF EXISTS {_NOME_POLICY} ON {tabela};
         ALTER TABLE {tabela} NO FORCE ROW LEVEL SECURITY;
         ALTER TABLE {tabela} DISABLE ROW LEVEL SECURITY;

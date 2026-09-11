@@ -42,9 +42,15 @@ class TenantOwnedModel(models.Model):
         # inteira de bug "salvei sem dono" e a de "salvei com o dono errado por copiar e colar".
         if self.psicologo_id is None:
             self.psicologo_id = contexto.exigir()
-        elif self.psicologo_id != contexto.atual() and contexto.atual() is not None:
+        elif self.psicologo_id != contexto.exigir():
             raise contexto.EscopoNaoDefinido(
                 f"Tentativa de gravar registro do psicólogo {self.psicologo_id} "
                 f"dentro do escopo do psicólogo {contexto.atual()}."
             )
         super().save(*args, **kwargs)
+
+    # `contexto.exigir()` em vez de comparar com `contexto.atual()` tolerando `None`: a versão
+    # anterior pulava a checagem exatamente quando não havia escopo — comando de management,
+    # tarefa agendada, shell —, que é onde não existe middleware para corrigir o engano. Gravar
+    # para outro psicólogo passava em silêncio. Quem precisa mesmo gravar fora de requisição
+    # declara para quem, com `contexto.como(psicologo_id)`.
