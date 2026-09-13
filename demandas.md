@@ -362,7 +362,7 @@ Não decida sozinho — são do Paulo. Estão em [perguntas.md](perguntas.md).
 | # | Bloqueia | Pergunta |
 |---|---|---|
 | P-68 | Qualquer comando de management ou tarefa que toque dado | Escopo Python e escopo Postgres podem divergir fora do middleware |
-| P-69 | Validação de qualquer model novo | `full_clean()` no `save()`: ligar ou não? Hoje só o `ModelForm` valida |
+| P-69 | Validação de qualquer model novo | ✅ Resolvida: `full_clean()` roda em todo `save()` — herde de `core.models.ValidaAoSalvar` ou de `TenantOwnedModel`, que já herda dele |
 | P-70 | `Caso`, e depois `Prontuario` | `CASCADE` no dono × guarda de 5 anos do CFP |
 | P-71 | Exportação de prontuário (passo 3) | Transação por requisição × `StreamingHttpResponse` |
 | P-46 | Recorrência (item 5 acima) | Tamanho da janela de materialização e quando empurrá-la |

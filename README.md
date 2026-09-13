@@ -116,8 +116,8 @@ DATABASE_URL="postgresql://hamilton_owner:ownerpass@127.0.0.1:5432/hamilton_dev"
   python manage.py test
 ```
 
-O runner precisa criar o banco de teste, então roda com o papel dono. São **54 testes**; três
-ficam `skip` de propósito, descrevendo o `full_clean()` no `save()` (decisão pendente, P-69).
+O runner precisa criar o banco de teste, então roda com o papel dono. São **54 testes**, e nenhum
+fica pulado: os três que descreviam o `full_clean()` no `save()` rodam desde a P-69.
 
 Vale saber o que a suíte cobre, porque não é o usual: 21 desses testes existem para **tentar
 atravessar** o isolamento — por SQL cru, por `RESET ROLE`, por id alheio na URL, por injeção de

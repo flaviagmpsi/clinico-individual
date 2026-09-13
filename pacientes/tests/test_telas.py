@@ -114,9 +114,10 @@ class Cadastro(BaseTelas):
         self.assertEqual(Paciente.objetos_todos.get(nome="Injetado").psicologo_id, self.ana.pk)
 
     def test_cpf_com_pontuacao_e_recusado_pelo_formulario(self):
-        """O `full_clean()` no `save()` não existe (P-69), então o ModelForm é quem valida."""
+        """O formulário mostra a mensagem do validador do model — o mesmo que o `save()` aplica
+        desde a P-69 em qualquer caminho de gravação."""
         self.entrar(self.ana)
         resposta = self.client.post(reverse("pacientes:novo"), {"nome": "X", "cpf": "111.111", "uf": ""})
         self.assertEqual(resposta.status_code, 200)
-        self.assertContains(resposta, "apenas números")
+        self.assertContains(resposta, "CPF tem 11 números")
         self.assertFalse(Paciente.objetos_todos.filter(nome="X").exists())

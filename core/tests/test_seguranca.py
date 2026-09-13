@@ -11,7 +11,6 @@ from django.contrib.auth import get_user_model
 from django.db import connection, transaction
 from django.db.utils import IntegrityError, ProgrammingError
 from django.http import HttpResponse
-from unittest import skip
 
 from django.test import Client, TestCase, TransactionTestCase, override_settings
 from django.urls import path
@@ -315,15 +314,15 @@ class CamadaDeAplicacaoAdversarial(BaseDoisPsicologos):
 # ===========================================================================
 
 
-@skip("Vermelho de propósito: depende do full_clean() no save(), decisão da rodada 2 (P-69).")
+
 class ValidacaoDoCadastro(TestCase):
     """`claude.md` §6 manda `full_clean()` no `save()` "para que a regra valha independentemente
-    de onde o dado entra". Nenhum model do projeto faz isso — os validadores só rodam em
-    `ModelForm`, e não há formulário nenhum ainda.
+    de onde o dado entra". Até a P-69, nenhum model fazia isso — os validadores só rodavam em
+    `ModelForm`, e um shell ou comando de management gravava qualquer coisa.
 
-    Estes três testes descrevem o comportamento **desejado**. Ficam pulados, e não apagados,
-    porque a decisão de ligar `full_clean()` tem custo (toda gravação passa a validar) e é do
-    usuário. No dia em que ela for tomada, tirar o `skip` é o trabalho todo.
+    Estes três testes descreviam o comportamento **desejado** e ficaram pulados até a P-69 ser
+    resolvida. Hoje `core.models.ValidaAoSalvar` roda `full_clean()` em toda gravação, e eles
+    guardam a regra: se alguém desligar a validação, voltam a falhar.
     """
 
     def test_cpf_com_pontuacao_e_recusado(self):

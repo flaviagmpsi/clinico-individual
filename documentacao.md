@@ -9,7 +9,7 @@ Registro da evolução e da arquitetura do projeto. Atualizado a cada rodada de 
 > Para saber **o que falta construir**, o documento é [demandas.md](demandas.md). Este aqui
 > registra o que existe e por quê.
 
-**54 testes verdes contra PostgreSQL real.** 3 pulados de propósito (dependem de P-69).
+**54 testes verdes contra PostgreSQL real, nenhum pulado.** Os 3 que dependiam da P-69 rodam desde que ela foi resolvida.
 
 ### Apps que existem
 
@@ -62,7 +62,7 @@ Duas decisões de interface que valem para as telas futuras:
 
 | O quê | Onde |
 |---|---|
-| `full_clean()` no `save()` não existe; só o `ModelForm` valida | P-69 |
+| ✅ ~~`full_clean()` no `save()` não existe; só o `ModelForm` valida~~ — resolvido por `core.models.ValidaAoSalvar` | P-69 |
 | Escopo Python e Postgres podem divergir fora do middleware | P-68 |
 | `CASCADE` no dono × guarda de 5 anos do CFP | P-70 |
 | Transação por requisição × `StreamingHttpResponse` na exportação | P-71 |

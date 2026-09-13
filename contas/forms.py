@@ -1,8 +1,9 @@
-"""Formulários de conta. Aqui é onde os validadores do model finalmente rodam.
+"""Formulários de conta.
 
-Enquanto o `full_clean()` no `save()` não for decidido (P-69), o `ModelForm` é o **único** lugar
-que aplica os `RegexValidator` de CPF, telefone e CRP. Por isso todo caminho de entrada de dado
-do produto passa por um formulário — não por conveniência, por ser a validação que existe.
+Desde a P-69 os validadores do model rodam em **toda** gravação (`core.models.ValidaAoSalvar`),
+não só aqui. O formulário continua sendo o lugar de validação com mensagem amigável ao usuário;
+o model é a garantia de que nenhum outro caminho — shell, comando de management, view futura —
+grava dado fora do formato.
 """
 
 from django import forms

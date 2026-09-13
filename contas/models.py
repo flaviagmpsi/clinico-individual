@@ -11,6 +11,8 @@ from django.contrib.auth.models import AbstractUser, UserManager as DjangoUserMa
 from django.core.validators import RegexValidator
 from django.db import models
 
+from core.models import ValidaAoSalvar
+
 
 class PsicologoManager(DjangoUserManager):
     """Login por e-mail. `AbstractUser` assume `username`, e aqui não há username."""
@@ -37,8 +39,17 @@ class PsicologoManager(DjangoUserManager):
 
 validar_apenas_digitos = RegexValidator(r"^\d+$", "Informe apenas números, sem pontos ou traços.")
 
+# Formato exato. `^\d+$` aceitava CPF "1" — `max_length` limita o teto, não o piso (P-69).
+cpf_valido = RegexValidator(r"^\d{11}$", "CPF tem 11 números, sem pontos ou traços.")
+telefone_valido = RegexValidator(r"^\d{10,11}$", "Telefone com DDD: 10 ou 11 números, sem espaços ou traços.")
+regiao_crp_valida = RegexValidator(r"^\d{2}$", "A região do CRP tem 2 números, como 04.")
+cnpj_valido = RegexValidator(r"^(\d{14})?$", "CNPJ tem 14 números, sem pontos, barra ou traço.")
 
-class Psicologo(AbstractUser):
+
+class Psicologo(ValidaAoSalvar, AbstractUser):
+    """`ValidaAoSalvar` vem **antes** de `AbstractUser` na herança de propósito: a validação tem
+    de rodar antes do `save()` do usuário, que já grava no banco."""
+
     class Regime(models.TextChoices):
         PF = "PF", "Pessoa física"
         PJ = "PJ", "Pessoa jurídica"
@@ -56,12 +67,12 @@ class Psicologo(AbstractUser):
     email = models.EmailField("E-mail", unique=True)
 
     nome_completo = models.CharField("Nome completo", max_length=255)
-    cpf = models.CharField("CPF", max_length=11, unique=True, validators=[validar_apenas_digitos])
-    telefone = models.CharField("Telefone", max_length=20, validators=[validar_apenas_digitos])
+    cpf = models.CharField("CPF", max_length=11, unique=True, validators=[cpf_valido])
+    telefone = models.CharField("Telefone", max_length=20, validators=[telefone_valido])
 
     # CRP em duas partes, e não em texto livre: a região é filtro e agrupamento em
     # relatório, e um campo único obrigaria a fatiar string em toda consulta (ADR-044).
-    crp_regiao = models.CharField("Região do CRP", max_length=2, validators=[validar_apenas_digitos])
+    crp_regiao = models.CharField("Região do CRP", max_length=2, validators=[regiao_crp_valida])
     crp_numero = models.CharField("Número do CRP", max_length=15, validators=[validar_apenas_digitos])
 
     situacao_registro = models.CharField(
@@ -73,7 +84,7 @@ class Psicologo(AbstractUser):
     verificado_em = models.DateTimeField("Verificado em", null=True, blank=True)
 
     regime = models.CharField("Regime", max_length=2, choices=Regime.choices, default=Regime.PF)
-    cnpj = models.CharField("CNPJ", max_length=14, blank=True, validators=[validar_apenas_digitos])
+    cnpj = models.CharField("CNPJ", max_length=14, blank=True, validators=[cnpj_valido])
     crp_empresa = models.CharField("CRP da empresa", max_length=20, blank=True)
 
     USERNAME_FIELD = "email"

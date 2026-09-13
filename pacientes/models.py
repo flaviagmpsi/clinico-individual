@@ -15,7 +15,11 @@ from django.db import models
 
 from core.models import TenantOwnedModel
 
-apenas_digitos = RegexValidator(r"^\d*$", "Informe apenas números, sem pontos ou traços.")
+# Formato exato, e não só "dígitos": `^\d*$` aceitava CPF "1". Todos admitem vazio porque os
+# campos são opcionais (ADR-012) — o que se recusa é o preenchido errado.
+cpf_valido = RegexValidator(r"^(\d{11})?$", "CPF tem 11 números, sem pontos ou traços.")
+telefone_valido = RegexValidator(r"^(\d{10,11})?$", "Telefone com DDD: 10 ou 11 números, sem espaços ou traços.")
+cep_valido = RegexValidator(r"^(\d{8})?$", "CEP tem 8 números, sem traço.")
 
 
 class Paciente(TenantOwnedModel):
@@ -34,13 +38,13 @@ class Paciente(TenantOwnedModel):
 
     # Sem CPF é aceitável: quem nasceu antes de 2018 pode não ter (ADR-040 / P-34). A tela avisa,
     # não bloqueia — o CPF só vira obrigatório quando houver saída fiscal, que está fora do MVP.
-    cpf = models.CharField("CPF", max_length=11, blank=True, validators=[apenas_digitos])
+    cpf = models.CharField("CPF", max_length=11, blank=True, validators=[cpf_valido])
     data_nascimento = models.DateField("Data de nascimento", null=True, blank=True)
 
-    telefone = models.CharField("Telefone", max_length=20, blank=True, validators=[apenas_digitos])
+    telefone = models.CharField("Telefone", max_length=20, blank=True, validators=[telefone_valido])
     email = models.EmailField("E-mail", blank=True)
 
-    cep = models.CharField("CEP", max_length=8, blank=True, validators=[apenas_digitos])
+    cep = models.CharField("CEP", max_length=8, blank=True, validators=[cep_valido])
     logradouro = models.CharField("Logradouro", max_length=255, blank=True)
     numero = models.CharField("Número", max_length=20, blank=True)
     complemento = models.CharField("Complemento", max_length=100, blank=True)
