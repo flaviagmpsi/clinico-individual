@@ -100,27 +100,11 @@ class Paciente(TenantOwnedModel):
 
 
 def _exigir_mesmo_dono(registro, **relacionados) -> None:
-    """Recusa ligar registros de psicólogos diferentes.
+    """Movida para `core.models.exigir_mesmo_dono`, que os apps de agenda e atendimentos também usam.
+    Mantida aqui só como ponte, para não reescrever os `clean()` deste arquivo."""
+    from core.models import exigir_mesmo_dono
 
-    Não é redundante com o RLS, e a razão é sutil: a checagem de **chave estrangeira** do
-    Postgres ignora as policies. Um `INSERT` de participação apontando para o caso de outro
-    psicólogo passaria pelo banco se o id fosse adivinhado — a policy só olha o `psicologo_id`
-    da própria linha. Esta checagem roda no `full_clean()` que `ValidaAoSalvar` dispara em toda
-    gravação (P-69), e fecha a porta que o banco deixa aberta.
-    """
-    from core import contexto
-
-    # Durante a validação de um formulário o `psicologo_id` ainda está vazio — ele só é preenchido
-    # no `save()`. Comparar contra vazio acusaria "outro psicólogo" em todo cadastro legítimo, então
-    # nesse momento o dono é o escopo corrente. No `save()` o campo já existe e a checagem roda de novo.
-    dono = registro.psicologo_id or contexto.atual()
-    if dono is None:
-        return
-    for campo, outro in relacionados.items():
-        if outro is not None and outro.psicologo_id != dono:
-            # Erro geral, e não preso ao campo: se o campo não estiver no formulário, o Django
-            # transforma um erro de campo desconhecido em exceção — um 500 no lugar de uma recusa.
-            raise ValidationError(f"{campo}: registro de outro psicólogo.")
+    exigir_mesmo_dono(registro, **relacionados)
 
 
 class Caso(TenantOwnedModel):
@@ -190,6 +174,14 @@ class Caso(TenantOwnedModel):
         from datetime import date
 
         return self.condicoes.filter(vigente_desde__gt=date.today()).order_by("vigente_desde").first()
+
+    def regra_aberta(self):
+        """A regra de frequência ainda sem data de encerramento; `None` quando o atendimento é avulso (ADR-053).
+
+        Usa o nome reverso `recorrencias` em vez de importar `agenda`: `agenda` depende deste app, e o
+        caminho contrário criaria um ciclo (regra 5 de dependência).
+        """
+        return self.recorrencias.filter(fim__isnull=True).order_by("-inicio").first()
 
 
 class Participacao(TenantOwnedModel):

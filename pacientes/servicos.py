@@ -103,7 +103,16 @@ def excluir_paciente(paciente: Paciente) -> None:
         raise ValidationError(
             "Este paciente participa de um atendimento de casal ou família. "
             "Exclua esse atendimento antes de excluir o paciente.")
+    # Consulta realizada ou falta **é atendimento**: pela ADR-048, paciente com atendimento vai para a
+    # lixeira, que chega com o registro de desfecho. Até lá, a exclusão é recusada — nunca apagada em
+    # silêncio. Os estados vão como texto e pelo nome reverso `consultas`, sem importar `atendimentos`,
+    # que depende deste app (regra 5 de dependência).
+    if any(caso.consultas.filter(estado__in=["REALIZADA", "FALTA"]).exists() for caso in casos):
+        raise ValidationError(
+            "Este paciente já tem atendimento registrado e não pode ser apagado — o prontuário tem guarda "
+            "obrigatória. A lixeira chega junto com o registro de alta e desistência.")
     for caso in casos:
+        caso.consultas.all().delete()  # restam só agendadas e canceladas: previsão, não atendimento
         caso.delete()
     paciente.delete()
 

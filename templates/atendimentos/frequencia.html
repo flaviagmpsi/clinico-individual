@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block titulo %}Frequência · {{ caso }}{% endblock %}
+{% block secao %}{% if individual %}Pacientes{% else %}Agenda{% endif %}{% endblock %}
+
+{% block conteudo %}
+<div class="d-flex align-items-center mb-3">
+  <h1 class="h5 mb-0">Frequência de atendimento <span class="text-muted fw-normal">· {{ caso }}</span></h1>
+  {% if individual %}
+    <a href="{% url 'pacientes:detalhe' paciente.pk %}" class="btn btn-sm btn-outline-secondary ms-auto">Cancelar</a>
+  {% else %}
+    <a href="{% url 'pacientes:caso' caso.pk %}" class="btn btn-sm btn-outline-secondary ms-auto">Cancelar</a>
+  {% endif %}
+</div>
+
+<div class="alert alert-light border py-2 small" style="max-width:720px">
+  Hoje: <strong>{% if regra %}{{ regra }}{% else %}avulso — nenhuma sessão prevista{% endif %}</strong>.
+  Uma mudança vale <strong>desta data em diante</strong>: sessões já registradas e as remarcadas à mão não são tocadas.
+</div>
+
+<form method="post" novalidate style="max-width:720px">
+  {% csrf_token %}
+  {% if form.non_field_errors %}
+    <div class="alert alert-danger py-2 small">{{ form.non_field_errors }}</div>
+  {% endif %}
+  <div class="card mb-3">
+    <div class="card-body">
+      {% for opcao in form.frequencia %}
+        <div class="form-check">{{ opcao.tag }}
+          <label class="form-check-label" for="{{ opcao.id_for_label }}">{{ opcao.choice_label }}</label></div>
+      {% endfor %}
+      <div class="row g-3 mt-1">
+        <div class="col-md-3">{% include "components/_campo.html" with campo=form.dia_semana %}</div>
+        <div class="col-md-3">{% include "components/_campo.html" with campo=form.hora %}</div>
+        <div class="col-md-3">{% include "components/_campo.html" with campo=form.duracao %}</div>
+        <div class="col-md-3">{% include "components/_campo.html" with campo=form.a_partir_de %}</div>
+      </div>
+      <div class="form-text small mt-2">No avulso, dia, horário e duração são ignorados: cada consulta é marcada à parte.</div>
+    </div>
+  </div>
+  <button type="submit" class="btn btn-primary">Salvar</button>
+</form>
+{% endblock %}

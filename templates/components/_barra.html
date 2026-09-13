@@ -13,8 +13,9 @@ mostrar a forma do produto e declarar o que ainda não está pronto vale mais qu
 
   <div class="separador"></div>
 
-  <span class="adiado" title="Agenda — passo 2"><i class="bi bi-calendar-week"></i></span>
-  <span class="adiado" title="Consultas — passo 2"><i class="bi bi-clipboard-check"></i></span>
+  <a href="{% url 'atendimentos:agenda' %}" title="Agenda"
+     class="{% if request.resolver_match.app_name == 'atendimentos' %}ativo{% endif %}">
+    <i class="bi bi-calendar-week"></i></a>
   <span class="adiado" title="Prontuários — passo 3"><i class="bi bi-journal-medical"></i></span>
   <span class="adiado" title="Financeiro — passo 4"><i class="bi bi-cash-stack"></i></span>
   <span class="adiado" title="Documentos — passo 5"><i class="bi bi-file-earmark-text"></i></span>

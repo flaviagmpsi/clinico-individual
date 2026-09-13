@@ -79,6 +79,13 @@
               </div>
             {% endif %}{% endwith %}
           </dd>
+          <dt class="col-5 fw-normal text-muted py-1">Frequência</dt>
+          <dd class="col-7 py-1">
+            {% if caso %}{% with regra=caso.regra_aberta %}
+              {% if regra %}{{ regra }}{% else %}Avulso{% endif %}
+              <a href="{% url 'atendimentos:frequencia' caso.pk %}" class="small text-decoration-none ms-1">alterar</a>
+            {% endwith %}{% else %}—{% endif %}
+          </dd>
           <dt class="col-5 fw-normal text-muted py-1">Quem paga</dt>
           <dd class="col-7 py-1">
             {% if not caso %}—

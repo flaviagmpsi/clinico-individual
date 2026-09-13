@@ -8,6 +8,7 @@ urlpatterns = [
     path("", Painel.as_view(), name="painel"),
     path("pacientes/", include("pacientes.urls")),
     path("conta/", include("contas.urls")),
+    path("agenda/", include("atendimentos.urls")),
 
     # ⚠️ Precisa vir **antes** de `admin/`: o logout do admin apaga a linha da sessão durante a
     # view, e `hamilton_app` não alcança `django_session` desde a ADR-046. Esta rota entrega a

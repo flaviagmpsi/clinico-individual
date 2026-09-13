@@ -20,18 +20,20 @@ correu 27 rodadas antes da primeira linha de código, de propósito.
 
 ## ⚡ Onde o código está hoje
 
-**Passos 0 e 1 concluídos, e o `Caso` do passo 2.** Rodando, com 108 testes verdes contra PostgreSQL real.
+**Passos 0 e 1 concluídos; do passo 2, o `Caso` e a primeira parte da agenda.** Rodando, com 154 testes verdes contra PostgreSQL real.
 
 | App | Situação | O que existe |
 |---|---|---|
 | `core` | 🟢 no ar | Isolamento em três camadas, três papéis de banco, middleware, painel |
 | `contas` | 🟠 parcial | Model do psicólogo, login, logout, tela de perfil com padrões de atendimento (C-03), herdados no cadastro (C-04) |
 | `pacientes` | 🟠 parcial | Cadastro; `Caso` individual (em silêncio) e de casal; pagador; responsável legal; cobrança com vigência. Falta P-08, que depende de prontuário |
-| `agenda` `atendimentos` `prontuarios` `documentos` `financeiro` `assinaturas` `indicadores` | ⚪ | **Nem o app existe.** Nenhum `startapp` foi rodado |
+| `agenda` `atendimentos` | 🟠 parcial | Frequência semanal, quinzenal ou avulso; previsão de 8 semanas; consulta avulsa; remarcação; colisão; registro do que aconteceu; pendência no painel. Falta presença por participante, desfecho e grade de horários |
+| `prontuarios` `documentos` `financeiro` `assinaturas` `indicadores` | ⚪ | **Nem o app existe.** Nenhum `startapp` foi rodado |
 
-**O próximo passo é o 2: `agenda` + `atendimentos`.** A consulta é a âncora de tudo o mais —
-o prontuário pende dela (ADR-016) e a cobrança também (ADR-023). Nada depois do passo 2 deve
-começar antes dele.
+**O próximo passo é terminar o 2:** presença por participante no casal (T-03), desfecho de alta e
+desistência (T-05) e grade de horários (A-09, A-10). A consulta é a âncora de tudo o mais — o
+prontuário pende dela (ADR-016) e a cobrança também (ADR-023). Nada depois do passo 2 deve começar
+antes dele.
 
 ### Antes de escrever a primeira linha, entenda a fundação
 
@@ -157,21 +159,21 @@ em atendimento de casal. Ver **P-70**, resolvida em parte.
 ---
 
 ## 3. Agenda — app `agenda`
-**Código: ⚪ nada. O app não existe** — nenhum `startapp agenda` foi rodado. **É o próximo passo.**
+**Código: 🟠 parcial.** No ar: a regra de frequência com início e fim (A-01), a previsão de 8 semanas gerada ao abrir a agenda (A-02), a remarcação de uma sessão só, que a regra não desfaz depois (A-03, A-04), a troca "desta data em diante" (A-05), hora e duração (A-06) e a colisão que bloqueia — inclusive contra sessões que a regra ainda não gerou (A-07, A-08). Falta a grade de horários (A-09, A-10). Google Agenda depois (ADR-051).
 
 
 > Como **psicólogo**, meu atendimento é fixo quase sempre, mas vez ou outra remarca.
 
 | # | História | Camada | Estado | Código | ADR |
 |---|---|---|---|---|---|
-| A-01 | Frequência por caso: **semanal**, **quinzenal** (semana sim, semana não, com âncora) ou **avulso** (sem sessão prevista) | 🎨🗄️ | ✅ | ⚪ | ADR-022, ADR-053 |
-| A-02 | Consultas materializadas em janela contínua à frente, empurrada ao abrir a agenda | ⚙️ | ✅ | ⚪ | ADR-022 |
-| A-03 | Remarcação avulsa: altera **só aquela** ocorrência; a regra não é tocada | 🎨⚙️ | ✅ | ⚪ | ADR-022 |
-| A-04 | A ocorrência remarcada **lembra que foi alterada à mão** e não é sobrescrita por mudança futura na regra | 🗄️ | ✅ | ⚪ | ADR-022 |
-| A-05 | Alterar a regra oferece **"só esta"** e **"esta e as próximas"**. "Todas" não existe | 🎨 | ✅ | ⚪ | ADR-022 |
-| A-06 | Consulta tem data, **hora e duração** (o original só tem data) | 🗄️ | ✅ | ⚪ | ADR-023 |
-| A-07 | Colisão de horário **bloqueia** a marcação | ⚙️ | ✅ | ⚪ | ADR-024 |
-| A-08 | Casal não dispara colisão: é uma consulta com dois participantes | ⚙️ | ✅ | ⚪ | ADR-026 |
+| A-01 | Frequência por caso: **semanal**, **quinzenal** (semana sim, semana não, com âncora) ou **avulso** (sem sessão prevista) | 🎨🗄️ | ✅ | 🟢 | ADR-022, ADR-053 |
+| A-02 | Consultas materializadas em janela contínua à frente, empurrada ao abrir a agenda | ⚙️ | ✅ | 🟢 | ADR-022 |
+| A-03 | Remarcação avulsa: altera **só aquela** ocorrência; a regra não é tocada | 🎨⚙️ | ✅ | 🟢 | ADR-022 |
+| A-04 | A ocorrência remarcada **lembra que foi alterada à mão** e não é sobrescrita por mudança futura na regra | 🗄️ | ✅ | 🟢 | ADR-022 |
+| A-05 | Alterar a regra oferece **"só esta"** e **"esta e as próximas"**. "Todas" não existe | 🎨 | ✅ | 🟢 | ADR-022 |
+| A-06 | Consulta tem data, **hora e duração** (o original só tem data) | 🗄️ | ✅ | 🟢 | ADR-023 |
+| A-07 | Colisão de horário **bloqueia** a marcação | ⚙️ | ✅ | 🟢 | ADR-024 |
+| A-08 | Casal não dispara colisão: é uma consulta com dois participantes | ⚙️ | ✅ | 🟢 | ADR-026 |
 | A-09 | Grade de horários declarada pelo psicólogo, com ocupação **derivada** — sem manutenção dupla | 🎨⚙️ | ✅ | ⚪ | ADR-029 |
 | A-10 | Tela de horários como mapa da semana: o que está ocupado, por quem, e o que sobrou | 🎨 | ✅ | ⚪ | ADR-029 |
 | A-11 | Férias, feriados e pausas em bloco | — | ⏸️ | ⚪ | P-47 |
@@ -191,15 +193,15 @@ Exige verificação do Google, de 4 a 6 semanas, e sem ela o produto trava em 10
 ---
 
 ## 4. Atendimentos — app `atendimentos`
-**Código: ⚪ nada. O app não existe.** Passo 2, junto com `agenda`.
+**Código: 🟠 parcial.** No ar: os estados da consulta (T-01) e o `contabilizada` independente, com o padrão do perfil (T-02). O sistema nunca registra sozinho: consulta passada sem registro vira pendência no painel (ADR-052). T-04 está pronto do lado da consulta — os disparos passam a existir quando houver prontuário e financeiro. Falta presença por participante (T-03) e desfecho (T-05).
 
 
 | # | História | Camada | Estado | Código | ADR |
 |---|---|---|---|---|---|
-| T-01 | Consulta com estado: `AGENDADA`, `REALIZADA`, `FALTA`, `CANCELADA` | 🗄️ | ✅ | ⚪ | ADR-022 |
-| T-02 | Campo `contabilizada`, **independente** do estado, com padrão vindo do perfil | 🎨🗄️ | ✅ | ⚪ | ADR-023 |
+| T-01 | Consulta com estado: `AGENDADA`, `REALIZADA`, `FALTA`, `CANCELADA` | 🗄️ | ✅ | 🟢 | ADR-022 |
+| T-02 | Campo `contabilizada`, **independente** do estado, com padrão vindo do perfil | 🎨🗄️ | ✅ | 🟢 | ADR-023 |
 | T-03 | Presença registrada **por participante** — num casal, um pode faltar e o outro não | 🗄️ | ✅ | ⚪ | ADR-026 |
-| T-04 | `REALIZADA` dispara **prontuário pendente**; `contabilizada` dispara **conta a receber** | ⚙️ | ✅ | ⚪ | ADR-016, ADR-023 |
+| T-04 | `REALIZADA` dispara **prontuário pendente**; `contabilizada` dispara **conta a receber** | ⚙️ | ✅ | 🟠 | ADR-016, ADR-023 |
 | T-05 | Desfecho (alta ou desistência), com o número de sessões derivado, não perguntado | ⚙️🗄️ | ✅ | ⚪ | ADR-027 |
 
 ---

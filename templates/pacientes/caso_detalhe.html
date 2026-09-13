@@ -38,9 +38,13 @@
         {% if caso.pagador_nome %}
           <div class="mt-1">Quem paga: {{ caso.pagador_nome }}</div>
         {% endif %}
+        {% with regra=caso.regra_aberta %}
+          <div class="mt-1">Frequência: {% if regra %}{{ regra }}{% else %}avulso{% endif %}
+            · <a href="{% url 'atendimentos:frequencia' caso.pk %}" class="text-decoration-none">alterar</a></div>
+        {% endwith %}
         <div class="text-muted mt-2">
-          O valor é do casal ou da família, não de cada participante (ADR-026). A agenda e as
-          cobranças deste atendimento chegam com os módulos de agenda e financeiro.
+          O valor e a frequência são do casal ou da família, não de cada participante (ADR-026). As
+          cobranças deste atendimento chegam com o módulo financeiro.
         </div>
       </div>
     </div>

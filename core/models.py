@@ -83,3 +83,29 @@ class TenantOwnedModel(ValidaAoSalvar):
     # tarefa agendada, shell —, que é onde não existe middleware para corrigir o engano. Gravar
     # para outro psicólogo passava em silêncio. Quem precisa mesmo gravar fora de requisição
     # declara para quem, com `contexto.como(psicologo_id)`.
+
+
+def exigir_mesmo_dono(registro, **relacionados) -> None:
+    """Recusa ligar registros de psicólogos diferentes. Chamar no `clean()` de todo model com FK de domínio.
+
+    Não é redundante com o RLS, e a razão é sutil: a checagem de **chave estrangeira** do Postgres
+    ignora as policies. Um `INSERT` apontando para o caso de outro psicólogo passaria pelo banco se o
+    id fosse adivinhado — a policy só olha o `psicologo_id` da própria linha. Esta checagem roda no
+    `full_clean()` que `ValidaAoSalvar` dispara em toda gravação (P-69), e fecha a porta que o banco
+    deixa aberta.
+
+    Vive no `core` porque é genérica — compara donos, não conhece domínio — e todo app com relação
+    entre registros precisa dela.
+    """
+    from django.core.exceptions import ValidationError
+
+    # Durante a validação de um formulário o `psicologo_id` ainda está vazio: ele só é preenchido no
+    # `save()`. Nesse momento o dono é o escopo corrente; no `save()` a checagem roda de novo.
+    dono = registro.psicologo_id or contexto.atual()
+    if dono is None:
+        return
+    for campo, outro in relacionados.items():
+        if outro is not None and outro.psicologo_id != dono:
+            # Erro geral, e não preso ao campo: se o campo não estiver no formulário, o Django transforma
+            # um erro de campo desconhecido em exceção — um 500 no lugar de uma recusa.
+            raise ValidationError(f"{campo}: registro de outro psicólogo.")
