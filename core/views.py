@@ -14,7 +14,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.views.generic import TemplateView
 
 from atendimentos.servicos import consultas_sem_registro
-from pacientes.models import Paciente
+from pacientes.servicos import pacientes_ativos
 
 
 class Painel(LoginRequiredMixin, TemplateView):
@@ -24,7 +24,8 @@ class Painel(LoginRequiredMixin, TemplateView):
         contexto = super().get_context_data(**kwargs)
         hoje = date.today()
 
-        pacientes = Paciente.objects.all()
+        # ADR-027: o painel fala de quem está em atendimento. Encerrados ficam na lista própria (ADR-055).
+        pacientes = pacientes_ativos()
         contexto["total_pacientes"] = pacientes.count()
         contexto["novos_no_mes"] = pacientes.filter(
             criado_em__year=hoje.year, criado_em__month=hoje.month
@@ -45,8 +46,8 @@ class Painel(LoginRequiredMixin, TemplateView):
         ).order_by("data_primeira_sessao")[:5]
 
         contexto["pendentes"] = [
-            ("Agenda — segunda parte", "passo 2",
-             "Presença por participante no casal, alta e desistência, grade de horários."),
+            ("Lixeira de pacientes", "passo 2",
+             "Paciente com atendimento registrado ainda não pode ser excluído (ADR-048)."),
             ("Prontuário por IA", "passo 3", "A razão de o produto existir (ADR-005)."),
             ("Financeiro", "passo 4", "Depende de consulta contabilizada (ADR-023)."),
             ("Documentos", "passo 5", "Contrato, declaração e cópias emitidas (ADR-021)."),

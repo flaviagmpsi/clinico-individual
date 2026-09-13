@@ -38,10 +38,27 @@
         {% if caso.pagador_nome %}
           <div class="mt-1">Quem paga: {{ caso.pagador_nome }}</div>
         {% endif %}
-        {% with regra=caso.regra_aberta %}
-          <div class="mt-1">Frequência: {% if regra %}{{ regra }}{% else %}avulso{% endif %}
-            · <a href="{% url 'atendimentos:frequencia' caso.pk %}" class="text-decoration-none">alterar</a></div>
-        {% endwith %}
+        {% if desfecho %}
+          <div class="mt-1">
+            <span class="badge text-bg-secondary">Encerrado</span>
+            {{ desfecho.get_tipo_display }} em {{ desfecho.data|date:"d/m/Y" }}
+            {% with n=desfecho.sessoes_realizadas %}<span class="text-muted">· {{ n }} sess{{ n|pluralize:"ão,ões" }} realizada{{ n|pluralize }}</span>{% endwith %}
+            {% if desfecho.motivo %}<div class="text-muted">{{ desfecho.motivo|linebreaksbr }}</div>{% endif %}
+            <form method="post" action="{% url 'atendimentos:retomar' caso.pk %}" class="mt-1">
+              {% csrf_token %}
+              <button type="submit" class="btn btn-sm btn-outline-primary py-0">Retomar atendimento</button>
+            </form>
+          </div>
+        {% else %}
+          {% with regra=caso.regra_aberta %}
+            <div class="mt-1">Frequência: {% if regra %}{{ regra }}{% else %}avulso{% endif %}
+              · <a href="{% url 'atendimentos:frequencia' caso.pk %}" class="text-decoration-none">alterar</a></div>
+          {% endwith %}
+          <div class="mt-1"><a href="{% url 'atendimentos:desfecho' caso.pk %}" class="text-decoration-none">Registrar alta ou desistência</a></div>
+        {% endif %}
+        {% for d in desfechos_anteriores %}
+          <div class="text-muted">Antes: {{ d.get_tipo_display|lower }} em {{ d.data|date:"d/m/Y" }}, retomado em {{ d.retomado_em|date:"d/m/Y" }}</div>
+        {% endfor %}
         <div class="text-muted mt-2">
           O valor e a frequência são do casal ou da família, não de cada participante (ADR-026). As
           cobranças deste atendimento chegam com o módulo financeiro.

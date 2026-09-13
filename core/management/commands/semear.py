@@ -19,13 +19,15 @@ atendimento de casal cujos participantes têm também seus casos individuais.
 duas contas de porta aberta.
 """
 
-from datetime import date
+from datetime import date, time
 from decimal import Decimal
 
 from django.conf import settings
 from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 
+from agenda.models import HorarioDisponivel, Recorrencia
+from atendimentos.servicos import definir_frequencia, registrar_desfecho
 from contas.models import Psicologo
 from core import contexto
 from pacientes.models import CondicaoCobranca, Paciente, ResponsavelLegal
@@ -35,6 +37,8 @@ SENHA = "hamilton123"
 
 _POR_SESSAO = CondicaoCobranca.Modalidade.POR_SESSAO
 _MENSAL = CondicaoCobranca.Modalidade.MENSAL
+_SEMANAL = Recorrencia.Frequencia.SEMANAL
+_QUINZENAL = Recorrencia.Frequencia.QUINZENAL
 
 PSICOLOGOS = [
     {
@@ -69,6 +73,18 @@ PSICOLOGOS = [
                  data_primeira_sessao=date(2026, 9, 1)),
         ],
         "casais": [],
+        # Grade de segunda a quinta, manhã e fim de tarde (ADR-029). A quinzenal da Juliana ocupa metade
+        # da faixa dela; o Rafael no sábado aparece como "fora da grade" (ADR-056).
+        "grade": [(dia, 8, 12) for dia in range(4)] + [(dia, 14, 19) for dia in range(4)],
+        "frequencias": {
+            "Marcos Vieira": dict(frequencia=_SEMANAL, dia_semana=1, hora=time(14)),
+            "Juliana Alves": dict(frequencia=_QUINZENAL, dia_semana=3, hora=time(18)),
+            "Rafael Pinto": dict(frequencia=_SEMANAL, dia_semana=5, hora=time(9)),
+        },
+        # Beatriz desistiu antes de começar: exercita a aba "Encerrados" e o botão de retomar (ADR-055).
+        "desfechos": {
+            "Beatriz Nogueira": dict(tipo="DESISTENCIA", motivo="Não respondeu depois do primeiro contato."),
+        },
     },
     {
         "email": "bruno@exemplo.com", "nome_completo": "Bruno Carvalho", "cpf": "22222222222",
@@ -85,6 +101,10 @@ PSICOLOGOS = [
         # Camila e Pedro têm cada um o seu caso individual **e** este, juntos (ADR-026).
         "casais": [dict(descricao="Camila e Pedro — casal",
                         pacientes=["Camila Duarte", "Pedro Henrique Sá"])],
+        # Sem grade declarada: nenhum aviso de "fora da grade" aparece para o Bruno (ADR-056).
+        "frequencias": {
+            "Camila e Pedro — casal": dict(frequencia=_SEMANAL, dia_semana=0, hora=time(19)),
+        },
     },
 ]
 
@@ -117,6 +137,9 @@ class Command(BaseCommand):
             dados = dict(modelo)
             pacientes = dados.pop("pacientes")
             casais = dados.pop("casais")
+            grade = dados.pop("grade", [])
+            frequencias = dados.pop("frequencias", {})
+            desfechos = dados.pop("desfechos", {})
             psicologo = Psicologo.objects.create_user(
                 password=SENHA, telefone="31988887777", crp_regiao="04",
                 # `is_staff`/`is_superuser` só para o `/admin/` continuar servindo de conferência
@@ -125,6 +148,7 @@ class Command(BaseCommand):
             )
             with contexto.como(psicologo.pk):
                 por_nome = {}
+                casos = {}  # por nome do paciente, ou pela descrição do casal
                 for item in pacientes:
                     campos = dict(item)
                     cobranca = campos.pop("cobranca", {})
@@ -141,10 +165,18 @@ class Command(BaseCommand):
                         caso.pagador_cpf = pagador.get("cpf", "")
                         caso.save()
                     por_nome[paciente.nome] = paciente
+                    casos[paciente.nome] = caso
 
                 for casal in casais:
-                    criar_caso_coletivo([por_nome[nome] for nome in casal["pacientes"]],
-                                        descricao=casal["descricao"])
+                    casos[casal["descricao"]] = criar_caso_coletivo(
+                        [por_nome[nome] for nome in casal["pacientes"]], descricao=casal["descricao"])
+
+                for dia, de, ate in grade:
+                    HorarioDisponivel.objects.create(dia_semana=dia, inicio=time(de), fim=time(ate))
+                for nome, regra in frequencias.items():
+                    definir_frequencia(casos[nome], **regra)
+                for nome, desfecho in desfechos.items():
+                    registrar_desfecho(casos[nome], **desfecho)
 
             self.stdout.write(self.style.SUCCESS(
                 f"  {psicologo.email}  senha: {SENHA}  ({len(pacientes)} pacientes, "

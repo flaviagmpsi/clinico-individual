@@ -11,6 +11,9 @@ Três garantias moram neste módulo, cada uma com sua ADR:
   ocorrências que a regra **ainda não gerou**, que o model não enxerga. Sem isso, uma consulta avulsa
   marcada daqui a cinco meses passaria por cima de uma sessão semanal fora da janela.
 - **O sistema nunca registra sozinho** (ADR-052): consulta passada sem registro é pendência.
+
+E o fim do atendimento: o **desfecho** fecha a agenda do caso, e **retomar** reabre (ADR-049, ADR-055).
+Atendimento encerrado não aceita frequência, consulta nem remarcação.
 """
 
 from datetime import date, datetime, time, timedelta
@@ -21,7 +24,7 @@ from django.db.models import Q
 from django.utils import timezone
 
 from agenda.models import Recorrencia
-from atendimentos.models import Consulta
+from atendimentos.models import Consulta, Desfecho
 from core import contexto
 from pacientes.models import Caso
 
@@ -161,6 +164,7 @@ def definir_frequencia(
     Avulso não cria regra: encerra a vigente e deixa de prever sessões. Se a regra nova colidir com
     outra sessão, nada é gravado — nem o encerramento da anterior.
     """
+    _recusar_encerrado(caso)
     hoje = hoje or timezone.localdate()
     a_partir_de = a_partir_de or hoje
     if a_partir_de < hoje:
@@ -188,6 +192,7 @@ def definir_frequencia(
 @transaction.atomic
 def marcar_avulsa(caso: Caso, *, inicio: datetime, duracao: int | None = None) -> Consulta:
     """Consulta fora de regra: do paciente avulso, ou uma sessão extra de quem tem frequência."""
+    _recusar_encerrado(caso)
     duracao = duracao or _psicologo().duracao_sessao
     _recusar_sessao_prevista(inicio, duracao)
     return Consulta.objects.create(caso=caso, inicio=inicio, duracao=duracao)
@@ -198,6 +203,7 @@ def remarcar(consulta: Consulta, *, inicio: datetime, duracao: int | None = None
     """Muda só esta sessão. Se ela veio de uma regra, fica marcada para a regra não desfazer (ADR-022)."""
     if consulta.estado != _AGENDADA:
         raise ValidationError("Só consulta ainda agendada pode ser remarcada.")
+    _recusar_encerrado(consulta.caso)
     duracao = duracao or consulta.duracao
     _recusar_sessao_prevista(inicio, duracao)
     consulta.inicio = inicio
@@ -239,6 +245,67 @@ def registrar(
     consulta.registrada_em = agora
     consulta.save()
     return consulta
+
+
+def _recusar_encerrado(caso: Caso) -> None:
+    desfecho = caso.desfecho_aberto()
+    if desfecho is not None:
+        raise ValidationError(
+            f"Este atendimento está encerrado ({desfecho.get_tipo_display().lower()} em {desfecho.data:%d/%m/%Y}). "
+            "Retome-o antes de marcar sessões.")
+
+
+@transaction.atomic
+def registrar_desfecho(
+    caso: Caso,
+    *,
+    tipo: str,
+    iniciativa: str = "",
+    motivo: str = "",
+    data: date | None = None,
+    agora: datetime | None = None,
+) -> Desfecho:
+    """Encerra o atendimento (ADR-049, ADR-055).
+
+    A frequência termina hoje e saem as consultas futuras ainda agendadas — todas, inclusive remarcadas e
+    avulsas: o atendimento acabou, não há sessão a proteger. **O passado fica**, inclusive a consulta
+    passada sem registro, que continua pendência: o desfecho não registra nada no lugar do psicólogo (ADR-052).
+
+    Na desistência e na interrupção a iniciativa decorre do tipo; em alta e encaminhamento, é informada.
+    """
+    agora = agora or timezone.now()
+    hoje = timezone.localdate(agora)
+    data = data or hoje
+    if data > hoje:
+        raise ValidationError("O desfecho se registra quando acontece — a data não pode estar no futuro.")
+    if caso.desfecho_aberto() is not None:
+        raise ValidationError("Este atendimento já está encerrado.")
+
+    # Gravado antes de mexer na agenda: se o registro for inválido, nada foi apagado.
+    desfecho = Desfecho.objects.create(
+        caso=caso, tipo=tipo, iniciativa=iniciativa or Desfecho.INICIATIVA_DO_TIPO.get(tipo, ""),
+        motivo=motivo, data=data)
+
+    caso.consultas.filter(estado=_AGENDADA, inicio__gt=agora).delete()
+    for regra in caso.recorrencias.filter(Q(fim__isnull=True) | Q(fim__gt=hoje)):
+        if regra.inicio > hoje and not regra.consultas.exists():
+            regra.delete()  # nunca chegou a valer
+        else:
+            regra.fim = max(hoje, regra.inicio)
+            regra.save()
+    return desfecho
+
+
+@transaction.atomic
+def retomar(caso: Caso, *, hoje: date | None = None) -> Desfecho:
+    """O paciente voltou: reabre **o mesmo** atendimento (ADR-055). A frequência nova é definida em seguida."""
+    hoje = hoje or timezone.localdate()
+    desfecho = caso.desfecho_aberto()
+    if desfecho is None:
+        raise ValidationError("Este atendimento não está encerrado.")
+    desfecho.retomado_em = max(hoje, desfecho.data)
+    desfecho.save(update_fields=["retomado_em"])
+    return desfecho
 
 
 def consultas_sem_registro(agora: datetime | None = None):

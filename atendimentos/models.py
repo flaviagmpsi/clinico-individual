@@ -118,3 +118,79 @@ class Consulta(TenantOwnedModel):
                 raise ValidationError(
                     f"Horário ocupado: já existe consulta de {outra.caso} às {outra.inicio:%H:%M} "
                     f"de {outra.inicio:%d/%m}.")
+
+
+class Desfecho(TenantOwnedModel):
+    """Como um atendimento terminou (ADR-049) — e, se o paciente voltou, quando (ADR-055).
+
+    Do **caso**, não do paciente: num casal, o desfecho é do atendimento inteiro. Um caso pode ter vários
+    ao longo dos anos — alta, retorno, nova alta —, mas só um **em aberto**, que é o que faz o atendimento
+    contar como encerrado.
+
+    O **momento** da desistência não é perguntado: `sessoes_realizadas` conta (ADR-027).
+    """
+
+    class Tipo(models.TextChoices):
+        ALTA = "ALTA", "Alta"
+        DESISTENCIA = "DESISTENCIA", "Desistência"
+        ENCAMINHAMENTO = "ENCAMINHAMENTO", "Encaminhamento"
+        INTERRUPCAO = "INTERRUPCAO", "Interrupção pelo psicólogo"
+
+    class Iniciativa(models.TextChoices):
+        PACIENTE = "PACIENTE", "Do paciente"
+        PSICOLOGO = "PSICOLOGO", "Do psicólogo"
+
+    # Os dois tipos que já dizem de quem partiu. Alta e encaminhamento podem vir de qualquer lado.
+    INICIATIVA_DO_TIPO = {Tipo.DESISTENCIA: Iniciativa.PACIENTE, Tipo.INTERRUPCAO: Iniciativa.PSICOLOGO}
+
+    # `PROTECT`: o desfecho é histórico que a análise usa (ADR-027) — sai só por decisão explícita.
+    caso = models.ForeignKey(Caso, on_delete=models.PROTECT, related_name="desfechos")
+    tipo = models.CharField("Desfecho", max_length=15, choices=Tipo.choices)
+    iniciativa = models.CharField("Iniciativa", max_length=10, choices=Iniciativa.choices)
+    data = models.DateField("Data")
+    motivo = models.TextField("Motivo", blank=True)
+    retomado_em = models.DateField("Retomado em", null=True, blank=True)
+
+    class Meta:
+        verbose_name = "Desfecho"
+        verbose_name_plural = "Desfechos"
+        ordering = ["-data", "-criado_em"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["caso"], condition=models.Q(retomado_em__isnull=True), name="um_desfecho_em_aberto_por_caso"),
+            models.CheckConstraint(
+                condition=models.Q(retomado_em__isnull=True) | models.Q(retomado_em__gte=models.F("data")),
+                name="retomada_nao_antes_do_desfecho"),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.get_tipo_display()} em {self.data:%d/%m/%Y} · {self.caso}"
+
+    def clean(self):
+        super().clean()
+        exigir_mesmo_dono(self, caso=self.caso if self.caso_id else None)
+        esperada = self.INICIATIVA_DO_TIPO.get(self.tipo)
+        if esperada and self.iniciativa and self.iniciativa != esperada:
+            raise ValidationError({"iniciativa": f"{self.get_tipo_display()} é sempre "
+                                                 f"{self.Iniciativa(esperada).label.lower()}."})
+
+    @property
+    def sessoes_realizadas(self) -> int:
+        """Sessões realizadas até o desfecho, contadas desde a última retomada — o "momento" (ADR-027)."""
+        from datetime import datetime, time
+
+        from django.utils import timezone
+
+        def meia_noite(dia):
+            return timezone.make_aware(datetime.combine(dia, time.min))
+
+        consultas = self.caso.consultas.filter(estado=Consulta.Estado.REALIZADA,
+                                               inicio__lt=meia_noite(self.data + timedelta(days=1)))
+        retomada = (
+            self.caso.desfechos.exclude(pk=self.pk)
+            .filter(retomado_em__isnull=False, retomado_em__lte=self.data)
+            .order_by("-retomado_em").first()
+        )
+        if retomada:
+            consultas = consultas.filter(inicio__gte=meia_noite(retomada.retomado_em))
+        return consultas.count()

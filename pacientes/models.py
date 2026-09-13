@@ -183,6 +183,17 @@ class Caso(TenantOwnedModel):
         """
         return self.recorrencias.filter(fim__isnull=True).order_by("-inicio").first()
 
+    def desfecho_aberto(self):
+        """O desfecho ainda não retomado — é o que faz o atendimento contar como encerrado (ADR-055).
+
+        `None` enquanto o atendimento está em curso. Nome reverso `desfechos`, pelo mesmo motivo de `regra_aberta`.
+        """
+        return self.desfechos.filter(retomado_em__isnull=True).first()
+
+    def desfechos_anteriores(self):
+        """Os desfechos já retomados — o histórico de idas e vindas, do mais recente ao mais antigo."""
+        return self.desfechos.filter(retomado_em__isnull=False).order_by("-data")
+
 
 class Participacao(TenantOwnedModel):
     """Um paciente dentro de um caso.

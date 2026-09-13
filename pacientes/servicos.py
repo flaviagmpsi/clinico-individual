@@ -85,14 +85,22 @@ def caso_individual_de(paciente: Paciente) -> Caso | None:
     return None
 
 
+def _tem_atendimento(caso: Caso) -> bool:
+    """Consulta realizada ou falta, ou um desfecho registrado, **é atendimento** (ADR-048, ADR-049).
+
+    Estados como texto e nomes reversos (`consultas`, `desfechos`), sem importar `atendimentos`, que
+    depende deste app (regra 5 de dependência).
+    """
+    return caso.consultas.filter(estado__in=["REALIZADA", "FALTA"]).exists() or caso.desfechos.exists()
+
+
 @transaction.atomic
 def excluir_paciente(paciente: Paciente) -> None:
-    """Exclusão de verdade — a regra para cadastro feito por engano.
+    """Exclusão de verdade — a regra para cadastro feito por engano (ADR-048).
 
-    Decidido na rodada atual: paciente **sem atendimento** é apagado de fato; paciente **com**
-    atendimento vai para a lixeira. Mas "atendimento" ainda não existe no código, então, pela
-    própria regra, todo paciente de hoje é um cadastro sem atendimento. A lixeira entra junto
-    com o módulo de atendimentos.
+    Paciente **sem atendimento** é apagado de fato. Paciente **com** atendimento é recusado: pela ADR-048
+    ele iria para a lixeira, que ainda não existe — e até ela existir, recusar é o lado certo do erro. O
+    caminho para tirá-lo da lista de ativos é registrar o desfecho (ADR-055).
 
     Leva junto o caso individual dele — sem isso, o `PROTECT` do pagador impediria a exclusão de
     qualquer paciente, já que todo paciente paga o próprio caso. **Recusa** se ele participa de
@@ -103,18 +111,59 @@ def excluir_paciente(paciente: Paciente) -> None:
         raise ValidationError(
             "Este paciente participa de um atendimento de casal ou família. "
             "Exclua esse atendimento antes de excluir o paciente.")
-    # Consulta realizada ou falta **é atendimento**: pela ADR-048, paciente com atendimento vai para a
-    # lixeira, que chega com o registro de desfecho. Até lá, a exclusão é recusada — nunca apagada em
-    # silêncio. Os estados vão como texto e pelo nome reverso `consultas`, sem importar `atendimentos`,
-    # que depende deste app (regra 5 de dependência).
-    if any(caso.consultas.filter(estado__in=["REALIZADA", "FALTA"]).exists() for caso in casos):
+    if any(_tem_atendimento(caso) for caso in casos):
         raise ValidationError(
             "Este paciente já tem atendimento registrado e não pode ser apagado — o prontuário tem guarda "
-            "obrigatória. A lixeira chega junto com o registro de alta e desistência.")
+            "obrigatória. Para tirá-lo da lista de ativos, registre o desfecho do atendimento.")
     for caso in casos:
         caso.consultas.all().delete()  # restam só agendadas e canceladas: previsão, não atendimento
         caso.delete()
     paciente.delete()
+
+
+@transaction.atomic
+def excluir_caso_coletivo(caso: Caso) -> None:
+    """Desfaz um atendimento de casal ou família criado por engano. Os casos individuais não são tocados.
+
+    Mesma regra do paciente: com atendimento registrado, recusa. Sem isso, o `PROTECT` das consultas
+    transformaria a exclusão de um casal com sessões agendadas num erro de servidor.
+    """
+    if caso.individual:
+        raise ValidationError("O atendimento individual acompanha o paciente e sai junto com ele.")
+    if _tem_atendimento(caso):
+        raise ValidationError(
+            "Este atendimento já tem sessão registrada e não pode ser apagado — o prontuário tem guarda "
+            "obrigatória. Para encerrá-lo, registre o desfecho.")
+    caso.consultas.all().delete()
+    caso.delete()
+
+
+def casos_encerrados():
+    """Casos com desfecho em aberto (ADR-055).
+
+    As duas condições no **mesmo** `filter`, para falarem da mesma linha de desfecho. `retomado_em__isnull`
+    sozinho casaria também com o caso que nunca teve desfecho nenhum, pelo `LEFT JOIN`.
+    """
+    return Caso.objects.filter(desfechos__data__isnull=False, desfechos__retomado_em__isnull=True)
+
+
+def pacientes_encerrados():
+    """Quem tem atendimento encerrado e **nenhum** em curso. Continua no histórico — nunca é apagado por isso (ADR-048).
+
+    Definido pelo encerramento, e não pela falta de atendimento em curso: um cadastro sem caso nenhum — que o
+    produto não produz, mas um import ou o admin podem — não termina escondido na aba de encerrados.
+    """
+    encerrados = casos_encerrados().values("pk")
+    em_curso = Caso.objects.exclude(pk__in=encerrados)
+    return (
+        Paciente.objects.filter(pk__in=Participacao.objects.filter(caso__in=encerrados).values("paciente"))
+        .exclude(pk__in=Participacao.objects.filter(caso__in=em_curso).values("paciente"))
+    )
+
+
+def pacientes_ativos():
+    """Todo paciente que não está encerrado. Terminou o individual e segue no casal: continua ativo."""
+    return Paciente.objects.exclude(pk__in=pacientes_encerrados().values("pk"))
 
 
 def primeiro_dia_do_mes_seguinte(hoje: date | None = None) -> date:

@@ -31,17 +31,30 @@ from pacientes.forms import (
     ResponsavelLegalForm,
 )
 from pacientes.models import Caso, Paciente, ResponsavelLegal
-from pacientes.servicos import cadastrar_paciente, caso_individual_de, criar_caso_coletivo, excluir_paciente
+from pacientes.servicos import (
+    cadastrar_paciente,
+    caso_individual_de,
+    criar_caso_coletivo,
+    excluir_caso_coletivo,
+    excluir_paciente,
+    pacientes_ativos,
+    pacientes_encerrados,
+)
 
 
 class ListaPacientes(LoginRequiredMixin, ListView):
+    """Em atendimento ou encerrados (ADR-055). Encerrado não é apagado: só sai da lista padrão."""
+
     model = Paciente
     template_name = "pacientes/lista.html"
     context_object_name = "pacientes"
     paginate_by = 25
 
+    def situacao(self) -> str:
+        return "encerrados" if self.request.GET.get("situacao") == "encerrados" else "ativos"
+
     def get_queryset(self):
-        pacientes = super().get_queryset()
+        pacientes = pacientes_encerrados() if self.situacao() == "encerrados" else pacientes_ativos()
         busca = self.request.GET.get("q", "").strip()
         if busca:
             pacientes = pacientes.filter(
@@ -51,7 +64,8 @@ class ListaPacientes(LoginRequiredMixin, ListView):
 
     def get_context_data(self, **kwargs):
         contexto = super().get_context_data(**kwargs)
-        contexto["busca"] = self.request.GET.get("q", "")
+        contexto.update(busca=self.request.GET.get("q", ""), situacao=self.situacao(),
+                        total_ativos=pacientes_ativos().count(), total_encerrados=pacientes_encerrados().count())
         return contexto
 
 
@@ -66,6 +80,8 @@ class DetalhePaciente(LoginRequiredMixin, DetailView):
         caso = caso_individual_de(paciente)
         contexto["caso"] = caso
         contexto["condicao"] = caso.condicao_vigente() if caso else None
+        contexto["desfecho"] = caso.desfecho_aberto() if caso else None
+        contexto["desfechos_anteriores"] = caso.desfechos_anteriores() if caso else []
         contexto["responsaveis"] = paciente.responsaveis.all()
         # `annotate` **antes** do `filter`: na ordem inversa o Django reaproveitaria o mesmo join do
         # filtro e contaria só a participação deste paciente — todo caso pareceria individual.
@@ -272,11 +288,13 @@ class DetalheCaso(LoginRequiredMixin, DetailView):
         contexto = super().get_context_data(**kwargs)
         contexto["participantes"] = self.object.pacientes.all()
         contexto["condicao"] = self.object.condicao_vigente()
+        contexto["desfecho"] = self.object.desfecho_aberto()
+        contexto["desfechos_anteriores"] = self.object.desfechos_anteriores()
         return contexto
 
 
 class ExcluirCasoColetivo(LoginRequiredMixin, DeleteView):
-    """Desfaz um atendimento coletivo. Os casos individuais dos participantes não são tocados."""
+    """Desfaz um atendimento coletivo. A regra está em `servicos.excluir_caso_coletivo`."""
 
     model = Caso
     template_name = "pacientes/caso_excluir.html"
@@ -291,6 +309,10 @@ class ExcluirCasoColetivo(LoginRequiredMixin, DeleteView):
 
     def form_valid(self, form):
         descricao = str(self.object)
-        self.object.delete()
+        try:
+            excluir_caso_coletivo(self.object)
+        except ValidationError as erro:
+            messages.error(self.request, erro.messages[0])
+            return redirect("pacientes:caso", pk=self.object.pk)
         messages.success(self.request, f"Atendimento {descricao} excluído.")
         return redirect(self.success_url)

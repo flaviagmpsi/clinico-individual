@@ -9,12 +9,21 @@
     <i class="bi bi-plus-lg"></i> Novo paciente</a>
 </div>
 
+{% comment %}ADR-055: encerrado não some — sai da lista padrão e fica numa aba própria.{% endcomment %}
+<ul class="nav nav-pills small mb-3">
+  <li class="nav-item"><a class="nav-link py-1{% if situacao == 'ativos' %} active{% endif %}"
+      href="{% url 'pacientes:lista' %}">Em atendimento ({{ total_ativos }})</a></li>
+  <li class="nav-item"><a class="nav-link py-1{% if situacao == 'encerrados' %} active{% endif %}"
+      href="{% url 'pacientes:lista' %}?situacao=encerrados">Encerrados ({{ total_encerrados }})</a></li>
+</ul>
+
 <form method="get" class="mb-3">
+  {% if situacao == 'encerrados' %}<input type="hidden" name="situacao" value="encerrados">{% endif %}
   <div class="input-group input-group-sm" style="max-width:420px">
     <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
     <input type="search" name="q" value="{{ busca }}" class="form-control"
            placeholder="Buscar por nome, CPF ou e-mail">
-    {% if busca %}<a href="{% url 'pacientes:lista' %}" class="btn btn-outline-secondary">Limpar</a>{% endif %}
+    {% if busca %}<a href="{% url 'pacientes:lista' %}{% if situacao == 'encerrados' %}?situacao=encerrados{% endif %}" class="btn btn-outline-secondary">Limpar</a>{% endif %}
     <button class="btn btn-outline-primary">Buscar</button>
   </div>
 </form>
@@ -53,12 +62,12 @@
 {% if is_paginated %}
 <nav class="mt-3"><ul class="pagination pagination-sm mb-0">
   {% if page_obj.has_previous %}
-    <li class="page-item"><a class="page-link" href="?q={{ busca }}&page={{ page_obj.previous_page_number }}">Anterior</a></li>
+    <li class="page-item"><a class="page-link" href="?situacao={{ situacao }}&q={{ busca }}&page={{ page_obj.previous_page_number }}">Anterior</a></li>
   {% endif %}
   <li class="page-item disabled"><span class="page-link">
     {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span></li>
   {% if page_obj.has_next %}
-    <li class="page-item"><a class="page-link" href="?q={{ busca }}&page={{ page_obj.next_page_number }}">Próxima</a></li>
+    <li class="page-item"><a class="page-link" href="?situacao={{ situacao }}&q={{ busca }}&page={{ page_obj.next_page_number }}">Próxima</a></li>
   {% endif %}
 </ul></nav>
 {% endif %}
@@ -67,6 +76,8 @@
 <div class="card"><div class="card-body text-center text-muted py-5">
   {% if busca %}
     Nenhum paciente encontrado para <strong>{{ busca }}</strong>.
+  {% elif situacao == 'encerrados' %}
+    Nenhum atendimento encerrado.
   {% else %}
     <p class="mb-2">Nenhum paciente cadastrado.</p>
     <a href="{% url 'pacientes:novo' %}" class="btn btn-primary btn-sm">Cadastrar o primeiro</a>

@@ -122,7 +122,14 @@ atendimentos — Maria em terapia individual e Maria no casal são o mesmo cadas
 | Cobrança | `contabilizada` (bool) | verdadeiro → **conta a receber** |
 
 A independência é o que cobre falta cobrada (cobrança sem prontuário) e sessão de cortesia
-(prontuário sem cobrança). Presença é registrada **por participante** — num casal, um pode faltar.
+(prontuário sem cobrança). Consulta de casal é registrada **uma vez**, sem presença por participante:
+quem não veio, o psicólogo relata no prontuário (ADR-054).
+
+### Desfecho e grade (ADR-055, ADR-056)
+**Desfecho** encerra o caso: a frequência termina hoje, as consultas futuras agendadas saem e o passado
+fica. Só um desfecho **em aberto** por caso; retomar reabre o mesmo caso. Caso encerrado não aceita
+frequência, consulta nem remarcação — confira com `caso.desfecho_aberto()`. **Grade de horários** avisa e
+nunca bloqueia; a ocupação é derivada da regra aberta de cada caso (quinzenal pesa metade).
 
 ### Recorrência com exceção por ocorrência (ADR-022, ADR-053)
 A **regra** ("toda terça 15h", com frequência semanal ou quinzenal e âncora; paciente avulso não gera ocorrência nenhuma) gera

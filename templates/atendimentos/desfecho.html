@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block titulo %}Encerrar atendimento · {{ caso }}{% endblock %}
+{% block secao %}Pacientes{% endblock %}
+
+{% block conteudo %}
+<div class="d-flex align-items-center mb-3">
+  <h1 class="h5 mb-0">Encerrar atendimento <span class="text-muted fw-normal">· {{ caso }}</span></h1>
+  {% if individual %}
+    <a href="{% url 'pacientes:detalhe' paciente.pk %}" class="btn btn-sm btn-outline-secondary ms-auto">Cancelar</a>
+  {% else %}
+    <a href="{% url 'pacientes:caso' caso.pk %}" class="btn btn-sm btn-outline-secondary ms-auto">Cancelar</a>
+  {% endif %}
+</div>
+
+{% comment %}
+ADR-055: a tela diz o que some **antes** de gravar. Remover consulta futura é o único efeito que não se
+desfaz sozinho ao retomar.
+{% endcomment %}
+<div class="alert alert-light border py-2 small" style="max-width:720px">
+  <div class="fw-semibold mb-1">Ao encerrar:</div>
+  <ul class="mb-0">
+    <li>{% if regra %}A frequência <strong>{{ regra }}</strong> termina hoje.{% else %}Não há frequência em vigor — nada previsto a desfazer.{% endif %}</li>
+    {% if futuras %}
+      <li><strong>{{ futuras }} consulta{{ futuras|pluralize }} futura{{ futuras|pluralize }}</strong> agendada{{ futuras|pluralize }} {{ futuras|pluralize:"será removida,serão removidas" }}.</li>
+    {% endif %}
+    {% if sem_registro %}
+      <li class="text-warning-emphasis">{{ sem_registro }} consulta{{ sem_registro|pluralize }} passada{{ sem_registro|pluralize }} sem registro
+        {{ sem_registro|pluralize:"continua,continuam" }} como pendência — o encerramento não registra nada por você.</li>
+    {% endif %}
+    <li>Tudo o que já foi registrado fica no histórico. Sessões realizadas até aqui: <strong>{{ sessoes }}</strong>.</li>
+    <li>{% if individual %}O paciente sai{% else %}Os participantes saem{% endif %} da lista de ativos, a menos que
+      {% if individual %}tenha{% else %}tenham{% endif %} outro atendimento em curso. Se voltar, é só retomar.</li>
+  </ul>
+</div>
+
+<form method="post" novalidate style="max-width:720px">
+  {% csrf_token %}
+  {% if form.non_field_errors %}
+    <div class="alert alert-danger py-2 small">{{ form.non_field_errors }}</div>
+  {% endif %}
+  <div class="card mb-3">
+    <div class="card-body">
+      <div class="row g-3">
+        <div class="col-md-6">
+          <div class="form-label small mb-1">{{ form.tipo.label }} <span class="text-danger">*</span></div>
+          {% for opcao in form.tipo %}
+            <div class="form-check">{{ opcao.tag }}
+              <label class="form-check-label" for="{{ opcao.id_for_label }}">{{ opcao.choice_label }}</label></div>
+          {% endfor %}
+          {% for erro in form.tipo.errors %}<div class="text-danger small">{{ erro }}</div>{% endfor %}
+        </div>
+        <div class="col-md-6">
+          <div class="form-label small mb-1">{{ form.iniciativa.label }}</div>
+          {% for opcao in form.iniciativa %}
+            <div class="form-check">{{ opcao.tag }}
+              <label class="form-check-label" for="{{ opcao.id_for_label }}">{{ opcao.choice_label }}</label></div>
+          {% endfor %}
+          <div class="form-text small">{{ form.iniciativa.help_text }}</div>
+          {% for erro in form.iniciativa.errors %}<div class="text-danger small">{{ erro }}</div>{% endfor %}
+        </div>
+        <div class="col-md-4">{% include "components/_campo.html" with campo=form.data %}</div>
+        <div class="col-12">{% include "components/_campo.html" with campo=form.motivo %}</div>
+      </div>
+    </div>
+  </div>
+  <button type="submit" class="btn btn-danger">Encerrar atendimento</button>
+</form>
+{% endblock %}

@@ -9,7 +9,7 @@ Registro da evolução e da arquitetura do projeto. Atualizado a cada rodada de 
 > Para saber **o que falta construir**, o documento é [demandas.md](demandas.md). Este aqui
 > registra o que existe e por quê.
 
-**154 testes verdes contra PostgreSQL real, nenhum pulado.** A suíte roda em ~90 s num PostgreSQL 17 local; contra o Neon gratuito, a suspensão automática do banco derrubava a execução no meio.
+**200 testes verdes contra PostgreSQL real, nenhum pulado.** A suíte roda em ~2 min num PostgreSQL 17 local; contra o Neon gratuito, a suspensão automática do banco derrubava a execução no meio.
 
 ### Apps que existem
 
@@ -247,3 +247,4 @@ encaminhamento entre profissionais.
 | 2026-09-13 | 29 | Padrões de atendimento no perfil (C-03: duração da sessão, vencimento da mensalidade, cobro falta) e herança visível no cadastro (C-04). 108 testes. |
 | 2026-09-13 | 30 | ADR-051 (agenda própria antes do Google Agenda), 052 (consulta passada nunca é marcada sozinha) e 053 (frequência semanal, quinzenal ou avulso — revisa a 031). |
 | 2026-09-13 | 31 | Agenda, primeira parte: apps `agenda` e `atendimentos`. Frequência, previsão de 8 semanas, consulta avulsa, remarcação, colisão (inclusive contra sessões ainda não geradas), registro e pendência no painel. 154 testes. |
+| 2026-09-13 | 32 | ADR-054 (casal sem presença por participante — revisa a 026), 055 (desfecho encerra a agenda do caso; retomada reabre) e 056 (grade avisa, nunca bloqueia). Agenda, segunda parte: desfecho e retomada, pacientes encerrados em aba própria, grade de horários com mapa da semana e ocupação, exclusão de casal com sessões agendadas sem erro 500. 200 testes. |

@@ -6,7 +6,7 @@ from django import forms
 from django.utils import timezone
 
 from agenda.models import Recorrencia
-from atendimentos.models import DURACAO_MAXIMA, Consulta
+from atendimentos.models import DURACAO_MAXIMA, Consulta, Desfecho
 from atendimentos.servicos import AVULSO
 from pacientes.models import Caso
 
@@ -98,4 +98,25 @@ class FrequenciaForm(forms.Form):
                 self.add_error("dia_semana", "Informe o dia da semana.")
             if not dados.get("hora"):
                 self.add_error("hora", "Informe o horário.")
+        return dados
+
+
+class DesfechoForm(forms.Form):
+    tipo = forms.ChoiceField(label="Desfecho", choices=Desfecho.Tipo.choices, widget=forms.RadioSelect(attrs=_RADIO))
+    iniciativa = forms.ChoiceField(
+        label="De quem partiu", choices=Desfecho.Iniciativa.choices, required=False,
+        widget=forms.RadioSelect(attrs=_RADIO),
+        help_text="Só para alta e encaminhamento. Desistência parte sempre do paciente; interrupção, sempre de você.")
+    data = forms.DateField(label="Data", widget=forms.DateInput(attrs={**_TEXTO, "type": "date"}, format="%Y-%m-%d"))
+    motivo = forms.CharField(
+        label="Motivo", required=False, widget=forms.Textarea(attrs={**_TEXTO, "rows": 3}),
+        help_text="Texto livre. Se o paciente simplesmente parou de responder, vale registrar isso aqui.")
+
+    def clean(self):
+        dados = super().clean()
+        tipo = dados.get("tipo")
+        if tipo in Desfecho.INICIATIVA_DO_TIPO:
+            dados["iniciativa"] = Desfecho.INICIATIVA_DO_TIPO[tipo]
+        elif tipo and not dados.get("iniciativa"):
+            self.add_error("iniciativa", "Informe de quem partiu o encerramento.")
         return dados

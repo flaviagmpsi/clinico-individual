@@ -1852,6 +1852,75 @@ clínica que o produto atende.
 - Consulta avulsa também existe para paciente semanal ou quinzenal: uma sessão extra, fora da
   regra, sem alterá-la.
 
+---
+
+## ADR-054 — Consulta de casal não registra presença por participante (revisa a ADR-026)
+
+**Status:** ✅ Aceita — Rodada 32. **Revisa a ADR-026** no ponto "a presença é registrada por participante".
+**Contexto:** a ADR-026 previa que, num casal, um participante pudesse faltar e o outro não, com a
+presença marcada pessoa a pessoa. Ao chegar a hora de construir, a pergunta foi se isso vale o
+trabalho de marcar quem veio a cada sessão.
+
+**Decisão do usuário:** não vale. A consulta de casal ou família é registrada **uma vez**, e
+`REALIZADA` significa que o atendimento aconteceu — considera-se que os participantes vieram. Se
+alguém não veio, **o psicólogo relata isso no prontuário**, que já é individual por participante
+(ADR-041). Se ninguém veio, é `FALTA`.
+
+**Consequências:**
+- T-03 sai do escopo. Nenhum campo novo na consulta.
+- A cobrança já era uma por consulta, do caso (ADR-026) — nada muda nela.
+- O prontuário continua **um por participante** (CFP Art. 5º, III). A ausência de um deles vira
+  informação clínica escrita, e não um dado estruturado que a análise conte.
+
+---
+
+## ADR-055 — O que o desfecho faz na agenda, e como o atendimento é retomado (complementa a ADR-049)
+
+**Status:** ✅ Aceita — Rodada 32 (recomendação aceita pelo usuário)
+
+**Ao registrar o desfecho:**
+- A frequência **termina no dia do registro**. Consultas futuras ainda `AGENDADA` são removidas —
+  inclusive as remarcadas e as avulsas: o atendimento acabou, não sobra sessão para proteger.
+- **Tudo o que já passou fica**, inclusive consulta passada sem registro, que continua pendência
+  (ADR-052). O desfecho não registra nada no lugar do psicólogo.
+- O atendimento encerrado **não aceita** frequência nem consulta nova até ser retomado.
+- O paciente **sai da lista de ativos** quando nenhum atendimento dele está em curso. Não é
+  apagado (ADR-048): fica em "Encerrados". Quem terminou o individual e segue no casal continua ativo.
+
+**O registro guarda** o tipo (os quatro da ADR-049), a data, o motivo e **quem tomou a
+iniciativa** — paciente ou psicólogo. Na desistência a iniciativa é sempre do paciente, e na
+interrupção sempre do psicólogo; só alta e encaminhamento perguntam. O **momento** continua
+calculado: sessões realizadas no período (ADR-027).
+
+**Retomar:** o paciente que volta retoma **o mesmo atendimento**. O desfecho anterior fica no
+histórico com a data da retomada, e o psicólogo define a frequência nova em seguida. As sessões
+contadas no próximo desfecho são as posteriores à retomada.
+
+**Consequências:**
+- Um atendimento pode ter vários desfechos ao longo dos anos, mas **só um em aberto** —
+  garantido por restrição no banco.
+- Desfecho é atendimento para a ADR-048: paciente com desfecho não é apagado direto. A lixeira
+  continua pendente.
+- Quando o financeiro existir, atendimento encerrado não gera cobrança nova (ADR-049).
+
+---
+
+## ADR-056 — Grade de horários: avisa, nunca bloqueia (complementa a ADR-029)
+
+**Status:** ✅ Aceita — Rodada 32 (recomendação aceita pelo usuário)
+
+**Decisão:** marcar consulta ou definir frequência **fora da grade declarada** grava normalmente e
+mostra um **aviso**. O único bloqueio da agenda continua sendo a colisão (ADR-024).
+
+**Regras que decorrem disso:**
+- **Sem grade declarada, não há aviso.** Quem não quis declarar não pode ser lembrado a cada
+  consulta de algo que escolheu não usar (ADR-012).
+- Blocos **encostados** ("8h–12h" e "12h–14h") valem como um só; blocos **sobrepostos** no mesmo
+  dia são recusados, porque contariam a mesma hora duas vezes na ocupação.
+- **Ocupação** conta a frequência em vigor de cada atendimento: semanal ocupa a faixa inteira;
+  quinzenal, **metade** — a outra semana está livre. Avulso não ocupa (ADR-053).
+- O mapa mostra também as sessões fixas **fora da grade**, para o encaixe não sumir da vista.
+
 ## Impeditivos
 
 | # | Impeditivo | Situação |

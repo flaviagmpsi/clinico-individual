@@ -16,9 +16,9 @@ from django.test import TransactionTestCase
 from django.urls import reverse
 from django.utils import timezone
 
-from agenda.models import Recorrencia
+from agenda.models import HorarioDisponivel, Recorrencia
 from atendimentos import servicos
-from atendimentos.models import Consulta
+from atendimentos.models import Consulta, Desfecho
 from contas.models import Psicologo
 from core import contexto, db
 from pacientes.models import Paciente
@@ -84,6 +84,9 @@ class RotasExigemLogin(BaseTelasAgenda):
             ("atendimentos:registrar", [self.consulta_do_bruno.pk]),
             ("atendimentos:remarcar", [self.consulta_do_bruno.pk]),
             ("atendimentos:frequencia", [self.caso_maria.pk]),
+            ("atendimentos:desfecho", [self.caso_maria.pk]),
+            ("atendimentos:retomar", [self.caso_maria.pk]),
+            ("agenda:horarios", []),
         ]:
             with self.subTest(tela=nome):
                 resposta = self.client.get(reverse(nome, args=args))
@@ -118,6 +121,22 @@ class NaoAtravessaAFronteira(BaseTelasAgenda):
         resposta = self.client.get(reverse("atendimentos:nova"))
         self.assertContains(resposta, "Maria Agenda")
         self.assertNotContains(resposta, "Carla Agenda")
+
+    def test_nao_encerra_nem_retoma_atendimento_alheio(self):
+        with contexto.como(self.bruno.pk):
+            servicos.registrar_desfecho(self.caso_carla, tipo=Desfecho.Tipo.DESISTENCIA)
+        self.entrar(self.ana)
+        self.assertEqual(self.client.get(reverse("atendimentos:desfecho", args=[self.caso_carla.pk])).status_code, 404)
+        self.assertEqual(self.client.post(reverse("atendimentos:retomar", args=[self.caso_carla.pk])).status_code, 404)
+        self.assertTrue(Desfecho.objetos_todos.filter(caso_id=self.caso_carla.pk, retomado_em__isnull=True).exists())
+
+    def test_grade_alheia_nao_aparece_nem_e_apagada(self):
+        with contexto.como(self.bruno.pk):
+            bloco = HorarioDisponivel.objects.create(dia_semana=0, inicio=time(8), fim=time(12))
+        self.entrar(self.ana)
+        self.assertNotContains(self.client.get(reverse("agenda:horarios")), "08:00–12:00")
+        self.assertEqual(self.client.post(reverse("agenda:excluir", args=[bloco.pk])).status_code, 404)
+        self.assertTrue(HorarioDisponivel.objetos_todos.filter(pk=bloco.pk).exists())
 
 
 class FluxosPelaTela(BaseTelasAgenda):
@@ -177,10 +196,84 @@ class FluxosPelaTela(BaseTelasAgenda):
         self.assertContains(resposta, reverse("atendimentos:frequencia", args=[self.caso_maria.pk]))
 
 
-class RLSNaAgenda(TransactionTestCase):
-    """As duas tabelas novas sob a terceira camada da ADR-001."""
+class DesfechoPelaTela(BaseTelasAgenda):
+    def test_encerrar_tira_da_lista_de_ativos_e_oferece_retomar(self):
+        self.entrar(self.ana)
+        resposta = self.client.post(reverse("atendimentos:desfecho", args=[self.caso_maria.pk]), {
+            "tipo": "DESISTENCIA", "iniciativa": "", "data": f"{self.hoje:%Y-%m-%d}", "motivo": "Parou de responder."})
+        self.assertRedirects(resposta, reverse("pacientes:detalhe", args=[self.maria.pk]), fetch_redirect_response=False)
+        self.assertEqual(Desfecho.objetos_todos.get(caso=self.caso_maria).iniciativa, Desfecho.Iniciativa.PACIENTE)
 
-    TABELAS = ["agenda_recorrencia", "atendimentos_consulta"]
+        self.assertContains(self.client.get(reverse("pacientes:detalhe", args=[self.maria.pk])), "Retomar atendimento")
+        self.assertNotContains(self.client.get(reverse("pacientes:lista")), "Maria Agenda")
+        self.assertContains(self.client.get(reverse("pacientes:lista"), {"situacao": "encerrados"}), "Maria Agenda")
+
+    def test_a_tela_avisa_o_que_vai_sumir_antes_de_gravar(self):
+        self.entrar(self.ana)
+        resposta = self.client.get(reverse("atendimentos:desfecho", args=[self.caso_maria.pk]))
+        self.assertContains(resposta, "termina hoje")
+        self.assertContains(resposta, "serão removidas")
+
+    def test_alta_sem_iniciativa_volta_explicando(self):
+        self.entrar(self.ana)
+        resposta = self.client.post(reverse("atendimentos:desfecho", args=[self.caso_maria.pk]), {
+            "tipo": "ALTA", "data": f"{self.hoje:%Y-%m-%d}"})
+        self.assertEqual(resposta.status_code, 200)
+        self.assertContains(resposta, "Informe de quem partiu")
+        self.assertFalse(Desfecho.objetos_todos.filter(caso=self.caso_maria).exists())
+
+    def test_retomar_leva_a_definir_a_frequencia(self):
+        with contexto.como(self.ana.pk):
+            servicos.registrar_desfecho(self.caso_maria, tipo=Desfecho.Tipo.DESISTENCIA)
+        self.entrar(self.ana)
+        resposta = self.client.post(reverse("atendimentos:retomar", args=[self.caso_maria.pk]))
+        self.assertRedirects(resposta, reverse("atendimentos:frequencia", args=[self.caso_maria.pk]),
+                             fetch_redirect_response=False)
+        self.assertIsNotNone(Desfecho.objetos_todos.get(caso=self.caso_maria).retomado_em)
+
+
+class GradePelaTela(BaseTelasAgenda):
+    def test_adicionar_horario_mostra_quem_ocupa_e_o_que_sobra(self):
+        self.entrar(self.ana)
+        resposta = self.client.post(reverse("agenda:horarios"),
+                                    {"dia_semana": str(TERCA), "inicio": "13:00", "fim": "18:00"})
+        self.assertRedirects(resposta, reverse("agenda:horarios"), fetch_redirect_response=False)
+        mapa = self.client.get(reverse("agenda:horarios"))
+        self.assertContains(mapa, "Maria Agenda")
+        self.assertContains(mapa, "livre")
+
+    def test_horario_sobreposto_volta_explicando(self):
+        with contexto.como(self.ana.pk):
+            HorarioDisponivel.objects.create(dia_semana=TERCA, inicio=time(13), fim=time(18))
+        self.entrar(self.ana)
+        resposta = self.client.post(reverse("agenda:horarios"),
+                                    {"dia_semana": str(TERCA), "inicio": "17:00", "fim": "20:00"})
+        self.assertEqual(resposta.status_code, 200)
+        self.assertContains(resposta, "sobrepõe")
+
+    def test_consulta_fora_da_grade_grava_e_avisa(self):
+        """ADR-056: aviso, nunca bloqueio."""
+        with contexto.como(self.ana.pk):
+            HorarioDisponivel.objects.create(dia_semana=TERCA, inicio=time(13), fim=time(18))
+        self.entrar(self.ana)
+        resposta = self.client.post(reverse("atendimentos:nova"), {
+            "caso": self.caso_joao.pk, "data": f"{self.terca:%Y-%m-%d}", "hora": "20:00", "duracao": "50"}, follow=True)
+        self.assertContains(resposta, "fora da sua grade")
+        self.assertTrue(Consulta.objetos_todos.filter(caso=self.caso_joao).exists())
+
+    def test_consulta_dentro_da_grade_nao_avisa(self):
+        with contexto.como(self.ana.pk):
+            HorarioDisponivel.objects.create(dia_semana=TERCA, inicio=time(8), fim=time(12))
+        self.entrar(self.ana)
+        resposta = self.client.post(reverse("atendimentos:nova"), {
+            "caso": self.caso_joao.pk, "data": f"{self.terca:%Y-%m-%d}", "hora": "10:00", "duracao": "50"}, follow=True)
+        self.assertNotContains(resposta, "fora da sua grade")
+
+
+class RLSNaAgenda(TransactionTestCase):
+    """As tabelas da agenda sob a terceira camada da ADR-001."""
+
+    TABELAS = ["agenda_recorrencia", "agenda_horariodisponivel", "atendimentos_consulta", "atendimentos_desfecho"]
 
     def setUp(self):
         if connection.vendor != "postgresql":
@@ -192,6 +285,10 @@ class RLSNaAgenda(TransactionTestCase):
             with contexto.como(psicologo.pk):
                 caso = cadastrar_paciente(Paciente(nome=nome))
                 servicos.definir_frequencia(caso, frequencia=SEMANAL, dia_semana=TERCA, hora=time(14), a_partir_de=terca)
+                HorarioDisponivel.objects.create(dia_semana=TERCA, inicio=time(13), fim=time(18))
+                # Desfecho em outro caso: encerrar este apagaria as consultas que a tabela de consultas precisa ter.
+                servicos.registrar_desfecho(cadastrar_paciente(Paciente(nome=f"{nome}, encerrado")),
+                                            tipo=Desfecho.Tipo.DESISTENCIA)
 
     def test_sql_cru_so_devolve_o_proprio_dono(self):
         for tabela in self.TABELAS:

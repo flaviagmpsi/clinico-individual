@@ -14,6 +14,7 @@ quando aconteceu, do mesmo jeito que `CondicaoCobranca` guarda vigência em vez 
 
 from datetime import date, timedelta
 
+from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 
@@ -99,3 +100,43 @@ class Recorrencia(TenantOwnedModel):
             datas.append(dia)
             dia += timedelta(days=passo)
         return datas
+
+
+class HorarioDisponivel(TenantOwnedModel):
+    """Um bloco da grade semanal que o psicólogo declara: "terça, das 14h às 20h" (ADR-029).
+
+    É **disponibilidade**, não vaga remanescente: o que já tem paciente é derivado das regras de
+    frequência (`agenda.grade`), para ninguém precisar apagar o horário ao marcar um paciente. A grade
+    **não bloqueia** nada — marcar fora dela só gera aviso (ADR-056).
+    """
+
+    dia_semana = models.PositiveSmallIntegerField("Dia da semana", choices=Recorrencia.DiaSemana.choices)
+    inicio = models.TimeField("Das")
+    fim = models.TimeField("Até")
+
+    class Meta:
+        verbose_name = "Horário disponível"
+        verbose_name_plural = "Horários disponíveis"
+        ordering = ["dia_semana", "inicio"]
+        constraints = [
+            models.CheckConstraint(condition=models.Q(fim__gt=models.F("inicio")), name="horario_fim_depois_do_inicio"),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.get_dia_semana_display()}, {self.inicio:%H:%M}–{self.fim:%H:%M}"
+
+    def clean(self):
+        super().clean()
+        if self.inicio is None or self.fim is None or self.dia_semana is None:
+            return
+        if self.fim <= self.inicio:
+            raise ValidationError({"fim": "O fim precisa ser depois do início."})
+        # Sobreposto é recusado; encostado ("8h–12h" e "12h–14h") não — ADR-056. Sobreposição contaria a
+        # mesma hora duas vezes na ocupação.
+        sobreposto = (
+            HorarioDisponivel.objects.exclude(pk=self.pk)
+            .filter(dia_semana=self.dia_semana, inicio__lt=self.fim, fim__gt=self.inicio)
+            .first()
+        )
+        if sobreposto:
+            raise ValidationError(f"Este bloco se sobrepõe a outro já declarado: {sobreposto}.")
