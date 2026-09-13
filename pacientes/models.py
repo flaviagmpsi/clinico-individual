@@ -16,6 +16,7 @@ from django.core.exceptions import ValidationError
 from django.core.validators import MinValueValidator, RegexValidator
 from django.db import models
 
+from core.auditoria import Auditado
 from core.models import TenantOwnedModel
 
 # Formato exato, e não só "dígitos": `^\d*$` aceitava CPF "1". Todos admitem vazio porque os
@@ -25,7 +26,9 @@ telefone_valido = RegexValidator(r"^(\d{10,11})?$", "Telefone com DDD: 10 ou 11 
 cep_valido = RegexValidator(r"^(\d{8})?$", "CEP tem 8 números, sem traço.")
 
 
-class Paciente(TenantOwnedModel):
+class Paciente(Auditado, TenantOwnedModel):
+    """Dado do paciente é auditado (ADR-057): criar, alterar e excluir entram na trilha; a ficha registra a visualização."""
+
     class UF(models.TextChoices):
         AC = "AC", "Acre"; AL = "AL", "Alagoas"; AP = "AP", "Amapá"; AM = "AM", "Amazonas"
         BA = "BA", "Bahia"; CE = "CE", "Ceará"; DF = "DF", "Distrito Federal"
@@ -274,7 +277,7 @@ class CondicaoCobranca(TenantOwnedModel):
             self.vencimento = ""
 
 
-class ResponsavelLegal(TenantOwnedModel):
+class ResponsavelLegal(Auditado, TenantOwnedModel):
     """Quem autoriza e responde pelo atendimento de criança ou adolescente (ADR-014).
 
     Pertence ao **paciente**, não ao caso: continua sendo o responsável se a criança passar a
@@ -307,6 +310,9 @@ class ResponsavelLegal(TenantOwnedModel):
 
     def __str__(self) -> str:
         return f"{self.nome} ({self.parentesco})" if self.parentesco else self.nome
+
+    def auditoria_titular(self):
+        return self.paciente
 
     def clean(self):
         super().clean()

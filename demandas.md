@@ -20,7 +20,7 @@ correu 27 rodadas antes da primeira linha de código, de propósito.
 
 ## ⚡ Onde o código está hoje
 
-**Passos 0, 1 e 2 concluídos** (falta só a lixeira). Rodando, com 200 testes verdes contra PostgreSQL real.
+**Passos 0, 1 e 2 concluídos; do passo 3, a trilha de auditoria (F-05).** Rodando, com 215 testes verdes contra PostgreSQL real.
 
 | App | Situação | O que existe |
 |---|---|---|
@@ -30,10 +30,10 @@ correu 27 rodadas antes da primeira linha de código, de propósito.
 | `agenda` `atendimentos` | 🟢 no ar | Frequência semanal, quinzenal ou avulso; previsão de 8 semanas; consulta avulsa; remarcação; colisão; registro do que aconteceu; pendência no painel; desfecho e retomada; grade de horários com mapa da semana. Google Agenda depois (ADR-051) |
 | `prontuarios` `documentos` `financeiro` `assinaturas` `indicadores` | ⚪ | **Nem o app existe.** Nenhum `startapp` foi rodado |
 
-**O passo 2 está fechado**, com uma sobra: a **lixeira** de paciente com atendimento (ADR-048) —
-hoje a exclusão desse paciente é recusada, e o desfecho é o caminho para tirá-lo da lista de ativos.
-**O próximo é o passo 3, prontuário**, que começa pela trilha de auditoria (F-05). A consulta
-realizada já existe para ele pender dela (ADR-016).
+**O passo 2 está fechado. Do passo 3, a trilha de auditoria (F-05) está no ar** — cadastro e
+responsável legal já entram nela. **O próximo é o `Prontuario`**, que herda `core.auditoria.Auditado`
+e chega junto com a **lixeira** de paciente (ADR-048, ADR-057). Antes dele, três decisões abertas:
+provedor de IA (P-19), onde guardar áudio (P-41) e exportação sob transação (P-71).
 
 ### Antes de escrever a primeira linha, entenda a fundação
 
@@ -77,7 +77,7 @@ Python o cobre. É exatamente o buraco que a auditoria da ADR-046 achou em `cont
 | F-02 | `TenantManager` é o manager padrão e **levanta exceção** se a query rodar sem escopo de dono | ⚙️🔒 | ✅ **feito** | 🟢 | ADR-001 |
 | F-03 | Middleware abre transação, desce para `hamilton_app` e define o escopo. `SET LOCAL` morre com a transação | ⚙️🔒 | ✅ **feito** | 🟢 | ADR-001, ADR-045 |
 | F-04 | RLS com `FORCE ROW LEVEL SECURITY` e papel de aplicação **sem `BYPASSRLS`** | 🗄️🔒 | ✅ **feito** | 🟢 | ADR-001, ADR-045 |
-| F-05 | Trilha de auditoria: quem escreveu, quando, o que mudou | ⚙️🔒 | ✅ | ⚪ | ADR-005 |
+| F-05 | Trilha de auditoria: quem viu, criou, alterou, excluiu ou exportou, e quando — **campos, nunca valores**; só acrescenta, garantido no banco | ⚙️🔒 | ✅ **feito** | 🟢 | ADR-005, ADR-057 |
 | F-06 | Teste que **prova** o isolamento nas três camadas — **13 testes, todos passando** | ⚙️🔒 | ✅ **feito** | 🟢 | ADR-001, ADR-045 |
 
 ✅ **Passo 0 concluído**, e depois **auditado** (ADR-046, ADR-047). A prova de conceito rodou
@@ -95,9 +95,9 @@ Uma segunda bateria, escrita de propósito para *atravessar* a fronteira, achou 
 Resolvido pela ADR-046 (três papéis, `hamilton_web` como papel de conexão, `NOINHERIT`).
 **54 testes verdes**, dos quais 21 existem só para tentar vazar e falhar.
 
-⚠️ **F-05 (trilha de auditoria) não foi construída.** É pré-requisito do prontuário (ADR-005:
-o prontuário é meio de prova em processo disciplinar, e precisa saber quem escreveu o quê e
-quando). Ela tem de existir **antes** do passo 3, não depois.
+✅ **F-05 (trilha de auditoria) construída** (ADR-057). Model clínico novo herda
+`core.auditoria.Auditado`; a view registra visualização e exportação. A trilha guarda campos, nunca
+valores, e o papel da requisição não consegue alterá-la nem apagá-la.
 
 ---
 
@@ -207,8 +207,8 @@ Exige verificação do Google, de 4 a 6 semanas, e sem ela o produto trava em 10
 ---
 
 ## 5. Prontuários — app `prontuarios`
-**Código: ⚪ nada. O app não existe.** Passo 3 — e depende de F-05 (trilha de auditoria), que
-também não existe.
+**Código: ⚪ nada. O app não existe.** Passo 3. A trilha de auditoria de que ele depende (F-05) já
+existe: o model do prontuário herda `core.auditoria.Auditado` (ADR-057).
 
 
 > Como **psicólogo**, quero recuperar os ~20 minutos que gasto escrevendo prontuário depois de cada sessão.

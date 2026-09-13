@@ -23,6 +23,8 @@ from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse, reverse_lazy
 from django.views.generic import CreateView, DeleteView, DetailView, FormView, ListView, UpdateView
 
+from core import auditoria
+from core.models import RegistroAuditoria
 from pacientes.forms import (
     CasoColetivoForm,
     CondicaoCobrancaForm,
@@ -73,6 +75,11 @@ class DetalhePaciente(LoginRequiredMixin, DetailView):
     model = Paciente
     template_name = "pacientes/detalhe.html"
     context_object_name = "paciente"
+
+    def get(self, request, *args, **kwargs):
+        resposta = super().get(request, *args, **kwargs)
+        auditoria.registrar(auditoria.Acao.VER, self.object)  # ADR-057: abrir a ficha é ver dado do paciente
+        return resposta
 
     def get_context_data(self, **kwargs):
         contexto = super().get_context_data(**kwargs)
@@ -137,12 +144,37 @@ class EditarPaciente(LoginRequiredMixin, UpdateView):
     form_class = PacienteForm
     template_name = "pacientes/formulario.html"
 
+    def get(self, request, *args, **kwargs):
+        resposta = super().get(request, *args, **kwargs)
+        auditoria.registrar(auditoria.Acao.VER, self.object)  # o formulário mostra o cadastro inteiro
+        return resposta
+
     def form_valid(self, form):
         messages.success(self.request, "Cadastro atualizado.")
         return super().form_valid(form)
 
     def get_success_url(self):
         return reverse_lazy("pacientes:detalhe", args=[self.object.pk])
+
+
+class HistoricoPaciente(LoginRequiredMixin, ListView):
+    """A trilha de auditoria de um paciente: quem viu, criou, alterou e excluiu o quê, e quando (ADR-057).
+
+    Mostra os campos alterados, nunca os valores — a trilha não os guarda.
+    """
+
+    template_name = "pacientes/historico.html"
+    context_object_name = "registros"
+    paginate_by = 50
+
+    def get_queryset(self):
+        self.paciente = get_object_or_404(Paciente, pk=self.kwargs["pk"])
+        return RegistroAuditoria.objects.filter(titular=Paciente._meta.label_lower, titular_id=self.paciente.pk)
+
+    def get_context_data(self, **kwargs):
+        contexto = super().get_context_data(**kwargs)
+        contexto["paciente"] = self.paciente
+        return contexto
 
 
 class ExcluirPaciente(LoginRequiredMixin, DeleteView):

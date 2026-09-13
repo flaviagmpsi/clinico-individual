@@ -1921,6 +1921,41 @@ mostra um **aviso**. O único bloqueio da agenda continua sendo a colisão (ADR-
   quinzenal, **metade** — a outra semana está livre. Avulso não ocupa (ADR-053).
 - O mapa mostra também as sessões fixas **fora da grade**, para o encaixe não sumir da vista.
 
+---
+
+## ADR-057 — Trilha de auditoria: o que registra, e o que nunca guarda (F-05)
+
+**Status:** ✅ Aceita — Rodada 33. Escopo e ordem por decisão do usuário; conteúdo da trilha é decisão de arquitetura.
+**Contexto:** a ADR-005 exige trilha de "quem escreveu, quando, o que mudou", porque o prontuário é
+meio de prova em processo disciplinar. Ela precisa existir **antes** do primeiro prontuário.
+
+**Decisão do usuário:**
+- **O que é auditado:** prontuário e dados do paciente (cadastro e responsável legal). Agenda,
+  cobrança e perfil **não** — registrar tudo polui o histórico e dilui o que serve de prova.
+- **Ações:** visualizar, criar, alterar, excluir e exportar.
+- A **lixeira** de paciente (ADR-048) vem junto com o prontuário, que é o que ela protege.
+- A verificação do Google (P-72) fica **adiada**.
+
+**Decisões de arquitetura:**
+- **A trilha guarda quais campos mudaram, nunca os valores.** Uma trilha que ninguém apaga,
+  guardando CPF, medicamento ou observação, faria o paciente excluído por engano sobreviver nela —
+  e a ADR-048 manda apagar de verdade. Pelo mesmo motivo não guarda nome: só tipo e número do
+  registro. A prova do **conteúdo** do prontuário é a versão congelada na confirmação (R-05).
+- **Só acrescenta.** O papel da requisição (`hamilton_app`) não tem `UPDATE` nem `DELETE` na tabela;
+  o model recusa regravar ou apagar. Nem uma injeção de SQL apaga o rastro.
+- **Cada registro sabe de quem é o dado** (o *titular*: o paciente). É o que permite ver o histórico
+  de um paciente inteiro, inclusive de um responsável legal já removido.
+- **Uma visualização é uma linha**, a cada abertura da ficha ou do formulário de edição. Sem agrupar:
+  "abriu três vezes em dez minutos" também é informação.
+- O psicólogo é o único usuário da conta, então "quem" é o dono do registro. Se um dia houver
+  secretária ou supervisão, a trilha ganha o autor — hoje seria um campo sempre igual ao dono.
+
+**Consequências:**
+- Apagar a **conta** do psicólogo leva a trilha junto, pelo papel dono, no descarte da ADR-038 —
+  nunca pela requisição.
+- Todo model clínico novo herda `core.auditoria.Auditado` e diz quem é o titular.
+- Exportar entra na trilha quando a exportação existir (R-08).
+
 ## Impeditivos
 
 | # | Impeditivo | Situação |

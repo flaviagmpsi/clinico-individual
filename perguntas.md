@@ -214,4 +214,4 @@ Status: 🔴 aberta · 🟡 em discussão · 🟢 resolvida (migra para `documen
 
 | # | Tema | Pergunta | Status |
 |---|---|---|---|
-| P-72 | Agenda / Google | Pedir a verificação do Google **em paralelo** à construção da agenda própria, para o prazo de 4 a 6 semanas correr desde já? Exige criar um projeto no Google Cloud (ADR-051). | 🔴 |
+| P-72 | Agenda / Google | Pedir a verificação do Google **em paralelo** à construção da agenda própria, para o prazo de 4 a 6 semanas correr desde já? Exige criar um projeto no Google Cloud (ADR-051). | ⏸️ **Adiada pelo usuário** (Rodada 33): o Google Agenda fica parado por enquanto. |

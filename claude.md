@@ -125,6 +125,14 @@ A independência é o que cobre falta cobrada (cobrança sem prontuário) e sess
 (prontuário sem cobrança). Consulta de casal é registrada **uma vez**, sem presença por participante:
 quem não veio, o psicólogo relata no prontuário (ADR-054).
 
+### Trilha de auditoria (F-05, ADR-057)
+Todo model de **dado clínico** herda `core.auditoria.Auditado` antes de `TenantOwnedModel`
+(`class Prontuario(Auditado, TenantOwnedModel)`) e define `auditoria_titular()` — o paciente. Criar,
+alterar e excluir entram sozinhos; **visualizar e exportar** a view registra com
+`auditoria.registrar(Acao.VER, objeto)`. A trilha guarda **nomes de campo, nunca valores**, e só
+acrescenta: `hamilton_app` não tem `UPDATE`/`DELETE` nela. Não grave dado clínico por
+`QuerySet.update()` nem `bulk_create` — esses caminhos não passam pela trilha.
+
 ### Desfecho e grade (ADR-055, ADR-056)
 **Desfecho** encerra o caso: a frequência termina hoje, as consultas futuras agendadas saem e o passado
 fica. Só um desfecho **em aberto** por caso; retomar reabre o mesmo caso. Caso encerrado não aceita
