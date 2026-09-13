@@ -50,6 +50,29 @@
     </div>
   </div>
 
+  {% comment %}
+  ADR-025, "configura uma vez, ajusta na exceção". São os valores que o sistema propõe — nenhum é
+  regra. O texto do card diz isso, senão o psicólogo acha que está travando algo que não trava.
+  {% endcomment %}
+  <div class="card mb-3">
+    <div class="card-header bg-white py-2 fw-semibold">
+      Padrões de atendimento
+      <span class="text-muted fw-normal small">— propostos a cada paciente, ajustáveis caso a caso</span>
+    </div>
+    <div class="card-body">
+      <div class="row g-3">
+        <div class="col-md-4">{% include "components/_campo.html" with campo=form.duracao_sessao %}</div>
+        <div class="col-md-4">{% include "components/_campo.html" with campo=form.vencimento_mensalidade %}</div>
+      </div>
+      <div class="form-check mt-3">
+        {{ form.cobra_falta }}
+        <label class="form-check-label" for="{{ form.cobra_falta.id_for_label }}">{{ form.cobra_falta.label }}</label>
+        <div class="form-text small">{{ form.cobra_falta.help_text }}</div>
+        {% for erro in form.cobra_falta.errors %}<div class="text-danger small">{{ erro }}</div>{% endfor %}
+      </div>
+    </div>
+  </div>
+
   <button type="submit" class="btn btn-primary">Salvar</button>
 </form>
 {% endblock %}

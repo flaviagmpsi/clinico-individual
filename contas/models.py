@@ -8,7 +8,7 @@ identificador do tenant.
 """
 
 from django.contrib.auth.models import AbstractUser, UserManager as DjangoUserManager
-from django.core.validators import RegexValidator
+from django.core.validators import MaxValueValidator, MinValueValidator, RegexValidator
 from django.db import models
 
 from core.models import ValidaAoSalvar
@@ -86,6 +86,28 @@ class Psicologo(ValidaAoSalvar, AbstractUser):
     regime = models.CharField("Regime", max_length=2, choices=Regime.choices, default=Regime.PF)
     cnpj = models.CharField("CNPJ", max_length=14, blank=True, validators=[cnpj_valido])
     crp_empresa = models.CharField("CRP da empresa", max_length=20, blank=True)
+
+    # --- Padrões de atendimento (ADR-025, C-03) -------------------------------------------------
+    # "Configura uma vez, ajusta na exceção": cada um é o valor que o sistema propõe, e todos são
+    # sobrescrevíveis no nível mais específico — paciente, caso ou consulta. Nenhum é regra.
+
+    class Vencimento(models.TextChoices):
+        # Mesmos valores de `pacientes.CondicaoCobranca.Vencimento`, repetidos em vez de importados:
+        # `contas` é a raiz do tenant, e fazê-la depender de um app de domínio criaria um ciclo.
+        INICIO_DO_MES = "INICIO", "Início do mês"
+        FIM_DO_MES = "FIM", "Fim do mês"
+
+    duracao_sessao = models.PositiveSmallIntegerField(
+        "Duração da sessão (minutos)", default=50,
+        validators=[MinValueValidator(10), MaxValueValidator(240)],
+        help_text="A convenção é 50. Ajustável por paciente: infantil costuma ser mais curta, casal mais longa.")
+    vencimento_mensalidade = models.CharField(
+        "Vencimento da mensalidade", max_length=6, choices=Vencimento.choices,
+        default=Vencimento.INICIO_DO_MES,
+        help_text="Proposto a cada paciente que pagar por mês.")
+    cobra_falta = models.BooleanField(
+        "Cobro falta", default=True,
+        help_text="Se marcado, a falta entra na cobrança por padrão. Ajustável caso a caso (ADR-023).")
 
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = ["nome_completo", "cpf", "crp_regiao", "crp_numero"]

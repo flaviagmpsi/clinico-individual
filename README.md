@@ -116,7 +116,7 @@ DATABASE_URL="postgresql://hamilton_owner:ownerpass@127.0.0.1:5432/hamilton_dev"
   python manage.py test
 ```
 
-O runner precisa criar o banco de teste, então roda com o papel dono. São **104 testes**, e nenhum
+O runner precisa criar o banco de teste, então roda com o papel dono. São **108 testes**, e nenhum
 fica pulado. Contra um PostgreSQL local levam cerca de 70 segundos.
 
 ⚠️ **Não rode a suíte contra o Neon do plano gratuito.** Ele suspende o banco por inatividade — e

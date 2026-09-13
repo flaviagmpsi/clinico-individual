@@ -20,12 +20,12 @@ correu 27 rodadas antes da primeira linha de código, de propósito.
 
 ## ⚡ Onde o código está hoje
 
-**Passos 0 e 1 concluídos, e o `Caso` do passo 2.** Rodando, com 104 testes verdes contra PostgreSQL real.
+**Passos 0 e 1 concluídos, e o `Caso` do passo 2.** Rodando, com 108 testes verdes contra PostgreSQL real.
 
 | App | Situação | O que existe |
 |---|---|---|
 | `core` | 🟢 no ar | Isolamento em três camadas, três papéis de banco, middleware, painel |
-| `contas` | 🟠 parcial | Model do psicólogo, login, logout, tela de perfil |
+| `contas` | 🟠 parcial | Model do psicólogo, login, logout, tela de perfil com padrões de atendimento (C-03), herdados no cadastro (C-04) |
 | `pacientes` | 🟠 parcial | Cadastro; `Caso` individual (em silêncio) e de casal; pagador; responsável legal; cobrança com vigência. Falta P-08, que depende de prontuário |
 | `agenda` `atendimentos` `prontuarios` `documentos` `financeiro` `assinaturas` `indicadores` | ⚪ | **Nem o app existe.** Nenhum `startapp` foi rodado |
 
@@ -101,9 +101,12 @@ quando). Ela tem de existir **antes** do passo 3, não depois.
 
 ## 1. Conta e perfil — app `contas`
 **Código: 🟠 parcial.** No ar: model do psicólogo (é o `AUTH_USER_MODEL`), login por e-mail,
-logout e tela de perfil editável. Falta: **cadastro de novo psicólogo** (C-01 só tem a metade do
-login — criar conta depende do ciclo de assinatura, passo 7), recuperação de senha, e os padrões
-de C-03/C-04/C-05, que só fazem sentido quando existir consulta e cobrança para herdá-los.
+logout e tela de perfil editável, com os **padrões de atendimento** (C-03: duração da sessão,
+vencimento da mensalidade, cobro falta). O cadastro de paciente já herda o vencimento e diz de onde
+ele veio (C-04); duração e cobro falta passam a ser herdados quando a agenda e as consultas
+existirem. Falta: **cadastro de novo psicólogo** (C-01 só tem a metade do login — criar conta
+depende do ciclo de assinatura, passo 7), recuperação de senha, e os dados fiscais opcionais (C-05),
+que só fazem sentido quando houver saída fiscal.
 
 
 > Como **psicólogo**, quero configurar meus padrões uma vez e não responder a mesma pergunta a cada cadastro.
@@ -116,8 +119,8 @@ de C-03/C-04/C-05, que só fazem sentido quando existir consulta e cobrança par
 | C-07 | Validação de **formato** do CRP. **Sem** consulta ao cadastro do CFP | ⚙️ | ✅ | 🟢 | ADR-044 |
 | C-08 | Campos vazios para `situacao_registro` e `verificado_em`, prontos caso a verificação volte | 🗄️ | ✅ | 🟢 | ADR-044 |
 | C-09 | CRP da empresa (PJ): campo **opcional** | 🎨🗄️ | ✅ | 🟢 | ADR-044 |
-| C-03 | Padrões do psicólogo: duração da sessão (50 min), vencimento da mensalidade, cobro falta (sim/não) | 🎨🗄️ | ✅ | ⚪ | ADR-025 |
-| C-04 | Toda tela de cadastro mostra **de onde veio** o valor herdado do perfil | 🎨 | ✅ | ⚪ | ADR-025 |
+| C-03 | Padrões do psicólogo: duração da sessão (50 min), vencimento da mensalidade, cobro falta (sim/não) | 🎨🗄️ | ✅ | 🟢 | ADR-025 |
+| C-04 | Toda tela de cadastro mostra **de onde veio** o valor herdado do perfil | 🎨 | ✅ | 🟢 | ADR-025 |
 | C-05 | Dados fiscais **opcionais** (outras rendas, INSS, dependentes, pensão), fora do onboarding | 🎨 | ✅ | ⚪ | ADR-012 |
 
 ---

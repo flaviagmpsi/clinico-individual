@@ -42,6 +42,16 @@ class CondicaoCobrancaForm(forms.Form):
         choices=[("", "—")] + list(CondicaoCobranca.Vencimento.choices),
         widget=forms.Select(attrs=_SELECT), help_text="Só para mensalidade.")
 
+    def __init__(self, *args, vencimento_padrao: str = "", **kwargs):
+        super().__init__(*args, **kwargs)
+        if vencimento_padrao:
+            # C-04 / ADR-025: o valor herdado do perfil vem preenchido **e diz de onde veio**.
+            # Um campo que aparece marcado sem explicação faz o psicólogo achar que escolheu algo
+            # que não escolheu.
+            self.fields["vencimento"].initial = vencimento_padrao
+            rotulo = dict(CondicaoCobranca.Vencimento.choices).get(vencimento_padrao, "")
+            self.fields["vencimento"].help_text = f"Padrão do seu perfil: {rotulo.lower()}. Só para mensalidade."
+
     def clean(self):
         dados = super().clean()
         if dados.get("valor") is None:

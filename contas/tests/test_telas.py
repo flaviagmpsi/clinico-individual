@@ -62,10 +62,13 @@ class Perfil(BaseConta):
 
     def test_editar_o_perfil_grava(self):
         self.client.login(username=self.ana.email, password=SENHA)
+        # Os padrões de atendimento (C-03) vão junto: o perfil é um formulário só, e um POST sem
+        # eles seria recusado por campo obrigatório — o teste acusaria um defeito que não existe.
         self.client.post(reverse("contas:perfil"), {
             "nome_completo": "Ana Ribeiro Souza", "email": self.ana.email, "cpf": "11111111111",
             "telefone": "31999990000", "crp_regiao": "04", "crp_numero": "303030",
-            "regime": "PF", "cnpj": "", "crp_empresa": ""})
+            "regime": "PF", "cnpj": "", "crp_empresa": "",
+            "duracao_sessao": "50", "vencimento_mensalidade": "INICIO", "cobra_falta": "on"})
         self.ana.refresh_from_db()
         self.assertEqual(self.ana.nome_completo, "Ana Ribeiro Souza")
 
@@ -74,5 +77,6 @@ class Perfil(BaseConta):
         resposta = self.client.post(reverse("contas:perfil"), {
             "nome_completo": "Ana", "email": self.ana.email, "cpf": "11111111111",
             "telefone": "31999990000", "crp_regiao": "04", "crp_numero": "303030",
-            "regime": "PF", "cnpj": "11222333000181", "crp_empresa": ""})
+            "regime": "PF", "cnpj": "11222333000181", "crp_empresa": "",
+            "duracao_sessao": "50", "vencimento_mensalidade": "INICIO", "cobra_falta": "on"})
         self.assertContains(resposta, "não tem CNPJ")
