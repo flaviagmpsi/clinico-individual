@@ -363,10 +363,10 @@ Não decida sozinho — são do Paulo. Estão em [perguntas.md](perguntas.md).
 |---|---|---|
 | P-68 | Qualquer comando de management ou tarefa que toque dado | Escopo Python e escopo Postgres podem divergir fora do middleware |
 | P-69 | Validação de qualquer model novo | ✅ Resolvida: `full_clean()` roda em todo `save()` — herde de `core.models.ValidaAoSalvar` ou de `TenantOwnedModel`, que já herda dele |
-| P-70 | `Caso`, e depois `Prontuario` | `CASCADE` no dono × guarda de 5 anos do CFP |
+| P-70 | `Caso`, e depois `Prontuario` | 🟡 Paciente resolvido por serviço (ADR-048); falta o `CASCADE` a partir do psicólogo |
 | P-71 | Exportação de prontuário (passo 3) | Transação por requisição × `StreamingHttpResponse` |
 | P-46 | Recorrência (item 5 acima) | Tamanho da janela de materialização e quando empurrá-la |
-| P-09 | Financeiro (passo 4) | Trocar modalidade de cobrança no meio do mês afeta cobranças já geradas? |
+| P-09 | Financeiro (passo 4) | ✅ Resolvida: a troca vale no dia 1º do mês seguinte (ADR-050) |
 
 ---
 

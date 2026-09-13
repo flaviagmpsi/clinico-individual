@@ -1669,6 +1669,101 @@ paciente órfão em silêncio — o teste é o que avisa.
 
 ---
 
+## ADR-048 — Exclusão de paciente: o sistema guarda, o psicólogo decide
+
+**Status:** ✅ Aceita — Rodada 28
+**Contexto:** Apagar um paciente levava junto, pelo `CASCADE`, tudo o que pende dele — e quando
+existirem prontuários, eles iriam embora no mesmo clique, apesar da guarda mínima de 5 anos
+(Res. CFP 001/2009, Art. 4º). A pergunta foi o que o sistema deve fazer nesse caso.
+
+**Decisão do usuário:**
+- **Cadastro feito por engano** — paciente **sem atendimento** — é apagado de verdade.
+- **Paciente com atendimento** (alta, desistência, em curso) permanece no histórico, com os
+  prontuários, **por tempo indeterminado**. Baixar ou excluir é ação **manual** do psicólogo;
+  o sistema nunca faz isso sozinho. É o psicólogo quem responde por ter ou não o prontuário —
+  mesma linha da ADR-039: o sistema não toma decisão clínica ou legal no lugar dele.
+
+**Proteção contra o clique errado** (proposta aceita na mesma rodada): excluir um paciente com
+atendimento **manda para a lixeira**; a exclusão definitiva é um segundo passo, de dentro dela, com
+o aviso de que prontuário apagado não se recupera. É o mesmo mecanismo já decidido para documentos
+(adendo à ADR-015). Paciente sem atendimento continua sendo apagado direto — ali não há nada a perder.
+
+**Implementado agora** (`pacientes.servicos.excluir_paciente`):
+- A exclusão leva junto o **caso individual** do paciente. Sem isso, o `PROTECT` do pagador
+  impediria excluir qualquer paciente, já que todo paciente paga o próprio caso (ADR-009).
+- **Recusa** excluir quem participa de atendimento de casal ou família: apagá-lo ali mudaria em
+  silêncio o vínculo de outra pessoa.
+
+**Ainda não implementado:** a lixeira. O critério dela é "tem atendimento", e atendimento não existe
+no código. Pela própria regra, todo paciente de hoje é um cadastro sem atendimento — então a
+exclusão direta atual está correta, e a lixeira entra junto com o app `atendimentos`.
+
+**Consequências:**
+- **Fecha P-12** (5 anos do CFP × 20 anos da Lei nº 13.787/2018): o sistema não impõe prazo
+  nenhum, logo não precisa escolher entre os dois. Quem cumpre o prazo é o psicólogo.
+- **Resolve em parte P-70**: a exclusão do **paciente** deixa de ser `CASCADE` silencioso. O
+  `CASCADE` a partir do **psicólogo** continua, e fecha com o descarte explícito do app
+  `assinaturas` (ADR-038).
+
+---
+
+## ADR-049 — Desfecho do atendimento no contexto individual
+
+**Status:** ✅ Aceita — Rodada 28
+**Contexto:** No `hamilton-api` os desfechos são alta, desistência, "paciente não responde" e
+"solicitação de reencaminhamento" — este último pensado para trocar de terapeuta **dentro** da
+clínica, o que aqui não existe. A Res. CFP 001/2009, Art. 2º, IV pede registro de "encaminhamento
+ou encerramento".
+
+**Decisão:** ao registrar o desfecho, o psicólogo **escolhe um de quatro tipos**:
+
+| Tipo | Quando |
+|---|---|
+| Alta | Encerramento por conclusão do processo |
+| Desistência | O paciente interrompe — inclui o antigo "não responde", com o motivo por escrito |
+| Encaminhamento | Para outro profissional, **fora do sistema** (ADR-039) |
+| Interrupção pelo psicólogo | O encerramento parte do profissional |
+
+- Campo de **motivo** em texto livre, junto do tipo.
+- O **momento** não é perguntado: o sistema conta quantas sessões houve (ADR-027).
+- Registrar o desfecho **encerra o caso**: para de gerar consultas futuras e cobranças.
+- Num casal ou família, o desfecho é **do caso inteiro**.
+
+**Consequências:**
+- Fecha P-05. Implementação no app `atendimentos`, que ainda não existe.
+- Paciente com desfecho é "paciente com atendimento" para a ADR-048: fica no histórico e só vai
+  para a lixeira por ação do psicólogo.
+
+---
+
+## ADR-050 — Trocar a forma de cobrança vale no dia 1º do mês seguinte
+
+**Status:** ✅ Aceita — Rodada 28
+**Contexto:** A ADR-002 deixou em aberto o efeito de trocar a modalidade no meio do mês (P-09). A
+decisão foi tomada sobre dois exemplos concretos:
+
+| Troca no dia 15 | Se valesse na hora |
+|---|---|
+| Por sessão → mensalidade | Setembro não tem mensalidade gerada: as sessões da segunda quinzena ficariam **sem cobrança**. O psicólogo atende de graça. |
+| Mensalidade → por sessão | A mensalidade de setembro já foi gerada: as sessões restantes seriam cobradas **de novo**. O paciente paga em dobro. |
+
+**Decisão:** a troca passa a valer **sempre no dia 1º do mês seguinte**, e a tela mostra as datas
+concretas **antes** de gravar: *"a cobrança atual continua até 30/09, e a nova começa em 01/10"*.
+
+**Regras que decorrem disso** (`pacientes.servicos.trocar_condicao`):
+- **A condição anterior nunca é alterada.** O que já foi cobrado por ela pode ter pagamento.
+- **Quem nunca teve valor combinado começa hoje** — não há condição anterior com que conflitar.
+- **Trocar duas vezes no mesmo mês substitui a troca agendada**: ela ainda não valeu, então
+  nenhuma cobrança depende dela.
+- Ajuste fora do padrão — desconto proporcional num mês específico — é feito na **cobrança**
+  individual, como exceção, e não na regra.
+
+**Consequências:**
+- Fecha P-09.
+- Só foi possível sem migração porque as condições de cobrança já nasceram com **data de
+  vigência** (`CondicaoCobranca.vigente_desde`), escolhida enquanto esta pergunta ainda estava aberta
+  justamente para que qualquer resposta coubesse no mesmo modelo.
+
 ## Impeditivos
 
 | # | Impeditivo | Situação |
