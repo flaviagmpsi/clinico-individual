@@ -133,7 +133,7 @@ Dez apps: um de infraestrutura, oito de domínio e um de leitura. O critério de
 | `contas` | `User`, `Psicologo` (CRP, CPF, regime tributário, dados fiscais opcionais). **Raiz do tenant.** | Pacientes |
 | `pacientes` | `Paciente`, `ResponsavelLegal`, `Pagador` | Consultas, cobranças, contratos |
 | `documentos` | `Documento` (arquivo, tipo, vigência, visibilidade, versões). Contrato, anexo de avaliação e cópia de documento emitido são **tipos** | Quem é o paciente; geração e assinatura do documento |
-| `agenda` | `HorarioDisponivel`, bloqueios, integração Google Agenda | Consulta realizada |
+| `agenda` | `HorarioDisponivel`, frequência, bloqueios; integração Google Agenda depois (ADR-051) | Consulta realizada |
 | `atendimentos` | `Consulta`, `Desfecho` (alta/desistência) | O texto clínico |
 | `prontuarios` | `Relato` (áudio ou texto), `Prontuario`, versões, assinatura, exportação | Quando a sessão ocorreu |
 | `financeiro` | `ContaReceber`, `Pagamento`, `Despesa`, `TipoDespesa`, lembretes de cobrança | Preço acordado do paciente |
@@ -245,3 +245,4 @@ encaminhamento entre profissionais.
 | 2026-09-09 | 23–27 | ADR-040 a ADR-044: pendências menores, um relato por prontuário, transcrição preservada, WhatsApp para descarte, perfil e CRP obrigatório. **Passo 0 implementado e executado** — ADR-045 registra a falha encontrada em produção real: `BYPASSRLS` no papel dono do Neon. |
 | 2026-09-13 | 28 | P-69 resolvida: validação do model em toda gravação. `Caso`, pagador, responsável legal, atendimento de casal e cobrança com vigência implementados. ADR-048 (exclusão), 049 (desfechos) e 050 (troca de cobrança no dia 1º). Suíte migrada para PostgreSQL local: 104 testes. |
 | 2026-09-13 | 29 | Padrões de atendimento no perfil (C-03: duração da sessão, vencimento da mensalidade, cobro falta) e herança visível no cadastro (C-04). 108 testes. |
+| 2026-09-13 | 30 | ADR-051 (agenda própria antes do Google Agenda), 052 (consulta passada nunca é marcada sozinha) e 053 (frequência semanal, quinzenal ou avulso — revisa a 031). |

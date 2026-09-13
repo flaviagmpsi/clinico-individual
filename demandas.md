@@ -164,7 +164,7 @@ em atendimento de casal. Ver **P-70**, resolvida em parte.
 
 | # | História | Camada | Estado | Código | ADR |
 |---|---|---|---|---|---|
-| A-01 | Recorrência por caso: dia, hora e **periodicidade** (semanal, quinzenal, mensal), com âncora | 🎨🗄️ | ✅ | ⚪ | ADR-022, ADR-031 |
+| A-01 | Frequência por caso: **semanal**, **quinzenal** (semana sim, semana não, com âncora) ou **avulso** (sem sessão prevista) | 🎨🗄️ | ✅ | ⚪ | ADR-022, ADR-053 |
 | A-02 | Consultas materializadas em janela contínua à frente, empurrada ao abrir a agenda | ⚙️ | ✅ | ⚪ | ADR-022 |
 | A-03 | Remarcação avulsa: altera **só aquela** ocorrência; a regra não é tocada | 🎨⚙️ | ✅ | ⚪ | ADR-022 |
 | A-04 | A ocorrência remarcada **lembra que foi alterada à mão** e não é sobrescrita por mudança futura na regra | 🗄️ | ✅ | ⚪ | ADR-022 |
@@ -176,7 +176,9 @@ em atendimento de casal. Ver **P-70**, resolvida em parte.
 | A-10 | Tela de horários como mapa da semana: o que está ocupado, por quem, e o que sobrou | 🎨 | ✅ | ⚪ | ADR-029 |
 | A-11 | Férias, feriados e pausas em bloco | — | ⏸️ | ⚪ | P-47 |
 
-### Integração com Google Agenda
+### Integração com Google Agenda — depois da agenda própria (ADR-051)
+
+Exige verificação do Google, de 4 a 6 semanas, e sem ela o produto trava em 100 usuários. Nada aqui foi revogado; só vem depois.
 
 | # | História | Camada | Estado | Código | ADR |
 |---|---|---|---|---|---|

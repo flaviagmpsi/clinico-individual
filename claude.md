@@ -81,7 +81,7 @@ Dez apps. A fronteira é **quem é dono do dado**, nunca em que tela ele aparece
 | `core` | `TenantOwnedModel`, `TenantManager`, middleware de RLS, trilha de auditoria. **Nenhum domínio** |
 | `contas` | `User`, `Psicologo` (CRP, CPF, regime PF/PJ, padrões, dados fiscais opcionais). Raiz do tenant |
 | `pacientes` | `Paciente`, `Caso`, `ResponsavelLegal`, `Pagador` |
-| `agenda` | `HorarioDisponivel`, `Recorrencia`, integração Google Agenda |
+| `agenda` | `HorarioDisponivel`, `Recorrencia`; integração Google Agenda **depois** (ADR-051) |
 | `atendimentos` | `Consulta`, `Desfecho` |
 | `prontuarios` | `Relato`, `Prontuario`, versões, exportação |
 | `documentos` | `Documento` (contrato, anexo de avaliação, cópia emitida), IA de documentos |
@@ -124,8 +124,8 @@ atendimentos — Maria em terapia individual e Maria no casal são o mesmo cadas
 A independência é o que cobre falta cobrada (cobrança sem prontuário) e sessão de cortesia
 (prontuário sem cobrança). Presença é registrada **por participante** — num casal, um pode faltar.
 
-### Recorrência com exceção por ocorrência (ADR-022, ADR-031)
-A **regra** ("toda terça 15h", com periodicidade semanal / quinzenal / mensal e âncora) gera
+### Recorrência com exceção por ocorrência (ADR-022, ADR-053)
+A **regra** ("toda terça 15h", com frequência semanal ou quinzenal e âncora; paciente avulso não gera ocorrência nenhuma) gera
 **consultas concretas**, materializadas numa janela contínua à frente. Cada ocorrência é editável
 isoladamente e **lembra que foi alterada à mão** — sem essa marca, uma mudança futura na regra
 desfaria a remarcação em silêncio. Alterar a regra oferece "só esta" e "esta e as próximas".

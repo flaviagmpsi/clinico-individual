@@ -10,12 +10,12 @@ Status: 🔴 aberta · 🟡 em discussão · 🟢 resolvida (migra para `documen
 | # | Tema | Pergunta | Status |
 |---|---|---|---|
 | P-01 | Dashboard | Quais widgets adicionais entram além dos 3 herdados (pacientes ativos + dias sem atendimento, resumo de receita/sessões do mês, resumo por paciente com sessões e pendência)? | 🟡 Parcial: a ADR-027 define painel e análise; os widgets extras que o usuário quer acrescentar seguem em aberto. |
-| P-02 | Horários | Além dos horários disponíveis + leitura do Google Agenda, o que mais a aba precisa? (bloqueios, férias, recorrência, no-show) | ✅ Resolvida nas ADR-020 (agenda de mão única), 022 (recorrência com exceção), 024 (colisão bloqueia), 029 (grade declarada) e 031 (quinzenal). Férias e feriados adiados (P-47). |
+| P-02 | Horários | Além dos horários disponíveis + leitura do Google Agenda, o que mais a aba precisa? (bloqueios, férias, recorrência, no-show) | ✅ Resolvida nas ADR-020 (agenda de mão única), 022 (recorrência com exceção), 024 (colisão bloqueia), 029 (grade declarada) e 053 (semanal, quinzenal ou avulso, que revisa a 031). Férias e feriados adiados (P-47). |
 | P-03 | Consultas | O cadastro de consultas do Hamilton original será replicado por inteiro — **o que será adicionado**? | ✅ Resolvida nas ADR-022 e 023: hora e duração, estados da consulta, `contabilizada` e recorrência. |
 | P-04 | Pagamentos | Cópia integral da aba do original — **quais campos/fluxos novos**? | ✅ Resolvida na ADR-035: baixa com parcial permitida e forma de pagamento. |
 | P-05 | Altas e Desistências | Cópia integral do original — **o que muda para o contexto individual**? (não existe "reencaminhamento para outro terapeuta") | ✅ Resolvida na ADR-049: quatro tipos à escolha do psicólogo, motivo livre, momento calculado, encerra o caso. |
 | P-06 | Análise de Dados | Qual a melhor forma de mostrar desempenho do psicólogo? | ✅ Resolvida na ADR-027: painel operacional e análise separados, com as perguntas escolhidas pelo usuário. |
-| P-07 | Lembretes | Aba própria ou embutida em Horários? | ✅ Resolvida nas ADR-017 e 018: cobrança no financeiro, atendimento na agenda; entrega in-app e pelo Google Agenda. |
+| P-07 | Lembretes | Aba própria ou embutida em Horários? | ✅ Resolvida nas ADR-017 e 018: cobrança no financeiro, atendimento na agenda; entrega in-app, e pelo Google Agenda quando a integração existir (ADR-051). |
 
 ---
 
@@ -209,3 +209,9 @@ Status: 🔴 aberta · 🟡 em discussão · 🟢 resolvida (migra para `documen
 | P-69 | Cadastro / Validação | **`full_clean()` no `save()`** prometido no `claude.md` §6 e inexistente: os validadores só rodavam em `ModelForm`, e `cpf="1"` gravava. | ✅ Resolvida: `core.models.ValidaAoSalvar` valida em toda gravação. Gravação parcial (`update_fields`) valida só os campos gravados, para o login não trancar ninguém por dado legado. Formatos exatos de CPF, telefone, CEP, região do CRP e CNPJ. Os 3 testes antes pulados rodam. |
 | P-70 | Cadastro / Legal | **`on_delete=CASCADE` no dono vs. guarda mínima de 5 anos** (Res. CFP 001/2009, Art. 4º). | 🟡 Parcial (ADR-048): a exclusão de **paciente** virou serviço, sem `CASCADE` silencioso, e recusa quem está em atendimento coletivo. O `CASCADE` a partir do **psicólogo** continua, e fecha com o descarte explícito do app `assinaturas`. |
 | P-71 | Infra | **Transação por requisição inteira.** O middleware envolve tudo em `transaction.atomic()`, o que é necessário para o `SET LOCAL`, mas segura a conexão do pool pelo tempo da view e é incompatível com `StreamingHttpResponse` — que é justamente a forma de exportar prontuário e histórico sem carregar tudo em memória. Decisão adiável, mas não até o passo 3. | 🔴 |
+
+## Abertas na Rodada 30
+
+| # | Tema | Pergunta | Status |
+|---|---|---|---|
+| P-72 | Agenda / Google | Pedir a verificação do Google **em paralelo** à construção da agenda própria, para o prazo de 4 a 6 semanas correr desde já? Exige criar um projeto no Google Cloud (ADR-051). | 🔴 |

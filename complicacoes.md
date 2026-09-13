@@ -1037,7 +1037,9 @@ Registrado para que a diferença entre *lembrar* e *emitir* não se perca.
 
 ## ADR-031 — Recorrência quinzenal e outras periodicidades
 
-**Status:** ✅ Aceita — Rodada 17
+**Status:** ⚠️ **Revisada pela ADR-053 (Rodada 30)** — não existe sessão mensal; as frequências são semanal, quinzenal ou avulso.
+
+**Status original:** ✅ Aceita — Rodada 17
 **Contexto:** Verificação levantada pelo usuário: o sistema precisa distinguir atendimento
 **semanal** de **quinzenal**.
 
@@ -1763,6 +1765,92 @@ concretas **antes** de gravar: *"a cobrança atual continua até 30/09, e a nova
 - Só foi possível sem migração porque as condições de cobrança já nasceram com **data de
   vigência** (`CondicaoCobranca.vigente_desde`), escolhida enquanto esta pergunta ainda estava aberta
   justamente para que qualquer resposta coubesse no mesmo modelo.
+
+## ADR-051 — Agenda própria primeiro; Google Agenda depois
+
+**Status:** ✅ Aceita — Rodada 30
+
+**Fatos levantados antes da decisão:**
+- Ler e escrever eventos do Google Agenda são **escopos sensíveis** de OAuth. Pedir só leitura não
+  evita a regra: ler eventos também é sensível.
+- Sem verificação, quem conecta vê a tela de "app não verificado", e o aplicativo fica limitado a
+  **100 usuários — teto vitalício, que não reinicia**.
+- A verificação é **revisão manual, de 4 a 6 semanas**, e exige um projeto no Google Cloud com
+  credenciais criadas pelo dono do produto.
+
+**Decisão:** construir primeiro a **agenda própria** — frequência, remarcação, colisão e estados da
+consulta. A integração com o Google vem depois.
+
+**Por que nessa ordem:** é a agenda própria que dispara prontuário pendente e cobrança (ADR-023); ela
+funciona sozinha. O Google é espelho — pela ADR-020 ele só recebe cópia, e a consulta mora no
+Hamilton. Construí-lo agora daria uma integração que só funcionaria para 100 pessoas até a
+verificação sair.
+
+**Consequências:**
+- ADR-020 e as histórias A-12 a A-16 ficam para depois da agenda própria. Nada nelas é revogado.
+- O **alarme matinal** da ADR-018 dependia do "Resumo diário" do Google. Até a integração existir,
+  lembrete de atendimento é **só in-app**.
+- A **colisão de horário** (ADR-024) confere só as consultas do próprio Hamilton; compromissos do
+  Google entram na checagem quando a leitura da agenda existir.
+- ⚠️ A verificação do Google pode ser **pedida em paralelo**, para o prazo de 4 a 6 semanas correr
+  enquanto a agenda própria é construída. Decisão do usuário (ver P-72).
+
+---
+
+## ADR-052 — Consulta passada sem registro nunca é marcada sozinha
+
+**Status:** ✅ Aceita — Rodada 30 (recomendação aceita pelo usuário)
+**Contexto:** a consulta nasce `AGENDADA`. O que dispara prontuário pendente e cobrança é o
+psicólogo marcá-la como `REALIZADA` ou `FALTA` (ADR-023). Se ele esquecer, a sessão continua
+agendada para sempre: sem prontuário pendente, sem cobrança, e a receita do mês sai errada.
+
+**Decisão:** o sistema **nunca** muda o estado de uma consulta passada por conta própria. Consulta
+cuja hora já passou e segue `AGENDADA` aparece como **pendência no painel** — "3 consultas passadas
+sem registro" —, com acesso direto a cada uma.
+
+**Por que não marcar automaticamente:**
+- Marcar como `REALIZADA` geraria cobrança de sessão que pode não ter acontecido.
+- Marcar como `FALTA` geraria cobrança de falta que pode não ser devida.
+
+Os dois erros vão parar no dinheiro do paciente, e só o psicólogo sabe o que aconteceu. É o mesmo
+princípio da ADR-048: o sistema lembra, o psicólogo decide.
+
+**Consequências:**
+- Nenhum agendador é necessário: a pendência é uma consulta ao banco feita quando o painel abre,
+  coerente com a ADR-018.
+- "Sessões previstas" e "sessões realizadas" (ADR-027) só divergem de verdade quando há consulta
+  sem registro — o painel deve deixar essa diferença visível, e não escondê-la no total.
+
+---
+
+## ADR-053 — Frequência de atendimento: semanal, quinzenal ou avulso (revisa a ADR-031)
+
+**Status:** ✅ Aceita — Rodada 30. **Revisa a ADR-031.**
+**Contexto:** a ADR-031 previa recorrência semanal, quinzenal e mensal. Ao discutir o que
+"mensal" significaria, o usuário corrigiu a premissa: **não existe sessão mensal** na prática
+clínica que o produto atende.
+
+**Decisão do usuário:** cada paciente tem **um** tipo de atendimento, entre três:
+
+| Frequência | O que significa | O que o sistema faz |
+|---|---|---|
+| **Semanal** | Toda semana, mesmo dia e horário | Prevê as consultas da janela à frente |
+| **Quinzenal** | **Semana sim, semana não** | Prevê em semanas alternadas, a partir da primeira sessão da série |
+| **Avulso** | Sem sessão prevista | **Não prevê nada.** O psicólogo registra cada consulta quando ela acontece |
+
+- A frequência aparece **nas informações do paciente** e é **editável** se mudar.
+- Por baixo, fica no **caso** (ADR-026): o atendimento de casal tem sua própria frequência, e a
+  palavra "caso" continua sem aparecer no atendimento individual.
+
+**Consequências:**
+- **Mensal sai; avulso entra.** A âncora da ADR-031 continua valendo para a quinzenal: é a data da
+  primeira sessão que define quais semanas são "sim".
+- **Trocar a frequência** segue a ADR-022: vale para "esta e as próximas". Consultas futuras ainda
+  `AGENDADA` são refeitas pela regra nova; passadas e já registradas não são tocadas.
+- **Paciente avulso não ocupa a grade** (ADR-029) nem entra na previsão de sessões do mês — não há
+  o que prever. Aparece em "sessões realizadas" quando a consulta é registrada.
+- Consulta avulsa também existe para paciente semanal ou quinzenal: uma sessão extra, fora da
+  regra, sem alterá-la.
 
 ## Impeditivos
 
