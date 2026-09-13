@@ -9,7 +9,7 @@ Registro da evolução e da arquitetura do projeto. Atualizado a cada rodada de 
 > Para saber **o que falta construir**, o documento é [demandas.md](demandas.md). Este aqui
 > registra o que existe e por quê.
 
-**54 testes verdes contra PostgreSQL real, nenhum pulado.** Os 3 que dependiam da P-69 rodam desde que ela foi resolvida.
+**104 testes verdes contra PostgreSQL real, nenhum pulado.** A suíte roda em ~70 s num PostgreSQL 17 local; contra o Neon gratuito, a suspensão automática do banco derrubava a execução no meio.
 
 ### Apps que existem
 
@@ -243,3 +243,4 @@ encaminhamento entre profissionais.
 | 2026-09-09 | 7–18 | Estrutura de dez apps proposta. ADR-014 a ADR-034: infantil, contrato, lembretes, armazenamento, agenda de mão única, recorrência com exceção, comparecimento × cobrança, `Caso`, painel × análise, IA de documentos pela Res. CFP 06/2019. `demandas.md` escrito. |
 | 2026-09-09 | 19–22 | ADR-035 a ADR-039: registro de pagamento com baixa, assinatura (cartão e PIX Automático, sem trial), exportação por link autenticado, ciclo de vida da conta, e a fronteira de que **o sistema não se comunica com pacientes**. `claude.md` escrito. Planejamento do MVP fechado. |
 | 2026-09-09 | 23–27 | ADR-040 a ADR-044: pendências menores, um relato por prontuário, transcrição preservada, WhatsApp para descarte, perfil e CRP obrigatório. **Passo 0 implementado e executado** — ADR-045 registra a falha encontrada em produção real: `BYPASSRLS` no papel dono do Neon. |
+| 2026-09-13 | 28 | P-69 resolvida: validação do model em toda gravação. `Caso`, pagador, responsável legal, atendimento de casal e cobrança com vigência implementados. ADR-048 (exclusão), 049 (desfechos) e 050 (troca de cobrança no dia 1º). Suíte migrada para PostgreSQL local: 104 testes. |

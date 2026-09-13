@@ -20,13 +20,13 @@ correu 27 rodadas antes da primeira linha de código, de propósito.
 
 ## ⚡ Onde o código está hoje
 
-**Passos 0 e 1 concluídos.** Rodando, com 54 testes verdes contra PostgreSQL real.
+**Passos 0 e 1 concluídos, e o `Caso` do passo 2.** Rodando, com 104 testes verdes contra PostgreSQL real.
 
 | App | Situação | O que existe |
 |---|---|---|
 | `core` | 🟢 no ar | Isolamento em três camadas, três papéis de banco, middleware, painel |
 | `contas` | 🟠 parcial | Model do psicólogo, login, logout, tela de perfil |
-| `pacientes` | 🟠 parcial | Cadastro completo com lista, busca, ficha, edição e exclusão |
+| `pacientes` | 🟠 parcial | Cadastro; `Caso` individual (em silêncio) e de casal; pagador; responsável legal; cobrança com vigência. Falta P-08, que depende de prontuário |
 | `agenda` `atendimentos` `prontuarios` `documentos` `financeiro` `assinaturas` `indicadores` | ⚪ | **Nem o app existe.** Nenhum `startapp` foi rodado |
 
 **O próximo passo é o 2: `agenda` + `atendimentos`.** A consulta é a âncora de tudo o mais —
@@ -123,13 +123,18 @@ de C-03/C-04/C-05, que só fazem sentido quando existir consulta e cobrança par
 ---
 
 ## 2. Pacientes e casos — app `pacientes`
-**Código: 🟠 parcial.** No ar: o **cadastro da pessoa** (P-01, P-09) com lista, busca, ficha,
-edição e exclusão. Falta tudo que é **vínculo**: `Caso`, `Pagador` e `ResponsavelLegal` (P-02 a
-P-07) não existem como model. Eles são o passo 2 junto com a agenda, porque o valor acordado e a
-recorrência moram no `Caso`, não no paciente.
+**Código: 🟠 parcial.** No ar: o **cadastro da pessoa** (P-01, P-09) e o **vínculo** (P-02 a
+P-07). Todo paciente cadastrado ganha um `Caso` individual em silêncio; atendimento de casal ou
+família é um `Caso` com vários participantes, sem tocar nos individuais. Pagador separado
+(participante ou pessoa de fora), responsável legal com guarda, e condição de cobrança com **data de
+vigência** — a troca vale no dia 1º do mês seguinte (ADR-050). As quatro tabelas novas estão sob RLS,
+e a validação do model recusa ligar registros de psicólogos diferentes, porque a checagem de chave
+estrangeira do Postgres ignora as policies. Falta P-08, que depende de prontuário existir.
 
-⚠️ A exclusão de paciente hoje é **definitiva**. A partir do prontuário isso vira arquivamento:
-guarda mínima de 5 anos (ADR-005) e o `CASCADE` levaria o prontuário junto. Ver **P-70**.
+⚠️ A exclusão de paciente é **definitiva** e leva o caso individual junto — correto pela ADR-048,
+porque ainda não existe atendimento, e sem atendimento todo cadastro é "feito por engano". A
+**lixeira** para paciente com atendimento entra com o app `atendimentos`. Recusa excluir quem está
+em atendimento de casal. Ver **P-70**, resolvida em parte.
 
 
 > Como **psicólogo**, quero cadastrar quem eu atendo sem preencher campo que não uso.
@@ -137,12 +142,12 @@ guarda mínima de 5 anos (ADR-005) e o `CASCADE` levaria o prontuário junto. Ve
 | # | História | Camada | Estado | Código | ADR |
 |---|---|---|---|---|---|
 | P-01 | Cadastro de paciente: nome, CPF, telefone, e-mail, endereço com CEP, nascimento, medicamento em uso | 🎨🗄️ | ✅ | 🟢 | escopo |
-| P-02 | `Caso` criado **em silêncio** ao cadastrar paciente individual; a palavra não aparece na tela | ⚙️🗄️ | ✅ | ⚪ | ADR-026 |
-| P-03 | Atendimento de casal ou família: um `Caso` com N pacientes | 🎨⚙️🗄️ | ✅ | ⚪ | ADR-026 |
-| P-04 | A **pessoa é única** entre atendimentos: mesmo cadastro em terapia individual e de casal | 🗄️ | ✅ | ⚪ | ADR-026 |
-| P-05 | **Pagador** separado do paciente, com o CPF do paciente como padrão; segundo campo só ao marcar "quem paga é outra pessoa" | 🎨🗄️ | ✅ | ⚪ | ADR-009 |
-| P-06 | **Responsável legal** (1..N) com tipo de guarda registrado | 🎨🗄️ | ✅ | ⚪ | ADR-014 |
-| P-07 | Valor acordado e modalidade de cobrança pertencem ao **caso**, não ao paciente | 🗄️ | ✅ | ⚪ | ADR-002, ADR-026 |
+| P-02 | `Caso` criado **em silêncio** ao cadastrar paciente individual; a palavra não aparece na tela | ⚙️🗄️ | ✅ | 🟢 | ADR-026 |
+| P-03 | Atendimento de casal ou família: um `Caso` com N pacientes | 🎨⚙️🗄️ | ✅ | 🟢 | ADR-026 |
+| P-04 | A **pessoa é única** entre atendimentos: mesmo cadastro em terapia individual e de casal | 🗄️ | ✅ | 🟢 | ADR-026 |
+| P-05 | **Pagador** separado do paciente, com o CPF do paciente como padrão; segundo campo só ao marcar "quem paga é outra pessoa" | 🎨🗄️ | ✅ | 🟢 | ADR-009 |
+| P-06 | **Responsável legal** (1..N) com tipo de guarda registrado | 🎨🗄️ | ✅ | 🟢 | ADR-014 |
+| P-07 | Valor acordado e modalidade de cobrança pertencem ao **caso**, não ao paciente | 🗄️ | ✅ | 🟢 | ADR-002, ADR-026 |
 | P-08 | Acesso direto, do cadastro, aos prontuários já realizados e à contagem de sessões | 🎨 | ✅ | ⚪ | escopo |
 | P-09 | Paciente nascido antes de 2018 pode não ter CPF: avisar, não bloquear | 🎨 | ✅ | 🟢 | ADR-040 |
 

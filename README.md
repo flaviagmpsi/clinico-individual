@@ -116,8 +116,23 @@ DATABASE_URL="postgresql://hamilton_owner:ownerpass@127.0.0.1:5432/hamilton_dev"
   python manage.py test
 ```
 
-O runner precisa criar o banco de teste, então roda com o papel dono. São **54 testes**, e nenhum
-fica pulado: os três que descreviam o `full_clean()` no `save()` rodam desde a P-69.
+O runner precisa criar o banco de teste, então roda com o papel dono. São **104 testes**, e nenhum
+fica pulado. Contra um PostgreSQL local levam cerca de 70 segundos.
+
+⚠️ **Não rode a suíte contra o Neon do plano gratuito.** Ele suspende o banco por inatividade — e
+suspendeu duas vezes no meio de execuções em andamento, derrubando todas as conexões. No plano
+gratuito isso não se desliga. O banco de desenvolvimento pode continuar no Neon; os testes, não.
+
+O papel dono do teste precisa de `BYPASSRLS`, como o papel dono do Neon — sem ele, o
+`FORCE ROW LEVEL SECURITY` barra até a preparação dos dados de teste:
+
+```sql
+CREATE ROLE hamilton_owner LOGIN PASSWORD 'ownerpass' CREATEDB CREATEROLE BYPASSRLS;
+```
+
+No Windows sem Docker, os [binários oficiais do PostgreSQL](https://www.enterprisedb.com/download-postgresql-binaries)
+em `.zip` funcionam sem instalador e sem serviço: `initdb`, `pg_ctl start`, e a `DATABASE_URL` da
+suíte apontando para `127.0.0.1`.
 
 Vale saber o que a suíte cobre, porque não é o usual: 21 desses testes existem para **tentar
 atravessar** o isolamento — por SQL cru, por `RESET ROLE`, por id alheio na URL, por injeção de

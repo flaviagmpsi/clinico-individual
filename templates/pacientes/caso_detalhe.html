@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block titulo %}{{ caso }}{% endblock %}
+{% block secao %}Pacientes{% endblock %}
+
+{% block conteudo %}
+<div class="d-flex align-items-center mb-3">
+  <div>
+    <h1 class="h5 mb-0">{{ caso }}</h1>
+    <div class="text-muted small">Atendimento de casal ou família · criado em {{ caso.criado_em|date:"d/m/Y" }}</div>
+  </div>
+  <a href="{% url 'pacientes:lista' %}" class="btn btn-sm btn-outline-secondary ms-auto">Voltar</a>
+</div>
+
+<div class="row g-3">
+  <div class="col-lg-6">
+    <div class="card">
+      <div class="card-header bg-white py-2 fw-semibold">Participantes</div>
+      <ul class="list-group list-group-flush small">
+        {% for p in participantes %}
+          <li class="list-group-item">
+            <a href="{% url 'pacientes:detalhe' p.pk %}" class="text-decoration-none fw-medium">{{ p.nome }}</a>
+            {% if caso.pagador_paciente_id == p.pk %}<span class="badge text-bg-light ms-1">paga</span>{% endif %}
+          </li>
+        {% endfor %}
+      </ul>
+    </div>
+  </div>
+
+  <div class="col-lg-6">
+    <div class="card">
+      <div class="card-header bg-white py-2 fw-semibold">Cobrança</div>
+      <div class="card-body py-2 small">
+        {% if condicao %}
+          {{ condicao.get_modalidade_display }} · R$ {{ condicao.valor }}
+        {% else %}
+          <span class="text-muted">Não combinada.</span>
+        {% endif %}
+        {% if caso.pagador_nome %}
+          <div class="mt-1">Quem paga: {{ caso.pagador_nome }}</div>
+        {% endif %}
+        <div class="text-muted mt-2">
+          O valor é do casal ou da família, não de cada participante (ADR-026). A agenda e as
+          cobranças deste atendimento chegam com os módulos de agenda e financeiro.
+        </div>
+      </div>
+    </div>
+
+    <p class="small mt-3 mb-0">
+      <a href="{% url 'pacientes:caso_excluir' caso.pk %}" class="text-danger text-decoration-none">
+        <i class="bi bi-trash"></i> Excluir este atendimento</a>
+    </p>
+  </div>
+</div>
+{% endblock %}

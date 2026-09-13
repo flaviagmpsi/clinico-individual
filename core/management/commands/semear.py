@@ -7,11 +7,20 @@ Existe por dois motivos, e o segundo é o que importa:
    sistema que não isola nada. Entrando como a Ana e depois como o Bruno, a garantia deixa de
    ser afirmação em documento e vira coisa que se confere com os olhos.
 
+Cadastra pelo serviço (`pacientes.servicos`), e não por `Paciente.objects.create`: é o serviço que
+cria o caso individual em silêncio (ADR-026). Um paciente semeado sem caso seria um estado que o
+produto nunca produz — e as telas mostrariam "Não combinada" onde deveria haver cobrança.
+
+Os dados exercitam de propósito os casos de borda: uma mensalidade, um paciente sem valor
+combinado, uma criança com responsável legal que também é quem paga (ADR-014, ADR-009), e um
+atendimento de casal cujos participantes têm também seus casos individuais.
+
 ⚠️ Recusa rodar com `DEBUG=False`. É dado fictício com senha conhecida — em produção seriam
 duas contas de porta aberta.
 """
 
 from datetime import date
+from decimal import Decimal
 
 from django.conf import settings
 from django.core.management.base import BaseCommand, CommandError
@@ -19,9 +28,13 @@ from django.db import transaction
 
 from contas.models import Psicologo
 from core import contexto
-from pacientes.models import Paciente
+from pacientes.models import CondicaoCobranca, Paciente, ResponsavelLegal
+from pacientes.servicos import cadastrar_paciente, criar_caso_coletivo
 
 SENHA = "hamilton123"
+
+_POR_SESSAO = CondicaoCobranca.Modalidade.POR_SESSAO
+_MENSAL = CondicaoCobranca.Modalidade.MENSAL
 
 PSICOLOGOS = [
     {
@@ -32,19 +45,30 @@ PSICOLOGOS = [
                  telefone="31988112233", email="marcos@exemplo.com", cep="30140071",
                  logradouro="Rua da Bahia", numero="1200", bairro="Lourdes",
                  cidade="Belo Horizonte", uf="MG", data_primeira_sessao=date(2026, 3, 2),
-                 medicamento="Sertralina 50mg, uso contínuo (relato do paciente)."),
+                 medicamento="Sertralina 50mg, uso contínuo (relato do paciente).",
+                 cobranca=dict(valor=Decimal("200"), modalidade=_POR_SESSAO)),
             dict(nome="Juliana Alves", cpf="15350946056", data_nascimento=date(1995, 11, 30),
                  telefone="31977445566", email="juliana@exemplo.com", cidade="Belo Horizonte",
                  uf="MG", data_primeira_sessao=date(2026, 7, 15),
-                 observacoes="Prefere horário no fim da tarde."),
-            # Sem CPF de propósito: exercita o aviso da ADR-040 na ficha e o contador do painel.
+                 observacoes="Prefere horário no fim da tarde.",
+                 cobranca=dict(valor=Decimal("700"), modalidade=_MENSAL,
+                               vencimento=CondicaoCobranca.Vencimento.INICIO_DO_MES)),
+            # Sem CPF de propósito: exercita o aviso da ADR-040. Criança: responsável legal, que
+            # também é quem paga — os três eixos da ADR-014 em pessoas diferentes.
             dict(nome="Rafael Pinto", data_nascimento=date(2019, 6, 8), telefone="31999887766",
                  data_primeira_sessao=date(2026, 8, 20),
-                 observacoes="Atendimento infantil. Responsável legal entra no passo 2 (ADR-014)."),
+                 observacoes="Atendimento infantil.",
+                 cobranca=dict(valor=Decimal("180"), modalidade=_POR_SESSAO),
+                 responsaveis=[dict(nome="Luciana Pinto", parentesco="mãe", cpf="39053344705",
+                                    telefone="31999887766",
+                                    guarda=ResponsavelLegal.Guarda.COMPARTILHADA)],
+                 pagador=dict(nome="Luciana Pinto", cpf="39053344705")),
+            # Sem valor combinado: exercita o "Não combinada" da ficha (ADR-012).
             dict(nome="Beatriz Nogueira", cpf="71428793860", data_nascimento=date(1972, 1, 25),
                  telefone="31988990011", cidade="Nova Lima", uf="MG",
                  data_primeira_sessao=date(2026, 9, 1)),
         ],
+        "casais": [],
     },
     {
         "email": "bruno@exemplo.com", "nome_completo": "Bruno Carvalho", "cpf": "22222222222",
@@ -52,10 +76,15 @@ PSICOLOGOS = [
         "pacientes": [
             dict(nome="Camila Duarte", cpf="03119999708", data_nascimento=date(1990, 9, 3),
                  telefone="21988776655", cidade="Rio de Janeiro", uf="RJ",
-                 data_primeira_sessao=date(2026, 5, 10)),
+                 data_primeira_sessao=date(2026, 5, 10),
+                 cobranca=dict(valor=Decimal("250"), modalidade=_POR_SESSAO)),
             dict(nome="Pedro Henrique Sá", data_nascimento=date(2001, 2, 17),
-                 telefone="21977665544", data_primeira_sessao=date(2026, 8, 28)),
+                 telefone="21977665544", data_primeira_sessao=date(2026, 8, 28),
+                 cobranca=dict(valor=Decimal("250"), modalidade=_POR_SESSAO)),
         ],
+        # Camila e Pedro têm cada um o seu caso individual **e** este, juntos (ADR-026).
+        "casais": [dict(descricao="Camila e Pedro — casal",
+                        pacientes=["Camila Duarte", "Pedro Henrique Sá"])],
     },
 ]
 
@@ -76,8 +105,6 @@ class Command(BaseCommand):
 
         emails = [p["email"] for p in PSICOLOGOS]
         if opcoes["limpar"]:
-            # `objetos_todos` e não `objects`: fora de requisição não há escopo, e o manager
-            # padrão levantaria `EscopoNaoDefinido` — que é o comportamento correto dele.
             apagados = Psicologo.objects.filter(email__in=emails).delete()
             self.stdout.write(f"Removidos os dados anteriores ({apagados[0]} registros).")
         elif Psicologo.objects.filter(email__in=emails).exists():
@@ -85,8 +112,11 @@ class Command(BaseCommand):
                 "Os psicólogos de demonstração já existem. Use --limpar para recriar."
             )
 
-        for dados in PSICOLOGOS:
+        for modelo in PSICOLOGOS:
+            # Cópia rasa: `pop` no dicionário do módulo quebraria uma segunda execução no mesmo processo.
+            dados = dict(modelo)
             pacientes = dados.pop("pacientes")
+            casais = dados.pop("casais")
             psicologo = Psicologo.objects.create_user(
                 password=SENHA, telefone="31988887777", crp_regiao="04",
                 # `is_staff`/`is_superuser` só para o `/admin/` continuar servindo de conferência
@@ -94,11 +124,31 @@ class Command(BaseCommand):
                 is_staff=True, is_superuser=True, **dados,
             )
             with contexto.como(psicologo.pk):
-                for paciente in pacientes:
-                    Paciente.objects.create(**paciente)
-            dados["pacientes"] = pacientes
+                por_nome = {}
+                for item in pacientes:
+                    campos = dict(item)
+                    cobranca = campos.pop("cobranca", {})
+                    responsaveis = campos.pop("responsaveis", [])
+                    pagador = campos.pop("pagador", None)
+
+                    paciente = Paciente(**campos)
+                    caso = cadastrar_paciente(paciente, **cobranca)
+                    for responsavel in responsaveis:
+                        ResponsavelLegal.objects.create(paciente=paciente, **responsavel)
+                    if pagador:
+                        caso.pagador_paciente = None
+                        caso.pagador_nome = pagador["nome"]
+                        caso.pagador_cpf = pagador.get("cpf", "")
+                        caso.save()
+                    por_nome[paciente.nome] = paciente
+
+                for casal in casais:
+                    criar_caso_coletivo([por_nome[nome] for nome in casal["pacientes"]],
+                                        descricao=casal["descricao"])
+
             self.stdout.write(self.style.SUCCESS(
-                f"  {psicologo.email}  senha: {SENHA}  ({len(pacientes)} pacientes)"))
+                f"  {psicologo.email}  senha: {SENHA}  ({len(pacientes)} pacientes, "
+                f"{len(casais)} atendimento(s) de casal)"))
 
         self.stdout.write(
             "\nEntre com um, depois com o outro: cada um enxerga só os próprios pacientes "

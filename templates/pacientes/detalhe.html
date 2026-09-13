@@ -7,7 +7,7 @@
   <div>
     <h1 class="h5 mb-0">{{ paciente.nome }}</h1>
     <div class="text-muted small">
-      {% if paciente.idade %}{{ paciente.idade }} anos · {% endif %}
+      {% if paciente.idade is not None %}{{ paciente.idade }} anos · {% endif %}
       cadastrado em {{ paciente.criado_em|date:"d/m/Y" }}
     </div>
   </div>
@@ -48,6 +48,83 @@
       </div>
     </div>
 
+    {% comment %}
+    O card se chama "Atendimento" e não "Caso": no individual a palavra não aparece (ADR-026). Por
+    baixo, é o caso de um deste paciente.
+    {% endcomment %}
+    <div class="card mt-3">
+      <div class="card-header bg-white py-2 fw-semibold d-flex align-items-center">
+        Atendimento
+        {% if caso %}
+          <a href="{% url 'pacientes:cobranca' paciente.pk %}" class="ms-auto small fw-normal text-decoration-none me-3">
+            <i class="bi bi-cash-coin"></i> Mudar cobrança</a>
+          <a href="{% url 'pacientes:atendimento' paciente.pk %}" class="small fw-normal text-decoration-none">
+            <i class="bi bi-pencil"></i> Quem paga</a>
+        {% endif %}
+      </div>
+      <div class="card-body py-2">
+        <dl class="row mb-0 small">
+          <dt class="col-5 fw-normal text-muted py-1">Cobrança</dt>
+          <dd class="col-7 py-1">
+            {% if condicao %}
+              {{ condicao.get_modalidade_display }} · R$ {{ condicao.valor }}
+              {% if condicao.vencimento %}<span class="text-muted">· vence no {{ condicao.get_vencimento_display|lower }}</span>{% endif %}
+            {% else %}
+              <span class="text-muted">Não combinada</span>
+            {% endif %}
+            {% with proxima=caso.proxima_condicao %}{% if proxima %}
+              <div class="text-warning-emphasis mt-1">
+                <i class="bi bi-calendar-event"></i> A partir de {{ proxima.vigente_desde|date:"d/m/Y" }}:
+                {{ proxima.get_modalidade_display|lower }}, R$ {{ proxima.valor }}
+              </div>
+            {% endif %}{% endwith %}
+          </dd>
+          <dt class="col-5 fw-normal text-muted py-1">Quem paga</dt>
+          <dd class="col-7 py-1">
+            {% if not caso %}—
+            {% elif caso.pagador_nome %}{{ caso.pagador_nome }}{% if caso.pagador_cpf %} <span class="text-muted">· CPF {{ caso.pagador_cpf }}</span>{% endif %}
+            {% else %}O próprio paciente{% endif %}
+          </dd>
+        </dl>
+      </div>
+    </div>
+
+    <div class="card mt-3">
+      <div class="card-header bg-white py-2 fw-semibold d-flex align-items-center">
+        Responsáveis legais
+        <a href="{% url 'pacientes:responsavel_novo' paciente.pk %}" class="ms-auto small fw-normal text-decoration-none">
+          <i class="bi bi-plus-lg"></i> Adicionar</a>
+      </div>
+      {% if responsaveis %}
+        <ul class="list-group list-group-flush small">
+          {% for r in responsaveis %}
+          <li class="list-group-item d-flex align-items-center">
+            <div>
+              <div class="fw-medium">{{ r.nome }}{% if r.parentesco %} <span class="text-muted fw-normal">· {{ r.parentesco }}</span>{% endif %}</div>
+              <div class="text-muted">
+                Guarda {{ r.get_guarda_display|lower }}{% if not r.detem_guarda %} · não detém a guarda{% endif %}{% if r.telefone %} · {{ r.telefone }}{% endif %}
+              </div>
+            </div>
+            <a href="{% url 'pacientes:responsavel_editar' r.pk %}" class="ms-auto btn btn-sm btn-link p-0 me-2" title="Editar">
+              <i class="bi bi-pencil"></i></a>
+            <a href="{% url 'pacientes:responsavel_excluir' r.pk %}" class="btn btn-sm btn-link p-0 text-danger" title="Remover">
+              <i class="bi bi-trash"></i></a>
+          </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <div class="card-body py-2 small text-muted">
+          {% if paciente.idade is not None and paciente.idade < 18 %}
+            <span class="text-warning-emphasis"><i class="bi bi-exclamation-triangle"></i>
+            Menor de idade sem responsável cadastrado.</span> O atendimento não eventual exige a
+            autorização de ao menos um responsável legal (ADR-014).
+          {% else %}
+            Nenhum. Necessário para criança, adolescente ou pessoa interditada.
+          {% endif %}
+        </div>
+      {% endif %}
+    </div>
+
     {% if paciente.medicamento or paciente.observacoes %}
     <div class="card mt-3">
       <div class="card-header bg-white py-2 fw-semibold">Notas</div>
@@ -86,8 +163,8 @@
                 É a consulta <em>realizada</em> que dispara o prontuário pendente (ADR-023).</li>
             <li><strong>Prontuários</strong> (passo 3) — um por paciente, por sessão. Versão
                 congelada na confirmação, com trilha de auditoria (ADR-005).</li>
-            <li><strong>Financeiro</strong> (passo 4) — cobranças e baixas, com saldo. O valor
-                acordado pertence ao <em>Caso</em>, não ao paciente (ADR-026).</li>
+            <li><strong>Financeiro</strong> (passo 4) — cobranças e baixas, com saldo. O valor e a
+                forma de cobrança já ficam registrados no card <em>Atendimento</em>.</li>
           </ul>
           <p class="mb-0">
             <a href="{% url 'pacientes:excluir' paciente.pk %}" class="text-danger text-decoration-none">
@@ -95,6 +172,28 @@
           </p>
         </div>
       </div>
+    </div>
+
+    <div class="card mt-3">
+      <div class="card-header bg-white py-2 fw-semibold d-flex align-items-center">
+        Atendimentos de casal ou família
+        <a href="{% url 'pacientes:caso_novo' %}?paciente={{ paciente.pk }}" class="ms-auto small fw-normal text-decoration-none">
+          <i class="bi bi-plus-lg"></i> Criar</a>
+      </div>
+      {% if casos_coletivos %}
+        <ul class="list-group list-group-flush small">
+          {% for c in casos_coletivos %}
+          <li class="list-group-item">
+            <a href="{% url 'pacientes:caso' c.pk %}" class="text-decoration-none fw-medium">{{ c }}</a>
+            <span class="text-muted">· {{ c.pacientes.all|join:", " }}</span>
+          </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <div class="card-body py-2 small text-muted">
+          Nenhum. Só interessa a quem atende casal ou família — no atendimento individual, nada muda.
+        </div>
+      {% endif %}
     </div>
   </div>
 </div>

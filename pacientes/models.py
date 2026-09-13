@@ -10,7 +10,10 @@ todos são opcionais de propósito — ADR-012, degradar com honestidade: quem c
 no meio do dia não tem o CEP à mão, e exigir tudo transforma cadastro em barreira.
 """
 
-from django.core.validators import RegexValidator
+from decimal import Decimal
+
+from django.core.exceptions import ValidationError
+from django.core.validators import MinValueValidator, RegexValidator
 from django.db import models
 
 from core.models import TenantOwnedModel
@@ -94,3 +97,214 @@ class Paciente(TenantOwnedModel):
         hoje = date.today()
         faz_anos = (hoje.month, hoje.day) >= (self.data_nascimento.month, self.data_nascimento.day)
         return hoje.year - self.data_nascimento.year - (0 if faz_anos else 1)
+
+
+def _exigir_mesmo_dono(registro, **relacionados) -> None:
+    """Recusa ligar registros de psicólogos diferentes.
+
+    Não é redundante com o RLS, e a razão é sutil: a checagem de **chave estrangeira** do
+    Postgres ignora as policies. Um `INSERT` de participação apontando para o caso de outro
+    psicólogo passaria pelo banco se o id fosse adivinhado — a policy só olha o `psicologo_id`
+    da própria linha. Esta checagem roda no `full_clean()` que `ValidaAoSalvar` dispara em toda
+    gravação (P-69), e fecha a porta que o banco deixa aberta.
+    """
+    from core import contexto
+
+    # Durante a validação de um formulário o `psicologo_id` ainda está vazio — ele só é preenchido
+    # no `save()`. Comparar contra vazio acusaria "outro psicólogo" em todo cadastro legítimo, então
+    # nesse momento o dono é o escopo corrente. No `save()` o campo já existe e a checagem roda de novo.
+    dono = registro.psicologo_id or contexto.atual()
+    if dono is None:
+        return
+    for campo, outro in relacionados.items():
+        if outro is not None and outro.psicologo_id != dono:
+            # Erro geral, e não preso ao campo: se o campo não estiver no formulário, o Django
+            # transforma um erro de campo desconhecido em exceção — um 500 no lugar de uma recusa.
+            raise ValidationError(f"{campo}: registro de outro psicólogo.")
+
+
+class Caso(TenantOwnedModel):
+    """O vínculo terapêutico — de 1 a N pacientes (ADR-026).
+
+    **Uma forma só no banco, duas formas na tela.** Todo paciente individual tem um caso de um,
+    criado em silêncio pelo cadastro (`pacientes.servicos`); a palavra "caso" só aparece para
+    quem atende casal ou família. Não pode ser opcional: sem ele, a Maria que faz terapia
+    individual e depois entra num casal exigiria migrar dado com o sistema no ar, e cobrança,
+    agenda e prontuário teriam dois caminhos cada.
+
+    O que é do **vínculo** mora aqui: quem participa, quem paga, quanto e como se cobra. O que é
+    da **pessoa** — dados pessoais, responsável legal — mora em `Paciente`.
+    """
+
+    pacientes = models.ManyToManyField(
+        Paciente, through="Participacao", related_name="casos", verbose_name="Pacientes")
+
+    # Opcional: um caso de um se chama pelo nome do paciente; só casal e família precisam de rótulo.
+    descricao = models.CharField("Descrição", max_length=120, blank=True,
+                                 help_text='Ex.: "Maria e João — casal". Vazio no atendimento individual.')
+
+    # --- Pagador (ADR-009) -------------------------------------------------------------------
+    # Quem paga é eixo diferente de quem é atendido: pai pagando pelo filho, um cônjuge pagando o
+    # casal. O pagador é **um dos participantes** ou **uma pessoa de fora**, nunca os dois.
+    pagador_paciente = models.ForeignKey(
+        Paciente, on_delete=models.PROTECT, null=True, blank=True, related_name="casos_que_paga",
+        verbose_name="Pagador (participante)")
+    pagador_nome = models.CharField("Nome do pagador", max_length=255, blank=True)
+    pagador_cpf = models.CharField("CPF do pagador", max_length=11, blank=True, validators=[cpf_valido])
+
+    class Meta:
+        verbose_name = "Caso"
+        verbose_name_plural = "Casos"
+
+    def __str__(self) -> str:
+        return self.descricao or " e ".join(p.nome for p in self.pacientes.all()) or f"Caso {self.pk}"
+
+    def clean(self):
+        super().clean()
+        _exigir_mesmo_dono(self, pagador_paciente=self.pagador_paciente)
+        tem_participante = self.pagador_paciente_id is not None
+        tem_externo = bool(self.pagador_nome or self.pagador_cpf)
+        if tem_participante and tem_externo:
+            raise ValidationError(
+                "O pagador é um participante ou uma pessoa de fora, não os dois.")
+        if self.pagador_cpf and not self.pagador_nome:
+            raise ValidationError({"pagador_nome": "Informe o nome de quem paga."})
+
+    @property
+    def individual(self) -> bool:
+        return self.participacoes.count() == 1
+
+    def condicao_vigente(self, em=None):
+        """A condição de cobrança valendo numa data — por padrão, hoje.
+
+        Ver `CondicaoCobranca`: trocar a forma de cobrança cria uma condição nova com data de
+        vigência, em vez de sobrescrever a anterior.
+        """
+        from datetime import date
+
+        em = em or date.today()
+        return self.condicoes.filter(vigente_desde__lte=em).order_by("-vigente_desde").first()
+
+    def proxima_condicao(self):
+        """A troca já agendada e ainda não em vigor, se houver — para a ficha avisar o que vem."""
+        from datetime import date
+
+        return self.condicoes.filter(vigente_desde__gt=date.today()).order_by("vigente_desde").first()
+
+
+class Participacao(TenantOwnedModel):
+    """Um paciente dentro de um caso.
+
+    Tabela de junção **com dono**, e não o `ManyToManyField` automático do Django: a tabela
+    automática não teria `psicologo_id`, e portanto não teria RLS. Pelo SQL cru dela sairia quem
+    atende quem — de todos os psicólogos do produto.
+    """
+
+    caso = models.ForeignKey(Caso, on_delete=models.CASCADE, related_name="participacoes")
+    paciente = models.ForeignKey(Paciente, on_delete=models.CASCADE, related_name="participacoes")
+
+    class Meta:
+        verbose_name = "Participação"
+        verbose_name_plural = "Participações"
+        constraints = [
+            models.UniqueConstraint(fields=["caso", "paciente"], name="paciente_uma_vez_por_caso"),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.paciente} em {self.caso_id}"
+
+    def clean(self):
+        super().clean()
+        _exigir_mesmo_dono(
+            self,
+            caso=self.caso if self.caso_id else None,
+            paciente=self.paciente if self.paciente_id else None,
+        )
+
+
+class CondicaoCobranca(TenantOwnedModel):
+    """Quanto e como um caso é cobrado, **a partir de uma data** (ADR-002).
+
+    Guardada com vigência, e nunca sobrescrita, por dois motivos:
+
+    1. Cobrança já gerada pode ter pagamento registrado; reescrever a condição que a originou
+       desfaria a conta.
+    2. A regra de **quando** uma troca passa a valer ainda está em discussão (rodada atual:
+       na hora, ou no dia 1º do mês seguinte). Com vigência, as duas respostas cabem no mesmo
+       modelo — muda só a data que o sistema preenche.
+    """
+
+    class Modalidade(models.TextChoices):
+        POR_SESSAO = "POR_SESSAO", "Por sessão"
+        MENSAL = "MENSAL", "Mensalidade"
+
+    class Vencimento(models.TextChoices):
+        INICIO_DO_MES = "INICIO", "Início do mês"
+        FIM_DO_MES = "FIM", "Fim do mês"
+
+    caso = models.ForeignKey(Caso, on_delete=models.CASCADE, related_name="condicoes")
+    modalidade = models.CharField("Forma de cobrança", max_length=12, choices=Modalidade.choices,
+                                  default=Modalidade.POR_SESSAO)
+    valor = models.DecimalField("Valor", max_digits=10, decimal_places=2,
+                                validators=[MinValueValidator(Decimal("0"))])
+    vencimento = models.CharField("Vencimento", max_length=6, choices=Vencimento.choices,
+                                  blank=True, help_text="Só para mensalidade.")
+    vigente_desde = models.DateField("Vale a partir de")
+
+    class Meta:
+        verbose_name = "Condição de cobrança"
+        verbose_name_plural = "Condições de cobrança"
+        ordering = ["-vigente_desde"]
+        constraints = [
+            models.UniqueConstraint(fields=["caso", "vigente_desde"], name="uma_condicao_por_data"),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.get_modalidade_display()} R$ {self.valor} desde {self.vigente_desde:%d/%m/%Y}"
+
+    def clean(self):
+        super().clean()
+        _exigir_mesmo_dono(self, caso=self.caso if self.caso_id else None)
+        if self.modalidade == self.Modalidade.MENSAL and not self.vencimento:
+            raise ValidationError({"vencimento": "Mensalidade precisa de vencimento."})
+        if self.modalidade == self.Modalidade.POR_SESSAO and self.vencimento:
+            self.vencimento = ""
+
+
+class ResponsavelLegal(TenantOwnedModel):
+    """Quem autoriza e responde pelo atendimento de criança ou adolescente (ADR-014).
+
+    Pertence ao **paciente**, não ao caso: continua sendo o responsável se a criança passar a
+    integrar um atendimento de família. Admite mais de um, porque em guarda compartilhada o
+    Código de Ética recomenda a autorização de ambos.
+
+    A autorização em si vive dentro do contrato terapêutico (ADR-015), não aqui.
+    """
+
+    class Guarda(models.TextChoices):
+        COMPARTILHADA = "COMPARTILHADA", "Compartilhada"
+        UNILATERAL = "UNILATERAL", "Unilateral"
+        NAO_INFORMADA = "NAO_INFORMADA", "Não informada"
+
+    paciente = models.ForeignKey(Paciente, on_delete=models.CASCADE, related_name="responsaveis")
+    nome = models.CharField("Nome completo", max_length=255)
+    parentesco = models.CharField("Parentesco", max_length=60, blank=True, help_text="Ex.: mãe, avô, tutora.")
+    cpf = models.CharField("CPF", max_length=11, blank=True, validators=[cpf_valido])
+    telefone = models.CharField("Telefone", max_length=20, blank=True, validators=[telefone_valido])
+    email = models.EmailField("E-mail", blank=True)
+    guarda = models.CharField("Guarda", max_length=15, choices=Guarda.choices, default=Guarda.NAO_INFORMADA)
+    detem_guarda = models.BooleanField(
+        "Detém a guarda", default=True,
+        help_text="Em guarda unilateral, só quem a detém autoriza o atendimento (ADR-014).")
+
+    class Meta:
+        verbose_name = "Responsável legal"
+        verbose_name_plural = "Responsáveis legais"
+        ordering = ["nome"]
+
+    def __str__(self) -> str:
+        return f"{self.nome} ({self.parentesco})" if self.parentesco else self.nome
+
+    def clean(self):
+        super().clean()
+        _exigir_mesmo_dono(self, paciente=self.paciente if self.paciente_id else None)

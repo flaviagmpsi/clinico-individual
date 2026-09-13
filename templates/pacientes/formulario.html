@@ -49,6 +49,30 @@ mão, e raramente o CEP. O que é obrigatório fica no topo; o resto pode espera
     </div>
   </div>
 
+  {% comment %}
+  Só no cadastro novo. A **troca** de valor e forma de cobrança de quem já está cadastrado depende
+  de quando uma troca passa a valer, ainda em decisão — por isso não aparece na edição.
+  {% endcomment %}
+  {% if cobranca %}
+  <div class="card mb-3">
+    <div class="card-header bg-white py-2 fw-semibold">
+      Cobrança <span class="text-muted fw-normal small">— opcional, pode ser combinada depois</span></div>
+    <div class="card-body">
+      {% if cobranca.non_field_errors %}
+        <div class="alert alert-danger py-2 small">{{ cobranca.non_field_errors }}</div>
+      {% endif %}
+      <div class="row g-3">
+        <div class="col-md-4">{% include "components/_campo.html" with campo=cobranca.modalidade %}</div>
+        <div class="col-md-4">{% include "components/_campo.html" with campo=cobranca.valor %}</div>
+        <div class="col-md-4">{% include "components/_campo.html" with campo=cobranca.vencimento %}</div>
+      </div>
+      <div class="form-text small mt-2">
+        Quem paga é o próprio paciente. Se for outra pessoa — pai, cônjuge, empresa —, ajuste na ficha
+        depois de salvar.</div>
+    </div>
+  </div>
+  {% endif %}
+
   <div class="card mb-3">
     <div class="card-header bg-white py-2 fw-semibold">Notas</div>
     <div class="card-body">
