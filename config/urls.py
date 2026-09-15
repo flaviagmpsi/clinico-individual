@@ -2,7 +2,7 @@ from django.contrib import admin
 from django.urls import include, path
 
 from contas.views import Sair
-from core.views import Painel
+from indicadores.views import Painel
 
 urlpatterns = [
     path("", Painel.as_view(), name="painel"),

@@ -2065,6 +2065,20 @@ vira falta cobrada ou falta remarcada conforme já entrava ou não na cobrança.
 ajustes de consulta e vencimento → financeiro básico (cobrança e pagamento com forma) → painel novo →
 prontuário escrito à mão.
 
+**Definições fechadas na Rodada 39 (recomendações aceitas):**
+- **Recebido no mês** são os pagamentos **referentes ao mês** — a mensalidade do mês e as sessões do mês —, ainda
+  que pagos em outro mês. É o mesmo critério do "R$ pago / R$ devido" de cada paciente, e os dois números batem.
+- **Dias sem atividade** contam desde a **última sessão realizada**. Falta não é atividade. Sem nenhuma sessão
+  realizada, a tela diz "sem sessão ainda"; para o critério de atenção, conta-se desde o início da frequência.
+- **Quem paga por sessão** aparece numa linha só, com as sessões do mês somadas; o detalhe por sessão fica no
+  financeiro.
+- **Sessões que faltam** e o **previsto** de quem paga por sessão contam só sessões **futuras**. A pendente de
+  cadastro já tem o seu próprio aviso e não entra na previsão.
+
+**Decisão de arquitetura:** o painel sai de `core` e vai para o app **`indicadores`** — o único que pode depender
+de todos (regra 2 de dependência). `core` volta a não importar domínio (regra 1). A tela mostra uma linha por
+**atendimento em curso**: o casal tem a sua, porque a cobrança é do caso (ADR-026).
+
 ---
 
 ## ADR-062 — Financeiro básico: pagamento por paciente e mês, e dia combinado para cada um (revisa ADR-059 e N-12)

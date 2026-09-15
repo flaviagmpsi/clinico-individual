@@ -20,7 +20,7 @@ correu 27 rodadas antes da primeira linha de código, de propósito.
 
 ## ⚡ Onde o código está hoje
 
-**Passos 0, 1 e 2 concluídos; do passo 3, a trilha de auditoria (F-05).** Rodando, com 264 testes verdes contra PostgreSQL real.
+**Passos 0, 1 e 2 concluídos; do passo 3, a trilha de auditoria (F-05).** Rodando, com 274 testes verdes contra PostgreSQL real.
 
 | App | Situação | O que existe |
 |---|---|---|
@@ -35,7 +35,7 @@ correu 27 rodadas antes da primeira linha de código, de propósito.
 responsável legal já entram nela. **A construção segue do mais simples ao mais complexo, com a IA
 por último** (ADR-058): nada que dependa de IA, transcrição ou provedor entra antes de todo o resto
 estar feito e testado. **Ordem definida pelo teste do usuário (ADR-061):** financeiro básico ✅ →
-**painel novo** (o próximo) → prontuário escrito à mão.
+painel novo ✅ → **prontuário escrito à mão** (o próximo).
 
 ### Antes de escrever a primeira linha, entenda a fundação
 
@@ -311,19 +311,19 @@ o psicólogo sem a documentação que a lei o obriga a guardar por 5 anos.
 ---
 
 ## 9. Indicadores — app `indicadores`
-**Código: ⚪ como app.** O painel provisório vive em `core/views.py` e mostra só o que o cadastro
-de pacientes permite — declarando na tela o que ainda não sabe (ADR-012). Ele **não** é o app
-`indicadores`: quando `Consulta` existir, o painel muda de dono e sai de `core`.
+**Código: 🟠 painel no ar, análise não.** O painel mora no app `indicadores` desde a Rodada 39 e mostra o que a
+ADR-061 pediu: sessões feitas e que faltam, receita recebida e a receber, e cada atendimento em curso com situação,
+dias sem sessão, sessões no mês e o financeiro do mês. A tela de análise (I-06 a I-09) ainda não existe.
 
 
 ### Painel (diário, ação)
 
 | # | História | Camada | Estado | Código | ADR |
 |---|---|---|---|---|---|
-| I-01 | Pacientes ativos com último atendimento e **dias sem atender**, nos limiares de 7 e 30 dias | 🎨⚙️ | ✅ | 🟠 | portado do original |
-| I-02 | Resumo por paciente: sessões do mês e pendência de pagamento | 🎨 | ✅ | ⚪ | escopo |
-| I-03 | Pendências de ação: cobranças em aberto e **prontuários não escritos** | 🎨 | ✅ | ⚪ | ADR-017 |
-| I-04 | Três indicadores de cabeçalho: receita líquida, ocupação da agenda, entradas × saídas | 🎨 | ✅ | ⚪ | ADR-027 |
+| I-01 | Atendimentos em curso com **situação** (regular ou precisa de atenção: pagamento vencido, sessão pendente, mais de 14/21 dias sem sessão) e **dias sem sessão** desde a última realizada | 🎨⚙️ | ✅ | 🟢 | ADR-061 |
+| I-02 | Por atendimento: sessões realizadas no mês e **"R$ pago / R$ devido"** do mês, com pendente e forma de pagamento | 🎨 | ✅ | 🟢 | ADR-061 |
+| I-03 | Pendências de ação: sessões pendentes de cadastro e pagamentos pendentes. Prontuários não escritos quando houver prontuário | 🎨 | ✅ | 🟠 | ADR-017, ADR-061 |
+| I-04 | Resumo do mês: **sessões feitas × que faltam**; **receita recebida × a receber** (previsto) | 🎨 | ✅ | 🟢 | ADR-061 |
 | I-05 | Curto o bastante para caber numa tela, **sem gráfico decorativo** | 🎨 | ✅ | ⚪ | ADR-027 |
 
 ### Análise (eventual, profundidade)

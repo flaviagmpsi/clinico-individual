@@ -33,6 +33,7 @@ INSTALLED_APPS = [
     "agenda",
     "atendimentos",
     "financeiro",
+    "indicadores",
 ]
 
 MIDDLEWARE = [
