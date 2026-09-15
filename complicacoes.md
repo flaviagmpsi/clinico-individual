@@ -1990,7 +1990,8 @@ depois de todo o sistema feito e testado. Ela é um facilitador para o psicólog
 **Decisão do usuário:** o vencimento é **o dia em que vence** — de 1 a 31.
 - Vale para a **mensalidade**, com um dia padrão no perfil do psicólogo e ajuste por paciente.
 - Em mês mais curto, dia 31 (ou 30, 29) vira o **último dia do mês**.
-- Cobrança **por sessão** vence **no dia da sessão** — premissa apresentada ao usuário e não contestada.
+- ~~Cobrança **por sessão** vence **no dia da sessão**~~ — **revisado pela ADR-062**: todo paciente tem o seu
+  dia combinado de pagamento, inclusive quem paga por sessão.
 
 **Consequências:** dados existentes migram "início" → dia 1 e "fim" → dia 31. O lembrete de cobrança
 e o status "precisa de atenção" (ADR-061) passam a ter uma data concreta de vencido.
@@ -2063,6 +2064,31 @@ vira falta cobrada ou falta remarcada conforme já entrava ou não na cobrança.
 **Consequências:** o painel depende de **registro de pagamento**, que não existe. A ordem passa a ser:
 ajustes de consulta e vencimento → financeiro básico (cobrança e pagamento com forma) → painel novo →
 prontuário escrito à mão.
+
+---
+
+## ADR-062 — Financeiro básico: pagamento por paciente e mês, e dia combinado para cada um (revisa ADR-059 e N-12)
+
+**Status:** 🟡 Aceita em parte — Rodada 36. Falta o mês de referência de quem paga por sessão (P-73).
+
+**Decisões do usuário:**
+- **Pagamento é registrado pelo psicólogo por paciente e mês de referência** — "Marcos pagou R$ 400,
+  referente a setembro, no Pix, dia 12". Vale para mensalidade **e** para quem paga por sessão.
+- **Pagou a mais:** é só **mais um registro de pagamento**. Não há crédito automático abatendo o mês
+  seguinte — **revisa N-12 / ADR-040**.
+- **Pagou menos:** o restante fica **pendente** no mês.
+- **Mensalidade é sempre cheia:** começar no meio do mês ou faltar não muda o valor. Desconto num mês
+  específico é ajuste à mão.
+- **Cada paciente tem o seu dia combinado de pagamento**, personalizado — inclusive quem paga por sessão. É
+  a data em que a aba de lembretes alerta o psicólogo sobre pagamento pendente. **Revisa a ADR-059**, que
+  supunha que a cobrança por sessão vencesse no dia da sessão.
+
+**Consequências:**
+- O campo "dia do vencimento" passa a valer para as duas modalidades, com o padrão do perfil.
+- **Devido do mês:** mensalidade vigente no mês, ou soma das consultas cobradas no mês pelo valor por sessão
+  vigente na data de cada uma. **Pago do mês:** soma dos pagamentos com aquele mês de referência.
+- Pagamento **não dá baixa** em cobrança individual (ADR-035 simplificada): o saldo é comparação de totais
+  do mês, que é o que o painel mostra.
 
 ## Impeditivos
 
