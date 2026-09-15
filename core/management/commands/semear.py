@@ -34,6 +34,8 @@ from contas.models import Psicologo
 from core import contexto
 from financeiro.models import Pagamento
 from financeiro.servicos import cobrancas_do_mes, registrar_pagamento_mensalidade, registrar_pagamento_sessao
+from prontuarios import servicos as prontuarios
+from prontuarios.models import Prontuario, VersaoProntuario
 from pacientes.models import Caso, CondicaoCobranca, Paciente, ResponsavelLegal
 from pacientes.servicos import cadastrar_paciente, criar_caso_coletivo
 
@@ -83,6 +85,14 @@ def _pagamento_de_demonstracao(caso, *, forma: str, meses_atras: int | None = No
     registrar_pagamento_sessao(consulta, data=timezone.localtime(consulta.inicio).date(), forma=forma)
 
 
+def _prontuario_de_demonstracao(caso, *, sessao: int, texto: str, confirmar: bool) -> None:
+    """Escreve o prontuário da N-ésima sessão realizada do caso individual — confirmado ou como rascunho."""
+    consulta = caso.consultas.filter(estado="REALIZADA").order_by("inicio")[sessao]
+    paciente = caso.pacientes.first()
+    acao = prontuarios.confirmar if confirmar else prontuarios.salvar_rascunho
+    acao(consulta, paciente, texto=texto)
+
+
 def _apagar_conta_de_demonstracao(psicologo) -> int:
     """Apaga uma conta fictícia inteira, na ordem que o `PROTECT` exige.
 
@@ -93,7 +103,7 @@ def _apagar_conta_de_demonstracao(psicologo) -> int:
     """
     dono = {"psicologo": psicologo}
     total = 0
-    for modelo in (Pagamento, Consulta, Desfecho, Recorrencia, Caso):
+    for modelo in (VersaoProntuario, Prontuario, Pagamento, Consulta, Desfecho, Recorrencia, Caso):
         total += modelo.objetos_todos.filter(**dono).delete()[0]
     return total + psicologo.delete()[0]
 
@@ -154,6 +164,13 @@ PSICOLOGOS = [
             dict(paciente="Juliana Alves", meses_atras=1, forma="TRANSFERENCIA"),
             dict(paciente="Marcos Vieira", sessao=0, forma="DINHEIRO"),
         ],
+        # Da primeira sessão do Marcos, um prontuário confirmado; as outras ficam para escrever (ADR-064).
+        "prontuarios": [
+            dict(paciente="Marcos Vieira", sessao=0, confirmar=True,
+                 texto="Registro fictício de demonstração. Sessão centrada nas dificuldades de sono relatadas na "
+                       "semana; exploradas estratégias de higiene do sono. Paciente participativo. Combinado retomar "
+                       "o tema na próxima sessão."),
+        ],
     },
     {
         "email": "bruno@exemplo.com", "nome_completo": "Bruno Carvalho", "cpf": "22222222222",
@@ -213,6 +230,7 @@ class Command(BaseCommand):
             frequencias = dados.pop("frequencias", {})
             desfechos = dados.pop("desfechos", {})
             pagamentos = dados.pop("pagamentos", [])
+            registros_de_prontuario = dados.pop("prontuarios", [])
             psicologo = Psicologo.objects.create_user(
                 password=SENHA, telefone="31988887777", crp_regiao="04",
                 # `is_staff`/`is_superuser` só para o `/admin/` continuar servindo de conferência
@@ -257,6 +275,9 @@ class Command(BaseCommand):
                 for pagamento in pagamentos:
                     campos_do_pagamento = dict(pagamento)
                     _pagamento_de_demonstracao(casos[campos_do_pagamento.pop("paciente")], **campos_do_pagamento)
+                for registro in registros_de_prontuario:
+                    campos_do_registro = dict(registro)
+                    _prontuario_de_demonstracao(casos[campos_do_registro.pop("paciente")], **campos_do_registro)
 
             self.stdout.write(self.style.SUCCESS(
                 f"  {psicologo.email}  senha: {SENHA}  ({len(pacientes)} pacientes, "

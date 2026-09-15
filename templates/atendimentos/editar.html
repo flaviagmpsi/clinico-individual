@@ -14,6 +14,16 @@
   Para mudar a data, exclua este cadastro e cadastre de novo.
 </div>
 
+{% comment %}ADR-064: sessão realizada pede um prontuário por participante.{% endcomment %}
+{% if consulta.estado == "REALIZADA" %}
+  <div class="small mb-3" style="max-width:640px">
+    <i class="bi bi-journal-medical"></i> Prontuário:
+    {% for p in consulta.caso.pacientes.all %}
+      <a href="{% url 'prontuarios:escrever' consulta.pk p.pk %}" class="text-decoration-none ms-1">{{ p.nome }}</a>{% if not forloop.last %} ·{% endif %}
+    {% endfor %}
+  </div>
+{% endif %}
+
 <form method="post" novalidate style="max-width:640px">
   {% csrf_token %}
   {% if form.non_field_errors %}

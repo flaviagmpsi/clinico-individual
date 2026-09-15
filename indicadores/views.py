@@ -21,5 +21,7 @@ class Painel(LoginRequiredMixin, TemplateView):
             sessoes_pendentes=painel.sessoes_pendentes[:5], total_pendentes=len(painel.sessoes_pendentes),
             pagamentos_pendentes=painel.pagamentos_pendentes[:5],
             total_pagamentos_pendentes=len(painel.pagamentos_pendentes),
+            prontuarios_pendentes=painel.prontuarios_pendentes[:5],
+            total_prontuarios_pendentes=len(painel.prontuarios_pendentes),
         )
         return contexto

@@ -20,7 +20,7 @@ correu 27 rodadas antes da primeira linha de código, de propósito.
 
 ## ⚡ Onde o código está hoje
 
-**Passos 0, 1 e 2 concluídos; do passo 3, a trilha de auditoria (F-05).** Rodando, com 274 testes verdes contra PostgreSQL real.
+**Passos 0, 1 e 2 concluídos; do passo 3, a trilha de auditoria (F-05).** Rodando, com 297 testes verdes contra PostgreSQL real.
 
 | App | Situação | O que existe |
 |---|---|---|
@@ -35,7 +35,7 @@ correu 27 rodadas antes da primeira linha de código, de propósito.
 responsável legal já entram nela. **A construção segue do mais simples ao mais complexo, com a IA
 por último** (ADR-058): nada que dependa de IA, transcrição ou provedor entra antes de todo o resto
 estar feito e testado. **Ordem definida pelo teste do usuário (ADR-061):** financeiro básico ✅ →
-painel novo ✅ → **prontuário escrito à mão** (o próximo).
+painel novo ✅ → prontuário escrito à mão ✅ → **lixeira de pacientes** (o próximo, ADR-048).
 
 ### Antes de escrever a primeira linha, entenda a fundação
 
@@ -155,7 +155,7 @@ em atendimento de casal. Ver **P-70**, resolvida em parte.
 | P-05 | **Pagador** separado do paciente, com o CPF do paciente como padrão; segundo campo só ao marcar "quem paga é outra pessoa" | 🎨🗄️ | ✅ | 🟢 | ADR-009 |
 | P-06 | **Responsável legal** (1..N) com tipo de guarda registrado | 🎨🗄️ | ✅ | 🟢 | ADR-014 |
 | P-07 | Valor acordado e modalidade de cobrança pertencem ao **caso**, não ao paciente | 🗄️ | ✅ | 🟢 | ADR-002, ADR-026 |
-| P-08 | Acesso direto, do cadastro, aos prontuários já realizados e à contagem de sessões | 🎨 | ✅ | ⚪ | escopo |
+| P-08 | Acesso direto, do cadastro, aos prontuários já realizados e à contagem de sessões | 🎨 | ✅ | 🟠 | escopo, ADR-064 |
 | P-09 | Paciente nascido antes de 2018 pode não ter CPF: avisar, não bloquear | 🎨 | ✅ | 🟢 | ADR-040 |
 
 ---
@@ -209,8 +209,9 @@ Exige verificação do Google, de 4 a 6 semanas, e sem ela o produto trava em 10
 ---
 
 ## 5. Prontuários — app `prontuarios`
-**Código: ⚪ nada. O app não existe.** A trilha de auditoria de que ele depende (F-05) já
-existe: o model do prontuário herda `core.auditoria.Auditado` (ADR-057).
+**Código: 🟠 prontuário escrito à mão no ar.** Texto livre, um por participante de cada sessão realizada, com
+rascunho, confirmação e correção em versão nova com motivo; versão confirmada imutável até no banco; trilha de
+auditoria; pendentes no painel, na ficha e na tela da consulta (ADR-064). A IA vem na etapa final.
 
 ⏸️ **IA e transcrição (R-01, R-03, R-09, R-10, R-14) ficam para a etapa final** (ADR-058). O
 prontuário **escrito à mão** vem antes — com rascunho, confirmação e versão congelada (R-04, R-05) —,
@@ -224,8 +225,10 @@ e a IA depois passa a preencher o mesmo rascunho. Avaliação do protótipo Exyo
 | R-01 | Relato de origem em **áudio ditado** ou **texto escrito** — duas portas para o mesmo pipeline. O texto **não** passa por transcrição | 🎨⚙️ | ✅ | ⚪ | ADR-006, ADR-042 |
 | R-02 | A sessão **nunca** é gravada; o único falante é o psicólogo | 🔒 | ✅ | ⚪ | ADR-006 |
 | R-03 | IA estrutura o relato no formato do Art. 2º da Res. CFP 001/2009 | ⚙️ | ✅ | ⚪ | ADR-005 |
-| R-04 | **Rascunho obrigatório**: revisão e confirmação explícita antes de virar registro oficial | 🎨 | ✅ | ⚪ | ADR-005 |
-| R-05 | Versão congelada na confirmação, com trilha de auditoria — é meio de prova em processo disciplinar | ⚙️🔒 | ✅ | ⚪ | ADR-005 |
+| R-04 | **Rascunho obrigatório**: revisão e confirmação explícita antes de virar registro oficial | 🎨 | ✅ | 🟢 | ADR-005, ADR-064 |
+| R-05 | Versão congelada na confirmação, com trilha de auditoria — é meio de prova em processo disciplinar. Imutável no model **e no banco** (gatilho) | ⚙️🔒 | ✅ | 🟢 | ADR-005, ADR-064 |
+| R-15 | Prontuário escrito à mão, **texto livre**, um por participante de cada sessão realizada; pendente calculado | 🎨⚙️ | ✅ | 🟢 | ADR-064 |
+| R-16 | Correção de prontuário confirmado **cria nova versão com motivo**; as anteriores ficam visíveis | 🎨⚙️ | ✅ | 🟢 | ADR-064 |
 | R-06 | Sessão de casal: **um relato gravado por participante**; `Relato` é 1:1 com `Prontuario` | 🎨⚙️ | ✅ | ⚪ | ADR-041 |
 | R-07 | Risco de migração da fala entre prontuários: **eliminado por construção** | 🔒 | ✅ | ⚪ | ADR-041 |
 | R-08 | Exportação de uma sessão ou do histórico completo, em PDF ou DOC | 🎨⚙️ | ✅ | ⚪ | escopo |

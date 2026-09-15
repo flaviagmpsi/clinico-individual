@@ -18,6 +18,7 @@ from atendimentos.servicos import sessoes_pendentes, sessoes_previstas
 from financeiro.servicos import cobrancas_do_mes, pagamentos_pendentes, ultimo_dia
 from pacientes.models import Caso, CondicaoCobranca
 from pacientes.servicos import casos_encerrados, pacientes_ativos
+from prontuarios.servicos import prontuarios_pendentes
 
 # ADR-061: mais que isso sem sessão realizada é "precisa de atenção". Avulso não tem ritmo e não entra.
 LIMITE_DE_DIAS_SEM_SESSAO = {Recorrencia.Frequencia.SEMANAL: 14, Recorrencia.Frequencia.QUINZENAL: 21}
@@ -71,6 +72,7 @@ class Painel:
     linhas: list
     sessoes_pendentes: list
     pagamentos_pendentes: list
+    prontuarios_pendentes: list = field(default_factory=list)
 
 
 def montar_painel(agora: datetime | None = None) -> Painel:
@@ -137,4 +139,5 @@ def montar_painel(agora: datetime | None = None) -> Painel:
         precisam_de_atencao=sum(1 for linha in linhas if linha.atencao),
     )
     return Painel(hoje=hoje, mes=inicio, resumo=resumo, linhas=linhas,
-                  sessoes_pendentes=pendentes_de_cadastro, pagamentos_pendentes=pendentes_de_pagamento)
+                  sessoes_pendentes=pendentes_de_cadastro, pagamentos_pendentes=pendentes_de_pagamento,
+                  prontuarios_pendentes=prontuarios_pendentes())

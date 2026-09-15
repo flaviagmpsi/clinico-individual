@@ -2149,6 +2149,34 @@ nunca os dois. O vencimento da mensalidade guarda o **tipo** (dia fixo ou dia ú
 - Mensalidade cheia é da **condição vigente no fim do mês** — assim a primeira condição, que pode começar no meio
   do mês (ADR-050), já gera a mensalidade daquele mês. Mês inteiro com o atendimento encerrado não gera.
 
+---
+
+## ADR-064 — Prontuário escrito à mão: texto livre, rascunho, versão confirmada e correção
+
+**Status:** ✅ Aceita — Rodada 40. Formato por decisão do usuário; o resto, recomendações aceitas.
+
+**Decisões do usuário:**
+- **Um único campo de texto livre**, por enquanto. Os quatro campos do registro de evolução ficam para depois.
+- **Toda sessão realizada gera um prontuário pendente**, até ser escrito e confirmado. Falta cobrada e falta
+  remarcada não geram. Num casal, **um prontuário por participante** (ADR-041).
+- **Rascunho livre até confirmar.** Confirmado, o texto **não se altera**: uma correção **cria nova versão**, com
+  data e motivo, e a anterior continua guardada e visível.
+
+**Decisões de arquitetura:**
+- O texto mora em **versões**. A versão sem data de confirmação é o rascunho — no máximo uma por prontuário,
+  garantido no banco. Confirmar é carimbar a data.
+- **Versão confirmada é imutável em três camadas:** o model recusa regravar e apagar; um **gatilho no Postgres**
+  recusa `UPDATE` de linha já confirmada, por qualquer caminho, inclusive SQL cru; e a exclusão é protegida.
+  Prova que depende só de Python não é prova.
+- **Pendente é calculado**, não gravado: sessão realizada cujo participante ainda não tem versão confirmada.
+- Prontuário e versões entram na **trilha de auditoria** (ADR-057): quem abriu, escreveu e confirmou — nunca o texto.
+- **Consulta com prontuário não vira falta nem é excluída** até o prontuário sair — mesmo raciocínio do pagamento
+  (ADR-063).
+- A **lixeira** de paciente (ADR-048) vem logo depois deste passo, e não junto, para manter o passo pequeno.
+
+**Consequências:** a IA (ADR-058) passará a preencher o mesmo rascunho. Os quatro campos do CFP, se voltarem,
+cabem como estrutura dentro do texto ou como campos da versão, sem mexer no ciclo rascunho → confirmação → correção.
+
 ## Impeditivos
 
 | # | Impeditivo | Situação |

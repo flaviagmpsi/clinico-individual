@@ -37,6 +37,8 @@
       <strong>{{ total_pendentes }}</strong> sess{{ total_pendentes|pluralize:"ão,ões" }} para cadastrar</a></div>
     <div class="small"><a href="{% url 'financeiro:mes' %}" class="text-decoration-none">
       <strong>{{ total_pagamentos_pendentes }}</strong> pagamento{{ total_pagamentos_pendentes|pluralize }} pendente{{ total_pagamentos_pendentes|pluralize }}</a></div>
+    <div class="small"><a href="{% url 'prontuarios:lista' %}" class="text-decoration-none">
+      <strong>{{ total_prontuarios_pendentes }}</strong> prontuário{{ total_prontuarios_pendentes|pluralize }} para escrever</a></div>
   </div></div></div>
 </div>
 
@@ -100,6 +102,26 @@
       {% for s in sessoes_pendentes %}
         <li class="py-1"><a href="{% url 'atendimentos:cadastrar_prevista' s.regra.pk s.data_iso %}" class="text-decoration-none">
           {{ s.inicio|date:"d/m H:i" }} · {{ s.caso }}</a></li>
+      {% endfor %}
+      </ul>
+    </div>
+  </div>
+  {% endif %}
+
+  {% comment %}ADR-064: sessão realizada sem prontuário confirmado — um por participante.{% endcomment %}
+  {% if prontuarios_pendentes %}
+  <div class="col-lg-6">
+    <div class="card h-100 border-warning-subtle">
+      <div class="card-header bg-white py-2 d-flex align-items-center">
+        <span class="fw-semibold">Prontuários para escrever</span>
+        <span class="badge text-bg-warning ms-2">{{ total_prontuarios_pendentes }}</span>
+        <a href="{% url 'prontuarios:lista' %}" class="ms-auto small text-decoration-none">ver todos</a>
+      </div>
+      <ul class="list-unstyled mb-0 card-body py-2 small">
+      {% for r in prontuarios_pendentes %}
+        <li class="py-1"><a href="{{ r.url }}" class="text-decoration-none">
+          {{ r.consulta.inicio|date:"d/m H:i" }} · {{ r.paciente.nome }}</a>
+          <span class="text-muted">· {{ r.situacao }}</span></li>
       {% endfor %}
       </ul>
     </div>

@@ -199,6 +199,15 @@ def _recusar_se_tem_pagamento(consulta: Consulta, acao: str) -> None:
         raise ValidationError(f"Esta consulta tem pagamento registrado. Exclua o pagamento antes de {acao}.")
 
 
+def _recusar_se_tem_prontuario(consulta: Consulta, acao: str) -> None:
+    """Sessão com prontuário aconteceu, e o prontuário tem guarda obrigatória (ADR-064).
+
+    Nome reverso `prontuarios`, sem importar o app, que depende deste (regra 6 de dependência).
+    """
+    if consulta.pk and consulta.prontuarios.exists():
+        raise ValidationError(f"Esta sessão tem prontuário. Não é possível {acao}.")
+
+
 def _cadastrar(consulta: Consulta, agora: datetime | None) -> Consulta:
     if consulta.estado not in Consulta.Estado.values:
         raise ValidationError("Escolha o que aconteceu: realizada, falta cobrada ou falta remarcada.")
@@ -255,6 +264,8 @@ def alterar_situacao(consulta: Consulta, estado: str) -> Consulta:
     """Corrige o que foi cadastrado. A data não muda: para isso, exclui-se o cadastro e cadastra-se de novo."""
     if estado not in Consulta.Estado.values:
         raise ValidationError("Escolha o que aconteceu: realizada, falta cobrada ou falta remarcada.")
+    if estado != Consulta.Estado.REALIZADA:
+        _recusar_se_tem_prontuario(consulta, "marcá-la como falta")
     if estado == Consulta.Estado.FALTA_REMARCADA:
         _recusar_se_tem_pagamento(consulta, "marcá-la como falta remarcada")
     consulta.estado = estado
@@ -265,6 +276,7 @@ def alterar_situacao(consulta: Consulta, estado: str) -> Consulta:
 @transaction.atomic
 def excluir_consulta(consulta: Consulta) -> None:
     """Cadastro feito por engano. Se era da frequência, a sessão volta a ser pendente."""
+    _recusar_se_tem_prontuario(consulta, "excluir o cadastro")
     _recusar_se_tem_pagamento(consulta, "excluir o cadastro")
     consulta.delete()
 
