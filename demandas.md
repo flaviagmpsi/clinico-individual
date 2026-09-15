@@ -265,19 +265,19 @@ e a IA depois passa a preencher o mesmo rascunho. Avaliação do protótipo Exyo
 
 | # | História | Camada | Estado | Código | ADR |
 |---|---|---|---|---|---|
-| N-01 | Modalidade por caso: `MENSAL` (uma cobrança, vence **num dia do mês** — 31 vira o último dia) ou `POR_SESSAO` | 🎨🗄️ | ✅ | 🟠 | ADR-002, ADR-059 |
-| N-02 | `POR_SESSAO`: o devido do mês soma as **consultas cobradas** pelo valor vigente em cada data; vence no **dia combinado** do paciente | ⚙️ | 🟡 | ⚪ | ADR-002, ADR-060, ADR-062, P-73 |
-| N-13 | **Dia combinado de pagamento** por paciente, nas duas modalidades, com padrão no perfil — é quando o lembrete alerta | 🎨🗄️ | ✅ | ⚪ | ADR-062 |
+| N-01 | Modalidade por caso: `MENSAL` ou `POR_SESSAO` | 🎨🗄️ | ✅ | 🟢 | ADR-002 |
+| N-02 | `POR_SESSAO`: **cada sessão cobrada gera um pagamento pendente** daquela sessão, que vence no dia dela | ⚙️ | 🟡 | ⚪ | ADR-063, P-75, P-76 |
+| N-13 | `MENSAL` vence numa **data personalizada** por paciente: **dia fixo** ("todo dia 10") ou **dia útil** ("5º dia útil"), com padrão no perfil | 🎨🗄️ | 🟡 | 🟠 | ADR-063, P-74 |
 | N-03 | Registros permanecem **granulares**; o agrupamento por paciente existe só na apresentação | ⚙️🎨 | ✅ | ⚪ | ADR-002 |
-| N-04 | Registro de pagamento pelo psicólogo: paciente, **mês de referência**, valor, data e observação. Sem campo de terapeuta | 🎨🗄️ | ✅ | ⚪ | ADR-035, ADR-062 |
-| N-04a | Saldo do mês = devido − pago. Pagou menos, o restante fica **pendente**; pagou a mais, é só mais um registro | ⚙️ | ✅ | ⚪ | ADR-062 |
-| N-04b | **Forma de pagamento** opcional: PIX, dinheiro, transferência, cartão | 🎨🗄️ | ✅ | ⚪ | ADR-035 |
+| N-04 | Registro de pagamento pelo psicólogo: valor, data e observação, referente **ao mês** (mensalidade) **ou à sessão** (por sessão). Sem campo de terapeuta | 🎨🗄️ | ✅ | ⚪ | ADR-035, ADR-063 |
+| N-04a | Pagou menos, o restante fica **pendente**; pagou a mais, é só mais um registro | ⚙️ | ✅ | ⚪ | ADR-062 |
+| N-04b | **Forma de pagamento obrigatória**: Pix, cartão, dinheiro ou transferência | 🎨🗄️ | ✅ | ⚪ | ADR-063 |
 | N-04c | Listagem com busca, filtro por mês e ordenação, portadas do original | 🎨 | ✅ | ⚪ | ADR-035 |
 | N-05 | Despesas com **catálogo de tipos** e marca de dedutibilidade | 🎨🗄️ | ✅ | ⚪ | ADR-011 |
 | N-06 | Anexo de comprovante na despesa, **opcional** | 🎨⚙️ | ✅ | ⚪ | ADR-040 |
 | N-12 | ~~Pagamento sem cobrança vira crédito do caso~~ — pagamento a mais é só mais um registro | — | ❌ | — | ADR-062 |
 | N-07 | **Faturamento líquido** = receita − despesas. Independe de regime | ⚙️ | ✅ | ⚪ | ADR-013 |
-| N-08 | Lembrete de cobrança: quem deve, quanto e até quando | 🎨⚙️ | ✅ | ⚪ | ADR-017 |
+| N-08 | Lembrete de pagamento pendente: aparece no vencimento e continua até o pagamento cobrir; **pago antes do vencimento, não aparece** | 🎨⚙️ | ✅ | ⚪ | ADR-017, ADR-063 |
 | N-09 | Lembrete fiscal ciente do regime: PF → Receita Saúde; PJ → nota fiscal | 🎨 | ✅ | ⚪ | ADR-030 |
 | N-10 | Carnê-leão (CSV do Receita Saúde) e NFS-e por API | — | ⏸️ | ⚪ | ADR-013 |
 | N-11 | Previsão de imposto | — | ⏸️ | ⚪ | P-30 |

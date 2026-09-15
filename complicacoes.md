@@ -1990,8 +1990,8 @@ depois de todo o sistema feito e testado. Ela é um facilitador para o psicólog
 **Decisão do usuário:** o vencimento é **o dia em que vence** — de 1 a 31.
 - Vale para a **mensalidade**, com um dia padrão no perfil do psicólogo e ajuste por paciente.
 - Em mês mais curto, dia 31 (ou 30, 29) vira o **último dia do mês**.
-- ~~Cobrança **por sessão** vence **no dia da sessão**~~ — **revisado pela ADR-062**: todo paciente tem o seu
-  dia combinado de pagamento, inclusive quem paga por sessão.
+- ~~Cobrança **por sessão** vence **no dia da sessão**~~ — revisado pela ADR-062 e **restabelecido pela ADR-063**:
+  cada sessão cobrada gera o seu pagamento pendente, que vence no dia da sessão.
 
 **Consequências:** dados existentes migram "início" → dia 1 e "fim" → dia 31. O lembrete de cobrança
 e o status "precisa de atenção" (ADR-061) passam a ter uma data concreta de vencido.
@@ -2069,11 +2069,12 @@ prontuário escrito à mão.
 
 ## ADR-062 — Financeiro básico: pagamento por paciente e mês, e dia combinado para cada um (revisa ADR-059 e N-12)
 
-**Status:** 🟡 Aceita em parte — Rodada 36. Falta o mês de referência de quem paga por sessão (P-73).
+**Status:** ⚠️ **Revisada em parte pela ADR-063 (Rodada 37)** — quem paga por sessão paga sessão a sessão, e o dia combinado é da mensalidade.
 
 **Decisões do usuário:**
 - **Pagamento é registrado pelo psicólogo por paciente e mês de referência** — "Marcos pagou R$ 400,
-  referente a setembro, no Pix, dia 12". Vale para mensalidade **e** para quem paga por sessão.
+  referente a setembro, no Pix, dia 12". ~~Vale para mensalidade e para quem paga por sessão~~ — **revisado
+  pela ADR-063**: por sessão, cada sessão gera o seu pagamento pendente.
 - **Pagou a mais:** é só **mais um registro de pagamento**. Não há crédito automático abatendo o mês
   seguinte — **revisa N-12 / ADR-040**.
 - **Pagou menos:** o restante fica **pendente** no mês.
@@ -2089,6 +2090,33 @@ prontuário escrito à mão.
   vigente na data de cada uma. **Pago do mês:** soma dos pagamentos com aquele mês de referência.
 - Pagamento **não dá baixa** em cobrança individual (ADR-035 simplificada): o saldo é comparação de totais
   do mês, que é o que o painel mostra.
+
+---
+
+## ADR-063 — Duas formas de cobrar: mensalidade com data no mês, ou sessão a sessão (revisa a ADR-062)
+
+**Status:** 🟡 Aceita — Rodada 37. Três detalhes em aberto (P-74, P-75, P-76). Responde a P-73.
+
+**Decisões do usuário:**
+
+| Modalidade | Quando vence | O que fica pendente |
+|---|---|---|
+| **Mensalidade** | Numa data do mês, personalizada por paciente: **dia fixo** ("todo dia 10") **ou dia útil** ("todo 5º dia útil") | O valor do mês, até os pagamentos do mês cobrirem |
+| **Por sessão** | **A cada sessão**: cada sessão gera um pagamento pendente, referente **àquela única sessão** | O valor daquela sessão, até ser pago |
+
+- **Lembrete:** aparece na data de vencimento e continua até o pagamento cobrir o devido. **Pagamento
+  registrado antes da data, o lembrete não aparece.**
+- **Forma de pagamento** obrigatória: Pix, cartão, dinheiro ou transferência.
+- Mantém da ADR-062: pagou menos, o restante fica pendente; pagou a mais, é só mais um registro; mensalidade
+  sempre cheia.
+
+**O que revisa:**
+- ADR-062: o pagamento **por sessão** não é por mês de referência — é **por sessão**. O saldo, ali, é sessão a
+  sessão, e não total do mês.
+- ADR-059: volta a valer que a cobrança por sessão vence **no dia da sessão**. O dia combinado é da mensalidade.
+
+**Consequências para o modelo:** o pagamento referencia **o mês** (mensalidade) **ou a consulta** (por sessão),
+nunca os dois. O vencimento da mensalidade guarda o **tipo** (dia fixo ou dia útil) e o **número**.
 
 ## Impeditivos
 
