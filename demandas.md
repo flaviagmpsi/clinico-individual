@@ -31,9 +31,9 @@ correu 27 rodadas antes da primeira linha de código, de propósito.
 | `prontuarios` `documentos` `financeiro` `assinaturas` `indicadores` | ⚪ | **Nem o app existe.** Nenhum `startapp` foi rodado |
 
 **O passo 2 está fechado. Do passo 3, a trilha de auditoria (F-05) está no ar** — cadastro e
-responsável legal já entram nela. **O próximo é o `Prontuario`**, que herda `core.auditoria.Auditado`
-e chega junto com a **lixeira** de paciente (ADR-048, ADR-057). Antes dele, três decisões abertas:
-provedor de IA (P-19), onde guardar áudio (P-41) e exportação sob transação (P-71).
+responsável legal já entram nela. **A construção segue do mais simples ao mais complexo, com a IA
+por último** (ADR-058): nada que dependa de IA, transcrição ou provedor entra antes de todo o resto
+estar feito e testado. A ordem dos próximos módulos está em discussão (Rodada 34).
 
 ### Antes de escrever a primeira linha, entenda a fundação
 
@@ -207,8 +207,12 @@ Exige verificação do Google, de 4 a 6 semanas, e sem ela o produto trava em 10
 ---
 
 ## 5. Prontuários — app `prontuarios`
-**Código: ⚪ nada. O app não existe.** Passo 3. A trilha de auditoria de que ele depende (F-05) já
+**Código: ⚪ nada. O app não existe.** A trilha de auditoria de que ele depende (F-05) já
 existe: o model do prontuário herda `core.auditoria.Auditado` (ADR-057).
+
+⏸️ **IA e transcrição (R-01, R-03, R-09, R-10, R-14) ficam para a etapa final** (ADR-058). O
+prontuário **escrito à mão** vem antes — com rascunho, confirmação e versão congelada (R-04, R-05) —,
+e a IA depois passa a preencher o mesmo rascunho. Avaliação do protótipo Exyo em P-18.
 
 
 > Como **psicólogo**, quero recuperar os ~20 minutos que gasto escrevendo prontuário depois de cada sessão.

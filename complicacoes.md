@@ -1956,6 +1956,29 @@ meio de prova em processo disciplinar. Ela precisa existir **antes** do primeiro
 - Todo model clínico novo herda `core.auditoria.Auditado` e diz quem é o titular.
 - Exportar entra na trilha quando a exportação existir (R-08).
 
+---
+
+## ADR-058 — Construir do mais simples ao mais complexo; IA por último
+
+**Status:** ✅ Aceita — Rodada 34 (decisão do usuário)
+**Contexto:** o passo 3 previa o prontuário já com IA. Ao avaliar o protótipo `prontuario-exyo`
+(P-18), ficou claro que a IA traz decisões grandes — provedor, LGPD, formato de entrada, conjunto
+de teste — que não precisam travar o resto do produto.
+
+**Decisão do usuário:** o Hamilton Individual é construído **do mais simples para o mais
+complexo**. A IA de prontuário — e, pelo mesmo raciocínio, a IA de documentos — entra **no fim**,
+depois de todo o sistema feito e testado. Ela é um facilitador para o psicólogo, não a base.
+
+**Consequências:**
+- O **prontuário escrito à mão** continua no escopo: registrar a evolução é obrigação do CFP
+  (Res. 001/2009), com IA ou sem ela. Rascunho, confirmação, versão congelada e trilha valem para os dois.
+- R-01, R-03, R-09, R-10, R-14 (IA e transcrição) e D-06, D-07 (documentos gerados) ficam para a
+  etapa final. P-18 e P-19 ficam **adiadas**, com a avaliação do Exyo registrada em P-18.
+- O modelo do prontuário é desenhado para receber a IA depois sem migração: ela passa a
+  **preencher o rascunho** que hoje o psicólogo preenche.
+- Esta ADR **não revisa** as ADRs 006, 041 e 042: elas continuam valendo como plano da etapa de IA
+  e serão revisitadas quando ela chegar.
+
 ## Impeditivos
 
 | # | Impeditivo | Situação |
