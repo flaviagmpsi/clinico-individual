@@ -221,7 +221,11 @@ class ExcluirConsulta(LoginRequiredMixin, _ComConsulta, View):
         consulta = self.consulta()
         dia = timezone.localtime(consulta.inicio).date()
         da_frequencia = not consulta.avulsa
-        servicos.excluir_consulta(consulta)
+        try:
+            servicos.excluir_consulta(consulta)
+        except ValidationError as erro:
+            messages.error(request, erro.messages[0])
+            return redirect("atendimentos:editar", pk=consulta.pk)
         aviso = " A sessão volta a aparecer como pendente." if da_frequencia else ""
         messages.success(request, f"Cadastro excluído.{aviso}")
         return redirect(_semana_de(dia))

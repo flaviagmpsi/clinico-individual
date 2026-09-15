@@ -10,6 +10,7 @@ from django import forms
 from django.contrib.auth.forms import AuthenticationForm
 
 from contas.models import Psicologo
+from core.calendario import MAIOR_DIA_UTIL, TipoDia
 
 
 class LoginForm(AuthenticationForm):
@@ -29,7 +30,7 @@ class PerfilForm(forms.ModelForm):
         model = Psicologo
         fields = ["nome_completo", "email", "cpf", "telefone",
                   "crp_regiao", "crp_numero", "regime", "cnpj", "crp_empresa",
-                  "duracao_sessao", "dia_vencimento_mensalidade"]
+                  "duracao_sessao", "tipo_vencimento_mensalidade", "dia_vencimento_mensalidade"]
         widgets = {
             "nome_completo": forms.TextInput(attrs={"class": "form-control"}),
             "email": forms.EmailInput(attrs={"class": "form-control"}),
@@ -46,6 +47,7 @@ class PerfilForm(forms.ModelForm):
             "crp_empresa": forms.TextInput(attrs={"class": "form-control"}),
             "duracao_sessao": forms.NumberInput(attrs={"class": "form-control", "min": 10, "max": 240,
                                                        "step": 5}),
+            "tipo_vencimento_mensalidade": forms.Select(attrs={"class": "form-select"}),
             "dia_vencimento_mensalidade": forms.NumberInput(attrs={"class": "form-control", "min": 1, "max": 31}),
         }
 
@@ -55,4 +57,7 @@ class PerfilForm(forms.ModelForm):
         # um cadastro que parece completo e produz recibo errado lá na frente.
         if dados.get("regime") == Psicologo.Regime.PF and dados.get("cnpj"):
             self.add_error("cnpj", "Regime pessoa física não tem CNPJ. Troque o regime ou limpe o campo.")
+        dia = dados.get("dia_vencimento_mensalidade")
+        if dados.get("tipo_vencimento_mensalidade") == TipoDia.DIA_UTIL and dia and dia > MAIOR_DIA_UTIL:
+            self.add_error("dia_vencimento_mensalidade", f"Nenhum mês tem mais que {MAIOR_DIA_UTIL} dias úteis.")
         return dados

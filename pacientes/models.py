@@ -17,6 +17,7 @@ from django.core.validators import MaxValueValidator, MinValueValidator, RegexVa
 from django.db import models
 
 from core.auditoria import Auditado
+from core.calendario import MAIOR_DIA_UTIL, TipoDia, data_no_mes, descrever_dia
 from core.models import TenantOwnedModel
 
 # Formato exato, e não só "dígitos": `^\d*$` aceitava CPF "1". Todos admitem vazio porque os
@@ -253,6 +254,10 @@ class CondicaoCobranca(TenantOwnedModel):
     dia_vencimento = models.PositiveSmallIntegerField(
         "Dia do vencimento", null=True, blank=True, validators=[MinValueValidator(1), MaxValueValidator(31)],
         help_text="Só para mensalidade. Em mês mais curto, vale o último dia.")
+    # Dia fixo ("todo dia 10") ou dia útil ("todo 5º dia útil") — ADR-063. Vazio no por sessão.
+    tipo_vencimento = models.CharField(
+        "Tipo de vencimento", max_length=8, choices=TipoDia.choices, blank=True,
+        help_text="Dia fixo (todo dia 10) ou dia útil (todo 5º dia útil). Só para mensalidade.")
     vigente_desde = models.DateField("Vale a partir de")
 
     class Meta:
@@ -269,19 +274,31 @@ class CondicaoCobranca(TenantOwnedModel):
     def clean(self):
         super().clean()
         _exigir_mesmo_dono(self, caso=self.caso if self.caso_id else None)
-        if self.modalidade == self.Modalidade.MENSAL and not self.dia_vencimento:
-            raise ValidationError({"dia_vencimento": "Mensalidade precisa do dia de vencimento."})
         if self.modalidade == self.Modalidade.POR_SESSAO:
-            self.dia_vencimento = None  # por sessão vence no dia da sessão (ADR-059)
+            # Por sessão vence no dia de cada sessão (ADR-063): não tem data no mês.
+            self.dia_vencimento = None
+            self.tipo_vencimento = ""
+            return
+        if not self.dia_vencimento:
+            raise ValidationError({"dia_vencimento": "Mensalidade precisa do dia de vencimento."})
+        self.tipo_vencimento = self.tipo_vencimento or TipoDia.DIA_FIXO
+        if self.tipo_vencimento == TipoDia.DIA_UTIL and self.dia_vencimento > MAIOR_DIA_UTIL:
+            raise ValidationError({"dia_vencimento": f"Nenhum mês tem mais que {MAIOR_DIA_UTIL} dias úteis."})
 
     def vencimento_em(self, ano: int, mes: int):
-        """A data em que a mensalidade de um mês vence. Dia 31 em mês mais curto vira o último dia (ADR-059)."""
+        """A data em que a mensalidade de um mês vence — dia fixo ou N-ésimo dia útil (ADR-063).
+
+        Além do mês, vira o último: dia 31 em fevereiro, ou 23º dia útil num mês com 20.
+        """
         if not self.dia_vencimento:
             return None
-        from calendar import monthrange
-        from datetime import date
+        return data_no_mes(self.tipo_vencimento or TipoDia.DIA_FIXO, self.dia_vencimento, ano, mes)
 
-        return date(ano, mes, min(self.dia_vencimento, monthrange(ano, mes)[1]))
+    @property
+    def descricao_vencimento(self) -> str:
+        if not self.dia_vencimento:
+            return ""
+        return descrever_dia(self.tipo_vencimento or TipoDia.DIA_FIXO, self.dia_vencimento)
 
 
 class ResponsavelLegal(Auditado, TenantOwnedModel):

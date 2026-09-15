@@ -20,7 +20,7 @@ correu 27 rodadas antes da primeira linha de código, de propósito.
 
 ## ⚡ Onde o código está hoje
 
-**Passos 0, 1 e 2 concluídos; do passo 3, a trilha de auditoria (F-05).** Rodando, com 227 testes verdes contra PostgreSQL real.
+**Passos 0, 1 e 2 concluídos; do passo 3, a trilha de auditoria (F-05).** Rodando, com 264 testes verdes contra PostgreSQL real.
 
 | App | Situação | O que existe |
 |---|---|---|
@@ -28,13 +28,14 @@ correu 27 rodadas antes da primeira linha de código, de propósito.
 | `contas` | 🟠 parcial | Model do psicólogo, login, logout, tela de perfil com padrões de atendimento (C-03), herdados no cadastro (C-04) |
 | `pacientes` | 🟠 parcial | Cadastro; `Caso` individual (em silêncio) e de casal; pagador; responsável legal; cobrança com vigência. Falta P-08, que depende de prontuário |
 | `agenda` `atendimentos` | 🟢 no ar | Frequência semanal, quinzenal ou avulso; previsão de 8 semanas; consulta avulsa; remarcação; colisão; registro do que aconteceu; pendência no painel; desfecho e retomada; grade de horários com mapa da semana. Google Agenda depois (ADR-051) |
-| `prontuarios` `documentos` `financeiro` `assinaturas` `indicadores` | ⚪ | **Nem o app existe.** Nenhum `startapp` foi rodado |
+| `financeiro` | 🟠 parcial | Devido calculado por mês e por sessão; registro de pagamento com forma; lembrete de pendência. Faltam despesas e faturamento líquido |
+| `prontuarios` `documentos` `assinaturas` `indicadores` | ⚪ | **Nem o app existe.** Nenhum `startapp` foi rodado |
 
 **O passo 2 está fechado. Do passo 3, a trilha de auditoria (F-05) está no ar** — cadastro e
 responsável legal já entram nela. **A construção segue do mais simples ao mais complexo, com a IA
 por último** (ADR-058): nada que dependa de IA, transcrição ou provedor entra antes de todo o resto
-estar feito e testado. **Ordem definida pelo teste do usuário (ADR-061):** financeiro básico
-(cobrança e pagamento com forma de pagamento) → painel novo → prontuário escrito à mão.
+estar feito e testado. **Ordem definida pelo teste do usuário (ADR-061):** financeiro básico ✅ →
+**painel novo** (o próximo) → prontuário escrito à mão.
 
 ### Antes de escrever a primeira linha, entenda a fundação
 
@@ -260,24 +261,24 @@ e a IA depois passa a preencher o mesmo rascunho. Avaliação do protótipo Exyo
 ---
 
 ## 7. Financeiro — app `financeiro`
-**Código: ⚪ nada. O app não existe.** É o próximo (ADR-061) — a consulta cobrada, de que ele depende, já existe (ADR-060).
+**Código: 🟠 financeiro básico no ar.** O mês com o devido, o pago e o que falta de cada paciente; registro de pagamento da mensalidade (dia fixo ou dia útil) e da sessão; forma de pagamento; lembrete de pagamento pendente no financeiro e no painel (ADR-062, ADR-063). O devido é calculado, nunca gravado. Faltam despesas (N-05, N-06), faturamento líquido (N-07) e o lembrete fiscal (N-09).
 
 
 | # | História | Camada | Estado | Código | ADR |
 |---|---|---|---|---|---|
 | N-01 | Modalidade por caso: `MENSAL` ou `POR_SESSAO` | 🎨🗄️ | ✅ | 🟢 | ADR-002 |
-| N-02 | `POR_SESSAO`: **cada sessão cobrada gera um pagamento pendente** daquela sessão, que vence no dia dela | ⚙️ | 🟡 | ⚪ | ADR-063, P-75, P-76 |
-| N-13 | `MENSAL` vence numa **data personalizada** por paciente: **dia fixo** ("todo dia 10") ou **dia útil** ("5º dia útil"), com padrão no perfil | 🎨🗄️ | 🟡 | 🟠 | ADR-063, P-74 |
+| N-02 | `POR_SESSAO`: **cada sessão cobrada** — realizada ou falta cobrada — **gera um pagamento pendente** daquela sessão, que vence no dia dela | ⚙️ | ✅ | 🟢 | ADR-063 |
+| N-13 | `MENSAL` vence numa **data personalizada** por paciente: **dia fixo** ("todo dia 10") ou **dia útil** ("5º dia útil", seg–sex sem feriado nacional), com padrão no perfil | 🎨🗄️ | ✅ | 🟢 | ADR-063 |
 | N-03 | Registros permanecem **granulares**; o agrupamento por paciente existe só na apresentação | ⚙️🎨 | ✅ | ⚪ | ADR-002 |
-| N-04 | Registro de pagamento pelo psicólogo: valor, data e observação, referente **ao mês** (mensalidade) **ou à sessão** (por sessão). Sem campo de terapeuta | 🎨🗄️ | ✅ | ⚪ | ADR-035, ADR-063 |
-| N-04a | Pagou menos, o restante fica **pendente**; pagou a mais, é só mais um registro | ⚙️ | ✅ | ⚪ | ADR-062 |
-| N-04b | **Forma de pagamento obrigatória**: Pix, cartão, dinheiro ou transferência | 🎨🗄️ | ✅ | ⚪ | ADR-063 |
+| N-04 | Registro de pagamento pelo psicólogo: valor, data e observação, referente **ao mês** (mensalidade) **ou à sessão** (por sessão). Sem campo de terapeuta | 🎨🗄️ | ✅ | 🟢 | ADR-035, ADR-063 |
+| N-04a | Pagou menos, o restante fica **pendente**; pagou a mais, é só mais um registro | ⚙️ | ✅ | 🟢 | ADR-062 |
+| N-04b | **Forma de pagamento obrigatória**: Pix, cartão, dinheiro ou transferência | 🎨🗄️ | ✅ | 🟢 | ADR-063 |
 | N-04c | Listagem com busca, filtro por mês e ordenação, portadas do original | 🎨 | ✅ | ⚪ | ADR-035 |
 | N-05 | Despesas com **catálogo de tipos** e marca de dedutibilidade | 🎨🗄️ | ✅ | ⚪ | ADR-011 |
 | N-06 | Anexo de comprovante na despesa, **opcional** | 🎨⚙️ | ✅ | ⚪ | ADR-040 |
 | N-12 | ~~Pagamento sem cobrança vira crédito do caso~~ — pagamento a mais é só mais um registro | — | ❌ | — | ADR-062 |
 | N-07 | **Faturamento líquido** = receita − despesas. Independe de regime | ⚙️ | ✅ | ⚪ | ADR-013 |
-| N-08 | Lembrete de pagamento pendente: aparece no vencimento e continua até o pagamento cobrir; **pago antes do vencimento, não aparece** | 🎨⚙️ | ✅ | ⚪ | ADR-017, ADR-063 |
+| N-08 | Lembrete de pagamento pendente: aparece no vencimento e continua até o pagamento cobrir; **pago antes do vencimento, não aparece** | 🎨⚙️ | ✅ | 🟢 | ADR-017, ADR-063 |
 | N-09 | Lembrete fiscal ciente do regime: PF → Receita Saúde; PJ → nota fiscal | 🎨 | ✅ | ⚪ | ADR-030 |
 | N-10 | Carnê-leão (CSV do Receita Saúde) e NFS-e por API | — | ⏸️ | ⚪ | ADR-013 |
 | N-11 | Previsão de imposto | — | ⏸️ | ⚪ | P-30 |

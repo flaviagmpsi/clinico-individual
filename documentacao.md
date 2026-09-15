@@ -9,7 +9,7 @@ Registro da evolução e da arquitetura do projeto. Atualizado a cada rodada de 
 > Para saber **o que falta construir**, o documento é [demandas.md](demandas.md). Este aqui
 > registra o que existe e por quê.
 
-**227 testes verdes contra PostgreSQL real, nenhum pulado.** A suíte roda em ~2,5 min num PostgreSQL 17 local; contra o Neon gratuito, a suspensão automática do banco derrubava a execução no meio.
+**264 testes verdes contra PostgreSQL real, nenhum pulado.** A suíte roda em ~3,5 min num PostgreSQL 17 local; contra o Neon gratuito, a suspensão automática do banco derrubava a execução no meio.
 
 ### Apps que existem
 
@@ -253,3 +253,4 @@ encaminhamento entre profissionais.
 | 2026-09-15 | 35 | Primeiro teste do produto pelo usuário. ADR-059 (vencimento é dia do mês), ADR-060 (a consulta só existe quando o psicólogo cadastra: realizada, falta cobrada ou falta remarcada; previsão calculada, nunca gravada; sai a remarcação e o "cobro falta") e ADR-061 (painel com sessões, receita e situação de cada paciente). Semente corrigida para contas com atendimento. 227 testes. |
 | 2026-09-15 | 36 | ADR-062 (financeiro básico): pagamento por paciente e mês de referência, pagamento a mais é só mais um registro (sai o crédito automático), mensalidade sempre cheia e dia combinado de pagamento para todo paciente (revisa a 059). Aberta a P-73: de que mês são as sessões que o dia combinado cobra. |
 | 2026-09-15 | 37 | ADR-063 (revisa a 062): mensalidade vence numa data do mês — dia fixo ou dia útil —, e quem paga por sessão tem um pagamento pendente por sessão. Lembrete no vencimento, que não aparece se o pagamento vier antes; forma de pagamento obrigatória. Abertas P-74 (dia útil), P-75 (várias sessões num pagamento) e P-76 (falta cobrada gera pendência). |
+| 2026-09-15 | 38 | P-74 a P-76 fechadas: dia útil é seg–sex sem feriado nacional; quem acerta várias sessões é mensalidade; falta cobrada gera pendência. **Financeiro básico no ar** (app `financeiro`): devido calculado por mês e por sessão, registro de pagamento com forma obrigatória, lembrete de pendência no financeiro e no painel. Calendário de feriados nacionais em `core.calendario`. 264 testes. |

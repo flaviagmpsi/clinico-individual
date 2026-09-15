@@ -112,6 +112,26 @@ prontuário pendente nem cobrança — por isso aparece aqui, e não fica esquec
 </div>
 {% endif %}
 
+{% comment %}ADR-063: lembrete de pagamento — aparece no vencimento, e nunca se foi pago antes.{% endcomment %}
+{% if pagamentos_pendentes %}
+<div class="card mt-3 border-warning-subtle">
+  <div class="card-header bg-white py-2 d-flex align-items-center">
+    <span class="fw-semibold">Pagamentos pendentes</span>
+    <span class="badge text-bg-warning ms-2">{{ total_pagamentos_pendentes }}</span>
+    <a href="{% url 'financeiro:mes' %}" class="ms-auto small text-decoration-none">abrir financeiro</a>
+  </div>
+  <div class="card-body py-2 small">
+    <ul class="list-unstyled mb-0">
+    {% for c in pagamentos_pendentes %}
+      <li class="py-1"><a href="{{ c.url_pagar }}" class="text-decoration-none">
+        {{ c.caso }} · {{ c.descricao }} · falta R$ {{ c.saldo|floatformat:2 }}</a>
+        <span class="text-muted">· venceu {{ c.vencimento|date:"d/m" }}</span></li>
+    {% endfor %}
+    </ul>
+  </div>
+</div>
+{% endif %}
+
 {% if sem_contato_ha_muito %}
 <div class="card mt-3">
   <div class="card-header bg-white py-2">

@@ -14,6 +14,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.views.generic import TemplateView
 
 from atendimentos.servicos import sessoes_pendentes
+from financeiro.servicos import pagamentos_pendentes
 from pacientes.servicos import pacientes_ativos
 
 
@@ -38,6 +39,11 @@ class Painel(LoginRequiredMixin, TemplateView):
         contexto["total_pendentes"] = len(pendentes_de_cadastro)
         contexto["sessoes_pendentes"] = pendentes_de_cadastro[:5]
 
+        # ADR-063: o lembrete de pagamento. Aparece no vencimento e some quando o pago cobre o devido.
+        pagamentos = pagamentos_pendentes()
+        contexto["total_pagamentos_pendentes"] = len(pagamentos)
+        contexto["pagamentos_pendentes"] = pagamentos[:5]
+
         # Herdado do original: o alerta é o paciente que sumiu, não o que está em dia. Enquanto o painel não
         # olha as consultas realizadas, a única data de atendimento que ele usa é a da primeira sessão.
         limite = hoje - timedelta(days=30)
@@ -49,7 +55,7 @@ class Painel(LoginRequiredMixin, TemplateView):
             ("Lixeira de pacientes", "passo 2",
              "Paciente com atendimento registrado ainda não pode ser excluído (ADR-048)."),
             ("Prontuário por IA", "passo 3", "A razão de o produto existir (ADR-005)."),
-            ("Financeiro", "próximo", "Cobranças e pagamentos do mês, com a forma de pagamento (ADR-061)."),
+            ("Painel novo", "próximo", "Sessões, receita e situação de cada paciente no mês (ADR-061)."),
             ("Documentos", "passo 5", "Contrato, declaração e cópias emitidas (ADR-021)."),
         ]
         return contexto

@@ -2095,7 +2095,7 @@ prontuário escrito à mão.
 
 ## ADR-063 — Duas formas de cobrar: mensalidade com data no mês, ou sessão a sessão (revisa a ADR-062)
 
-**Status:** 🟡 Aceita — Rodada 37. Três detalhes em aberto (P-74, P-75, P-76). Responde a P-73.
+**Status:** ✅ Aceita — Rodada 37, detalhes fechados na Rodada 38 (P-74, P-75, P-76). Responde a P-73.
 
 **Decisões do usuário:**
 
@@ -2117,6 +2117,23 @@ prontuário escrito à mão.
 
 **Consequências para o modelo:** o pagamento referencia **o mês** (mensalidade) **ou a consulta** (por sessão),
 nunca os dois. O vencimento da mensalidade guarda o **tipo** (dia fixo ou dia útil) e o **número**.
+
+**Detalhes fechados na Rodada 38 (decisões do usuário):**
+- **Dia útil** é segunda a sexta, **sem feriado nacional** — incluindo a Sexta-feira Santa. Feriado estadual e
+  municipal fica de fora. Carnaval e Corpus Christi não entram: são ponto facultativo, não feriado nacional.
+- **Quem acerta várias sessões de uma vez é mensalidade.** No por sessão, cada pagamento é de uma sessão.
+- **Falta cobrada gera pagamento pendente**, como a realizada. Falta remarcada, não.
+
+**Decisões de arquitetura:**
+- **O devido não é gravado, é calculado** — da condição de cobrança (mensalidade) e das consultas cobradas (por
+  sessão). Gravado é só o pagamento. Corrigir uma consulta ou uma condição muda o devido sem deixar cobrança
+  órfã.
+- Consulta com pagamento **não é excluída nem vira falta remarcada** até o pagamento sair: seria dinheiro
+  recebido por uma sessão que deixou de ser cobrada.
+- **Feriados nacionais** calculados no código (`core.calendario`): os fixos da Lei nº 662/1949 e alterações,
+  **20 de novembro a partir de 2024** (Lei nº 14.759/2023) e a Sexta-feira Santa, a partir da Páscoa.
+- Mensalidade cheia é da **condição vigente no fim do mês** — assim a primeira condição, que pode começar no meio
+  do mês (ADR-050), já gera a mensalidade daquele mês. Mês inteiro com o atendimento encerrado não gera.
 
 ## Impeditivos
 

@@ -11,6 +11,7 @@ from django.contrib.auth.models import AbstractUser, UserManager as DjangoUserMa
 from django.core.validators import MaxValueValidator, MinValueValidator, RegexValidator
 from django.db import models
 
+from core.calendario import TipoDia
 from core.models import ValidaAoSalvar
 
 
@@ -100,6 +101,9 @@ class Psicologo(ValidaAoSalvar, AbstractUser):
         "Dia de vencimento da mensalidade", default=10,
         validators=[MinValueValidator(1), MaxValueValidator(31)],
         help_text="Proposto a cada paciente que pagar por mês. Em mês mais curto, vale o último dia.")
+    tipo_vencimento_mensalidade = models.CharField(
+        "Vencimento da mensalidade em", max_length=8, choices=TipoDia.choices, default=TipoDia.DIA_FIXO,
+        help_text="Dia fixo (todo dia 10) ou dia útil (todo 5º dia útil) — ADR-063.")
 
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = ["nome_completo", "cpf", "crp_regiao", "crp_numero"]

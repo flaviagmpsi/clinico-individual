@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block titulo %}Registrar pagamento{% endblock %}
+{% block secao %}Financeiro{% endblock %}
+
+{% block conteudo %}
+<div class="d-flex align-items-center mb-3">
+  <h1 class="h5 mb-0">Registrar pagamento <span class="text-muted fw-normal">· {{ cobranca.caso }}</span></h1>
+  <a href="{% url 'financeiro:mes' %}?mes={% if cobranca.mes %}{{ cobranca.mes|date:'Y-m' }}{% else %}{{ cobranca.vencimento|date:'Y-m' }}{% endif %}"
+     class="btn btn-sm btn-outline-secondary ms-auto">Cancelar</a>
+</div>
+
+<div class="alert alert-light border py-2 small" style="max-width:640px">
+  <strong>{{ cobranca.descricao }}</strong> · vence {{ cobranca.vencimento|date:"d/m/Y" }} ·
+  devido R$ {{ cobranca.devido|floatformat:2 }} · já pago R$ {{ cobranca.pago|floatformat:2 }}.
+  Pagando menos, o restante fica pendente; pagando a mais, fica registrado como está.
+</div>
+
+<form method="post" novalidate style="max-width:640px">
+  {% csrf_token %}
+  {% if form.non_field_errors %}
+    <div class="alert alert-danger py-2 small">{{ form.non_field_errors }}</div>
+  {% endif %}
+  <div class="card mb-3">
+    <div class="card-body">
+      <div class="row g-3">
+        <div class="col-md-4">{% include "components/_campo.html" with campo=form.valor %}</div>
+        <div class="col-md-4">{% include "components/_campo.html" with campo=form.data %}</div>
+      </div>
+      <div class="form-label small mb-1 mt-3">{{ form.forma.label }} <span class="text-danger">*</span></div>
+      {% for opcao in form.forma %}
+        <div class="form-check form-check-inline">{{ opcao.tag }}
+          <label class="form-check-label" for="{{ opcao.id_for_label }}">{{ opcao.choice_label }}</label></div>
+      {% endfor %}
+      {% for erro in form.forma.errors %}<div class="text-danger small">{{ erro }}</div>{% endfor %}
+      <div class="mt-3">{% include "components/_campo.html" with campo=form.observacao %}</div>
+    </div>
+  </div>
+  <button type="submit" class="btn btn-primary">Registrar pagamento</button>
+</form>
+{% endblock %}

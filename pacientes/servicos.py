@@ -45,6 +45,7 @@ def cadastrar_paciente(
     valor: Decimal | None = None,
     modalidade: str = CondicaoCobranca.Modalidade.POR_SESSAO,
     dia_vencimento: int | None = None,
+    tipo_vencimento: str = "",
     vigente_desde: date | None = None,
 ) -> Caso:
     """Grava o paciente com o caso individual dele.
@@ -63,7 +64,7 @@ def cadastrar_paciente(
             caso=caso,
             modalidade=modalidade,
             valor=valor,
-            dia_vencimento=dia_vencimento,
+            dia_vencimento=dia_vencimento, tipo_vencimento=tipo_vencimento,
             vigente_desde=vigente_desde or date.today(),
         )
     return caso
@@ -91,7 +92,9 @@ def _tem_atendimento(caso: Caso) -> bool:
     Falta remarcada não é: a sessão não aconteceu e não foi cobrada. Estados como texto e nomes reversos
     (`consultas`, `desfechos`), sem importar `atendimentos`, que depende deste app (regra 5 de dependência).
     """
-    return caso.consultas.filter(estado__in=["REALIZADA", "FALTA_COBRADA"]).exists() or caso.desfechos.exists()
+    # Pagamento também conta: é registro financeiro de um atendimento que houve (ADR-063).
+    return (caso.consultas.filter(estado__in=["REALIZADA", "FALTA_COBRADA"]).exists()
+            or caso.desfechos.exists() or caso.pagamentos.exists())
 
 
 @transaction.atomic
@@ -178,6 +181,7 @@ def trocar_condicao(
     valor: Decimal,
     modalidade: str,
     dia_vencimento: int | None = None,
+    tipo_vencimento: str = "",
     hoje: date | None = None,
 ) -> CondicaoCobranca:
     """Muda o valor ou a forma de cobrança de um caso — a partir do dia 1º do mês seguinte.
@@ -205,6 +209,6 @@ def trocar_condicao(
         caso=caso,
         valor=valor,
         modalidade=modalidade,
-        dia_vencimento=dia_vencimento,
+        dia_vencimento=dia_vencimento, tipo_vencimento=tipo_vencimento,
         vigente_desde=vigente_desde,
     )

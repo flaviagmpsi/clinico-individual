@@ -27,7 +27,7 @@ class PadroesDoPerfil(TransactionTestCase):
             "nome_completo": "Ana Padrões", "email": self.ana.email, "cpf": "11111111111",
             "telefone": "31988887777", "crp_regiao": "04", "crp_numero": "818181",
             "regime": "PF", "cnpj": "", "crp_empresa": "",
-            "duracao_sessao": "50", "dia_vencimento_mensalidade": "10",
+            "duracao_sessao": "50", "tipo_vencimento_mensalidade": "DIA_FIXO", "dia_vencimento_mensalidade": "10",
         }
         dados.update(mudancas)
         return dados
@@ -58,5 +58,5 @@ class PadroesDoPerfil(TransactionTestCase):
         self.ana.save()
         self.client.login(username=self.ana.email, password=SENHA)
         resposta = self.client.get(reverse("pacientes:novo"))
-        self.assertContains(resposta, "Padrão do seu perfil: dia 20")
+        self.assertContains(resposta, "Padrão do seu perfil: todo dia 20")
         self.assertContains(resposta, 'value="20"')

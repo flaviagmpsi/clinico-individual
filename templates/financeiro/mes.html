@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+{% block titulo %}Financeiro{% endblock %}
+{% block secao %}Financeiro{% endblock %}
+
+{% block conteudo %}
+<div class="d-flex align-items-center flex-wrap gap-2 mb-3">
+  <h1 class="h5 mb-0">Financeiro <span class="text-muted fw-normal">{{ inicio|date:"F"|capfirst }} de {{ inicio|date:"Y" }}</span></h1>
+  <div class="ms-auto d-flex gap-2">
+    <a href="?mes={{ anterior|date:'Y-m' }}" class="btn btn-sm btn-outline-secondary" title="Mês anterior"><i class="bi bi-chevron-left"></i></a>
+    <a href="?mes={{ este|date:'Y-m' }}" class="btn btn-sm btn-outline-secondary">Este mês</a>
+    <a href="?mes={{ proximo|date:'Y-m' }}" class="btn btn-sm btn-outline-secondary" title="Próximo mês"><i class="bi bi-chevron-right"></i></a>
+  </div>
+</div>
+
+{% comment %}
+ADR-063: o lembrete. Cobrança vencida e não quitada, de qualquer mês — some quando o pago cobre o devido, e nunca
+aparece se o pagamento veio antes do vencimento.
+{% endcomment %}
+{% if pendentes %}
+  <div class="alert alert-warning py-2 small">
+    <div class="fw-semibold mb-1"><i class="bi bi-bell"></i>
+      {{ pendentes|length }} pagamento{{ pendentes|length|pluralize }} pendente{{ pendentes|length|pluralize }}</div>
+    <ul class="mb-0 ps-3">
+    {% for c in pendentes %}
+      <li>{{ c.caso }} · {{ c.descricao }} · venceu {{ c.vencimento|date:"d/m/Y" }} · falta R$ {{ c.saldo|floatformat:2 }}
+        <a href="{{ c.url_pagar }}" class="text-decoration-none ms-1">registrar pagamento</a></li>
+    {% endfor %}
+    </ul>
+  </div>
+{% endif %}
+
+<div class="row g-3 mb-3">
+  <div class="col-md-4"><div class="card h-100"><div class="card-body py-3">
+    <div class="rotulo">Devido no mês</div><div class="h4 mb-0">R$ {{ devido|floatformat:2 }}</div>
+  </div></div></div>
+  <div class="col-md-4"><div class="card h-100"><div class="card-body py-3">
+    <div class="rotulo">Pago</div><div class="h4 mb-0">R$ {{ pago|floatformat:2 }}</div>
+    <div class="small text-muted">Referente às cobranças deste mês.</div>
+  </div></div></div>
+  <div class="col-md-4"><div class="card h-100"><div class="card-body py-3">
+    <div class="rotulo">Falta receber</div><div class="h4 mb-0">R$ {{ saldo|floatformat:2 }}</div>
+  </div></div></div>
+</div>
+
+<div class="card mb-3">
+  <div class="card-header bg-white py-2 fw-semibold">Cobranças do mês</div>
+  {% if cobrancas %}
+  <div class="table-responsive">
+    <table class="table table-sm align-middle mb-0 small">
+      <thead class="table-light">
+        <tr><th>Paciente</th><th>Cobrança</th><th>Vence</th><th class="text-end">Pago / devido</th><th>Situação</th><th>Forma</th><th></th></tr>
+      </thead>
+      <tbody>
+      {% for c in cobrancas %}
+        <tr>
+          <td class="fw-medium">{{ c.caso }}</td>
+          <td>{{ c.descricao }}</td>
+          <td class="text-muted">{{ c.vencimento|date:"d/m" }}</td>
+          <td class="text-end text-nowrap">R$ {{ c.pago|floatformat:2 }} / R$ {{ c.devido|floatformat:2 }}</td>
+          <td>
+            {% if c.quitada %}<span class="badge text-bg-success">Pago</span>
+            {% elif c.vencimento <= hoje %}<span class="badge text-bg-warning">Pendente</span>
+            {% else %}<span class="badge text-bg-light border">A vencer</span>{% endif %}
+          </td>
+          <td class="text-muted">{{ c.formas|join:", "|default:"—" }}</td>
+          <td class="text-end">{% if not c.quitada %}<a href="{{ c.url_pagar }}" class="text-decoration-none">registrar pagamento</a>{% endif %}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+    <div class="card-body small text-muted">
+      Nenhuma cobrança neste mês. A mensalidade e o valor por sessão vêm da cobrança combinada na ficha de cada paciente.
+    </div>
+  {% endif %}
+</div>
+
+<div class="card">
+  <div class="card-header bg-white py-2 fw-semibold">
+    Pagamentos recebidos no mês <span class="text-muted fw-normal">· R$ {{ total_recebido|floatformat:2 }}</span>
+  </div>
+  {% if recebidos %}
+  <div class="table-responsive">
+    <table class="table table-sm align-middle mb-0 small">
+      <thead class="table-light"><tr><th>Data</th><th>Paciente</th><th>Referente a</th><th>Forma</th><th class="text-end">Valor</th><th>Observação</th><th></th></tr></thead>
+      <tbody>
+      {% for p in recebidos %}
+        <tr>
+          <td class="text-muted">{{ p.data|date:"d/m" }}</td>
+          <td>{{ p.caso }}</td>
+          <td>{% if p.mes_referencia %}Mensalidade {{ p.mes_referencia|date:"m/Y" }}{% else %}Sessão de {{ p.consulta.inicio|date:"d/m/Y" }}{% endif %}</td>
+          <td>{{ p.get_forma_display }}</td>
+          <td class="text-end text-nowrap">R$ {{ p.valor|floatformat:2 }}</td>
+          <td class="text-muted">{{ p.observacao|default:"—" }}</td>
+          <td class="text-end">
+            <form method="post" action="{% url 'financeiro:excluir' p.pk %}" class="m-0">
+              {% csrf_token %}
+              <button type="submit" class="btn btn-sm btn-link p-0 text-danger" title="Excluir registro feito por engano"><i class="bi bi-trash"></i></button>
+            </form>
+          </td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+    <div class="card-body small text-muted">Nenhum pagamento registrado neste mês.</div>
+  {% endif %}
+</div>
+{% endblock %}

@@ -68,7 +68,7 @@ class Perfil(BaseConta):
             "nome_completo": "Ana Ribeiro Souza", "email": self.ana.email, "cpf": "11111111111",
             "telefone": "31999990000", "crp_regiao": "04", "crp_numero": "303030",
             "regime": "PF", "cnpj": "", "crp_empresa": "",
-            "duracao_sessao": "50", "dia_vencimento_mensalidade": "10"})
+            "duracao_sessao": "50", "tipo_vencimento_mensalidade": "DIA_FIXO", "dia_vencimento_mensalidade": "10"})
         self.ana.refresh_from_db()
         self.assertEqual(self.ana.nome_completo, "Ana Ribeiro Souza")
 
@@ -78,5 +78,5 @@ class Perfil(BaseConta):
             "nome_completo": "Ana", "email": self.ana.email, "cpf": "11111111111",
             "telefone": "31999990000", "crp_regiao": "04", "crp_numero": "303030",
             "regime": "PF", "cnpj": "11222333000181", "crp_empresa": "",
-            "duracao_sessao": "50", "dia_vencimento_mensalidade": "10"})
+            "duracao_sessao": "50", "tipo_vencimento_mensalidade": "DIA_FIXO", "dia_vencimento_mensalidade": "10"})
         self.assertContains(resposta, "não tem CNPJ")

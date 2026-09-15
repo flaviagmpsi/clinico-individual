@@ -32,6 +32,8 @@ from atendimentos.models import Consulta, Desfecho
 from atendimentos.servicos import cadastrar_prevista, definir_frequencia, registrar_desfecho, sessoes_previstas
 from contas.models import Psicologo
 from core import contexto
+from financeiro.models import Pagamento
+from financeiro.servicos import cobrancas_do_mes, registrar_pagamento_mensalidade, registrar_pagamento_sessao
 from pacientes.models import Caso, CondicaoCobranca, Paciente, ResponsavelLegal
 from pacientes.servicos import cadastrar_paciente, criar_caso_coletivo
 
@@ -66,6 +68,21 @@ def _frequencia_de_demonstracao(caso, *, semanas_atras: int = 0, cadastradas=(),
         cadastrar_prevista(recorrencia, sessao.data, estado=estado)
 
 
+def _pagamento_de_demonstracao(caso, *, forma: str, meses_atras: int | None = None, sessao: int | None = None):
+    """Paga a mensalidade de meses atrás, ou a N-ésima sessão cobrada, pelo valor devido e na data do vencimento."""
+    if meses_atras is not None:
+        hoje = timezone.localdate()
+        ano, mes = hoje.year, hoje.month - meses_atras
+        while mes < 1:
+            ano, mes = ano - 1, mes + 12
+        cobranca = next(c for c in cobrancas_do_mes(ano, mes, caso=caso) if c.tipo == "MENSALIDADE")
+        registrar_pagamento_mensalidade(
+            caso, ano=ano, mes=mes, valor=cobranca.devido, data=cobranca.vencimento, forma=forma)
+        return
+    consulta = caso.consultas.filter(estado__in=["REALIZADA", "FALTA_COBRADA"]).order_by("inicio")[sessao]
+    registrar_pagamento_sessao(consulta, data=timezone.localtime(consulta.inicio).date(), forma=forma)
+
+
 def _apagar_conta_de_demonstracao(psicologo) -> int:
     """Apaga uma conta fictícia inteira, na ordem que o `PROTECT` exige.
 
@@ -76,7 +93,7 @@ def _apagar_conta_de_demonstracao(psicologo) -> int:
     """
     dono = {"psicologo": psicologo}
     total = 0
-    for modelo in (Consulta, Desfecho, Recorrencia, Caso):
+    for modelo in (Pagamento, Consulta, Desfecho, Recorrencia, Caso):
         total += modelo.objetos_todos.filter(**dono).delete()[0]
     return total + psicologo.delete()[0]
 
@@ -96,7 +113,7 @@ PSICOLOGOS = [
                  uf="MG", data_primeira_sessao=date(2026, 7, 15),
                  observacoes="Prefere horário no fim da tarde.",
                  cobranca=dict(valor=Decimal("700"), modalidade=_MENSAL,
-                               dia_vencimento=10)),
+                               tipo_vencimento="DIA_UTIL", dia_vencimento=5)),
             # Sem CPF de propósito: exercita o aviso da ADR-040. Criança: responsável legal, que
             # também é quem paga — os três eixos da ADR-014 em pessoas diferentes.
             dict(nome="Rafael Pinto", data_nascimento=date(2019, 6, 8), telefone="31999887766",
@@ -130,6 +147,13 @@ PSICOLOGOS = [
         "desfechos": {
             "Beatriz Nogueira": dict(tipo="DESISTENCIA", motivo="Não respondeu depois do primeiro contato."),
         },
+        # Os dois meses anteriores da Juliana pagos e o atual pendente, para o lembrete aparecer (ADR-063).
+        # Do Marcos, só a primeira sessão paga.
+        "pagamentos": [
+            dict(paciente="Juliana Alves", meses_atras=2, forma="PIX"),
+            dict(paciente="Juliana Alves", meses_atras=1, forma="TRANSFERENCIA"),
+            dict(paciente="Marcos Vieira", sessao=0, forma="DINHEIRO"),
+        ],
     },
     {
         "email": "bruno@exemplo.com", "nome_completo": "Bruno Carvalho", "cpf": "22222222222",
@@ -188,6 +212,7 @@ class Command(BaseCommand):
             grade = dados.pop("grade", [])
             frequencias = dados.pop("frequencias", {})
             desfechos = dados.pop("desfechos", {})
+            pagamentos = dados.pop("pagamentos", [])
             psicologo = Psicologo.objects.create_user(
                 password=SENHA, telefone="31988887777", crp_regiao="04",
                 # `is_staff`/`is_superuser` só para o `/admin/` continuar servindo de conferência
@@ -199,7 +224,11 @@ class Command(BaseCommand):
                 casos = {}  # por nome do paciente, ou pela descrição do casal
                 for item in pacientes:
                     campos = dict(item)
-                    cobranca = campos.pop("cobranca", {})
+                    cobranca = dict(campos.pop("cobranca", {}))
+                    # A cobrança vale desde a primeira sessão: sem isso, as sessões semeadas no passado
+                    # ficariam antes da condição e não gerariam pagamento nenhum (ADR-063).
+                    if cobranca and campos.get("data_primeira_sessao"):
+                        cobranca.setdefault("vigente_desde", campos["data_primeira_sessao"])
                     responsaveis = campos.pop("responsaveis", [])
                     pagador = campos.pop("pagador", None)
 
@@ -225,6 +254,9 @@ class Command(BaseCommand):
                     _frequencia_de_demonstracao(casos[nome], **regra)
                 for nome, desfecho in desfechos.items():
                     registrar_desfecho(casos[nome], **desfecho)
+                for pagamento in pagamentos:
+                    campos_do_pagamento = dict(pagamento)
+                    _pagamento_de_demonstracao(casos[campos_do_pagamento.pop("paciente")], **campos_do_pagamento)
 
             self.stdout.write(self.style.SUCCESS(
                 f"  {psicologo.email}  senha: {SENHA}  ({len(pacientes)} pacientes, "

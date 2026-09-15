@@ -36,6 +36,7 @@ class TrocarCobranca(LoginRequiredMixin, FormView):
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
         kwargs["dia_vencimento_padrao"] = self.request.user.dia_vencimento_mensalidade
+        kwargs["tipo_vencimento_padrao"] = self.request.user.tipo_vencimento_mensalidade
         return kwargs
 
     def get_initial(self):
@@ -45,6 +46,7 @@ class TrocarCobranca(LoginRequiredMixin, FormView):
         inicial = {"modalidade": condicao.modalidade, "valor": condicao.valor}
         if condicao.dia_vencimento:  # por sessão não tem dia: fica o padrão do perfil, para quem trocar para mensal
             inicial["dia_vencimento"] = condicao.dia_vencimento
+            inicial["tipo_vencimento"] = condicao.tipo_vencimento
         return inicial
 
     def get_context_data(self, **kwargs):

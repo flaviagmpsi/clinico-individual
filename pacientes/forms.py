@@ -8,6 +8,7 @@ na tela, então não existe como errar o dono — nem por engano, nem por quem i
 from django import forms
 from django.core.exceptions import ValidationError
 
+from core.calendario import MAIOR_DIA_UTIL, TipoDia, descrever_dia
 from pacientes.models import Caso, CondicaoCobranca, Paciente, ResponsavelLegal
 
 _TEXTO = {"class": "form-control"}
@@ -37,28 +38,37 @@ class CondicaoCobrancaForm(forms.Form):
         label="Valor", required=False, min_value=0, max_digits=10, decimal_places=2,
         widget=forms.NumberInput(attrs={**_TEXTO, "step": "0.01", "placeholder": "0,00"}),
         help_text="Opcional. Pode ser combinado depois.")
+    tipo_vencimento = forms.ChoiceField(
+        label="Vence em", required=False, choices=TipoDia.choices, initial=TipoDia.DIA_FIXO,
+        widget=forms.Select(attrs=_SELECT), help_text="Só para mensalidade.")
     dia_vencimento = forms.IntegerField(
         label="Dia do vencimento", required=False, min_value=1, max_value=31,
         widget=forms.NumberInput(attrs={**_TEXTO, "placeholder": "10"}),
         help_text="Só para mensalidade. Em mês mais curto, vale o último dia.")
 
-    def __init__(self, *args, dia_vencimento_padrao: int | None = None, **kwargs):
+    def __init__(self, *args, dia_vencimento_padrao: int | None = None, tipo_vencimento_padrao: str = "", **kwargs):
         super().__init__(*args, **kwargs)
         if dia_vencimento_padrao:
             # C-04 / ADR-025: o valor herdado do perfil vem preenchido **e diz de onde veio**.
             # Um campo que aparece marcado sem explicação faz o psicólogo achar que escolheu algo
             # que não escolheu.
             self.fields["dia_vencimento"].initial = dia_vencimento_padrao
+            tipo = tipo_vencimento_padrao or TipoDia.DIA_FIXO
+            self.fields["tipo_vencimento"].initial = tipo
             self.fields["dia_vencimento"].help_text = (
-                f"Padrão do seu perfil: dia {dia_vencimento_padrao}. Só para mensalidade.")
+                f"Padrão do seu perfil: {descrever_dia(tipo, dia_vencimento_padrao)}. Só para mensalidade.")
 
     def clean(self):
         dados = super().clean()
         if dados.get("valor") is None:
             return dados
         dados["modalidade"] = dados.get("modalidade") or CondicaoCobranca.Modalidade.POR_SESSAO
-        if dados["modalidade"] == CondicaoCobranca.Modalidade.MENSAL and not dados.get("dia_vencimento"):
-            self.add_error("dia_vencimento", "Mensalidade precisa do dia de vencimento.")
+        if dados["modalidade"] == CondicaoCobranca.Modalidade.MENSAL:
+            dados["tipo_vencimento"] = dados.get("tipo_vencimento") or TipoDia.DIA_FIXO
+            if not dados.get("dia_vencimento"):
+                self.add_error("dia_vencimento", "Mensalidade precisa do dia de vencimento.")
+            elif dados["tipo_vencimento"] == TipoDia.DIA_UTIL and dados["dia_vencimento"] > MAIOR_DIA_UTIL:
+                self.add_error("dia_vencimento", f"Nenhum mês tem mais que {MAIOR_DIA_UTIL} dias úteis.")
         return dados
 
     def condicao(self) -> dict:
@@ -68,7 +78,7 @@ class CondicaoCobrancaForm(forms.Form):
             return {}
         return {"valor": dados["valor"],
                 "modalidade": dados.get("modalidade") or CondicaoCobranca.Modalidade.POR_SESSAO,
-                "dia_vencimento": dados.get("dia_vencimento")}
+                "dia_vencimento": dados.get("dia_vencimento"), "tipo_vencimento": dados.get("tipo_vencimento") or ""}
 
 
 class PagadorForm(forms.ModelForm):

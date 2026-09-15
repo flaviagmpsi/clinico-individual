@@ -216,6 +216,6 @@ Status: 🔴 aberta · 🟡 em discussão · 🟢 resolvida (migra para `documen
 |---|---|---|---|
 | P-72 | Agenda / Google | Pedir a verificação do Google **em paralelo** à construção da agenda própria, para o prazo de 4 a 6 semanas correr desde já? Exige criar um projeto no Google Cloud (ADR-051). | ⏸️ **Adiada pelo usuário** (Rodada 33): o Google Agenda fica parado por enquanto. |
 | P-73 | Financeiro | **Quem paga por sessão: o dia combinado cobra as sessões de qual mês?** As sessões de setembro vencem no dia combinado de setembro (e o que acontecer depois dele?) ou no de outubro, com o mês fechado? Trava o cálculo do devido e do lembrete (ADR-062). | ✅ Resolvida na ADR-063: por sessão não tem dia combinado — cada sessão gera o seu pagamento pendente. |
-| P-74 | Financeiro | **"Dia útil" conta quais dias?** Segunda a sexta, com ou sem feriados? Sábado conta (como no salário, pela CLT)? | 🔴 Aberta — Rodada 37 |
-| P-75 | Financeiro | **Quem paga por sessão e acerta várias de uma vez:** um registro para várias sessões, ou um por sessão? | 🔴 Aberta — Rodada 37 |
-| P-76 | Financeiro | **Falta cobrada também gera pagamento pendente?** A decisão fala em "sessão realizada". | 🔴 Aberta — Rodada 37 |
+| P-74 | Financeiro | **"Dia útil" conta quais dias?** Segunda a sexta, com ou sem feriados? Sábado conta (como no salário, pela CLT)? | ✅ Resolvida (Rodada 38): segunda a sexta, sem feriado nacional, incluindo a Sexta-feira Santa (ADR-063). |
+| P-75 | Financeiro | **Quem paga por sessão e acerta várias de uma vez:** um registro para várias sessões, ou um por sessão? | ✅ Resolvida (Rodada 38): quem acerta várias de uma vez é mensalidade. Por sessão, um pagamento por sessão. |
+| P-76 | Financeiro | **Falta cobrada também gera pagamento pendente?** A decisão fala em "sessão realizada". | ✅ Resolvida (Rodada 38): sim. Falta remarcada, não. |
