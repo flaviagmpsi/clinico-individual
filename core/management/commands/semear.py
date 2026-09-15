@@ -27,10 +27,11 @@ from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 
 from agenda.models import HorarioDisponivel, Recorrencia
+from atendimentos.models import Consulta, Desfecho
 from atendimentos.servicos import definir_frequencia, registrar_desfecho
 from contas.models import Psicologo
 from core import contexto
-from pacientes.models import CondicaoCobranca, Paciente, ResponsavelLegal
+from pacientes.models import Caso, CondicaoCobranca, Paciente, ResponsavelLegal
 from pacientes.servicos import cadastrar_paciente, criar_caso_coletivo
 
 SENHA = "hamilton123"
@@ -39,6 +40,25 @@ _POR_SESSAO = CondicaoCobranca.Modalidade.POR_SESSAO
 _MENSAL = CondicaoCobranca.Modalidade.MENSAL
 _SEMANAL = Recorrencia.Frequencia.SEMANAL
 _QUINZENAL = Recorrencia.Frequencia.QUINZENAL
+
+# A primeira versão da semente usava `@demo.com`, com os mesmos CPF e CRP de hoje. Sem limpá-las, o
+# `--limpar` apagava as contas novas e esbarrava nas antigas ao recriar ("CPF já existe").
+EMAILS_DA_SEMENTE_ANTIGA = ["ana@demo.com", "bruno@demo.com"]
+
+
+def _apagar_conta_de_demonstracao(psicologo) -> int:
+    """Apaga uma conta fictícia inteira, na ordem que o `PROTECT` exige.
+
+    `Psicologo.delete()` sozinho falha: consulta, desfecho e pagador protegem o atendimento contra exclusão
+    em cascata (ADR-048), e a cascata a partir do psicólogo esbarra neles. Aqui se apaga de fora para dentro —
+    o que registra atendimento, depois o atendimento, depois a conta. É o mesmo problema que o descarte de
+    conta da ADR-038 vai ter de resolver (P-70); isto serve só a dado de demonstração.
+    """
+    dono = {"psicologo": psicologo}
+    total = 0
+    for modelo in (Consulta, Desfecho, Recorrencia, Caso):
+        total += modelo.objetos_todos.filter(**dono).delete()[0]
+    return total + psicologo.delete()[0]
 
 PSICOLOGOS = [
     {
@@ -125,8 +145,10 @@ class Command(BaseCommand):
 
         emails = [p["email"] for p in PSICOLOGOS]
         if opcoes["limpar"]:
-            apagados = Psicologo.objects.filter(email__in=emails).delete()
-            self.stdout.write(f"Removidos os dados anteriores ({apagados[0]} registros).")
+            removidos = 0
+            for psicologo in Psicologo.objects.filter(email__in=emails + EMAILS_DA_SEMENTE_ANTIGA):
+                removidos += _apagar_conta_de_demonstracao(psicologo)
+            self.stdout.write(f"Removidos os dados anteriores ({removidos} registros).")
         elif Psicologo.objects.filter(email__in=emails).exists():
             raise CommandError(
                 "Os psicólogos de demonstração já existem. Use --limpar para recriar."
