@@ -113,11 +113,15 @@ sozinhos, em vez de passar em falso.
 
 ```bash
 DATABASE_URL="postgresql://hamilton_owner:ownerpass@127.0.0.1:5432/hamilton_dev" \
-  python manage.py test
+  python manage.py test --parallel 4
 ```
 
 O runner precisa criar o banco de teste, então roda com o papel dono. São **297 testes**, e nenhum
-fica pulado. Contra um PostgreSQL local levam cerca de 11 minutos.
+fica pulado. Contra um PostgreSQL local levam cerca de **1 minuto e 40 segundos com `--parallel 4`**.
+
+⚠️ **Rode em paralelo.** Em série a mesma suíte leva ~11 minutos, e não é por teste lento: medida app a app,
+ela soma ~3,7 minutos. O excesso vem da limpeza do banco entre os testes de tela (`TransactionTestCase`), que
+percorre todas as tabelas e fica mais cara a cada app novo. Em paralelo, cada processo tem o seu banco.
 
 ⚠️ **Não rode a suíte contra o Neon do plano gratuito.** Ele suspende o banco por inatividade — e
 suspendeu duas vezes no meio de execuções em andamento, derrubando todas as conexões. No plano

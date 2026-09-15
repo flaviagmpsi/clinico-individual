@@ -9,7 +9,7 @@ Registro da evolução e da arquitetura do projeto. Atualizado a cada rodada de 
 > Para saber **o que falta construir**, o documento é [demandas.md](demandas.md). Este aqui
 > registra o que existe e por quê.
 
-**297 testes verdes contra PostgreSQL real, nenhum pulado.** A suíte roda em ~11 min (era ~3,5 min até a Rodada 39; a causa da lentidão está em investigação) num PostgreSQL 17 local; contra o Neon gratuito, a suspensão automática do banco derrubava a execução no meio.
+**297 testes verdes contra PostgreSQL real, nenhum pulado.** A suíte roda em **~1,7 min com `--parallel 4`**; em série leva ~11 min. A diferença não é teste lento: medida app a app, a suíte inteira soma ~3,7 min, e o excesso aparece só quando tudo roda num processo só — é a limpeza do banco entre os testes de tela (`TransactionTestCase`), que cresce a cada app novo. Rode em paralelo num PostgreSQL 17 local; contra o Neon gratuito, a suspensão automática do banco derrubava a execução no meio.
 
 ### Apps que existem
 
