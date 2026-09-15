@@ -9,7 +9,7 @@ Registro da evolução e da arquitetura do projeto. Atualizado a cada rodada de 
 > Para saber **o que falta construir**, o documento é [demandas.md](demandas.md). Este aqui
 > registra o que existe e por quê.
 
-**215 testes verdes contra PostgreSQL real, nenhum pulado.** A suíte roda em ~2 min num PostgreSQL 17 local; contra o Neon gratuito, a suspensão automática do banco derrubava a execução no meio.
+**227 testes verdes contra PostgreSQL real, nenhum pulado.** A suíte roda em ~2,5 min num PostgreSQL 17 local; contra o Neon gratuito, a suspensão automática do banco derrubava a execução no meio.
 
 ### Apps que existem
 
@@ -250,3 +250,4 @@ encaminhamento entre profissionais.
 | 2026-09-13 | 32 | ADR-054 (casal sem presença por participante — revisa a 026), 055 (desfecho encerra a agenda do caso; retomada reabre) e 056 (grade avisa, nunca bloqueia). Agenda, segunda parte: desfecho e retomada, pacientes encerrados em aba própria, grade de horários com mapa da semana e ocupação, exclusão de casal com sessões agendadas sem erro 500. 200 testes. |
 | 2026-09-13 | 33 | ADR-057: trilha de auditoria (F-05) para dado do paciente e, depois, prontuário — visualizar, criar, alterar, excluir e exportar; guarda campos, nunca valores; só acrescenta, com `UPDATE`/`DELETE` revogados do papel da requisição. Tela de histórico na ficha. Lixeira vem com o prontuário; P-72 (Google) adiada. 215 testes. |
 | 2026-09-15 | 34 | Avaliado o protótipo `prontuario-exyo` (P-18): não embutir, aproveitar ideias — 5 perguntas guiadas, caderno privativo de supervisão, PDF/DOCX no padrão CFP. ADR-058: construir do mais simples ao mais complexo, **IA por último**; P-18 e P-19 adiadas. |
+| 2026-09-15 | 35 | Primeiro teste do produto pelo usuário. ADR-059 (vencimento é dia do mês), ADR-060 (a consulta só existe quando o psicólogo cadastra: realizada, falta cobrada ou falta remarcada; previsão calculada, nunca gravada; sai a remarcação e o "cobro falta") e ADR-061 (painel com sessões, receita e situação de cada paciente). Semente corrigida para contas com atendimento. 227 testes. |

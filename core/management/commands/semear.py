@@ -19,16 +19,17 @@ atendimento de casal cujos participantes têm também seus casos individuais.
 duas contas de porta aberta.
 """
 
-from datetime import date, time
+from datetime import date, time, timedelta
 from decimal import Decimal
 
 from django.conf import settings
 from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
+from django.utils import timezone
 
 from agenda.models import HorarioDisponivel, Recorrencia
 from atendimentos.models import Consulta, Desfecho
-from atendimentos.servicos import definir_frequencia, registrar_desfecho
+from atendimentos.servicos import cadastrar_prevista, definir_frequencia, registrar_desfecho, sessoes_previstas
 from contas.models import Psicologo
 from core import contexto
 from pacientes.models import Caso, CondicaoCobranca, Paciente, ResponsavelLegal
@@ -44,6 +45,25 @@ _QUINZENAL = Recorrencia.Frequencia.QUINZENAL
 # A primeira versão da semente usava `@demo.com`, com os mesmos CPF e CRP de hoje. Sem limpá-las, o
 # `--limpar` apagava as contas novas e esbarrava nas antigas ao recriar ("CPF já existe").
 EMAILS_DA_SEMENTE_ANTIGA = ["ana@demo.com", "bruno@demo.com"]
+
+
+def _frequencia_de_demonstracao(caso, *, semanas_atras: int = 0, cadastradas=(), **regra) -> None:
+    """Frequência que começou semanas atrás, com as primeiras sessões cadastradas e o resto pendente.
+
+    Grava a regra direto, e não por `definir_frequencia`: o serviço só aceita frequência de hoje em diante, e uma
+    demonstração sem passado não mostraria consulta cadastrada nem pendência (ADR-060). As sessões são cadastradas
+    pelo serviço, com a mesma validação da tela.
+    """
+    if not semanas_atras:
+        definir_frequencia(caso, **regra)
+        return
+    hoje = timezone.localdate()
+    recorrencia = Recorrencia.objects.create(
+        caso=caso, inicio=hoje - timedelta(weeks=semanas_atras), duracao=caso.psicologo.duracao_sessao, **regra)
+    passadas = [s for s in sessoes_previstas(recorrencia.inicio, hoje, caso=caso)
+                if s.regra.pk == recorrencia.pk and s.pendente()]
+    for sessao, estado in zip(passadas, cadastradas):
+        cadastrar_prevista(recorrencia, sessao.data, estado=estado)
 
 
 def _apagar_conta_de_demonstracao(psicologo) -> int:
@@ -76,7 +96,7 @@ PSICOLOGOS = [
                  uf="MG", data_primeira_sessao=date(2026, 7, 15),
                  observacoes="Prefere horário no fim da tarde.",
                  cobranca=dict(valor=Decimal("700"), modalidade=_MENSAL,
-                               vencimento=CondicaoCobranca.Vencimento.INICIO_DO_MES)),
+                               dia_vencimento=10)),
             # Sem CPF de propósito: exercita o aviso da ADR-040. Criança: responsável legal, que
             # também é quem paga — os três eixos da ADR-014 em pessoas diferentes.
             dict(nome="Rafael Pinto", data_nascimento=date(2019, 6, 8), telefone="31999887766",
@@ -96,10 +116,15 @@ PSICOLOGOS = [
         # Grade de segunda a quinta, manhã e fim de tarde (ADR-029). A quinzenal da Juliana ocupa metade
         # da faixa dela; o Rafael no sábado aparece como "fora da grade" (ADR-056).
         "grade": [(dia, 8, 12) for dia in range(4)] + [(dia, 14, 19) for dia in range(4)],
+        # Frequências que começaram semanas atrás, com parte das sessões já cadastradas e o resto pendente — sem
+        # passado, a agenda não teria nem consulta cadastrada nem pendência para mostrar (ADR-060).
         "frequencias": {
-            "Marcos Vieira": dict(frequencia=_SEMANAL, dia_semana=1, hora=time(14)),
-            "Juliana Alves": dict(frequencia=_QUINZENAL, dia_semana=3, hora=time(18)),
-            "Rafael Pinto": dict(frequencia=_SEMANAL, dia_semana=5, hora=time(9)),
+            "Marcos Vieira": dict(frequencia=_SEMANAL, dia_semana=1, hora=time(14), semanas_atras=4,
+                                  cadastradas=["REALIZADA", "REALIZADA", "FALTA_COBRADA"]),
+            "Juliana Alves": dict(frequencia=_QUINZENAL, dia_semana=3, hora=time(18), semanas_atras=4,
+                                  cadastradas=["REALIZADA"]),
+            "Rafael Pinto": dict(frequencia=_SEMANAL, dia_semana=5, hora=time(9), semanas_atras=3,
+                                 cadastradas=["REALIZADA", "FALTA_REMARCADA"]),
         },
         # Beatriz desistiu antes de começar: exercita a aba "Encerrados" e o botão de retomar (ADR-055).
         "desfechos": {
@@ -123,7 +148,8 @@ PSICOLOGOS = [
                         pacientes=["Camila Duarte", "Pedro Henrique Sá"])],
         # Sem grade declarada: nenhum aviso de "fora da grade" aparece para o Bruno (ADR-056).
         "frequencias": {
-            "Camila e Pedro — casal": dict(frequencia=_SEMANAL, dia_semana=0, hora=time(19)),
+            "Camila e Pedro — casal": dict(frequencia=_SEMANAL, dia_semana=0, hora=time(19), semanas_atras=2,
+                                           cadastradas=["REALIZADA"]),
         },
     },
 ]
@@ -196,7 +222,7 @@ class Command(BaseCommand):
                 for dia, de, ate in grade:
                     HorarioDisponivel.objects.create(dia_semana=dia, inicio=time(de), fim=time(ate))
                 for nome, regra in frequencias.items():
-                    definir_frequencia(casos[nome], **regra)
+                    _frequencia_de_demonstracao(casos[nome], **regra)
                 for nome, desfecho in desfechos.items():
                     registrar_desfecho(casos[nome], **desfecho)
 

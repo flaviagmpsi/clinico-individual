@@ -1,21 +1,20 @@
-"""A agenda: transformar regra em consulta, e registrar o que aconteceu.
+"""A agenda: prever sessões pela frequência e cadastrar o que aconteceu (ADR-060).
 
-`agenda` guarda a regra e não conhece consulta; `atendimentos` guarda a consulta e é quem sabe gerar
-uma a partir da outra (regra 5 de dependência). Tudo aqui roda no escopo do psicólogo corrente.
+`agenda` guarda a regra e não conhece consulta; `atendimentos` guarda a consulta e é quem sabe cruzar uma com a
+outra (regra 5 de dependência). Tudo aqui roda no escopo do psicólogo corrente.
 
-Três garantias moram neste módulo, cada uma com sua ADR:
+- **Previsão é cálculo, não registro.** `sessoes_previstas` deriva as sessões da regra de frequência a cada
+  chamada; nada é gravado até o psicólogo cadastrar.
+- **Só o psicólogo cadastra** (ADR-052, ADR-060): realizada, falta cobrada ou falta remarcada. Sessão prevista
+  que passou sem cadastro é **pendente**.
+- **Só se cadastra o que já aconteceu.** Data e hora no futuro são recusadas.
+- **Colisão bloqueia** (ADR-024) entre consultas que ocupam o horário e entre regras de frequência. Sessão
+  prevista não bloqueia cadastro: previsão não é registro.
 
-- **Janela de previsão** (ADR-022): as consultas das regras são materializadas até `JANELA_SEMANAS` à
-  frente, quando a agenda abre — sem agendador (ADR-018). Datas passadas não são geradas.
-- **Colisão bloqueia** (ADR-024): o model confere as consultas já geradas; aqui se conferem também as
-  ocorrências que a regra **ainda não gerou**, que o model não enxerga. Sem isso, uma consulta avulsa
-  marcada daqui a cinco meses passaria por cima de uma sessão semanal fora da janela.
-- **O sistema nunca registra sozinho** (ADR-052): consulta passada sem registro é pendência.
-
-E o fim do atendimento: o **desfecho** fecha a agenda do caso, e **retomar** reabre (ADR-049, ADR-055).
-Atendimento encerrado não aceita frequência, consulta nem remarcação.
+E o fim do atendimento: o **desfecho** encerra a frequência, e **retomar** reabre (ADR-049, ADR-055).
 """
 
+from dataclasses import dataclass
 from datetime import date, datetime, time, timedelta
 
 from django.core.exceptions import ValidationError
@@ -28,14 +27,12 @@ from atendimentos.models import Consulta, Desfecho
 from core import contexto
 from pacientes.models import Caso
 
-JANELA_SEMANAS = 8  # ADR-022: "ordem de grandeza, 8 semanas" (P-46)
 HORIZONTE_DE_CONFLITO_SEMANAS = 52
 AVULSO = "AVULSO"  # não é valor de `Recorrencia`: é a ausência de regra (ADR-053)
 
-_AGENDADA = Consulta.Estado.AGENDADA
-_REALIZADA = Consulta.Estado.REALIZADA
-_FALTA = Consulta.Estado.FALTA
-_CANCELADA = Consulta.Estado.CANCELADA
+# Primeira data que a busca de pendências considera. Qualquer regra começa depois dela; `Recorrencia.ocorrencias`
+# parte da primeira sessão da regra, então a data antiga não custa iteração.
+_DESDE_SEMPRE = date(2000, 1, 1)
 
 
 def momento(dia: date, hora: time) -> datetime:
@@ -53,27 +50,70 @@ def _sobrepoe(inicio_a: datetime, duracao_a: int, inicio_b: datetime, duracao_b:
             and inicio_b < inicio_a + timedelta(minutes=duracao_a))
 
 
-def _ocorrencia_nao_gerada_em(inicio: datetime, duracao: int) -> Recorrencia | None:
-    """A regra cuja sessão prevista — e ainda não materializada — ocuparia este horário."""
-    dia = timezone.localtime(inicio).date()
-    for regra in Recorrencia.objects.filter(dia_semana=dia.weekday()).select_related("caso"):
-        if not regra.ocorre_em(dia) or regra.consultas.filter(data_prevista=dia).exists():
-            continue  # já gerada: quem confere é o model
-        if _sobrepoe(inicio, duracao, momento(dia, regra.hora), regra.duracao):
-            return regra
-    return None
+# --- Previsão --------------------------------------------------------------------------------------------------
+
+@dataclass(frozen=True)
+class SessaoPrevista:
+    """Uma sessão que a frequência prevê e que ainda não foi cadastrada. Não existe no banco."""
+
+    regra: Recorrencia
+    data: date
+
+    @property
+    def caso(self) -> Caso:
+        return self.regra.caso
+
+    @property
+    def inicio(self) -> datetime:
+        return momento(self.data, self.regra.hora)
+
+    @property
+    def duracao(self) -> int:
+        return self.regra.duracao
+
+    @property
+    def fim(self) -> datetime:
+        return self.inicio + timedelta(minutes=self.duracao)
+
+    @property
+    def data_iso(self) -> str:
+        return self.data.isoformat()
+
+    def pendente(self, agora: datetime | None = None) -> bool:
+        """Já começou e ninguém cadastrou (ADR-052)."""
+        return self.inicio <= (agora or timezone.now())
 
 
-def _recusar_sessao_prevista(inicio: datetime, duracao: int) -> None:
-    regra = _ocorrencia_nao_gerada_em(inicio, duracao)
-    if regra is not None:
-        raise ValidationError(
-            f"Horário ocupado: {regra.caso} tem sessão prevista nesse horário "
-            f"({regra.get_frequencia_display().lower()}, {regra.hora:%H:%M}).")
+def sessoes_previstas(de: date, ate: date, *, caso: Caso | None = None) -> list[SessaoPrevista]:
+    """As sessões que a frequência prevê entre `de` e `ate`, inclusive, e que ninguém cadastrou."""
+    regras = Recorrencia.objects.filter(inicio__lte=ate).filter(Q(fim__isnull=True) | Q(fim__gt=de))
+    if caso is not None:
+        regras = regras.filter(caso=caso)
+    regras = list(regras.select_related("caso").prefetch_related("caso__pacientes"))
+    cadastradas = set(
+        Consulta.objects.filter(recorrencia__in=regras, data_prevista__gte=de, data_prevista__lte=ate)
+        .values_list("recorrencia_id", "data_prevista")
+    )
+    previstas = [
+        SessaoPrevista(regra, dia)
+        for regra in regras
+        for dia in regra.ocorrencias(de, ate)
+        if (regra.pk, dia) not in cadastradas
+    ]
+    return sorted(previstas, key=lambda sessao: sessao.inicio)
 
+
+def sessoes_pendentes(agora: datetime | None = None, *, caso: Caso | None = None) -> list[SessaoPrevista]:
+    """Sessões previstas que já começaram e não foram cadastradas — pendência, nunca cadastro automático."""
+    agora = agora or timezone.now()
+    previstas = sessoes_previstas(_DESDE_SEMPRE, timezone.localdate(agora), caso=caso)
+    return [sessao for sessao in previstas if sessao.pendente(agora)]
+
+
+# --- Frequência ------------------------------------------------------------------------------------------------
 
 def _conflito_da_regra(nova: Recorrencia) -> str | None:
-    """Confere a regra nova contra as outras regras e contra as consultas já existentes."""
+    """Confere a regra nova contra as outras regras em vigor. Consulta cadastrada é passado e não conflita."""
     datas = nova.ocorrencias(nova.inicio, nova.inicio + timedelta(weeks=HORIZONTE_DE_CONFLITO_SEMANAS))
     outras = (
         Recorrencia.objects.exclude(pk=nova.pk)
@@ -88,64 +128,24 @@ def _conflito_da_regra(nova: Recorrencia) -> str | None:
             ):
                 return (f"Horário ocupado: {outra.caso} tem sessão {outra.get_frequencia_display().lower()} "
                         f"às {outra.hora:%H:%M} — a primeira coincidência seria em {dia:%d/%m/%Y}.")
-
-    ocupadas = (
-        Consulta.objects.exclude(estado=_CANCELADA)
-        .exclude(recorrencia=nova)
-        .filter(inicio__gte=momento(nova.inicio, time.min))
-        .select_related("caso")
-    )
-    for consulta in ocupadas:
-        dia = timezone.localtime(consulta.inicio).date()
-        if nova.ocorre_em(dia) and _sobrepoe(momento(dia, nova.hora), nova.duracao, consulta.inicio, consulta.duracao):
-            return (f"Horário ocupado: já existe consulta de {consulta.caso} em "
-                    f"{timezone.localtime(consulta.inicio):%d/%m/%Y às %H:%M}.")
     return None
 
 
-@transaction.atomic
-def gerar_consultas(hoje: date | None = None) -> list[str]:
-    """Materializa as sessões previstas até `JANELA_SEMANAS` à frente. Idempotente.
-
-    Devolve as ocorrências que **não** puderam ser geradas por colisão. Não deveria haver nenhuma — a
-    colisão é barrada ao criar a regra e ao marcar consulta —, mas se houver, a agenda mostra em vez
-    de esconder (ADR-012). Nunca sobrescreve uma consulta existente para abrir espaço.
-    """
-    hoje = hoje or timezone.localdate()
-    ate = hoje + timedelta(weeks=JANELA_SEMANAS)
-    nao_geradas = []
-    regras = (
-        Recorrencia.objects.filter(inicio__lte=ate)
-        .filter(Q(fim__isnull=True) | Q(fim__gt=hoje))
-        .select_related("caso")
-    )
-    for regra in regras:
-        existentes = set(regra.consultas.values_list("data_prevista", flat=True))
-        for dia in regra.ocorrencias(max(hoje, regra.inicio), ate):
-            if dia in existentes:
-                continue
-            consulta = Consulta(caso=regra.caso, recorrencia=regra, data_prevista=dia,
-                                inicio=momento(dia, regra.hora), duracao=regra.duracao)
-            try:
-                with transaction.atomic():
-                    consulta.save()
-            except ValidationError as erro:
-                nao_geradas.append(f"{regra.caso}, {dia:%d/%m}: {erro.messages[0]}")
-    return nao_geradas
-
-
 def _encerrar(regra: Recorrencia, a_partir_de: date) -> None:
-    """Fecha a regra numa data, preservando o que não é mais só previsão (ADR-022).
-
-    Saem as sessões futuras ainda agendadas e **não remarcadas**. Ficam as remarcadas à mão — é
-    exatamente o que a marca `remarcada` protege — e tudo que já foi registrado.
-    """
-    regra.consultas.filter(data_prevista__gte=a_partir_de, estado=_AGENDADA, remarcada=False).delete()
+    """Fecha a regra numa data. Previsão não é registro: nada além da regra muda, e o que foi cadastrado fica."""
     if regra.inicio >= a_partir_de and not regra.consultas.exists():
         regra.delete()  # nunca chegou a valer e não deixou rastro
         return
     regra.fim = max(a_partir_de, regra.inicio)
     regra.save()
+
+
+def _recusar_encerrado(caso: Caso) -> None:
+    desfecho = caso.desfecho_aberto()
+    if desfecho is not None:
+        raise ValidationError(
+            f"Este atendimento está encerrado ({desfecho.get_tipo_display().lower()} em {desfecho.data:%d/%m/%Y}). "
+            "Retome-o antes de definir a frequência.")
 
 
 @transaction.atomic
@@ -159,10 +159,10 @@ def definir_frequencia(
     a_partir_de: date | None = None,
     hoje: date | None = None,
 ) -> Recorrencia | None:
-    """Semanal, quinzenal ou avulso (ADR-053). Vale para "esta e as próximas" (ADR-022).
+    """Semanal, quinzenal ou avulso (ADR-053). Vale "desta data em diante" (ADR-022).
 
-    Avulso não cria regra: encerra a vigente e deixa de prever sessões. Se a regra nova colidir com
-    outra sessão, nada é gravado — nem o encerramento da anterior.
+    Avulso não cria regra: encerra a vigente e deixa de prever sessões. Se a regra nova colidir com outra, nada é
+    gravado — nem o encerramento da anterior.
     """
     _recusar_encerrado(caso)
     hoje = hoje or timezone.localdate()
@@ -185,75 +185,79 @@ def definir_frequencia(
     conflito = _conflito_da_regra(nova)
     if conflito:
         raise ValidationError(conflito)
-    gerar_consultas(hoje)
     return nova
 
 
-@transaction.atomic
-def marcar_avulsa(caso: Caso, *, inicio: datetime, duracao: int | None = None) -> Consulta:
-    """Consulta fora de regra: do paciente avulso, ou uma sessão extra de quem tem frequência."""
-    _recusar_encerrado(caso)
-    duracao = duracao or _psicologo().duracao_sessao
-    _recusar_sessao_prevista(inicio, duracao)
-    return Consulta.objects.create(caso=caso, inicio=inicio, duracao=duracao)
+# --- Cadastro --------------------------------------------------------------------------------------------------
 
-
-@transaction.atomic
-def remarcar(consulta: Consulta, *, inicio: datetime, duracao: int | None = None) -> Consulta:
-    """Muda só esta sessão. Se ela veio de uma regra, fica marcada para a regra não desfazer (ADR-022)."""
-    if consulta.estado != _AGENDADA:
-        raise ValidationError("Só consulta ainda agendada pode ser remarcada.")
-    _recusar_encerrado(consulta.caso)
-    duracao = duracao or consulta.duracao
-    _recusar_sessao_prevista(inicio, duracao)
-    consulta.inicio = inicio
-    consulta.duracao = duracao
-    if consulta.recorrencia_id is not None:
-        consulta.remarcada = True
+def _cadastrar(consulta: Consulta, agora: datetime | None) -> Consulta:
+    if consulta.estado not in Consulta.Estado.values:
+        raise ValidationError("Escolha o que aconteceu: realizada, falta cobrada ou falta remarcada.")
+    if consulta.inicio > (agora or timezone.now()):
+        raise ValidationError("Só se cadastra o que já aconteceu — esta sessão ainda não começou.")
     consulta.save()
     return consulta
 
 
 @transaction.atomic
-def registrar(
-    consulta: Consulta,
-    estado: str,
+def cadastrar_prevista(
+    regra: Recorrencia,
+    data: date,
     *,
-    contabilizada: bool | None = None,
+    estado: str,
+    hora: time | None = None,
+    duracao: int | None = None,
     agora: datetime | None = None,
 ) -> Consulta:
-    """Registra o que aconteceu. Comparecimento e cobrança são eixos independentes (ADR-023).
+    """Cadastra uma sessão da frequência — é o que a tira da pendência.
 
-    Sem `contabilizada` explícito, vale o padrão: realizada entra na cobrança; falta entra se o
-    psicólogo cobra falta (perfil, ADR-025); cancelada não entra. O psicólogo ajusta caso a caso.
+    Continua possível depois do desfecho: a pendência de antes do encerramento não some com ele (ADR-055).
     """
-    if estado not in (_REALIZADA, _FALTA, _CANCELADA):
-        raise ValidationError("Situação inválida para registro.")
-    agora = agora or timezone.now()
-    if estado != _CANCELADA and consulta.inicio > agora:
+    if not regra.ocorre_em(data):
+        raise ValidationError("Esta data não é uma sessão prevista pela frequência.")
+    if regra.consultas.filter(data_prevista=data).exists():
+        raise ValidationError("Esta sessão já foi cadastrada.")
+    consulta = Consulta(caso=regra.caso, recorrencia=regra, data_prevista=data, estado=estado,
+                        inicio=momento(data, hora or regra.hora), duracao=duracao or regra.duracao)
+    return _cadastrar(consulta, agora)
+
+
+@transaction.atomic
+def cadastrar_avulsa(
+    caso: Caso,
+    *,
+    estado: str,
+    inicio: datetime,
+    duracao: int | None = None,
+    agora: datetime | None = None,
+) -> Consulta:
+    """Consulta fora da frequência: do paciente avulso, uma sessão extra, ou a remarcada que aconteceu."""
+    desfecho = caso.desfecho_aberto()
+    if desfecho is not None and timezone.localtime(inicio).date() > desfecho.data:
         raise ValidationError(
-            "Consulta que ainda não começou só pode ser cancelada — realizada ou falta se registra depois.")
-    if contabilizada is None:
-        if estado == _REALIZADA:
-            contabilizada = True
-        elif estado == _FALTA:
-            contabilizada = _psicologo().cobra_falta
-        else:
-            contabilizada = False
+            f"Este atendimento está encerrado desde {desfecho.data:%d/%m/%Y}. "
+            "Retome-o antes de cadastrar sessões depois dessa data.")
+    consulta = Consulta(caso=caso, estado=estado, inicio=inicio, duracao=duracao or _psicologo().duracao_sessao)
+    return _cadastrar(consulta, agora)
+
+
+@transaction.atomic
+def alterar_situacao(consulta: Consulta, estado: str) -> Consulta:
+    """Corrige o que foi cadastrado. A data não muda: para isso, exclui-se o cadastro e cadastra-se de novo."""
+    if estado not in Consulta.Estado.values:
+        raise ValidationError("Escolha o que aconteceu: realizada, falta cobrada ou falta remarcada.")
     consulta.estado = estado
-    consulta.contabilizada = contabilizada
-    consulta.registrada_em = agora
     consulta.save()
     return consulta
 
 
-def _recusar_encerrado(caso: Caso) -> None:
-    desfecho = caso.desfecho_aberto()
-    if desfecho is not None:
-        raise ValidationError(
-            f"Este atendimento está encerrado ({desfecho.get_tipo_display().lower()} em {desfecho.data:%d/%m/%Y}). "
-            "Retome-o antes de marcar sessões.")
+@transaction.atomic
+def excluir_consulta(consulta: Consulta) -> None:
+    """Cadastro feito por engano. Se era da frequência, a sessão volta a ser pendente."""
+    consulta.delete()
 
+
+# --- Fim do atendimento ----------------------------------------------------------------------------------------
 
 @transaction.atomic
 def registrar_desfecho(
@@ -267,9 +271,8 @@ def registrar_desfecho(
 ) -> Desfecho:
     """Encerra o atendimento (ADR-049, ADR-055).
 
-    A frequência termina hoje e saem as consultas futuras ainda agendadas — todas, inclusive remarcadas e
-    avulsas: o atendimento acabou, não há sessão a proteger. **O passado fica**, inclusive a consulta
-    passada sem registro, que continua pendência: o desfecho não registra nada no lugar do psicólogo (ADR-052).
+    A frequência termina hoje e nenhuma sessão nova é prevista. **O passado fica**: o que foi cadastrado e o que
+    ficou pendente — o desfecho não cadastra nada no lugar do psicólogo (ADR-052).
 
     Na desistência e na interrupção a iniciativa decorre do tipo; em alta e encaminhamento, é informada.
     """
@@ -281,12 +284,10 @@ def registrar_desfecho(
     if caso.desfecho_aberto() is not None:
         raise ValidationError("Este atendimento já está encerrado.")
 
-    # Gravado antes de mexer na agenda: se o registro for inválido, nada foi apagado.
     desfecho = Desfecho.objects.create(
         caso=caso, tipo=tipo, iniciativa=iniciativa or Desfecho.INICIATIVA_DO_TIPO.get(tipo, ""),
         motivo=motivo, data=data)
 
-    caso.consultas.filter(estado=_AGENDADA, inicio__gt=agora).delete()
     for regra in caso.recorrencias.filter(Q(fim__isnull=True) | Q(fim__gt=hoje)):
         if regra.inicio > hoje and not regra.consultas.exists():
             regra.delete()  # nunca chegou a valer
@@ -306,9 +307,3 @@ def retomar(caso: Caso, *, hoje: date | None = None) -> Desfecho:
     desfecho.retomado_em = max(hoje, desfecho.data)
     desfecho.save(update_fields=["retomado_em"])
     return desfecho
-
-
-def consultas_sem_registro(agora: datetime | None = None):
-    """Consultas que já começaram e seguem agendadas — pendência, nunca registro automático (ADR-052)."""
-    agora = agora or timezone.now()
-    return Consulta.objects.filter(estado=_AGENDADA, inicio__lt=agora).select_related("caso").order_by("inicio")

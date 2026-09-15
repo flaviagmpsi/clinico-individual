@@ -2,7 +2,7 @@
 
 A ocupação é **derivada** das regras de frequência em vigor — nunca mantida à mão. Só olha regra, nunca
 consulta: `agenda` não conhece `atendimentos` (regra 5 de dependência), e a pergunta que a grade responde
-("tenho vaga para paciente novo?") é sobre o compromisso fixo, não sobre a sessão remarcada desta semana.
+("tenho vaga para paciente novo?") é sobre o compromisso fixo, não sobre a consulta cadastrada desta semana.
 
 Aritmética em minutos desde a meia-noite, sem `datetime`: a grade é semanal e não tem data.
 """

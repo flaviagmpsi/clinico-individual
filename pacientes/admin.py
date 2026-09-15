@@ -26,7 +26,7 @@ class ParticipacaoInline(admin.TabularInline):
 class CondicaoInline(admin.TabularInline):
     model = CondicaoCobranca
     extra = 0
-    fields = ["modalidade", "valor", "vencimento", "vigente_desde"]
+    fields = ["modalidade", "valor", "dia_vencimento", "vigente_desde"]
 
 
 @admin.register(Paciente)

@@ -20,7 +20,7 @@ correu 27 rodadas antes da primeira linha de código, de propósito.
 
 ## ⚡ Onde o código está hoje
 
-**Passos 0, 1 e 2 concluídos; do passo 3, a trilha de auditoria (F-05).** Rodando, com 215 testes verdes contra PostgreSQL real.
+**Passos 0, 1 e 2 concluídos; do passo 3, a trilha de auditoria (F-05).** Rodando, com 227 testes verdes contra PostgreSQL real.
 
 | App | Situação | O que existe |
 |---|---|---|
@@ -33,7 +33,8 @@ correu 27 rodadas antes da primeira linha de código, de propósito.
 **O passo 2 está fechado. Do passo 3, a trilha de auditoria (F-05) está no ar** — cadastro e
 responsável legal já entram nela. **A construção segue do mais simples ao mais complexo, com a IA
 por último** (ADR-058): nada que dependa de IA, transcrição ou provedor entra antes de todo o resto
-estar feito e testado. A ordem dos próximos módulos está em discussão (Rodada 34).
+estar feito e testado. **Ordem definida pelo teste do usuário (ADR-061):** financeiro básico
+(cobrança e pagamento com forma de pagamento) → painel novo → prontuário escrito à mão.
 
 ### Antes de escrever a primeira linha, entenda a fundação
 
@@ -159,7 +160,7 @@ em atendimento de casal. Ver **P-70**, resolvida em parte.
 ---
 
 ## 3. Agenda — app `agenda`
-**Código: 🟢 agenda própria no ar.** A regra de frequência com início e fim (A-01), a previsão de 8 semanas gerada ao abrir a agenda (A-02), a remarcação de uma sessão só, que a regra não desfaz depois (A-03, A-04), a troca "desta data em diante" (A-05), hora e duração (A-06), a colisão que bloqueia — inclusive contra sessões que a regra ainda não gerou (A-07, A-08) — e a grade de horários com o mapa da semana, que avisa e não bloqueia (A-09, A-10, ADR-056). Google Agenda depois (ADR-051).
+**Código: 🟢 agenda própria no ar.** A regra de frequência com início e fim (A-01), as sessões previstas **calculadas, nunca gravadas** (A-02, ADR-060), a troca "desta data em diante" (A-05), hora e duração (A-06), a colisão que bloqueia (A-07, A-08) e a grade de horários com o mapa da semana, que avisa e não bloqueia (A-09, A-10, ADR-056). A remarcação (A-03, A-04) saiu com a ADR-060. Google Agenda depois (ADR-051).
 
 
 > Como **psicólogo**, meu atendimento é fixo quase sempre, mas vez ou outra remarca.
@@ -167,10 +168,10 @@ em atendimento de casal. Ver **P-70**, resolvida em parte.
 | # | História | Camada | Estado | Código | ADR |
 |---|---|---|---|---|---|
 | A-01 | Frequência por caso: **semanal**, **quinzenal** (semana sim, semana não, com âncora) ou **avulso** (sem sessão prevista) | 🎨🗄️ | ✅ | 🟢 | ADR-022, ADR-053 |
-| A-02 | Consultas materializadas em janela contínua à frente, empurrada ao abrir a agenda | ⚙️ | ✅ | 🟢 | ADR-022 |
-| A-03 | Remarcação avulsa: altera **só aquela** ocorrência; a regra não é tocada | 🎨⚙️ | ✅ | 🟢 | ADR-022 |
-| A-04 | A ocorrência remarcada **lembra que foi alterada à mão** e não é sobrescrita por mudança futura na regra | 🗄️ | ✅ | 🟢 | ADR-022 |
-| A-05 | Alterar a regra oferece **"só esta"** e **"esta e as próximas"**. "Todas" não existe | 🎨 | ✅ | 🟢 | ADR-022 |
+| A-02 | Sessões **previstas** pela frequência aparecem na agenda, **calculadas e nunca gravadas**; a que passou sem cadastro é **pendente** | ⚙️🎨 | ✅ | 🟢 | ADR-052, ADR-060 |
+| A-03 | ~~Remarcação avulsa~~ — a sessão que não aconteceu vira falta remarcada, e a nova é cadastrada quando acontecer | — | ❌ | — | ADR-060 |
+| A-04 | ~~Ocorrência remarcada lembra que foi alterada à mão~~ — não há mais consulta gravada antes de acontecer | — | ❌ | — | ADR-060 |
+| A-05 | Alterar a frequência vale **"desta data em diante"**; o que foi cadastrado não é tocado | 🎨 | ✅ | 🟢 | ADR-022 |
 | A-06 | Consulta tem data, **hora e duração** (o original só tem data) | 🗄️ | ✅ | 🟢 | ADR-023 |
 | A-07 | Colisão de horário **bloqueia** a marcação | ⚙️ | ✅ | 🟢 | ADR-024 |
 | A-08 | Casal não dispara colisão: é uma consulta com dois participantes | ⚙️ | ✅ | 🟢 | ADR-026 |
@@ -193,15 +194,15 @@ Exige verificação do Google, de 4 a 6 semanas, e sem ela o produto trava em 10
 ---
 
 ## 4. Atendimentos — app `atendimentos`
-**Código: 🟢 no ar.** Os estados da consulta (T-01) e o `contabilizada` independente, com o padrão do perfil (T-02). O sistema nunca registra sozinho: consulta passada sem registro vira pendência no painel (ADR-052). Desfecho com retomada, e paciente encerrado numa aba própria (T-05, ADR-055). T-04 está pronto do lado da consulta — os disparos passam a existir quando houver prontuário e financeiro. Presença por participante saiu do escopo (ADR-054).
+**Código: 🟢 no ar.** O psicólogo cadastra a consulta — realizada, falta cobrada ou falta remarcada —, e a cobrança deriva da situação (T-01, T-02, ADR-060). O sistema nunca cadastra sozinho: sessão prevista que passou sem cadastro é pendência no painel e na agenda (ADR-052). Desfecho com retomada, e paciente encerrado numa aba própria (T-05, ADR-055). T-04 está pronto do lado da consulta — os disparos passam a existir quando houver prontuário e financeiro. Presença por participante saiu do escopo (ADR-054).
 
 
 | # | História | Camada | Estado | Código | ADR |
 |---|---|---|---|---|---|
-| T-01 | Consulta com estado: `AGENDADA`, `REALIZADA`, `FALTA`, `CANCELADA` | 🗄️ | ✅ | 🟢 | ADR-022 |
-| T-02 | Campo `contabilizada`, **independente** do estado, com padrão vindo do perfil | 🎨🗄️ | ✅ | 🟢 | ADR-023 |
+| T-01 | Consulta **cadastrada pelo psicólogo**, só depois de acontecer: `REALIZADA`, `FALTA_COBRADA` ou `FALTA_REMARCADA`; da frequência ou avulsa | 🎨🗄️ | ✅ | 🟢 | ADR-060 |
+| T-02 | Cobrança **deriva da situação**: realizada e falta cobrada entram; falta remarcada não | 🗄️ | ✅ | 🟢 | ADR-060 |
 | T-03 | ~~Presença registrada por participante~~ — consulta de casal registrada uma vez; ausência vai no prontuário | 🗄️ | ❌ | — | ADR-054 |
-| T-04 | `REALIZADA` dispara **prontuário pendente**; `contabilizada` dispara **conta a receber** | ⚙️ | ✅ | 🟠 | ADR-016, ADR-023 |
+| T-04 | `REALIZADA` dispara **prontuário pendente**; consulta cobrada dispara **conta a receber** | ⚙️ | ✅ | 🟠 | ADR-016, ADR-060 |
 | T-05 | Desfecho (alta, desistência, encaminhamento, interrupção), com o número de sessões derivado, não perguntado; encerra a agenda do caso e pode ser retomado | ⚙️🗄️ | ✅ | 🟢 | ADR-027, ADR-049, ADR-055 |
 
 ---
@@ -259,13 +260,13 @@ e a IA depois passa a preencher o mesmo rascunho. Avaliação do protótipo Exyo
 ---
 
 ## 7. Financeiro — app `financeiro`
-**Código: ⚪ nada. O app não existe.** Passo 4 — depende de consulta contabilizada (ADR-023).
+**Código: ⚪ nada. O app não existe.** É o próximo (ADR-061) — a consulta cobrada, de que ele depende, já existe (ADR-060).
 
 
 | # | História | Camada | Estado | Código | ADR |
 |---|---|---|---|---|---|
-| N-01 | Modalidade por caso: `MENSAL` (uma cobrança, vencimento no início ou no fim) ou `POR_SESSAO` | 🎨🗄️ | ✅ | ⚪ | ADR-002 |
-| N-02 | `POR_SESSAO` gera cobrança **por consulta contabilizada**, cobrada logo após | ⚙️ | ✅ | ⚪ | ADR-002, ADR-023 |
+| N-01 | Modalidade por caso: `MENSAL` (uma cobrança, vence **num dia do mês** — 31 vira o último dia) ou `POR_SESSAO` | 🎨🗄️ | ✅ | 🟠 | ADR-002, ADR-059 |
+| N-02 | `POR_SESSAO` gera cobrança **por consulta cobrada**, vencendo no dia da sessão | ⚙️ | ✅ | ⚪ | ADR-002, ADR-059, ADR-060 |
 | N-03 | Registros permanecem **granulares**; o agrupamento por paciente existe só na apresentação | ⚙️🎨 | ✅ | ⚪ | ADR-002 |
 | N-04 | Registro de pagamento: paciente, quem pagou, valor, data e observação. Sem campo de terapeuta | 🎨🗄️ | ✅ | ⚪ | ADR-035 |
 | N-04a | Pagamento **dá baixa** numa cobrança, com **baixa parcial** permitida e saldo remanescente visível | ⚙️ | ✅ | ⚪ | ADR-035 |

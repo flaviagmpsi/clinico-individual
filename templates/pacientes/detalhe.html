@@ -91,7 +91,7 @@
           <dd class="col-7 py-1">
             {% if condicao %}
               {{ condicao.get_modalidade_display }} · R$ {{ condicao.valor }}
-              {% if condicao.vencimento %}<span class="text-muted">· vence no {{ condicao.get_vencimento_display|lower }}</span>{% endif %}
+              {% if condicao.dia_vencimento %}<span class="text-muted">· vence todo dia {{ condicao.dia_vencimento }}</span>{% endif %}
             {% else %}
               <span class="text-muted">Não combinada</span>
             {% endif %}

@@ -1,17 +1,18 @@
-"""A agenda por dentro: previsão, troca de frequência, colisão, registro e pendência.
+"""A agenda por dentro: previsão calculada, cadastro, pendência, frequência e colisão (ADR-060).
 
-Cada classe guarda uma ADR:
+Cada classe guarda uma parte da decisão:
 
-- `Previsao` — ADR-022 e 053: semanal e quinzenal geram a janela; avulso não gera nada.
-- `TrocaDeFrequencia` — ADR-022: "esta e as próximas"; remarcadas e passado ficam.
-- `Colisao` — ADR-024, inclusive contra sessões que a regra **ainda não gerou**.
-- `Registro` — ADR-023 e 025: comparecimento e cobrança independentes, falta segue o perfil.
-- `Pendencia` — ADR-052: o sistema nunca registra sozinho.
-- `Isolamento` — ADR-001: a agenda de um psicólogo não bloqueia nem enxerga a de outro.
-- `ExclusaoDePaciente` — ADR-048: agendada sai junto; atendimento registrado impede.
+- `Previsao` — a frequência prevê sem gravar nada; o que foi cadastrado sai da previsão.
+- `Cadastro` — realizada, falta cobrada ou falta remarcada; só o que já aconteceu; cobrança deriva da situação.
+- `Pendencia` — sessão prevista que passou sem cadastro é pendente, e o sistema não cadastra sozinho (ADR-052).
+- `TrocaDeFrequencia` — "desta data em diante"; o que foi cadastrado fica (ADR-022).
+- `Colisao` — consultas que ocupam o horário e regras de frequência não se sobrepõem (ADR-024).
+- `Isolamento` — ADR-001.
+- `ExclusaoDePaciente` — ADR-048: falta remarcada sai junto; atendimento registrado impede.
 
-As datas partem de "hoje" porque a janela de previsão parte de hoje; `proxima_terca` garante que a série
-começa no futuro, seja qual for o dia em que o teste roda.
+Sessões futuras partem de `proxima(...)`, sempre depois de hoje. Sessões **passadas** precisam de uma frequência
+que começou no passado, e o serviço recusa isso — o passado não é reescrito. Por isso `frequencia_desde` grava a
+regra direto, como uma frequência cadastrada semanas atrás, com a última sessão ontem.
 """
 
 from datetime import datetime, time, timedelta
@@ -31,7 +32,9 @@ from pacientes.servicos import cadastrar_paciente, criar_caso_coletivo, excluir_
 SEMANAL = Recorrencia.Frequencia.SEMANAL
 QUINZENAL = Recorrencia.Frequencia.QUINZENAL
 TERCA = Recorrencia.DiaSemana.TERCA
-QUARTA = Recorrencia.DiaSemana.QUARTA
+REALIZADA = Consulta.Estado.REALIZADA
+FALTA_COBRADA = Consulta.Estado.FALTA_COBRADA
+FALTA_REMARCADA = Consulta.Estado.FALTA_REMARCADA
 
 
 def momento(dia, hora, minuto=0):
@@ -66,58 +69,145 @@ class BaseAgenda(TestCase):
     def setUp(self):
         self.terca = proxima(TERCA)
         self.hoje = timezone.localdate()
+        self.ontem = self.hoje - timedelta(days=1)
 
     def semanal_da_maria(self, hora=14, frequencia=SEMANAL, inicio=None):
         return servicos.definir_frequencia(
             self.caso_maria, frequencia=frequencia, dia_semana=TERCA, hora=time(hora), a_partir_de=inicio or self.terca)
 
+    def frequencia_desde(self, caso, semanas=3, hora=9):
+        """Semanal que começou `semanas` atrás, com sessões em ontem - 14, ontem - 7 e ontem."""
+        return Recorrencia.objects.create(
+            caso=caso, frequencia=SEMANAL, dia_semana=self.ontem.weekday(), hora=time(hora), duracao=50,
+            inicio=self.hoje - timedelta(weeks=semanas))
+
+    def avulsa(self, caso, dias=1, hora=10, minuto=0, estado=REALIZADA):
+        return servicos.cadastrar_avulsa(
+            caso, estado=estado, inicio=momento(self.hoje - timedelta(days=dias), hora, minuto))
+
 
 class Previsao(BaseAgenda):
-    def test_semanal_preve_toda_a_janela_com_a_duracao_do_perfil(self):
+    def test_frequencia_preve_sem_gravar_consulta(self):
         with contexto.como(self.ana.pk):
-            regra = self.semanal_da_maria()
-            esperadas = regra.ocorrencias(self.terca, self.hoje + timedelta(weeks=servicos.JANELA_SEMANAS))
-            consultas = Consulta.objects.filter(recorrencia=regra)
-            self.assertEqual(sorted(c.data_prevista for c in consultas), esperadas)
-            self.assertTrue(all(c.estado == Consulta.Estado.AGENDADA and c.duracao == 50 for c in consultas))
+            self.semanal_da_maria()
+            previstas = servicos.sessoes_previstas(self.terca, self.terca + timedelta(weeks=3), caso=self.caso_maria)
+            self.assertFalse(Consulta.objects.exists())
+        self.assertEqual([s.data for s in previstas], [self.terca + timedelta(weeks=n) for n in range(4)])
+        self.assertTrue(all(s.duracao == 50 and s.inicio == momento(s.data, 14) for s in previstas))
 
     def test_quinzenal_e_semana_sim_semana_nao(self):
         with contexto.como(self.ana.pk):
-            regra = self.semanal_da_maria(frequencia=QUINZENAL)
-            datas = sorted(Consulta.objects.filter(recorrencia=regra).values_list("data_prevista", flat=True))
-        self.assertTrue(all((b - a).days == 14 for a, b in zip(datas, datas[1:])))
+            self.semanal_da_maria(frequencia=QUINZENAL)
+            previstas = servicos.sessoes_previstas(self.terca, self.terca + timedelta(weeks=4), caso=self.caso_maria)
+        self.assertEqual([s.data for s in previstas],
+                         [self.terca, self.terca + timedelta(days=14), self.terca + timedelta(days=28)])
 
     def test_avulso_nao_preve_nada(self):
         with contexto.como(self.ana.pk):
             self.assertIsNone(servicos.definir_frequencia(self.caso_maria, frequencia=servicos.AVULSO))
-            self.assertFalse(Consulta.objects.filter(caso=self.caso_maria).exists())
+            self.assertEqual(
+                servicos.sessoes_previstas(self.hoje, self.hoje + timedelta(weeks=8), caso=self.caso_maria), [])
 
-    def test_gerar_de_novo_nao_duplica(self):
+    def test_sessao_cadastrada_sai_da_previsao(self):
+        with contexto.como(self.ana.pk):
+            regra = self.frequencia_desde(self.caso_maria)
+            servicos.cadastrar_prevista(regra, self.ontem, estado=REALIZADA)
+            datas = [s.data for s in servicos.sessoes_previstas(regra.inicio, self.hoje, caso=self.caso_maria)]
+        self.assertNotIn(self.ontem, datas)
+        self.assertEqual(len(datas), 2)
+
+
+class Cadastro(BaseAgenda):
+    def test_realizada_e_cobrada_e_fica_ligada_a_frequencia(self):
+        with contexto.como(self.ana.pk):
+            regra = self.frequencia_desde(self.caso_joao)
+            consulta = servicos.cadastrar_prevista(regra, self.ontem, estado=REALIZADA)
+        self.assertTrue(consulta.cobrada)
+        self.assertFalse(consulta.avulsa)
+        self.assertEqual(consulta.inicio, momento(self.ontem, 9))
+
+    def test_falta_cobrada_cobra_e_falta_remarcada_nao(self):
+        with contexto.como(self.ana.pk):
+            self.assertTrue(self.avulsa(self.caso_joao, dias=2, estado=FALTA_COBRADA).cobrada)
+            self.assertFalse(self.avulsa(self.caso_joao, dias=3, estado=FALTA_REMARCADA).cobrada)
+
+    def test_avulsa_usa_a_duracao_do_perfil(self):
+        with contexto.como(self.ana.pk):
+            consulta = self.avulsa(self.caso_joao)
+        self.assertTrue(consulta.avulsa)
+        self.assertEqual(consulta.duracao, 50)
+
+    def test_so_se_cadastra_o_que_ja_aconteceu(self):
+        with contexto.como(self.ana.pk):
+            with self.assertRaises(ValidationError):
+                servicos.cadastrar_avulsa(self.caso_joao, estado=REALIZADA, inicio=momento(self.terca, 10))
+            regra = self.semanal_da_maria()
+            with self.assertRaises(ValidationError):
+                servicos.cadastrar_prevista(regra, self.terca, estado=FALTA_COBRADA)
+            self.assertFalse(Consulta.objects.exists())
+
+    def test_data_que_nao_e_da_frequencia_e_recusada(self):
+        with contexto.como(self.ana.pk):
+            regra = self.frequencia_desde(self.caso_joao)
+            with self.assertRaises(ValidationError):
+                servicos.cadastrar_prevista(regra, self.hoje - timedelta(days=2), estado=REALIZADA)
+
+    def test_a_mesma_sessao_nao_e_cadastrada_duas_vezes(self):
+        with contexto.como(self.ana.pk):
+            regra = self.frequencia_desde(self.caso_joao)
+            servicos.cadastrar_prevista(regra, self.ontem, estado=REALIZADA)
+            with self.assertRaises(ValidationError):
+                servicos.cadastrar_prevista(regra, self.ontem, estado=FALTA_COBRADA)
+
+    def test_situacao_fora_das_tres_e_recusada(self):
+        with contexto.como(self.ana.pk):
+            with self.assertRaises(ValidationError):
+                servicos.cadastrar_avulsa(self.caso_joao, estado="AGENDADA", inicio=momento(self.ontem, 10))
+
+    def test_corrigir_a_situacao(self):
+        with contexto.como(self.ana.pk):
+            consulta = self.avulsa(self.caso_joao)
+            servicos.alterar_situacao(consulta, FALTA_REMARCADA)
+            consulta.refresh_from_db()
+        self.assertEqual(consulta.estado, FALTA_REMARCADA)
+        self.assertFalse(consulta.cobrada)
+
+    def test_excluir_o_cadastro_devolve_a_pendencia(self):
+        with contexto.como(self.ana.pk):
+            regra = self.frequencia_desde(self.caso_joao)
+            servicos.excluir_consulta(servicos.cadastrar_prevista(regra, self.ontem, estado=REALIZADA))
+            self.assertIn(self.ontem, [s.data for s in servicos.sessoes_pendentes(caso=self.caso_joao)])
+
+
+class Pendencia(BaseAgenda):
+    def test_sessao_prevista_que_passou_e_pendente_e_nada_e_cadastrado(self):
+        with contexto.como(self.ana.pk):
+            self.frequencia_desde(self.caso_joao)
+            pendentes = servicos.sessoes_pendentes(caso=self.caso_joao)
+            self.assertFalse(Consulta.objects.exists())
+        self.assertEqual([s.data for s in pendentes],
+                         [self.ontem - timedelta(days=14), self.ontem - timedelta(days=7), self.ontem])
+
+    def test_sessao_futura_nao_e_pendente(self):
         with contexto.como(self.ana.pk):
             self.semanal_da_maria()
-            antes = Consulta.objects.count()
-            servicos.gerar_consultas()
-            self.assertEqual(Consulta.objects.count(), antes)
+            self.assertEqual(servicos.sessoes_pendentes(caso=self.caso_maria), [])
 
 
 class TrocaDeFrequencia(BaseAgenda):
-    def test_vale_para_esta_e_as_proximas_e_preserva_a_remarcada(self):
+    def test_vale_desta_data_em_diante(self):
         virada = self.terca + timedelta(days=14)
         with contexto.como(self.ana.pk):
             antiga = self.semanal_da_maria()
-            terceira = Consulta.objects.get(recorrencia=antiga, data_prevista=virada)
-            servicos.remarcar(terceira, inicio=momento(virada + timedelta(days=1), 14))
-
             nova = servicos.definir_frequencia(
                 self.caso_maria, frequencia=QUINZENAL, dia_semana=TERCA, hora=time(16), a_partir_de=virada)
-
             antiga.refresh_from_db()
-            self.assertEqual(antiga.fim, virada)
-            self.assertEqual(
-                sorted(Consulta.objects.filter(recorrencia=antiga).values_list("data_prevista", flat=True)),
-                [self.terca, self.terca + timedelta(days=7), virada])
-            self.assertTrue(Consulta.objects.get(pk=terceira.pk).remarcada)
-            self.assertTrue(Consulta.objects.filter(recorrencia=nova, inicio=momento(virada, 16)).exists())
+            previstas = servicos.sessoes_previstas(self.terca, virada + timedelta(days=14), caso=self.caso_maria)
+        self.assertEqual(antiga.fim, virada)
+        self.assertEqual(
+            [(s.regra.pk, s.data) for s in previstas],
+            [(antiga.pk, self.terca), (antiga.pk, self.terca + timedelta(days=7)),
+             (nova.pk, virada), (nova.pk, virada + timedelta(days=14))])
 
     def test_o_passado_nao_e_reescrito(self):
         with contexto.como(self.ana.pk):
@@ -126,39 +216,25 @@ class TrocaDeFrequencia(BaseAgenda):
                     self.caso_maria, frequencia=SEMANAL, dia_semana=TERCA, hora=time(14),
                     a_partir_de=self.hoje - timedelta(days=1))
 
-    def test_virar_avulso_tira_as_sessoes_futuras(self):
+    def test_corrigir_no_mesmo_dia_apaga_a_frequencia_que_nunca_valeu(self):
         with contexto.como(self.ana.pk):
             self.semanal_da_maria()
-            servicos.definir_frequencia(self.caso_maria, frequencia=servicos.AVULSO)
-            self.assertFalse(Consulta.objects.filter(caso=self.caso_maria, estado=Consulta.Estado.AGENDADA).exists())
-            self.assertIsNone(self.caso_maria.regra_aberta())
+            self.semanal_da_maria(hora=15)
+            self.assertEqual(Recorrencia.objects.filter(caso=self.caso_maria).count(), 1)
+            self.assertEqual(self.caso_maria.regra_aberta().hora, time(15))
 
-    def test_remarcada_nao_e_gerada_de_novo(self):
+    def test_o_que_foi_cadastrado_fica_quando_a_frequencia_muda(self):
         with contexto.como(self.ana.pk):
-            regra = self.semanal_da_maria()
-            primeira = Consulta.objects.get(recorrencia=regra, data_prevista=self.terca)
-            servicos.remarcar(primeira, inicio=momento(self.terca + timedelta(days=1), 9))
-            antes = Consulta.objects.count()
-            servicos.gerar_consultas()
-            self.assertEqual(Consulta.objects.count(), antes)
+            regra = self.frequencia_desde(self.caso_maria)
+            consulta = servicos.cadastrar_prevista(regra, self.ontem - timedelta(days=14), estado=REALIZADA)
+            servicos.definir_frequencia(self.caso_maria, frequencia=servicos.AVULSO)
+            regra.refresh_from_db()
+            self.assertEqual(regra.fim, self.hoje)
+            self.assertTrue(Consulta.objects.filter(pk=consulta.pk).exists())
+            self.assertEqual(len(servicos.sessoes_pendentes(caso=self.caso_maria)), 2)
 
 
 class Colisao(BaseAgenda):
-    def test_avulsa_em_cima_de_sessao_gerada_e_recusada(self):
-        with contexto.como(self.ana.pk):
-            self.semanal_da_maria()
-            with self.assertRaises(ValidationError):
-                servicos.marcar_avulsa(self.caso_joao, inicio=momento(self.terca, 14, 30))
-
-    def test_avulsa_em_cima_de_sessao_ainda_nao_gerada_tambem_e_recusada(self):
-        """Fora da janela de 8 semanas a sessão não existe como consulta — e mesmo assim ocupa o horário."""
-        longe = self.terca + timedelta(weeks=20)
-        with contexto.como(self.ana.pk):
-            self.semanal_da_maria()
-            self.assertFalse(Consulta.objects.filter(data_prevista=longe).exists())
-            with self.assertRaises(ValidationError):
-                servicos.marcar_avulsa(self.caso_joao, inicio=momento(longe, 14))
-
     def test_regra_que_bate_em_outra_regra_e_recusada_sem_gravar_nada(self):
         with contexto.como(self.ana.pk):
             self.semanal_da_maria()
@@ -175,90 +251,59 @@ class Colisao(BaseAgenda):
                 a_partir_de=self.terca + timedelta(days=7))
             self.assertTrue(Recorrencia.objects.filter(caso=self.caso_joao).exists())
 
-    def test_consulta_cancelada_libera_o_horario(self):
+    def test_duas_consultas_no_mesmo_horario_sao_recusadas(self):
         with contexto.como(self.ana.pk):
-            consulta = servicos.marcar_avulsa(self.caso_maria, inicio=momento(self.terca, 10))
-            servicos.registrar(consulta, Consulta.Estado.CANCELADA)
-            servicos.marcar_avulsa(self.caso_joao, inicio=momento(self.terca, 10))
+            self.avulsa(self.caso_maria, hora=10)
+            with self.assertRaises(ValidationError):
+                self.avulsa(self.caso_joao, hora=10, minuto=30)
+
+    def test_falta_remarcada_nao_ocupa_o_horario(self):
+        with contexto.como(self.ana.pk):
+            self.avulsa(self.caso_maria, hora=10, estado=FALTA_REMARCADA)
+            self.avulsa(self.caso_joao, hora=10)
+
+    def test_sessao_prevista_nao_bloqueia_cadastro(self):
+        """Previsão não é registro: se o João foi atendido no horário da Maria, a sessão dela não aconteceu ali."""
+        with contexto.como(self.ana.pk):
+            self.frequencia_desde(self.caso_maria, hora=9)
+            self.avulsa(self.caso_joao, hora=9)
 
     def test_casal_e_uma_consulta_so(self):
         """ADR-026: dois participantes, uma sessão — não colide consigo mesma."""
         with contexto.como(self.ana.pk):
             casal = criar_caso_coletivo([self.maria, self.joao], descricao="Maria e João")
-            servicos.marcar_avulsa(casal, inicio=momento(self.terca, 18))
+            self.avulsa(casal, hora=18)
             self.assertEqual(Consulta.objects.filter(caso=casal).count(), 1)
 
 
-class Registro(BaseAgenda):
-    def passada(self, caso=None):
-        return servicos.marcar_avulsa(caso or self.caso_joao, inicio=momento(self.hoje - timedelta(days=3), 9))
-
-    def test_realizada_entra_na_cobranca(self):
-        with contexto.como(self.ana.pk):
-            consulta = servicos.registrar(self.passada(), Consulta.Estado.REALIZADA)
-        self.assertTrue(consulta.contabilizada)
-        self.assertIsNotNone(consulta.registrada_em)
-
-    def test_falta_segue_o_perfil(self):
-        with contexto.como(self.ana.pk):
-            self.assertTrue(servicos.registrar(self.passada(), Consulta.Estado.FALTA).contabilizada)
-            self.ana.cobra_falta = False
-            self.ana.save()
-            outra = servicos.marcar_avulsa(self.caso_maria, inicio=momento(self.hoje - timedelta(days=2), 9))
-            self.assertFalse(servicos.registrar(outra, Consulta.Estado.FALTA).contabilizada)
-
-    def test_cobranca_se_ajusta_caso_a_caso(self):
-        """Sessão de cortesia: realizada, e não entra na cobrança (ADR-023)."""
-        with contexto.como(self.ana.pk):
-            consulta = servicos.registrar(self.passada(), Consulta.Estado.REALIZADA, contabilizada=False)
-        self.assertEqual(consulta.estado, Consulta.Estado.REALIZADA)
-        self.assertFalse(consulta.contabilizada)
-
-    def test_consulta_futura_nao_e_registrada_como_realizada(self):
-        with contexto.como(self.ana.pk):
-            futura = servicos.marcar_avulsa(self.caso_joao, inicio=momento(self.terca, 9))
-            with self.assertRaises(ValidationError):
-                servicos.registrar(futura, Consulta.Estado.REALIZADA)
-            servicos.registrar(futura, Consulta.Estado.CANCELADA)
-
-
-class Pendencia(BaseAgenda):
-    def test_consulta_passada_sem_registro_e_pendencia_e_nao_muda_sozinha(self):
-        with contexto.como(self.ana.pk):
-            consulta = servicos.marcar_avulsa(self.caso_joao, inicio=momento(self.hoje - timedelta(days=1), 9))
-            servicos.gerar_consultas()
-            self.assertIn(consulta, list(servicos.consultas_sem_registro()))
-            consulta.refresh_from_db()
-            self.assertEqual(consulta.estado, Consulta.Estado.AGENDADA)
-
-
 class Isolamento(BaseAgenda):
-    def test_nao_marca_consulta_no_caso_de_outro_psicologo(self):
+    def test_nao_cadastra_consulta_no_caso_de_outro_psicologo(self):
         with contexto.como(self.ana.pk):
             with self.assertRaises(ValidationError):
-                servicos.marcar_avulsa(self.caso_carla, inicio=momento(self.terca, 11))
+                self.avulsa(self.caso_carla)
 
-    def test_a_agenda_de_outro_psicologo_nao_bloqueia_o_mesmo_horario(self):
+    def test_a_frequencia_de_outro_psicologo_nao_bloqueia_nem_aparece(self):
         with contexto.como(self.bruno.pk):
             servicos.definir_frequencia(
                 self.caso_carla, frequencia=SEMANAL, dia_semana=TERCA, hora=time(14), a_partir_de=self.terca)
         with contexto.como(self.ana.pk):
             self.semanal_da_maria()
-            self.assertFalse(Consulta.objects.filter(caso=self.caso_carla).exists())
+            casos = {s.caso for s in servicos.sessoes_previstas(self.terca, self.terca)}
+        self.assertEqual(casos, {self.caso_maria})
 
 
 class ExclusaoDePaciente(BaseAgenda):
-    def test_consultas_so_agendadas_saem_junto(self):
+    def test_frequencia_e_falta_remarcada_saem_junto(self):
         with contexto.como(self.ana.pk):
-            self.semanal_da_maria()
+            regra = self.frequencia_desde(self.caso_maria)
+            servicos.cadastrar_prevista(regra, self.ontem, estado=FALTA_REMARCADA)
             excluir_paciente(self.maria)
             self.assertFalse(Paciente.objects.filter(pk=self.maria.pk).exists())
         self.assertFalse(Consulta.objetos_todos.filter(caso_id=self.caso_maria.pk).exists())
 
     def test_atendimento_registrado_impede_a_exclusao(self):
         with contexto.como(self.ana.pk):
-            consulta = servicos.marcar_avulsa(self.caso_joao, inicio=momento(self.hoje - timedelta(days=3), 9))
-            servicos.registrar(consulta, Consulta.Estado.REALIZADA)
+            self.avulsa(self.caso_joao, dias=3)
             with self.assertRaises(ValidationError):
                 excluir_paciente(self.joao)
             self.assertTrue(Paciente.objects.filter(pk=self.joao.pk).exists())

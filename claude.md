@@ -107,23 +107,26 @@ O vínculo terapêutico, com 1..N pacientes.
 | Pertence ao `Caso` | Pertence ao `Paciente` | Pertence à `Consulta` |
 |---|---|---|
 | Valor acordado, modalidade de cobrança | Dados pessoais, CPF, endereço | Data, hora, duração, estado |
-| Recorrência | Responsável legal | `contabilizada` |
+| Recorrência | Responsável legal | Situação — a cobrança deriva dela |
 | Contrato, pagador | Prontuário (um por paciente, por sessão) | Conta a receber |
 
 **Uma forma só no banco, duas formas na tela.** Cadastrar paciente individual cria um caso de um,
 em silêncio. A palavra "Caso" só aparece para quem atende casal. A **pessoa é única** entre
 atendimentos — Maria em terapia individual e Maria no casal são o mesmo cadastro.
 
-### Consulta: comparecimento e cobrança são eixos independentes (ADR-023)
+### Consulta: só existe quando o psicólogo cadastra (ADR-060)
 
-| Eixo | Campo | Dispara |
+| Situação (`estado`) | Cobrada | Dispara |
 |---|---|---|
-| Comparecimento | `estado`: `AGENDADA` / `REALIZADA` / `FALTA` / `CANCELADA` | `REALIZADA` → **prontuário pendente** |
-| Cobrança | `contabilizada` (bool) | verdadeiro → **conta a receber** |
+| `REALIZADA` | Sempre | **prontuário pendente** e **conta a receber** |
+| `FALTA_COBRADA` | Sim | **conta a receber** |
+| `FALTA_REMARCADA` | Não | nada — a sessão nova é cadastrada quando acontecer |
 
-A independência é o que cobre falta cobrada (cobrança sem prontuário) e sessão de cortesia
-(prontuário sem cobrança). Consulta de casal é registrada **uma vez**, sem presença por participante:
-quem não veio, o psicólogo relata no prontuário (ADR-054).
+O sistema **nunca grava consulta sozinho**. A frequência prevê sessões por cálculo
+(`atendimentos.servicos.sessoes_previstas`); a prevista vira consulta quando o psicólogo a cadastra, e a que
+passou sem cadastro é **pendente**. Só se cadastra o que já aconteceu. `consulta.cobrada` e `consulta.avulsa`
+são derivados — não crie campo para eles. Consulta de casal é registrada **uma vez**, sem presença por
+participante: quem não veio, o psicólogo relata no prontuário (ADR-054).
 
 ### Trilha de auditoria (F-05, ADR-057)
 Todo model de **dado clínico** herda `core.auditoria.Auditado` antes de `TenantOwnedModel`
@@ -139,16 +142,15 @@ fica. Só um desfecho **em aberto** por caso; retomar reabre o mesmo caso. Caso 
 frequência, consulta nem remarcação — confira com `caso.desfecho_aberto()`. **Grade de horários** avisa e
 nunca bloqueia; a ocupação é derivada da regra aberta de cada caso (quinzenal pesa metade).
 
-### Recorrência com exceção por ocorrência (ADR-022, ADR-053)
-A **regra** ("toda terça 15h", com frequência semanal ou quinzenal e âncora; paciente avulso não gera ocorrência nenhuma) gera
-**consultas concretas**, materializadas numa janela contínua à frente. Cada ocorrência é editável
-isoladamente e **lembra que foi alterada à mão** — sem essa marca, uma mudança futura na regra
-desfaria a remarcação em silêncio. Alterar a regra oferece "só esta" e "esta e as próximas".
-**"Todas" não existe:** reescreveria consultas passadas, que são registro ligado a prontuário e cobrança.
+### Frequência (ADR-022, ADR-053, ADR-060)
+A **regra** ("toda terça 15h", semanal ou quinzenal com âncora; paciente avulso não tem regra) só **prevê**
+sessões — nada é materializado. Mudar a frequência vale "desta data em diante": encerra a regra vigente numa
+data e cria outra; o que já foi cadastrado não é tocado. Remarcar não existe: a sessão que não aconteceu é
+cadastrada como falta remarcada, e a nova, como avulsa, quando acontecer.
 
 ### Financeiro
-Modalidade por caso: `MENSAL` (uma cobrança, vencimento no início ou no fim) ou `POR_SESSAO`
-(uma cobrança por consulta contabilizada, cobrada logo após). Registros sempre **granulares** — o
+Modalidade por caso: `MENSAL` (uma cobrança, vence num dia do mês, ADR-059) ou `POR_SESSAO`
+(uma cobrança por consulta cobrada — realizada ou falta cobrada). Registros sempre **granulares** — o
 agrupamento por paciente existe só na apresentação. O pagamento **dá baixa** numa cobrança, com
 **parcial permitida**, deixando saldo visível.
 
@@ -258,7 +260,7 @@ Se o passo 0 não fechar, nada mais deve ser escrito — o produto inteiro se ap
 | 1 | `contas`, `pacientes` | Sem dono e sem paciente, nada existe |
 | 2 | `agenda`, `atendimentos` | A consulta é a âncora de tudo o mais |
 | 3 | `prontuarios` | A razão de o produto existir |
-| 4 | `financeiro` | Depende de consulta contabilizada |
+| 4 | `financeiro` | Depende de consulta cobrada |
 | 5 | `documentos` | Independente; pode ir em paralelo a partir do passo 2 |
 | 6 | `indicadores` | Por último, porque só lê |
 | 7 | `assinaturas` | Necessário para vender, não para validar |
@@ -266,7 +268,7 @@ Se o passo 0 não fechar, nada mais deve ser escrito — o produto inteiro se ap
 ### Testes obrigatórios, por app
 - **`core`** — isolamento, nas três camadas.
 - **`agenda`** — remarcação avulsa que sobrevive a mudança na regra; quinzenal com âncora.
-- **`atendimentos`** — as cinco combinações de estado × `contabilizada` (ADR-023).
+- **`atendimentos`** — as três situações da consulta e a cobrança que deriva delas; previsão sem gravar nada; pendência (ADR-060).
 - **`financeiro`** — baixa parcial deixando saldo correto; cobrança de casal indo ao pagador do caso.
 - **`documentos`** — a IA de Declaração **não recebe** conteúdo de prontuário.
 - **`assinaturas`** — a máquina de estados, incluindo o retorno de inadimplente a `ATIVA`.

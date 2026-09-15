@@ -29,7 +29,7 @@ class PerfilForm(forms.ModelForm):
         model = Psicologo
         fields = ["nome_completo", "email", "cpf", "telefone",
                   "crp_regiao", "crp_numero", "regime", "cnpj", "crp_empresa",
-                  "duracao_sessao", "vencimento_mensalidade", "cobra_falta"]
+                  "duracao_sessao", "dia_vencimento_mensalidade"]
         widgets = {
             "nome_completo": forms.TextInput(attrs={"class": "form-control"}),
             "email": forms.EmailInput(attrs={"class": "form-control"}),
@@ -46,8 +46,7 @@ class PerfilForm(forms.ModelForm):
             "crp_empresa": forms.TextInput(attrs={"class": "form-control"}),
             "duracao_sessao": forms.NumberInput(attrs={"class": "form-control", "min": 10, "max": 240,
                                                        "step": 5}),
-            "vencimento_mensalidade": forms.Select(attrs={"class": "form-select"}),
-            "cobra_falta": forms.CheckboxInput(attrs={"class": "form-check-input"}),
+            "dia_vencimento_mensalidade": forms.NumberInput(attrs={"class": "form-control", "min": 1, "max": 31}),
         }
 
     def clean(self):

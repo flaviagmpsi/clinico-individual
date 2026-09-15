@@ -180,7 +180,7 @@ class CondicaoDeCobranca(BaseCaso):
         with contexto.como(self.ana.pk):
             CondicaoCobranca.objects.create(
                 caso=self.caso_maria, modalidade=CondicaoCobranca.Modalidade.MENSAL,
-                vencimento=CondicaoCobranca.Vencimento.INICIO_DO_MES,
+                dia_vencimento=10,
                 valor=Decimal("700"), vigente_desde=daqui_a_um_mes)
             self.assertEqual(self.caso_maria.condicoes.count(), 2)
             self.assertEqual(self.caso_maria.condicao_vigente().valor, Decimal("200"))

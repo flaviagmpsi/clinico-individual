@@ -13,7 +13,7 @@ no meio do dia não tem o CEP à mão, e exigir tudo transforma cadastro em barr
 from decimal import Decimal
 
 from django.core.exceptions import ValidationError
-from django.core.validators import MinValueValidator, RegexValidator
+from django.core.validators import MaxValueValidator, MinValueValidator, RegexValidator
 from django.db import models
 
 from core.auditoria import Auditado
@@ -244,17 +244,15 @@ class CondicaoCobranca(TenantOwnedModel):
         POR_SESSAO = "POR_SESSAO", "Por sessão"
         MENSAL = "MENSAL", "Mensalidade"
 
-    class Vencimento(models.TextChoices):
-        INICIO_DO_MES = "INICIO", "Início do mês"
-        FIM_DO_MES = "FIM", "Fim do mês"
-
     caso = models.ForeignKey(Caso, on_delete=models.CASCADE, related_name="condicoes")
     modalidade = models.CharField("Forma de cobrança", max_length=12, choices=Modalidade.choices,
                                   default=Modalidade.POR_SESSAO)
     valor = models.DecimalField("Valor", max_digits=10, decimal_places=2,
                                 validators=[MinValueValidator(Decimal("0"))])
-    vencimento = models.CharField("Vencimento", max_length=6, choices=Vencimento.choices,
-                                  blank=True, help_text="Só para mensalidade.")
+    # Um dia do mês, e não "início" ou "fim": o lembrete de cobrança precisa de uma data para avisar (ADR-059).
+    dia_vencimento = models.PositiveSmallIntegerField(
+        "Dia do vencimento", null=True, blank=True, validators=[MinValueValidator(1), MaxValueValidator(31)],
+        help_text="Só para mensalidade. Em mês mais curto, vale o último dia.")
     vigente_desde = models.DateField("Vale a partir de")
 
     class Meta:
@@ -271,10 +269,19 @@ class CondicaoCobranca(TenantOwnedModel):
     def clean(self):
         super().clean()
         _exigir_mesmo_dono(self, caso=self.caso if self.caso_id else None)
-        if self.modalidade == self.Modalidade.MENSAL and not self.vencimento:
-            raise ValidationError({"vencimento": "Mensalidade precisa de vencimento."})
-        if self.modalidade == self.Modalidade.POR_SESSAO and self.vencimento:
-            self.vencimento = ""
+        if self.modalidade == self.Modalidade.MENSAL and not self.dia_vencimento:
+            raise ValidationError({"dia_vencimento": "Mensalidade precisa do dia de vencimento."})
+        if self.modalidade == self.Modalidade.POR_SESSAO:
+            self.dia_vencimento = None  # por sessão vence no dia da sessão (ADR-059)
+
+    def vencimento_em(self, ano: int, mes: int):
+        """A data em que a mensalidade de um mês vence. Dia 31 em mês mais curto vira o último dia (ADR-059)."""
+        if not self.dia_vencimento:
+            return None
+        from calendar import monthrange
+        from datetime import date
+
+        return date(ano, mes, min(self.dia_vencimento, monthrange(ano, mes)[1]))
 
 
 class ResponsavelLegal(Auditado, TenantOwnedModel):

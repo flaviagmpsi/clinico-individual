@@ -44,7 +44,7 @@ def cadastrar_paciente(
     *,
     valor: Decimal | None = None,
     modalidade: str = CondicaoCobranca.Modalidade.POR_SESSAO,
-    vencimento: str = "",
+    dia_vencimento: int | None = None,
     vigente_desde: date | None = None,
 ) -> Caso:
     """Grava o paciente com o caso individual dele.
@@ -63,7 +63,7 @@ def cadastrar_paciente(
             caso=caso,
             modalidade=modalidade,
             valor=valor,
-            vencimento=vencimento,
+            dia_vencimento=dia_vencimento,
             vigente_desde=vigente_desde or date.today(),
         )
     return caso
@@ -86,12 +86,12 @@ def caso_individual_de(paciente: Paciente) -> Caso | None:
 
 
 def _tem_atendimento(caso: Caso) -> bool:
-    """Consulta realizada ou falta, ou um desfecho registrado, **é atendimento** (ADR-048, ADR-049).
+    """Consulta realizada ou falta cobrada, ou um desfecho registrado, **é atendimento** (ADR-048, ADR-049, ADR-060).
 
-    Estados como texto e nomes reversos (`consultas`, `desfechos`), sem importar `atendimentos`, que
-    depende deste app (regra 5 de dependência).
+    Falta remarcada não é: a sessão não aconteceu e não foi cobrada. Estados como texto e nomes reversos
+    (`consultas`, `desfechos`), sem importar `atendimentos`, que depende deste app (regra 5 de dependência).
     """
-    return caso.consultas.filter(estado__in=["REALIZADA", "FALTA"]).exists() or caso.desfechos.exists()
+    return caso.consultas.filter(estado__in=["REALIZADA", "FALTA_COBRADA"]).exists() or caso.desfechos.exists()
 
 
 @transaction.atomic
@@ -116,7 +116,7 @@ def excluir_paciente(paciente: Paciente) -> None:
             "Este paciente já tem atendimento registrado e não pode ser apagado — o prontuário tem guarda "
             "obrigatória. Para tirá-lo da lista de ativos, registre o desfecho do atendimento.")
     for caso in casos:
-        caso.consultas.all().delete()  # restam só agendadas e canceladas: previsão, não atendimento
+        caso.consultas.all().delete()  # restam só faltas remarcadas: não são atendimento
         caso.delete()
     paciente.delete()
 
@@ -177,7 +177,7 @@ def trocar_condicao(
     *,
     valor: Decimal,
     modalidade: str,
-    vencimento: str = "",
+    dia_vencimento: int | None = None,
     hoje: date | None = None,
 ) -> CondicaoCobranca:
     """Muda o valor ou a forma de cobrança de um caso — a partir do dia 1º do mês seguinte.
@@ -205,6 +205,6 @@ def trocar_condicao(
         caso=caso,
         valor=valor,
         modalidade=modalidade,
-        vencimento=vencimento,
+        dia_vencimento=dia_vencimento,
         vigente_desde=vigente_desde,
     )

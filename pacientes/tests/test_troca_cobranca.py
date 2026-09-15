@@ -26,7 +26,7 @@ from pacientes.servicos import (
 
 SENHA = "senha-de-teste-123"
 _MENSAL = CondicaoCobranca.Modalidade.MENSAL
-_INICIO = CondicaoCobranca.Vencimento.INICIO_DO_MES
+_DIA = 10
 
 
 def criar_psicologo(email, cpf, crp_numero):
@@ -47,6 +47,13 @@ class Calendario(TestCase):
         vence no início) — a regra não abre exceção."""
         self.assertEqual(primeiro_dia_do_mes_seguinte(date(2026, 9, 1)), date(2026, 10, 1))
 
+    def test_dia_31_vira_o_ultimo_dia_do_mes_curto(self):
+        """ADR-059: vencimento no dia 31 cai no último dia de fevereiro, e não some."""
+        condicao = CondicaoCobranca(dia_vencimento=31)
+        self.assertEqual(condicao.vencimento_em(2026, 2), date(2026, 2, 28))
+        self.assertEqual(condicao.vencimento_em(2028, 2), date(2028, 2, 29))
+        self.assertEqual(condicao.vencimento_em(2026, 10), date(2026, 10, 31))
+
 
 class TrocaDeCobranca(TestCase):
     @classmethod
@@ -62,7 +69,7 @@ class TrocaDeCobranca(TestCase):
         hoje = date.today()
         virada = primeiro_dia_do_mes_seguinte(hoje)
         with contexto.como(self.ana.pk):
-            nova = trocar_condicao(self.caso_marcos, valor=Decimal("700"), modalidade=_MENSAL, vencimento=_INICIO)
+            nova = trocar_condicao(self.caso_marcos, valor=Decimal("700"), modalidade=_MENSAL, dia_vencimento=_DIA)
             self.assertEqual(nova.vigente_desde, virada)
             self.assertEqual(self.caso_marcos.condicao_vigente(hoje).valor, Decimal("200"))
             self.assertEqual(self.caso_marcos.condicao_vigente(virada - timedelta(days=1)).valor, Decimal("200"))
@@ -71,7 +78,7 @@ class TrocaDeCobranca(TestCase):
     def test_a_condicao_anterior_nao_e_alterada(self):
         with contexto.como(self.ana.pk):
             anterior = self.caso_marcos.condicao_vigente()
-            trocar_condicao(self.caso_marcos, valor=Decimal("700"), modalidade=_MENSAL, vencimento=_INICIO)
+            trocar_condicao(self.caso_marcos, valor=Decimal("700"), modalidade=_MENSAL, dia_vencimento=_DIA)
             anterior.refresh_from_db()
         self.assertEqual(anterior.valor, Decimal("200"))
         self.assertEqual(anterior.modalidade, CondicaoCobranca.Modalidade.POR_SESSAO)
@@ -84,8 +91,8 @@ class TrocaDeCobranca(TestCase):
 
     def test_trocar_duas_vezes_no_mesmo_mes_substitui_a_agendada(self):
         with contexto.como(self.ana.pk):
-            trocar_condicao(self.caso_marcos, valor=Decimal("700"), modalidade=_MENSAL, vencimento=_INICIO)
-            trocar_condicao(self.caso_marcos, valor=Decimal("650"), modalidade=_MENSAL, vencimento=_INICIO)
+            trocar_condicao(self.caso_marcos, valor=Decimal("700"), modalidade=_MENSAL, dia_vencimento=_DIA)
+            trocar_condicao(self.caso_marcos, valor=Decimal("650"), modalidade=_MENSAL, dia_vencimento=_DIA)
             self.assertEqual(self.caso_marcos.condicoes.count(), 2)
             self.assertEqual(self.caso_marcos.proxima_condicao().valor, Decimal("650"))
 
@@ -115,7 +122,7 @@ class TrocaPelaTela(TransactionTestCase):
     def test_salvar_agenda_a_troca_e_mantem_a_atual(self):
         self.entrar(self.ana)
         self.client.post(reverse("pacientes:cobranca", args=[self.marcos.pk]), {
-            "modalidade": "MENSAL", "valor": "700", "vencimento": "INICIO"})
+            "modalidade": "MENSAL", "valor": "700", "dia_vencimento": "10"})
         with contexto.como(self.ana.pk):
             caso = caso_individual_de(self.marcos)
             self.assertEqual(caso.condicao_vigente().valor, Decimal("200"))
@@ -134,7 +141,7 @@ class TrocaPelaTela(TransactionTestCase):
         rota = reverse("pacientes:cobranca", args=[self.carla.pk])
         self.assertEqual(self.client.get(rota).status_code, 404)
         self.assertEqual(self.client.post(rota, {"modalidade": "MENSAL", "valor": "1",
-                                                 "vencimento": "INICIO"}).status_code, 404)
+                                                 "dia_vencimento": "10"}).status_code, 404)
 
     def test_exige_login(self):
         resposta = self.client.get(reverse("pacientes:cobranca", args=[self.marcos.pk]))

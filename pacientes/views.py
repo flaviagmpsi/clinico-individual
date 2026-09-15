@@ -110,14 +110,14 @@ class NovoPaciente(LoginRequiredMixin, CreateView):
     def get_context_data(self, **kwargs):
         contexto = super().get_context_data(**kwargs)
         contexto.setdefault("cobranca", CondicaoCobrancaForm(
-            prefix="cobranca", vencimento_padrao=self.request.user.vencimento_mensalidade))
+            prefix="cobranca", dia_vencimento_padrao=self.request.user.dia_vencimento_mensalidade))
         return contexto
 
     def post(self, request, *args, **kwargs):
         self.object = None
         form = self.get_form()
         cobranca = CondicaoCobrancaForm(
-            request.POST, prefix="cobranca", vencimento_padrao=request.user.vencimento_mensalidade)
+            request.POST, prefix="cobranca", dia_vencimento_padrao=request.user.dia_vencimento_mensalidade)
         # Os dois validados sempre, sem curto-circuito: quem errou o CPF e o vencimento precisa ver
         # os dois erros de uma vez, e não um de cada vez a cada envio.
         validos = [form.is_valid(), cobranca.is_valid()]

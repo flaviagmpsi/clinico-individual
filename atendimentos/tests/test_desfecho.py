@@ -2,11 +2,11 @@
 
 Cada classe guarda uma parte da decisão:
 
-- `EfeitosNaAgenda` — a frequência termina, o futuro sai, o passado fica, o encerrado não aceita sessão.
+- `EfeitosNaAgenda` — a frequência termina, o cadastrado fica, a pendência continua, nada novo depois do desfecho.
 - `RegrasDoRegistro` — data, desfecho único, iniciativa que decorre do tipo.
 - `MomentoERetomada` — sessões contadas desde a última retomada; retomar reabre o mesmo atendimento.
 - `ListaDeAtivos` — encerrado sai dos ativos; quem segue no casal continua.
-- `Exclusao` — desfecho é atendimento (ADR-048); casal com sessões agendadas sai sem erro.
+- `Exclusao` — desfecho é atendimento (ADR-048); casal só com falta remarcada sai sem erro.
 """
 
 from datetime import datetime, time, timedelta
@@ -37,6 +37,9 @@ DESISTENCIA = Desfecho.Tipo.DESISTENCIA
 INTERRUPCAO = Desfecho.Tipo.INTERRUPCAO
 PACIENTE = Desfecho.Iniciativa.PACIENTE
 PSICOLOGO = Desfecho.Iniciativa.PSICOLOGO
+REALIZADA = Consulta.Estado.REALIZADA
+FALTA_COBRADA = Consulta.Estado.FALTA_COBRADA
+FALTA_REMARCADA = Consulta.Estado.FALTA_REMARCADA
 
 
 def momento(dia, hora, minuto=0):
@@ -70,63 +73,60 @@ class BaseDesfecho(TestCase):
     def setUp(self):
         self.terca = proxima(TERCA)
         self.hoje = timezone.localdate()
+        self.ontem = self.hoje - timedelta(days=1)
 
     def semanal(self, caso, hora=14):
         return servicos.definir_frequencia(
             caso, frequencia=SEMANAL, dia_semana=TERCA, hora=time(hora), a_partir_de=self.terca)
 
-    def passada(self, caso, dias, estado=None, hora=9):
-        consulta = servicos.marcar_avulsa(caso, inicio=momento(self.hoje - timedelta(days=dias), hora))
-        if estado:
-            servicos.registrar(consulta, estado)
-        return consulta
+    def frequencia_desde(self, caso, semanas=3):
+        """Semanal que começou semanas atrás — gravada direto, porque o serviço só aceita de hoje em diante."""
+        return Recorrencia.objects.create(
+            caso=caso, frequencia=SEMANAL, dia_semana=self.ontem.weekday(), hora=time(9), duracao=50,
+            inicio=self.hoje - timedelta(weeks=semanas))
+
+    def passada(self, caso, dias, estado=REALIZADA, hora=9):
+        return servicos.cadastrar_avulsa(caso, estado=estado, inicio=momento(self.hoje - timedelta(days=dias), hora))
 
     def encerrar(self, caso, tipo=DESISTENCIA, **kwargs):
         return servicos.registrar_desfecho(caso, tipo=tipo, **kwargs)
 
 
 class EfeitosNaAgenda(BaseDesfecho):
-    def test_o_futuro_sai_inteiro_inclusive_remarcada_e_avulsa(self):
+    def test_frequencia_que_nunca_valeu_some_e_nada_mais_e_previsto(self):
         with contexto.como(self.ana.pk):
             self.semanal(self.caso_maria)
-            segunda_sessao = Consulta.objects.get(caso=self.caso_maria, data_prevista=self.terca + timedelta(weeks=1))
-            servicos.remarcar(segunda_sessao, inicio=momento(self.terca + timedelta(days=8), 14))
-            servicos.marcar_avulsa(self.caso_maria, inicio=momento(self.terca, 9))
-
             self.encerrar(self.caso_maria)
-
-            self.assertFalse(Consulta.objects.filter(caso=self.caso_maria).exists())
             self.assertIsNone(self.caso_maria.regra_aberta())
+            self.assertEqual(
+                servicos.sessoes_previstas(self.terca, self.terca + timedelta(weeks=4), caso=self.caso_maria), [])
 
-    def test_regra_que_ja_valia_termina_hoje_e_nao_gera_mais_nada(self):
+    def test_regra_que_ja_valia_termina_hoje(self):
         with contexto.como(self.ana.pk):
-            amanha = (self.hoje.weekday() + 1) % 7
-            servicos.definir_frequencia(
-                self.caso_maria, frequencia=SEMANAL, dia_semana=amanha, hora=time(14), a_partir_de=self.hoje)
+            regra = self.frequencia_desde(self.caso_maria)
             self.encerrar(self.caso_maria)
-            self.assertEqual(Recorrencia.objects.get(caso=self.caso_maria).fim, self.hoje)
-            servicos.gerar_consultas(self.hoje)
-            self.assertFalse(Consulta.objects.filter(caso=self.caso_maria).exists())
+            regra.refresh_from_db()
+            self.assertEqual(regra.fim, self.hoje)
+            self.assertEqual(
+                servicos.sessoes_previstas(self.hoje, self.hoje + timedelta(weeks=4), caso=self.caso_maria), [])
 
-    def test_o_passado_fica_e_a_pendencia_continua(self):
-        """O desfecho não registra nada no lugar do psicólogo (ADR-052)."""
+    def test_o_cadastrado_fica_e_a_pendencia_continua(self):
+        """O desfecho não cadastra nada no lugar do psicólogo (ADR-052)."""
         with contexto.como(self.ana.pk):
-            realizada = self.passada(self.caso_maria, 10, Consulta.Estado.REALIZADA)
-            sem_registro = self.passada(self.caso_maria, 3)
+            regra = self.frequencia_desde(self.caso_maria)
+            consulta = servicos.cadastrar_prevista(regra, self.ontem - timedelta(days=14), estado=REALIZADA)
             self.encerrar(self.caso_maria)
-            self.assertTrue(Consulta.objects.filter(pk=realizada.pk).exists())
-            self.assertIn(sem_registro, list(servicos.consultas_sem_registro()))
+            self.assertTrue(Consulta.objects.filter(pk=consulta.pk).exists())
+            self.assertEqual(len(servicos.sessoes_pendentes(caso=self.caso_maria)), 2)
 
-    def test_encerrado_nao_aceita_frequencia_consulta_nem_remarcacao(self):
+    def test_encerrado_nao_aceita_frequencia_nem_sessao_depois_do_desfecho(self):
         with contexto.como(self.ana.pk):
-            sem_registro = self.passada(self.caso_maria, 3)
-            self.encerrar(self.caso_maria)
+            self.encerrar(self.caso_maria, data=self.hoje - timedelta(days=5))
             with self.assertRaises(ValidationError):
                 self.semanal(self.caso_maria)
             with self.assertRaises(ValidationError):
-                servicos.marcar_avulsa(self.caso_maria, inicio=momento(self.terca, 9))
-            with self.assertRaises(ValidationError):
-                servicos.remarcar(sem_registro, inicio=momento(self.terca, 9))
+                self.passada(self.caso_maria, 1)
+            self.passada(self.caso_maria, 7)  # antes do desfecho, continua cadastrável
 
     def test_desfecho_do_casal_e_do_caso_inteiro_e_os_individuais_seguem(self):
         with contexto.como(self.ana.pk):
@@ -135,7 +135,7 @@ class EfeitosNaAgenda(BaseDesfecho):
             self.encerrar(casal, tipo=ALTA, iniciativa=PSICOLOGO)
             self.assertIsNotNone(casal.desfecho_aberto())
             self.assertIsNone(self.caso_maria.desfecho_aberto())
-            self.semanal(self.caso_maria)  # o individual da Maria continua aceitando agenda
+            self.semanal(self.caso_maria)  # o individual da Maria continua aceitando frequência
 
 
 class RegrasDoRegistro(BaseDesfecho):
@@ -155,13 +155,12 @@ class RegrasDoRegistro(BaseDesfecho):
             self.assertEqual(self.encerrar(self.caso_maria, tipo=DESISTENCIA).iniciativa, PACIENTE)
             self.assertEqual(self.encerrar(self.caso_joao, tipo=INTERRUPCAO).iniciativa, PSICOLOGO)
 
-    def test_alta_sem_iniciativa_e_recusada_sem_mexer_na_agenda(self):
+    def test_alta_sem_iniciativa_e_recusada_sem_mexer_na_frequencia(self):
         with contexto.como(self.ana.pk):
             self.semanal(self.caso_maria)
-            antes = Consulta.objects.filter(caso=self.caso_maria).count()
             with self.assertRaises(ValidationError):
                 self.encerrar(self.caso_maria, tipo=ALTA)
-            self.assertEqual(Consulta.objects.filter(caso=self.caso_maria).count(), antes)
+            self.assertIsNotNone(self.caso_maria.regra_aberta())
 
     def test_desistencia_do_psicologo_e_contradicao(self):
         with contexto.como(self.ana.pk):
@@ -178,21 +177,21 @@ class MomentoERetomada(BaseDesfecho):
     def test_o_momento_e_contado_e_nao_perguntado(self):
         """Falta não é sessão realizada (ADR-027)."""
         with contexto.como(self.ana.pk):
-            self.passada(self.caso_maria, 20, Consulta.Estado.REALIZADA)
-            self.passada(self.caso_maria, 13, Consulta.Estado.REALIZADA)
-            self.passada(self.caso_maria, 6, Consulta.Estado.FALTA)
+            self.passada(self.caso_maria, 20)
+            self.passada(self.caso_maria, 13)
+            self.passada(self.caso_maria, 6, estado=FALTA_COBRADA)
             self.assertEqual(self.encerrar(self.caso_maria).sessoes_realizadas, 2)
 
     def test_retomar_reabre_o_mesmo_atendimento_e_a_contagem_recomeca(self):
         with contexto.como(self.ana.pk):
-            self.passada(self.caso_maria, 10, Consulta.Estado.REALIZADA)
-            self.passada(self.caso_maria, 8, Consulta.Estado.REALIZADA)
+            self.passada(self.caso_maria, 10)
+            self.passada(self.caso_maria, 8)
             primeiro = self.encerrar(self.caso_maria, data=self.hoje - timedelta(days=5))
             self.assertEqual(primeiro.sessoes_realizadas, 2)
 
             servicos.retomar(self.caso_maria, hoje=self.hoje - timedelta(days=2))
             self.assertIsNone(self.caso_maria.desfecho_aberto())
-            self.passada(self.caso_maria, 1, Consulta.Estado.REALIZADA)
+            self.passada(self.caso_maria, 1)
             segundo = self.encerrar(self.caso_maria, tipo=ALTA, iniciativa=PACIENTE)
 
             self.assertEqual(segundo.sessoes_realizadas, 1)
@@ -246,10 +245,11 @@ class Exclusao(BaseDesfecho):
             with self.assertRaises(ValidationError):
                 excluir_paciente(self.joao)
 
-    def test_casal_com_sessoes_agendadas_e_apagado_sem_erro(self):
+    def test_casal_so_com_falta_remarcada_e_apagado_sem_erro(self):
         with contexto.como(self.ana.pk):
             casal = criar_caso_coletivo([self.maria, self.joao])
             self.semanal(casal, hora=19)
+            self.passada(casal, 3, estado=FALTA_REMARCADA)
             excluir_caso_coletivo(casal)
             self.assertFalse(Caso.objects.filter(pk=casal.pk).exists())
         self.assertFalse(Consulta.objetos_todos.filter(caso_id=casal.pk).exists())
@@ -257,6 +257,6 @@ class Exclusao(BaseDesfecho):
     def test_casal_com_sessao_realizada_nao_e_apagado(self):
         with contexto.como(self.ana.pk):
             casal = criar_caso_coletivo([self.maria, self.joao])
-            self.passada(casal, 3, Consulta.Estado.REALIZADA)
+            self.passada(casal, 3)
             with self.assertRaises(ValidationError):
                 excluir_caso_coletivo(casal)

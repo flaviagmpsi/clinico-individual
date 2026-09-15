@@ -33,11 +33,19 @@ class TrocarCobranca(LoginRequiredMixin, FormView):
                 raise Http404("Paciente sem atendimento individual.")
         return self._caso
 
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs["dia_vencimento_padrao"] = self.request.user.dia_vencimento_mensalidade
+        return kwargs
+
     def get_initial(self):
         condicao = self.caso().condicao_vigente()
         if condicao is None:
             return {}
-        return {"modalidade": condicao.modalidade, "valor": condicao.valor, "vencimento": condicao.vencimento}
+        inicial = {"modalidade": condicao.modalidade, "valor": condicao.valor}
+        if condicao.dia_vencimento:  # por sessão não tem dia: fica o padrão do perfil, para quem trocar para mensal
+            inicial["dia_vencimento"] = condicao.dia_vencimento
+        return inicial
 
     def get_context_data(self, **kwargs):
         contexto = super().get_context_data(**kwargs)

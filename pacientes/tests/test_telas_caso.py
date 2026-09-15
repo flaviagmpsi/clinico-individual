@@ -109,7 +109,7 @@ class CadastroComCobranca(BaseTelasCaso):
         self.entrar(self.ana)
         self.client.post(reverse("pacientes:novo"), {
             "nome": "Nova Paciente", "uf": "",
-            "cobranca-modalidade": "MENSAL", "cobranca-valor": "700", "cobranca-vencimento": "INICIO",
+            "cobranca-modalidade": "MENSAL", "cobranca-valor": "700", "cobranca-dia_vencimento": "10",
         }, follow=True)
         with contexto.como(self.ana.pk):
             nova = Paciente.objects.get(nome="Nova Paciente")
@@ -124,7 +124,7 @@ class CadastroComCobranca(BaseTelasCaso):
             "cobranca-modalidade": "MENSAL", "cobranca-valor": "700",
         })
         self.assertEqual(resposta.status_code, 200)
-        self.assertContains(resposta, "Mensalidade precisa de vencimento")
+        self.assertContains(resposta, "Mensalidade precisa do dia de vencimento")
         self.assertFalse(Paciente.objetos_todos.filter(nome="Sem Vencimento").exists())
 
     def test_cadastro_sem_cobranca_continua_funcionando(self):

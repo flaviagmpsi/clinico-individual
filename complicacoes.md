@@ -1979,6 +1979,91 @@ depois de todo o sistema feito e testado. Ela é um facilitador para o psicólog
 - Esta ADR **não revisa** as ADRs 006, 041 e 042: elas continuam valendo como plano da etapa de IA
   e serão revisitadas quando ela chegar.
 
+---
+
+## ADR-059 — Vencimento da mensalidade é um dia do mês (revisa a ADR-002 no vencimento)
+
+**Status:** ✅ Aceita — Rodada 35 (feedback de teste do usuário)
+**Contexto:** o vencimento era "início do mês" ou "fim do mês". Isso não dá ao lembrete de cobrança
+(ADR-017) uma data para avisar.
+
+**Decisão do usuário:** o vencimento é **o dia em que vence** — de 1 a 31.
+- Vale para a **mensalidade**, com um dia padrão no perfil do psicólogo e ajuste por paciente.
+- Em mês mais curto, dia 31 (ou 30, 29) vira o **último dia do mês**.
+- Cobrança **por sessão** vence **no dia da sessão** — premissa apresentada ao usuário e não contestada.
+
+**Consequências:** dados existentes migram "início" → dia 1 e "fim" → dia 31. O lembrete de cobrança
+e o status "precisa de atenção" (ADR-061) passam a ter uma data concreta de vencido.
+
+---
+
+## ADR-060 — A consulta só existe quando o psicólogo a cadastra (revisa ADR-022, 023 e 025)
+
+**Status:** ✅ Aceita — Rodada 35 (feedback de teste do usuário)
+**Contexto:** a agenda gerava consultas `AGENDADA` oito semanas à frente, com remarcação e com
+comparecimento e cobrança como eixos independentes. Testando, o usuário apontou que isso não é o
+trabalho do psicólogo: **ele cadastra a consulta**, e é o cadastro que diz se foi realizada ou cobrada.
+
+**Decisão do usuário:**
+- **O sistema não cria consulta.** A frequência continua mostrando no calendário as sessões
+  **previstas** da semana, mas previsão não é registro.
+- **Cadastrar** é o que transforma a sessão em registro. Três situações, à escolha do psicólogo:
+
+  | Situação | Cobrada |
+  |---|---|
+  | **Realizada** | Sempre — "se foi realizada, obviamente foi cobrada" |
+  | **Falta cobrada** | Sim |
+  | **Falta remarcada** | Não. A sessão nova é cadastrada **quando acontecer** |
+
+- Sessão prevista cuja data passou **sem cadastro** fica **pendente** (mantém a ADR-052: o sistema
+  nunca cadastra sozinho).
+- A consulta registra se é **da frequência** ou **avulsa**.
+
+**Decisões de arquitetura:**
+- Previsão é **calculada** da regra de frequência a cada tela, não gravada. Cadastrar a partir de uma
+  previsão liga a consulta à ocorrência (regra + data prevista) — é o que tira a pendência. Cadastrar fora
+  da frequência é avulsa.
+- **Só se cadastra o que já aconteceu:** data e hora não podem estar no futuro.
+- A colisão (ADR-024) passa a valer entre consultas cadastradas que ocupam horário (realizada e falta
+  cobrada) e entre regras de frequência.
+
+**O que sai:**
+- A janela de 8 semanas, a tela de remarcar e a marca "remarcada à mão" (ADR-022).
+- `contabilizada` como eixo independente (ADR-023): **cobrança deriva da situação**. Sessão de cortesia
+  deixa de existir.
+- "Cobro falta" do perfil (ADR-025): a escolha é feita em cada falta, então o padrão perde função.
+
+**Consequências:** desfecho (ADR-055) só encerra a frequência — não há mais consulta futura para apagar.
+Consultas `AGENDADA` e `CANCELADA` existentes são descartadas na migração (eram previsão); `FALTA`
+vira falta cobrada ou falta remarcada conforme já entrava ou não na cobrança.
+
+---
+
+## ADR-061 — Painel: sessões, receita e situação de cada paciente no mês (detalha a ADR-027)
+
+**Status:** ✅ Aceita — Rodada 35 (feedback de teste do usuário). Critérios por recomendação aceita.
+**Contexto:** o painel provisório mostrava contagens de cadastro — sem utilidade no dia a dia.
+
+**Decisão do usuário — o painel mostra:**
+1. **Resumo do mês:** sessões feitas × sessões que faltam; receita recebida × a receber.
+2. **Pacientes ativos:** situação (**regular** ou **precisa de atenção**), dias sem atividade e
+   sessões no mês.
+3. **Financeiro por paciente no mês:** "R$ pago / R$ devido", **pendente** embaixo quando não pagou, e
+   a **forma de pagamento** (Pix, cartão, dinheiro).
+
+**Definições:**
+- **Precisa de atenção** quando houver qualquer um: pagamento vencido e não pago; sessão pendente de
+  cadastro; mais de **14 dias sem sessão** (semanal) ou **21 dias** (quinzenal). Avulso não entra no
+  critério de dias. Fora isso, regular.
+- **Sessões que faltam:** as previstas pela frequência de hoje até o fim do mês.
+- **A receber:** mensalidades do mês ainda não pagas + sessões cobradas por sessão no mês ainda não
+  pagas, incluindo as previstas pela frequência. É previsão, e a tela diz isso.
+- **Todo pagamento é registrado pelo psicólogo** (mantém a ADR-035).
+
+**Consequências:** o painel depende de **registro de pagamento**, que não existe. A ordem passa a ser:
+ajustes de consulta e vencimento → financeiro básico (cobrança e pagamento com forma) → painel novo →
+prontuário escrito à mão.
+
 ## Impeditivos
 
 | # | Impeditivo | Situação |

@@ -1,14 +1,14 @@
-"""A consulta — o atendimento marcado e, depois, o registro do que aconteceu.
+"""A consulta — o registro do que aconteceu, feito pelo psicólogo (ADR-060).
 
-É a âncora do produto: o prontuário pende da consulta **realizada** (ADR-016) e a cobrança, da
-consulta **contabilizada** (ADR-023). Os dois eixos são independentes de propósito — é o que cobre
-falta cobrada (cobrança sem prontuário) e sessão de cortesia (prontuário sem cobrança).
+É a âncora do produto: o prontuário pende da consulta **realizada** (ADR-016) e a cobrança, da consulta
+**cobrada**. Desde a ADR-060 a cobrança deriva da situação: realizada é sempre cobrada; falta é cobrada ou
+remarcada.
 
-Aponta para o `Caso`, não para o paciente (ADR-026): uma sessão de casal é **uma** consulta, e por
-isso não colide consigo mesma.
+**O sistema nunca cria consulta.** A frequência prevê sessões (`atendimentos.servicos.sessoes_previstas`), mas
+previsão não é registro: a consulta nasce quando o psicólogo a cadastra, e sessão prevista que passou sem
+cadastro é pendência (ADR-052).
 
-**O sistema nunca muda o estado sozinho** (ADR-052). Consulta cuja hora passou e segue `AGENDADA`
-é pendência no painel, não é marcada como realizada nem como falta.
+Aponta para o `Caso`, não para o paciente (ADR-026): uma sessão de casal é **uma** consulta.
 """
 
 from datetime import timedelta
@@ -16,6 +16,7 @@ from datetime import timedelta
 from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
+from django.utils import timezone
 
 from agenda.models import Recorrencia
 from core.models import TenantOwnedModel, exigir_mesmo_dono
@@ -26,34 +27,24 @@ DURACAO_MAXIMA = 240
 
 class Consulta(TenantOwnedModel):
     class Estado(models.TextChoices):
-        AGENDADA = "AGENDADA", "Agendada"
         REALIZADA = "REALIZADA", "Realizada"
-        FALTA = "FALTA", "Falta"
-        CANCELADA = "CANCELADA", "Cancelada"
+        FALTA_COBRADA = "FALTA_COBRADA", "Falta cobrada"
+        FALTA_REMARCADA = "FALTA_REMARCADA", "Falta remarcada"
 
     # `PROTECT`, e não `CASCADE`: consulta registrada é histórico clínico e financeiro. Apagar o caso
     # não pode levá-la junto em silêncio — a exclusão de paciente trata isso explicitamente (ADR-048).
     caso = models.ForeignKey(Caso, on_delete=models.PROTECT, related_name="consultas")
 
-    # Origem na regra. Os dois campos andam juntos: consulta avulsa não tem nenhum, consulta prevista
-    # tem os dois. `data_prevista` é a identidade da ocorrência e **não muda** na remarcação — é o que
-    # impede a regra de gerar a mesma sessão de novo depois que ela foi mudada de dia.
+    # Da frequência: os dois campos juntos, e `data_prevista` é a sessão prevista que este cadastro tirou da
+    # pendência. Avulsa — paciente avulso, sessão extra, a remarcada que aconteceu —: nenhum dos dois.
     recorrencia = models.ForeignKey(
         Recorrencia, on_delete=models.PROTECT, null=True, blank=True, related_name="consultas")
-    data_prevista = models.DateField("Data prevista pela regra", null=True, blank=True)
+    data_prevista = models.DateField("Data prevista pela frequência", null=True, blank=True)
 
     inicio = models.DateTimeField("Início")
     duracao = models.PositiveSmallIntegerField(
         "Duração (minutos)", validators=[MinValueValidator(10), MaxValueValidator(DURACAO_MAXIMA)])
-    estado = models.CharField("Situação", max_length=10, choices=Estado.choices, default=Estado.AGENDADA)
-    contabilizada = models.BooleanField(
-        "Entra na cobrança", default=False,
-        help_text="Só tem efeito depois do registro. Proposto pelo perfil: realizada entra; falta entra "
-                  "se você cobra falta (ADR-023). Ajustável em cada consulta.")
-    remarcada = models.BooleanField(
-        "Remarcada à mão", default=False,
-        help_text="Uma mudança futura na regra não sobrescreve esta consulta (ADR-022).")
-    registrada_em = models.DateTimeField("Registrada em", null=True, blank=True, editable=False)
+    estado = models.CharField("Situação", max_length=16, choices=Estado.choices)
 
     class Meta:
         verbose_name = "Consulta"
@@ -74,7 +65,7 @@ class Consulta(TenantOwnedModel):
         ]
 
     def __str__(self) -> str:
-        return f"{self.inicio:%d/%m/%Y %H:%M} · {self.caso}"
+        return f"{timezone.localtime(self.inicio):%d/%m/%Y %H:%M} · {self.caso}"
 
     @property
     def fim(self):
@@ -84,6 +75,11 @@ class Consulta(TenantOwnedModel):
     def avulsa(self) -> bool:
         return self.recorrencia_id is None
 
+    @property
+    def cobrada(self) -> bool:
+        """Deriva da situação (ADR-060): só a falta remarcada não é cobrada."""
+        return self.estado != self.Estado.FALTA_REMARCADA
+
     def clean(self):
         super().clean()
         exigir_mesmo_dono(
@@ -92,32 +88,31 @@ class Consulta(TenantOwnedModel):
             recorrencia=self.recorrencia if self.recorrencia_id else None,
         )
         if self.recorrencia_id and self.caso_id and self.recorrencia.caso_id != self.caso_id:
-            raise ValidationError("A regra de recorrência pertence a outro atendimento.")
+            raise ValidationError("A frequência pertence a outro atendimento.")
+        if self.recorrencia_id and self.data_prevista and not self.recorrencia.ocorre_em(self.data_prevista):
+            raise ValidationError("Esta data não é uma sessão prevista pela frequência.")
         self._recusar_colisao()
 
     def _recusar_colisao(self):
-        """ADR-024: horário ocupado **bloqueia** a marcação.
+        """ADR-024: duas consultas não ocupam o mesmo horário.
 
-        Só ocupa a agenda o que não foi cancelado. A busca é limitada às consultas que começam até
-        `DURACAO_MAXIMA` minutos antes desta — nenhuma que comece antes disso consegue alcançá-la — e a
-        sobreposição é conferida em Python, sem aritmética de intervalo no banco.
-
-        Cobre as consultas já **geradas**. Ocorrências que a regra ainda não materializou são conferidas
-        no serviço que marca a consulta (`atendimentos.servicos`), porque dependem da janela da agenda.
+        Falta remarcada não ocupa horário — a sessão não aconteceu e o horário ficou livre. A busca é limitada às
+        consultas que começam até `DURACAO_MAXIMA` minutos antes desta — nenhuma que comece antes disso consegue
+        alcançá-la — e a sobreposição é conferida em Python, sem aritmética de intervalo no banco.
         """
-        if not (self.inicio and self.duracao) or self.estado == self.Estado.CANCELADA:
+        if not (self.inicio and self.duracao) or self.estado == self.Estado.FALTA_REMARCADA:
             return
         vizinhas = (
             Consulta.objects.exclude(pk=self.pk)
-            .exclude(estado=self.Estado.CANCELADA)
+            .exclude(estado=self.Estado.FALTA_REMARCADA)
             .filter(inicio__lt=self.fim, inicio__gt=self.inicio - timedelta(minutes=DURACAO_MAXIMA))
             .select_related("caso")
         )
         for outra in vizinhas:
             if outra.fim > self.inicio:
+                local = timezone.localtime(outra.inicio)
                 raise ValidationError(
-                    f"Horário ocupado: já existe consulta de {outra.caso} às {outra.inicio:%H:%M} "
-                    f"de {outra.inicio:%d/%m}.")
+                    f"Horário ocupado: já existe consulta de {outra.caso} às {local:%H:%M} de {local:%d/%m}.")
 
 
 class Desfecho(TenantOwnedModel):
@@ -178,8 +173,6 @@ class Desfecho(TenantOwnedModel):
     def sessoes_realizadas(self) -> int:
         """Sessões realizadas até o desfecho, contadas desde a última retomada — o "momento" (ADR-027)."""
         from datetime import datetime, time
-
-        from django.utils import timezone
 
         def meia_noite(dia):
             return timezone.make_aware(datetime.combine(dia, time.min))

@@ -13,19 +13,16 @@
 </div>
 
 {% comment %}
-ADR-055: a tela diz o que some **antes** de gravar. Remover consulta futura é o único efeito que não se
-desfaz sozinho ao retomar.
+ADR-055 e ADR-060: a tela diz o que muda **antes** de gravar — a frequência acaba, e o que ficou pendente
+continua pendente.
 {% endcomment %}
 <div class="alert alert-light border py-2 small" style="max-width:720px">
   <div class="fw-semibold mb-1">Ao encerrar:</div>
   <ul class="mb-0">
     <li>{% if regra %}A frequência <strong>{{ regra }}</strong> termina hoje.{% else %}Não há frequência em vigor — nada previsto a desfazer.{% endif %}</li>
-    {% if futuras %}
-      <li><strong>{{ futuras }} consulta{{ futuras|pluralize }} futura{{ futuras|pluralize }}</strong> agendada{{ futuras|pluralize }} {{ futuras|pluralize:"será removida,serão removidas" }}.</li>
-    {% endif %}
-    {% if sem_registro %}
-      <li class="text-warning-emphasis">{{ sem_registro }} consulta{{ sem_registro|pluralize }} passada{{ sem_registro|pluralize }} sem registro
-        {{ sem_registro|pluralize:"continua,continuam" }} como pendência — o encerramento não registra nada por você.</li>
+    {% if pendentes %}
+      <li class="text-warning-emphasis">{{ pendentes }} sess{{ pendentes|pluralize:"ão,ões" }} pendente{{ pendentes|pluralize }} de cadastro
+        {{ pendentes|pluralize:"continua,continuam" }} aparecendo — o encerramento não cadastra nada por você.</li>
     {% endif %}
     <li>Tudo o que já foi registrado fica no histórico. Sessões realizadas até aqui: <strong>{{ sessoes }}</strong>.</li>
     <li>{% if individual %}O paciente sai{% else %}Os participantes saem{% endif %} da lista de ativos, a menos que

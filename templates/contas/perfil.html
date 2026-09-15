@@ -62,13 +62,7 @@
     <div class="card-body">
       <div class="row g-3">
         <div class="col-md-4">{% include "components/_campo.html" with campo=form.duracao_sessao %}</div>
-        <div class="col-md-4">{% include "components/_campo.html" with campo=form.vencimento_mensalidade %}</div>
-      </div>
-      <div class="form-check mt-3">
-        {{ form.cobra_falta }}
-        <label class="form-check-label" for="{{ form.cobra_falta.id_for_label }}">{{ form.cobra_falta.label }}</label>
-        <div class="form-text small">{{ form.cobra_falta.help_text }}</div>
-        {% for erro in form.cobra_falta.errors %}<div class="text-danger small">{{ erro }}</div>{% endfor %}
+        <div class="col-md-4">{% include "components/_campo.html" with campo=form.dia_vencimento_mensalidade %}</div>
       </div>
     </div>
   </div>
