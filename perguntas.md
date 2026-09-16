@@ -219,3 +219,11 @@ Status: 🔴 aberta · 🟡 em discussão · 🟢 resolvida (migra para `documen
 | P-74 | Financeiro | **"Dia útil" conta quais dias?** Segunda a sexta, com ou sem feriados? Sábado conta (como no salário, pela CLT)? | ✅ Resolvida (Rodada 38): segunda a sexta, sem feriado nacional, incluindo a Sexta-feira Santa (ADR-063). |
 | P-75 | Financeiro | **Quem paga por sessão e acerta várias de uma vez:** um registro para várias sessões, ou um por sessão? | ✅ Resolvida (Rodada 38): quem acerta várias de uma vez é mensalidade. Por sessão, um pagamento por sessão. |
 | P-76 | Financeiro | **Falta cobrada também gera pagamento pendente?** A decisão fala em "sessão realizada". | ✅ Resolvida (Rodada 38): sim. Falta remarcada, não. |
+
+## Abertas na Rodada 41 — pedidos do teste do usuário
+
+| # | Tema | Pergunta | Status |
+|---|---|---|---|
+| P-77 | Conta | **Quiz de cadastro e aba "Minha clínica":** que informações são perguntadas na criação da conta, quais são obrigatórias para entrar, e o que são "dados da clínica" (nome, endereço, telefone, logo?) além do que o perfil já guarda. | 🔴 Aberta — Rodada 41 |
+| P-78 | Atendimentos | **As seis situações pedidas revisam a ADR-060**, que tem três. O sistema volta a **gravar a sessão antes de acontecer** (agendada, confirmada)? Quem cancelou (cliente ou profissional) substitui "falta cobrada / falta remarcada" ou é outro eixo? O que cada situação cobra? | 🔴 Aberta — Rodada 41 |
+| P-79 | Agenda | **Online × presencial:** onde mora o padrão (paciente, atendimento) e onde o percentual aparece — só na agenda, ou também no painel e na análise? | 🔴 Aberta — Rodada 41 |
