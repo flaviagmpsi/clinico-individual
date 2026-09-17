@@ -38,8 +38,8 @@ INTERRUPCAO = Desfecho.Tipo.INTERRUPCAO
 PACIENTE = Desfecho.Iniciativa.PACIENTE
 PSICOLOGO = Desfecho.Iniciativa.PSICOLOGO
 REALIZADA = Consulta.Estado.REALIZADA
-FALTA_COBRADA = Consulta.Estado.FALTA_COBRADA
-FALTA_REMARCADA = Consulta.Estado.FALTA_REMARCADA
+FALTOU = Consulta.Estado.FALTOU
+REMARCADA = Consulta.Estado.REMARCADA
 
 
 def momento(dia, hora, minuto=0):
@@ -179,7 +179,7 @@ class MomentoERetomada(BaseDesfecho):
         with contexto.como(self.ana.pk):
             self.passada(self.caso_maria, 20)
             self.passada(self.caso_maria, 13)
-            self.passada(self.caso_maria, 6, estado=FALTA_COBRADA)
+            self.passada(self.caso_maria, 6, estado=FALTOU)
             self.assertEqual(self.encerrar(self.caso_maria).sessoes_realizadas, 2)
 
     def test_retomar_reabre_o_mesmo_atendimento_e_a_contagem_recomeca(self):
@@ -249,7 +249,7 @@ class Exclusao(BaseDesfecho):
         with contexto.como(self.ana.pk):
             casal = criar_caso_coletivo([self.maria, self.joao])
             self.semanal(casal, hora=19)
-            self.passada(casal, 3, estado=FALTA_REMARCADA)
+            self.passada(casal, 3, estado=REMARCADA)
             excluir_caso_coletivo(casal)
             self.assertFalse(Caso.objects.filter(pk=casal.pk).exists())
         self.assertFalse(Consulta.objetos_todos.filter(caso_id=casal.pk).exists())

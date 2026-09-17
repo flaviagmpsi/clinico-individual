@@ -41,6 +41,10 @@ class Paciente(Auditado, TenantOwnedModel):
         SC = "SC", "Santa Catarina"; SP = "SP", "São Paulo"; SE = "SE", "Sergipe"
         TO = "TO", "Tocantins"
 
+    class Modalidade(models.TextChoices):
+        PRESENCIAL = "PRESENCIAL", "Presencial"
+        ONLINE = "ONLINE", "Online"
+
     nome = models.CharField("Nome completo", max_length=255)
 
     # Sem CPF é aceitável: quem nasceu antes de 2018 pode não ter (ADR-040 / P-34). A tela avisa,
@@ -64,6 +68,9 @@ class Paciente(Auditado, TenantOwnedModel):
     # não tem, e puxaria o produto para perto de prontuário médico, que não é o que ele é.
     medicamento = models.TextField("Medicamento em uso", blank=True)
 
+    # Padrão deste paciente; cada sessão pode ser diferente (ADR-065).
+    modalidade = models.CharField("Modalidade padrão", max_length=10, choices=Modalidade.choices,
+                                  default=Modalidade.PRESENCIAL)
     data_primeira_sessao = models.DateField("Data da primeira sessão", null=True, blank=True)
     observacoes = models.TextField("Observações", blank=True)
 

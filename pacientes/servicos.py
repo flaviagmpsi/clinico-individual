@@ -87,13 +87,14 @@ def caso_individual_de(paciente: Paciente) -> Caso | None:
 
 
 def _tem_atendimento(caso: Caso) -> bool:
-    """Consulta realizada ou falta cobrada, ou um desfecho registrado, **é atendimento** (ADR-048, ADR-049, ADR-060).
+    """Sessão presente ou cobrada, ou um desfecho registrado, **é atendimento** (ADR-048, ADR-049, ADR-065).
 
-    Falta remarcada não é: a sessão não aconteceu e não foi cobrada. Estados como texto e nomes reversos
-    (`consultas`, `desfechos`), sem importar `atendimentos`, que depende deste app (regra 5 de dependência).
+    Cancelamento e remarcação sem cobrança não são: a sessão não aconteceu e nada foi cobrado. Estados como texto
+    e nomes reversos (`consultas`, `desfechos`), sem importar `atendimentos`, que depende deste app (regra 5).
     """
     # Pagamento também conta: é registro financeiro de um atendimento que houve (ADR-063).
-    return (caso.consultas.filter(estado__in=["REALIZADA", "FALTA_COBRADA"]).exists()
+    return (caso.consultas.filter(estado="REALIZADA").exists()
+            or caso.consultas.filter(cobrada=True).exists()
             or caso.desfechos.exists() or caso.pagamentos.exists())
 
 
@@ -119,7 +120,7 @@ def excluir_paciente(paciente: Paciente) -> None:
             "Este paciente já tem atendimento registrado e não pode ser apagado — o prontuário tem guarda "
             "obrigatória. Para tirá-lo da lista de ativos, registre o desfecho do atendimento.")
     for caso in casos:
-        caso.consultas.all().delete()  # restam só faltas remarcadas: não são atendimento
+        caso.consultas.all().delete()  # restam só cancelamentos e remarcações sem cobrança
         caso.delete()
     paciente.delete()
 

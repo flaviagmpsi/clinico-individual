@@ -1,10 +1,13 @@
-"""Os números do painel (ADR-027, ADR-061): sessões, receita e situação de cada atendimento no mês.
+"""O painel (ADR-027, ADR-061, ADR-069): a agenda de hoje, o que ficou para trás e os números do mês.
+
+O painel responde **"o que eu faço agora"**; a agenda responde "como está a minha semana". Por isso aqui
+vêm as sessões de hoje em ordem de horário, e logo acima o que passou sem cadastro — que é justamente o
+que trava cobrança e prontuário.
 
 Tudo é derivado — de consultas, frequências, condições de cobrança e pagamentos. Nada aqui grava.
 `indicadores` depende de todos os apps, e nenhum depende dele (regra 2 de dependência).
 """
 
-from collections import Counter
 from dataclasses import dataclass, field
 from datetime import date, datetime, time, timedelta
 from decimal import Decimal
@@ -14,9 +17,9 @@ from django.utils import timezone
 
 from agenda.models import Recorrencia
 from atendimentos.models import Consulta
-from atendimentos.servicos import sessoes_pendentes, sessoes_previstas
+from atendimentos.servicos import sessoes_pendentes, sessoes_previstas, sessoes_remarcadas
 from financeiro.servicos import cobrancas_do_mes, pagamentos_pendentes, ultimo_dia
-from pacientes.models import Caso, CondicaoCobranca
+from pacientes.models import Caso, CondicaoCobranca, Paciente
 from pacientes.servicos import casos_encerrados, pacientes_ativos
 from prontuarios.servicos import prontuarios_pendentes
 
@@ -39,29 +42,39 @@ class Resumo:
 
 
 @dataclass
-class Linha:
-    """Um atendimento em curso: como está, há quanto tempo sem sessão e como está o financeiro do mês."""
+class ItemDoDia:
+    """Uma sessão de hoje: a que já foi cadastrada, a que a frequência prevê, a que foi remarcada para cá.
+
+    Os avisos que a linha carrega são os que mudam o que o psicólogo faz agora — dinheiro em aberto e
+    prontuário por escrever. "Dias sem sessão" não está aqui de propósito (ADR-069): com a sessão sempre
+    cadastrada, esse número já é a própria agenda; ele vira alerta só quando o ritmo se perde.
+    """
+
+    inicio: datetime
+    caso: Caso
+    modalidade: str
+    situacao: str
+    consulta: Consulta | None = None
+    espera: object | None = None
+    pagamento_em_aberto: bool = False
+    prontuario_pendente: bool = False
+
+    @property
+    def cadastrada(self) -> bool:
+        return self.consulta is not None
+
+    @property
+    def online(self) -> bool:
+        return self.modalidade == Paciente.Modalidade.ONLINE
+
+
+@dataclass
+class Alerta:
+    """Atendimento em curso que passou do próprio ritmo sem nenhuma sessão realizada (ADR-069)."""
 
     caso: Caso
-    sessoes_no_mes: int
-    dias_sem_sessao: int | None
-    devido: Decimal
-    pago: Decimal
-    vencido: bool
-    formas: list = field(default_factory=list)
-    motivos: list = field(default_factory=list)
-
-    @property
-    def atencao(self) -> bool:
-        return bool(self.motivos)
-
-    @property
-    def situacao_financeira(self) -> str:
-        if not self.devido and not self.pago:
-            return "sem cobrança"
-        if self.pago >= self.devido:
-            return "pago"
-        return "pendente" if self.vencido else "a vencer"
+    dias: int
+    frequencia: str
 
 
 @dataclass
@@ -69,10 +82,50 @@ class Painel:
     hoje: date
     mes: date
     resumo: Resumo
-    linhas: list
-    sessoes_pendentes: list
+    hoje_itens: list
+    atrasadas: list
+    alertas: list
     pagamentos_pendentes: list
     prontuarios_pendentes: list = field(default_factory=list)
+
+
+def _itens_de_hoje(agora: datetime, hoje: date, pendentes_de_cadastro: list,
+                   casos_devendo: set, consultas_sem_prontuario: set) -> list[ItemDoDia]:
+    """As sessões de hoje: as cadastradas, as previstas pela frequência e as remarcadas para cá."""
+    itens = []
+    cadastradas = (
+        Consulta.objects.filter(inicio__gte=_meia_noite(hoje), inicio__lt=_meia_noite(hoje + timedelta(days=1)))
+        .select_related("caso").prefetch_related("caso__pacientes")
+    )
+    for consulta in cadastradas:
+        itens.append(ItemDoDia(
+            inicio=consulta.inicio, caso=consulta.caso, modalidade=consulta.modalidade,
+            situacao=consulta.get_estado_display(), consulta=consulta,
+            pagamento_em_aberto=consulta.caso_id in casos_devendo,
+            prontuario_pendente=consulta.pk in consultas_sem_prontuario))
+
+    esperadas = sessoes_previstas(hoje, hoje) + sessoes_remarcadas(hoje, hoje)
+    for sessao in esperadas:
+        itens.append(ItemDoDia(
+            inicio=sessao.inicio, caso=sessao.caso, modalidade=sessao.modalidade,
+            situacao="a cadastrar" if sessao.pendente(agora) else "prevista", espera=sessao,
+            pagamento_em_aberto=sessao.caso.pk in casos_devendo))
+    return sorted(itens, key=lambda item: item.inicio)
+
+
+def _alertas(hoje: date, em_curso, ultima_por_caso: dict) -> list[Alerta]:
+    """Quem passou do próprio ritmo sem sessão realizada. Avulso não tem ritmo e não entra (ADR-061)."""
+    alertas = []
+    for caso in em_curso:
+        regra = caso.regra_aberta()
+        if regra is None:
+            continue
+        ultima = ultima_por_caso.get(caso.pk)
+        desde = timezone.localtime(ultima).date() if ultima else regra.inicio
+        dias = (hoje - desde).days
+        if dias > LIMITE_DE_DIAS_SEM_SESSAO[regra.frequencia]:
+            alertas.append(Alerta(caso=caso, dias=dias, frequencia=regra.get_frequencia_display()))
+    return sorted(alertas, key=lambda alerta: -alerta.dias)
 
 
 def montar_painel(agora: datetime | None = None) -> Painel:
@@ -83,12 +136,12 @@ def montar_painel(agora: datetime | None = None) -> Painel:
     cobrancas = cobrancas_do_mes(hoje.year, hoje.month)
     pendentes_de_cadastro = sessoes_pendentes(agora)
     pendentes_de_pagamento = pagamentos_pendentes(hoje)
-    # Só as futuras: a pendente de cadastro tem o seu próprio aviso e não é previsão (ADR-061).
+    pendentes_de_prontuario = prontuarios_pendentes()
+    # Só as futuras: a pendente de cadastro tem o seu próprio lugar no painel e não é previsão (ADR-061).
     futuras = [sessao for sessao in sessoes_previstas(hoje, fim) if not sessao.pendente(agora)]
 
     realizadas = Consulta.objects.filter(estado=Consulta.Estado.REALIZADA)
     no_mes = realizadas.filter(inicio__gte=_meia_noite(inicio), inicio__lt=_meia_noite(fim + timedelta(days=1)))
-    sessoes_por_caso = Counter(no_mes.values_list("caso_id", flat=True))
     ultima_por_caso = dict(realizadas.values("caso").annotate(ultima=Max("inicio")).values_list("caso", "ultima"))
 
     previsto_por_sessao = Decimal("0")
@@ -97,47 +150,25 @@ def montar_painel(agora: datetime | None = None) -> Painel:
         if condicao is not None and condicao.modalidade == CondicaoCobranca.Modalidade.POR_SESSAO:
             previsto_por_sessao += condicao.valor
 
-    casos_com_pagamento_vencido = {cobranca.caso.pk for cobranca in pendentes_de_pagamento}
-    casos_com_sessao_pendente = {sessao.caso.pk for sessao in pendentes_de_cadastro}
+    casos_devendo = {cobranca.caso.pk for cobranca in pendentes_de_pagamento}
+    consultas_sem_prontuario = {registro.consulta.pk for registro in pendentes_de_prontuario}
+    em_curso = list(Caso.objects.exclude(pk__in=casos_encerrados().values("pk")).prefetch_related("pacientes"))
 
-    linhas = []
-    em_curso = Caso.objects.exclude(pk__in=casos_encerrados().values("pk")).prefetch_related("pacientes")
-    for caso in em_curso:
-        do_caso = [cobranca for cobranca in cobrancas if cobranca.caso.pk == caso.pk]
-        ultima = ultima_por_caso.get(caso.pk)
-        ultima_data = timezone.localtime(ultima).date() if ultima else None
+    itens = _itens_de_hoje(agora, hoje, pendentes_de_cadastro, casos_devendo, consultas_sem_prontuario)
+    # O que ficou para trás: a pendência de hoje já aparece na agenda do dia, e repeti-la seria ruído.
+    atrasadas = [sessao for sessao in pendentes_de_cadastro
+                 if timezone.localtime(sessao.inicio).date() < hoje]
+    alertas = _alertas(hoje, em_curso, ultima_por_caso)
 
-        motivos = []
-        if caso.pk in casos_com_pagamento_vencido:
-            motivos.append("pagamento vencido")
-        if caso.pk in casos_com_sessao_pendente:
-            motivos.append("sessão pendente de cadastro")
-        regra = caso.regra_aberta()
-        if regra is not None:
-            sem_sessao = (hoje - (ultima_data or regra.inicio)).days
-            if sem_sessao > LIMITE_DE_DIAS_SEM_SESSAO[regra.frequencia]:
-                motivos.append(f"{sem_sessao} dias sem sessão")
-
-        linhas.append(Linha(
-            caso=caso,
-            sessoes_no_mes=sessoes_por_caso.get(caso.pk, 0),
-            dias_sem_sessao=(hoje - ultima_data).days if ultima_data else None,
-            devido=sum((cobranca.devido for cobranca in do_caso), Decimal("0")),
-            pago=sum((cobranca.pago for cobranca in do_caso), Decimal("0")),
-            vencido=any(cobranca.pendente(hoje) for cobranca in do_caso),
-            formas=sorted({forma for cobranca in do_caso for forma in cobranca.formas}),
-            motivos=motivos,
-        ))
-    linhas.sort(key=lambda linha: (not linha.atencao, str(linha.caso)))
-
+    precisam_de_atencao = len({sessao.caso.pk for sessao in atrasadas} | casos_devendo
+                              | {alerta.caso.pk for alerta in alertas})
     resumo = Resumo(
         sessoes_feitas=no_mes.count(),
         sessoes_faltam=len(futuras),
         recebido=sum((cobranca.pago for cobranca in cobrancas), Decimal("0")),
         a_receber=sum((cobranca.saldo for cobranca in cobrancas), Decimal("0")) + previsto_por_sessao,
         pacientes_ativos=pacientes_ativos().count(),
-        precisam_de_atencao=sum(1 for linha in linhas if linha.atencao),
+        precisam_de_atencao=precisam_de_atencao,
     )
-    return Painel(hoje=hoje, mes=inicio, resumo=resumo, linhas=linhas,
-                  sessoes_pendentes=pendentes_de_cadastro, pagamentos_pendentes=pendentes_de_pagamento,
-                  prontuarios_pendentes=prontuarios_pendentes())
+    return Painel(hoje=hoje, mes=inicio, resumo=resumo, hoje_itens=itens, atrasadas=atrasadas, alertas=alertas,
+                  pagamentos_pendentes=pendentes_de_pagamento, prontuarios_pendentes=pendentes_de_prontuario)

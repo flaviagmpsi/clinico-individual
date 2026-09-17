@@ -224,6 +224,6 @@ Status: 🔴 aberta · 🟡 em discussão · 🟢 resolvida (migra para `documen
 
 | # | Tema | Pergunta | Status |
 |---|---|---|---|
-| P-77 | Conta | **Quiz de cadastro e aba "Minha clínica":** que informações são perguntadas na criação da conta, quais são obrigatórias para entrar, e o que são "dados da clínica" (nome, endereço, telefone, logo?) além do que o perfil já guarda. | 🔴 Aberta — Rodada 41 |
-| P-78 | Atendimentos | **As seis situações pedidas revisam a ADR-060**, que tem três. O sistema volta a **gravar a sessão antes de acontecer** (agendada, confirmada)? Quem cancelou (cliente ou profissional) substitui "falta cobrada / falta remarcada" ou é outro eixo? O que cada situação cobra? | 🔴 Aberta — Rodada 41 |
-| P-79 | Agenda | **Online × presencial:** onde mora o padrão (paciente, atendimento) e onde o percentual aparece — só na agenda, ou também no painel e na análise? | 🔴 Aberta — Rodada 41 |
+| P-77 | Conta | **Quiz de cadastro:** que informações são perguntadas na criação da conta e quais são obrigatórias para entrar. Os "dados da clínica" já estão definidos e no perfil (ADR-067): nome, telefone e endereço, além do regime PF/PJ com CNPJ e razão social. Falta decidir o que vira passo de cadastro. | 🟡 Parcial — Rodada 42 |
+| P-78 | Atendimentos | **As seis situações pedidas revisam a ADR-060**, que tem três. O sistema volta a **gravar a sessão antes de acontecer** (agendada, confirmada)? Quem cancelou (cliente ou profissional) substitui "falta cobrada / falta remarcada" ou é outro eixo? O que cada situação cobra? | ✅ Fechada — ADR-065: cinco situações, sessão presumida confirmada, nada gravado antes de acontecer |
+| P-79 | Agenda | **Online × presencial:** onde mora o padrão (paciente, atendimento) e onde o percentual aparece — só na agenda, ou também no painel e na análise? | ✅ Fechada — ADR-065: padrão no paciente, editável por sessão; percentual na agenda |

@@ -39,14 +39,49 @@
     </div>
   </div>
 
+  {% comment %}
+  O regime não é papelada: é o que decide os recursos fiscais que o sistema vai oferecer — recibo de pessoa
+  física e carnê-leão de um lado, nota e contabilidade da empresa do outro (ADR-008, ADR-013). Por isso a tela
+  diz o que muda, em vez de só pedir o campo.
+  {% endcomment %}
   <div class="card mb-3">
-    <div class="card-header bg-white py-2 fw-semibold">Regime</div>
+    <div class="card-header bg-white py-2 fw-semibold">
+      Regime
+      <span class="text-muted fw-normal small">— define os recursos fiscais que você vai ver</span>
+    </div>
     <div class="card-body">
       <div class="row g-3">
         <div class="col-md-4">{% include "components/_campo.html" with campo=form.regime %}</div>
         <div class="col-md-4">{% include "components/_campo.html" with campo=form.cnpj %}</div>
         <div class="col-md-4">{% include "components/_campo.html" with campo=form.crp_empresa %}</div>
+        <div class="col-md-8">{% include "components/_campo.html" with campo=form.razao_social %}</div>
       </div>
+      <div class="alert alert-light border mt-3 py-2 small mb-0">
+        <strong>Pessoa física:</strong> recibo em seu nome e apuração pelo carnê-leão.
+        <strong>Pessoa jurídica:</strong> cobrança e documentos no nome da empresa.
+        Os recursos fiscais entram num passo posterior; o regime já fica registrado para que venham certos.
+      </div>
+    </div>
+  </div>
+
+  <div class="card mb-3">
+    <div class="card-header bg-white py-2 fw-semibold">
+      Clínica ou consultório
+      <span class="text-muted fw-normal small">— onde você atende</span>
+    </div>
+    <div class="card-body">
+      <div class="row g-3">
+        <div class="col-md-7">{% include "components/_campo.html" with campo=form.nome_clinica %}</div>
+        <div class="col-md-5">{% include "components/_campo.html" with campo=form.telefone_clinica %}</div>
+        <div class="col-md-3">{% include "components/_campo.html" with campo=form.cep %}</div>
+        <div class="col-md-7">{% include "components/_campo.html" with campo=form.logradouro %}</div>
+        <div class="col-md-2">{% include "components/_campo.html" with campo=form.numero %}</div>
+        <div class="col-md-4">{% include "components/_campo.html" with campo=form.complemento %}</div>
+        <div class="col-md-4">{% include "components/_campo.html" with campo=form.bairro %}</div>
+        <div class="col-md-3">{% include "components/_campo.html" with campo=form.cidade %}</div>
+        <div class="col-md-1">{% include "components/_campo.html" with campo=form.uf %}</div>
+      </div>
+      <div class="text-muted small mt-2">O CEP preenche o endereço sozinho.</div>
     </div>
   </div>
 

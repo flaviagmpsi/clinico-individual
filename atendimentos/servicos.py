@@ -5,8 +5,9 @@ outra (regra 5 de dependência). Tudo aqui roda no escopo do psicólogo corrente
 
 - **Previsão é cálculo, não registro.** `sessoes_previstas` deriva as sessões da regra de frequência a cada
   chamada; nada é gravado até o psicólogo cadastrar.
-- **Só o psicólogo cadastra** (ADR-052, ADR-060): realizada, falta cobrada ou falta remarcada. Sessão prevista
-  que passou sem cadastro é **pendente**.
+- **Só o psicólogo cadastra** (ADR-052, ADR-060): presente, faltou sem avisar, cliente cancelou, profissional
+  cancelou ou remarcada (ADR-065). Sessão prevista que passou sem cadastro é **pendente**, e é dada como
+  confirmada até ele dizer o contrário.
 - **Só se cadastra o que já aconteceu.** Data e hora no futuro são recusadas.
 - **Colisão bloqueia** (ADR-024) entre consultas que ocupam o horário e entre regras de frequência. Sessão
   prevista não bloqueia cadastro: previsão não é registro.
@@ -25,7 +26,7 @@ from django.utils import timezone
 from agenda.models import Recorrencia
 from atendimentos.models import Consulta, Desfecho
 from core import contexto
-from pacientes.models import Caso
+from pacientes.models import Caso, Paciente
 
 HORIZONTE_DE_CONFLITO_SEMANAS = 52
 AVULSO = "AVULSO"  # não é valor de `Recorrencia`: é a ausência de regra (ADR-053)
@@ -79,6 +80,11 @@ class SessaoPrevista:
     def data_iso(self) -> str:
         return self.data.isoformat()
 
+    @property
+    def modalidade(self) -> str:
+        """Online ou presencial, pelo padrão do paciente (ADR-065)."""
+        return modalidade_do_caso(self.caso)
+
     def pendente(self, agora: datetime | None = None) -> bool:
         """Já começou e ninguém cadastrou (ADR-052)."""
         return self.inicio <= (agora or timezone.now())
@@ -103,11 +109,80 @@ def sessoes_previstas(de: date, ate: date, *, caso: Caso | None = None) -> list[
     return sorted(previstas, key=lambda sessao: sessao.inicio)
 
 
-def sessoes_pendentes(agora: datetime | None = None, *, caso: Caso | None = None) -> list[SessaoPrevista]:
-    """Sessões previstas que já começaram e não foram cadastradas — pendência, nunca cadastro automático."""
+@dataclass(frozen=True)
+class SessaoRemarcada:
+    """O destino de uma sessão remarcada (ADR-068): esperada naquele horário, ainda não cadastrada.
+
+    Tem a mesma cara de `SessaoPrevista` para a tela poder tratar as duas juntas, mas não vem de uma
+    frequência: vem da consulta que foi remarcada, e é ela que diz o horário, a duração e a modalidade.
+    """
+
+    origem: Consulta
+
+    @property
+    def caso(self) -> Caso:
+        return self.origem.caso
+
+    @property
+    def inicio(self) -> datetime:
+        return self.origem.remarcada_para
+
+    @property
+    def duracao(self) -> int:
+        return self.origem.duracao
+
+    @property
+    def fim(self) -> datetime:
+        return self.inicio + timedelta(minutes=self.duracao)
+
+    @property
+    def data(self) -> date:
+        return timezone.localtime(self.inicio).date()
+
+    @property
+    def data_iso(self) -> str:
+        return self.data.isoformat()
+
+    @property
+    def modalidade(self) -> str:
+        return self.origem.modalidade
+
+    def pendente(self, agora: datetime | None = None) -> bool:
+        return self.inicio <= (agora or timezone.now())
+
+
+def sessoes_remarcadas(de: date, ate: date, *, caso: Caso | None = None) -> list[SessaoRemarcada]:
+    """As sessões remarcadas **para** este período e que ainda não foram cadastradas."""
+    consultas = (
+        Consulta.objects.filter(estado=Consulta.Estado.REMARCADA,
+                                remarcada_para__gte=momento(de, time.min),
+                                remarcada_para__lt=momento(ate + timedelta(days=1), time.min))
+        .select_related("caso").prefetch_related("caso__pacientes")
+    )
+    if caso is not None:
+        consultas = consultas.filter(caso=caso)
+    consultas = list(consultas)
+    # A sessão nova, depois de cadastrada, deixa de ser espera: some daqui como a prevista some da previsão.
+    cadastradas = set(
+        Consulta.objects.filter(inicio__in=[c.remarcada_para for c in consultas])
+        .values_list("caso_id", "inicio")
+    )
+    esperadas = [SessaoRemarcada(c) for c in consultas if (c.caso_id, c.remarcada_para) not in cadastradas]
+    return sorted(esperadas, key=lambda sessao: sessao.inicio)
+
+
+def sessoes_pendentes(agora: datetime | None = None,
+                      *, caso: Caso | None = None) -> list[SessaoPrevista | SessaoRemarcada]:
+    """O que já começou e ninguém cadastrou — pendência, nunca cadastro automático.
+
+    São duas origens: a frequência, que prevê, e a remarcação, que marcou data nova (ADR-068).
+    """
     agora = agora or timezone.now()
-    previstas = sessoes_previstas(_DESDE_SEMPRE, timezone.localdate(agora), caso=caso)
-    return [sessao for sessao in previstas if sessao.pendente(agora)]
+    hoje = timezone.localdate(agora)
+    esperadas = (sessoes_previstas(_DESDE_SEMPRE, hoje, caso=caso)
+                 + sessoes_remarcadas(_DESDE_SEMPRE, hoje, caso=caso))
+    return sorted([sessao for sessao in esperadas if sessao.pendente(agora)],
+                  key=lambda sessao: sessao.inicio)
 
 
 # --- Frequência ------------------------------------------------------------------------------------------------
@@ -208,9 +283,34 @@ def _recusar_se_tem_prontuario(consulta: Consulta, acao: str) -> None:
         raise ValidationError(f"Esta sessão tem prontuário. Não é possível {acao}.")
 
 
+def _exigir_situacao(estado: str) -> None:
+    if estado not in Consulta.Estado.values:
+        raise ValidationError(
+            "Escolha o que aconteceu: presente, faltou sem avisar, cliente cancelou, profissional cancelou "
+            "ou remarcada.")
+
+
+def _cobranca(estado: str, cobrada: bool | None) -> bool:
+    """A cobrança decorre da situação (ADR-065). Só o cancelamento pelo cliente admite escolha."""
+    _exigir_situacao(estado)
+    if cobrada is None or estado not in Consulta.ESCOLHE_SE_COBRA:
+        return Consulta.COBRA_POR_PADRAO[estado]
+    return cobrada
+
+
+def _remarcacao(estado: str, remarcada_para: datetime | None) -> datetime | None:
+    """A data nova só existe na remarcada (ADR-068). Corrigir a situação para outra coisa a apaga."""
+    return remarcada_para if estado == Consulta.Estado.REMARCADA else None
+
+
+def modalidade_do_caso(caso: Caso) -> str:
+    """O padrão do paciente (ADR-065). No casal, o do primeiro participante."""
+    participante = caso.pacientes.first()
+    return participante.modalidade if participante else Paciente.Modalidade.PRESENCIAL
+
+
 def _cadastrar(consulta: Consulta, agora: datetime | None) -> Consulta:
-    if consulta.estado not in Consulta.Estado.values:
-        raise ValidationError("Escolha o que aconteceu: realizada, falta cobrada ou falta remarcada.")
+    _exigir_situacao(consulta.estado)
     if consulta.inicio > (agora or timezone.now()):
         raise ValidationError("Só se cadastra o que já aconteceu — esta sessão ainda não começou.")
     consulta.save()
@@ -225,6 +325,9 @@ def cadastrar_prevista(
     estado: str,
     hora: time | None = None,
     duracao: int | None = None,
+    modalidade: str | None = None,
+    cobrada: bool | None = None,
+    remarcada_para: datetime | None = None,
     agora: datetime | None = None,
 ) -> Consulta:
     """Cadastra uma sessão da frequência — é o que a tira da pendência.
@@ -236,7 +339,10 @@ def cadastrar_prevista(
     if regra.consultas.filter(data_prevista=data).exists():
         raise ValidationError("Esta sessão já foi cadastrada.")
     consulta = Consulta(caso=regra.caso, recorrencia=regra, data_prevista=data, estado=estado,
-                        inicio=momento(data, hora or regra.hora), duracao=duracao or regra.duracao)
+                        inicio=momento(data, hora or regra.hora), duracao=duracao or regra.duracao,
+                        cobrada=_cobranca(estado, cobrada),
+                        modalidade=modalidade or modalidade_do_caso(regra.caso),
+                        remarcada_para=_remarcacao(estado, remarcada_para))
     return _cadastrar(consulta, agora)
 
 
@@ -247,6 +353,9 @@ def cadastrar_avulsa(
     estado: str,
     inicio: datetime,
     duracao: int | None = None,
+    modalidade: str | None = None,
+    cobrada: bool | None = None,
+    remarcada_para: datetime | None = None,
     agora: datetime | None = None,
 ) -> Consulta:
     """Consulta fora da frequência: do paciente avulso, uma sessão extra, ou a remarcada que aconteceu."""
@@ -255,20 +364,27 @@ def cadastrar_avulsa(
         raise ValidationError(
             f"Este atendimento está encerrado desde {desfecho.data:%d/%m/%Y}. "
             "Retome-o antes de cadastrar sessões depois dessa data.")
-    consulta = Consulta(caso=caso, estado=estado, inicio=inicio, duracao=duracao or _psicologo().duracao_sessao)
+    consulta = Consulta(caso=caso, estado=estado, inicio=inicio,
+                        duracao=duracao or _psicologo().duracao_sessao,
+                        cobrada=_cobranca(estado, cobrada), modalidade=modalidade or modalidade_do_caso(caso),
+                        remarcada_para=_remarcacao(estado, remarcada_para))
     return _cadastrar(consulta, agora)
 
 
 @transaction.atomic
-def alterar_situacao(consulta: Consulta, estado: str) -> Consulta:
+def alterar_situacao(consulta: Consulta, estado: str, *, cobrada: bool | None = None,
+                    modalidade: str | None = None, remarcada_para: datetime | None = None) -> Consulta:
     """Corrige o que foi cadastrado. A data não muda: para isso, exclui-se o cadastro e cadastra-se de novo."""
-    if estado not in Consulta.Estado.values:
-        raise ValidationError("Escolha o que aconteceu: realizada, falta cobrada ou falta remarcada.")
+    cobra = _cobranca(estado, cobrada)
     if estado != Consulta.Estado.REALIZADA:
-        _recusar_se_tem_prontuario(consulta, "marcá-la como falta")
-    if estado == Consulta.Estado.FALTA_REMARCADA:
-        _recusar_se_tem_pagamento(consulta, "marcá-la como falta remarcada")
+        _recusar_se_tem_prontuario(consulta, "mudar a situação")
+    if not cobra:
+        _recusar_se_tem_pagamento(consulta, "deixar de cobrá-la")
     consulta.estado = estado
+    consulta.cobrada = cobra
+    consulta.remarcada_para = _remarcacao(estado, remarcada_para or consulta.remarcada_para)
+    if modalidade:
+        consulta.modalidade = modalidade
     consulta.save()
     return consulta
 

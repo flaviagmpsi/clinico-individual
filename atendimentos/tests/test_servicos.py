@@ -3,12 +3,15 @@
 Cada classe guarda uma parte da decisão:
 
 - `Previsao` — a frequência prevê sem gravar nada; o que foi cadastrado sai da previsão.
-- `Cadastro` — realizada, falta cobrada ou falta remarcada; só o que já aconteceu; cobrança deriva da situação.
+- `Cadastro` — só o que já aconteceu; a sessão é presumida confirmada até o psicólogo dizer outra coisa.
+- `SituacoesECobranca` — as cinco situações da ADR-065: quais cobram, qual aceita escolha, quais ocupam o horário.
+- `ModalidadeDaSessao` — o padrão vem do paciente e a sessão pode sair dele.
+- `Remarcacao` — ADR-068: a remarcada diz para quando; a sessão nova espera cadastro e não reserva horário.
 - `Pendencia` — sessão prevista que passou sem cadastro é pendente, e o sistema não cadastra sozinho (ADR-052).
 - `TrocaDeFrequencia` — "desta data em diante"; o que foi cadastrado fica (ADR-022).
 - `Colisao` — consultas que ocupam o horário e regras de frequência não se sobrepõem (ADR-024).
 - `Isolamento` — ADR-001.
-- `ExclusaoDePaciente` — ADR-048: falta remarcada sai junto; atendimento registrado impede.
+- `ExclusaoDePaciente` — ADR-048: sessão remarcada sai junto; atendimento registrado impede.
 
 Sessões futuras partem de `proxima(...)`, sempre depois de hoje. Sessões **passadas** precisam de uma frequência
 que começou no passado, e o serviço recusa isso — o passado não é reescrito. Por isso `frequencia_desde` grava a
@@ -33,8 +36,12 @@ SEMANAL = Recorrencia.Frequencia.SEMANAL
 QUINZENAL = Recorrencia.Frequencia.QUINZENAL
 TERCA = Recorrencia.DiaSemana.TERCA
 REALIZADA = Consulta.Estado.REALIZADA
-FALTA_COBRADA = Consulta.Estado.FALTA_COBRADA
-FALTA_REMARCADA = Consulta.Estado.FALTA_REMARCADA
+FALTOU = Consulta.Estado.FALTOU
+REMARCADA = Consulta.Estado.REMARCADA
+CANCELADA_CLIENTE = Consulta.Estado.CANCELADA_CLIENTE
+CANCELADA_PROFISSIONAL = Consulta.Estado.CANCELADA_PROFISSIONAL
+PRESENCIAL = Paciente.Modalidade.PRESENCIAL
+ONLINE = Paciente.Modalidade.ONLINE
 
 
 def momento(dia, hora, minuto=0):
@@ -126,10 +133,10 @@ class Cadastro(BaseAgenda):
         self.assertFalse(consulta.avulsa)
         self.assertEqual(consulta.inicio, momento(self.ontem, 9))
 
-    def test_falta_cobrada_cobra_e_falta_remarcada_nao(self):
+    def test_falta_sem_aviso_cobra_e_remarcada_nao(self):
         with contexto.como(self.ana.pk):
-            self.assertTrue(self.avulsa(self.caso_joao, dias=2, estado=FALTA_COBRADA).cobrada)
-            self.assertFalse(self.avulsa(self.caso_joao, dias=3, estado=FALTA_REMARCADA).cobrada)
+            self.assertTrue(self.avulsa(self.caso_joao, dias=2, estado=FALTOU).cobrada)
+            self.assertFalse(self.avulsa(self.caso_joao, dias=3, estado=REMARCADA).cobrada)
 
     def test_avulsa_usa_a_duracao_do_perfil(self):
         with contexto.como(self.ana.pk):
@@ -143,7 +150,7 @@ class Cadastro(BaseAgenda):
                 servicos.cadastrar_avulsa(self.caso_joao, estado=REALIZADA, inicio=momento(self.terca, 10))
             regra = self.semanal_da_maria()
             with self.assertRaises(ValidationError):
-                servicos.cadastrar_prevista(regra, self.terca, estado=FALTA_COBRADA)
+                servicos.cadastrar_prevista(regra, self.terca, estado=FALTOU)
             self.assertFalse(Consulta.objects.exists())
 
     def test_data_que_nao_e_da_frequencia_e_recusada(self):
@@ -157,9 +164,9 @@ class Cadastro(BaseAgenda):
             regra = self.frequencia_desde(self.caso_joao)
             servicos.cadastrar_prevista(regra, self.ontem, estado=REALIZADA)
             with self.assertRaises(ValidationError):
-                servicos.cadastrar_prevista(regra, self.ontem, estado=FALTA_COBRADA)
+                servicos.cadastrar_prevista(regra, self.ontem, estado=FALTOU)
 
-    def test_situacao_fora_das_tres_e_recusada(self):
+    def test_situacao_fora_das_cinco_e_recusada(self):
         with contexto.como(self.ana.pk):
             with self.assertRaises(ValidationError):
                 servicos.cadastrar_avulsa(self.caso_joao, estado="AGENDADA", inicio=momento(self.ontem, 10))
@@ -167,9 +174,9 @@ class Cadastro(BaseAgenda):
     def test_corrigir_a_situacao(self):
         with contexto.como(self.ana.pk):
             consulta = self.avulsa(self.caso_joao)
-            servicos.alterar_situacao(consulta, FALTA_REMARCADA)
+            servicos.alterar_situacao(consulta, REMARCADA)
             consulta.refresh_from_db()
-        self.assertEqual(consulta.estado, FALTA_REMARCADA)
+        self.assertEqual(consulta.estado, REMARCADA)
         self.assertFalse(consulta.cobrada)
 
     def test_excluir_o_cadastro_devolve_a_pendencia(self):
@@ -177,6 +184,130 @@ class Cadastro(BaseAgenda):
             regra = self.frequencia_desde(self.caso_joao)
             servicos.excluir_consulta(servicos.cadastrar_prevista(regra, self.ontem, estado=REALIZADA))
             self.assertIn(self.ontem, [s.data for s in servicos.sessoes_pendentes(caso=self.caso_joao)])
+
+
+class SituacoesECobranca(BaseAgenda):
+    """ADR-065: a sessão é presumida confirmada; o psicólogo só mexe quando algo aconteceu."""
+
+    COBRA = {REALIZADA: True, FALTOU: True, CANCELADA_CLIENTE: True,
+             CANCELADA_PROFISSIONAL: False, REMARCADA: False}
+
+    def test_cada_situacao_ja_diz_se_cobra(self):
+        with contexto.como(self.ana.pk):
+            for dia, (estado, cobra) in enumerate(self.COBRA.items(), start=1):
+                with self.subTest(estado=estado):
+                    self.assertEqual(self.avulsa(self.caso_joao, dias=dia, estado=estado).cobrada, cobra)
+
+    def test_so_o_cancelamento_do_cliente_aceita_escolha(self):
+        """Cortesia é decisão do psicólogo; nas outras situações a cobrança não se negocia."""
+        with contexto.como(self.ana.pk):
+            cortesia = servicos.cadastrar_avulsa(
+                self.caso_joao, estado=CANCELADA_CLIENTE, cobrada=False, inicio=momento(self.ontem, 8))
+            realizada = servicos.cadastrar_avulsa(
+                self.caso_joao, estado=REALIZADA, cobrada=False, inicio=momento(self.ontem, 9))
+        self.assertFalse(cortesia.cobrada)
+        self.assertTrue(realizada.cobrada)
+
+    def test_cancelamento_nao_ocupa_o_horario(self):
+        """Ninguém esteve na sala: o horário continua livre para quem entrou no lugar."""
+        with contexto.como(self.ana.pk):
+            self.avulsa(self.caso_maria, hora=10, estado=CANCELADA_CLIENTE)
+            self.avulsa(self.caso_joao, hora=10, minuto=30, estado=CANCELADA_PROFISSIONAL)
+            consulta = self.avulsa(self.caso_maria, hora=10, minuto=15)
+        self.assertTrue(consulta.ocupa_horario)
+
+    def test_corrigir_a_situacao_refaz_a_cobranca(self):
+        with contexto.como(self.ana.pk):
+            consulta = self.avulsa(self.caso_joao, estado=REMARCADA)
+            servicos.alterar_situacao(consulta, CANCELADA_CLIENTE, cobrada=False)
+            self.assertFalse(consulta.cobrada)
+            servicos.alterar_situacao(consulta, FALTOU)
+            consulta.refresh_from_db()
+        self.assertTrue(consulta.cobrada)
+
+
+class ModalidadeDaSessao(BaseAgenda):
+    def test_a_sessao_nasce_com_a_modalidade_do_paciente(self):
+        with contexto.como(self.ana.pk):
+            self.assertEqual(self.avulsa(self.caso_joao).modalidade, PRESENCIAL)
+            self.maria.modalidade = ONLINE
+            self.maria.save()
+            regra = self.frequencia_desde(self.caso_maria)
+            prevista = servicos.cadastrar_prevista(regra, self.ontem, estado=REALIZADA)
+            [futura] = servicos.sessoes_previstas(self.hoje, self.hoje + timedelta(days=6), caso=self.caso_maria)
+        self.assertEqual(prevista.modalidade, ONLINE)
+        self.assertEqual(futura.modalidade, ONLINE)
+
+    def test_uma_sessao_pode_sair_do_padrao(self):
+        with contexto.como(self.ana.pk):
+            consulta = servicos.cadastrar_avulsa(
+                self.caso_joao, estado=REALIZADA, modalidade=ONLINE, inicio=momento(self.ontem, 8))
+            self.assertEqual(consulta.modalidade, ONLINE)
+            servicos.alterar_situacao(consulta, REALIZADA, modalidade=PRESENCIAL)
+            consulta.refresh_from_db()
+            padrao_do_paciente = Paciente.objects.get(pk=self.joao.pk).modalidade
+        self.assertEqual(consulta.modalidade, PRESENCIAL)
+        self.assertEqual(padrao_do_paciente, PRESENCIAL)  # a sessão não reescreve o padrão
+
+
+class Remarcacao(BaseAgenda):
+    """ADR-068: a sessão remarcada diz para quando foi, e a data nova entra na agenda esperando cadastro."""
+
+    def remarcar(self, caso, *, dias=1, para_daqui=2, hora=10):
+        return servicos.cadastrar_avulsa(
+            caso, estado=REMARCADA, inicio=momento(self.hoje - timedelta(days=dias), hora),
+            remarcada_para=momento(self.hoje + timedelta(days=para_daqui), hora))
+
+    def test_a_data_nova_fica_esperando_cadastro(self):
+        with contexto.como(self.ana.pk):
+            consulta = self.remarcar(self.caso_joao)
+            [esperada] = servicos.sessoes_remarcadas(self.hoje, self.hoje + timedelta(days=7))
+        self.assertEqual(consulta.remarcada_para, esperada.inicio)
+        self.assertEqual((esperada.caso, esperada.origem), (self.caso_joao, consulta))
+        self.assertFalse(esperada.pendente())  # ainda não chegou
+
+    def test_a_sessao_nova_nao_e_gravada_junto(self):
+        """ADR-060 continua valendo: consulta só existe depois de acontecer."""
+        with contexto.como(self.ana.pk):
+            self.remarcar(self.caso_joao)
+            self.assertEqual(Consulta.objects.count(), 1)
+
+    def test_cadastrar_a_sessao_nova_tira_da_espera(self):
+        with contexto.como(self.ana.pk):
+            consulta = self.remarcar(self.caso_joao, para_daqui=0, hora=8)
+            servicos.cadastrar_avulsa(self.caso_joao, estado=REALIZADA, inicio=consulta.remarcada_para,
+                                      agora=consulta.remarcada_para)
+            self.assertEqual(servicos.sessoes_remarcadas(self.hoje, self.hoje + timedelta(days=7)), [])
+
+    def test_so_a_remarcada_tem_data_nova(self):
+        with contexto.como(self.ana.pk):
+            consulta = servicos.cadastrar_avulsa(
+                self.caso_joao, estado=REALIZADA, inicio=momento(self.ontem, 8),
+                remarcada_para=momento(self.hoje + timedelta(days=1), 8))
+            self.assertIsNone(consulta.remarcada_para)
+
+    def test_corrigir_a_situacao_apaga_a_data_nova(self):
+        with contexto.como(self.ana.pk):
+            consulta = self.remarcar(self.caso_joao)
+            servicos.alterar_situacao(consulta, FALTOU)
+            consulta.refresh_from_db()
+        self.assertIsNone(consulta.remarcada_para)
+
+    def test_a_espera_nao_reserva_o_horario(self):
+        """Previsão não é registro (ADR-024): o horário só é ocupado quando a sessão for cadastrada."""
+        with contexto.como(self.ana.pk):
+            remarcada = self.remarcar(self.caso_joao, para_daqui=0, hora=8)
+            outra = servicos.cadastrar_avulsa(self.caso_maria, estado=REALIZADA,
+                                              inicio=remarcada.remarcada_para, agora=remarcada.remarcada_para)
+        self.assertTrue(outra.ocupa_horario)
+
+    def test_a_remarcada_que_ja_passou_entra_na_pendencia(self):
+        with contexto.como(self.ana.pk):
+            consulta = servicos.cadastrar_avulsa(
+                self.caso_joao, estado=REMARCADA, inicio=momento(self.hoje - timedelta(days=5), 8),
+                remarcada_para=momento(self.ontem, 8))
+            pendentes = servicos.sessoes_pendentes(caso=self.caso_joao)
+        self.assertIn(consulta.pk, [getattr(s, "origem", None) and s.origem.pk for s in pendentes])
 
 
 class Pendencia(BaseAgenda):
@@ -259,7 +390,7 @@ class Colisao(BaseAgenda):
 
     def test_falta_remarcada_nao_ocupa_o_horario(self):
         with contexto.como(self.ana.pk):
-            self.avulsa(self.caso_maria, hora=10, estado=FALTA_REMARCADA)
+            self.avulsa(self.caso_maria, hora=10, estado=REMARCADA)
             self.avulsa(self.caso_joao, hora=10)
 
     def test_sessao_prevista_nao_bloqueia_cadastro(self):
@@ -296,7 +427,7 @@ class ExclusaoDePaciente(BaseAgenda):
     def test_frequencia_e_falta_remarcada_saem_junto(self):
         with contexto.como(self.ana.pk):
             regra = self.frequencia_desde(self.caso_maria)
-            servicos.cadastrar_prevista(regra, self.ontem, estado=FALTA_REMARCADA)
+            servicos.cadastrar_prevista(regra, self.ontem, estado=REMARCADA)
             excluir_paciente(self.maria)
             self.assertFalse(Paciente.objects.filter(pk=self.maria.pk).exists())
         self.assertFalse(Consulta.objetos_todos.filter(caso_id=self.caso_maria.pk).exists())

@@ -1,8 +1,8 @@
 """A consulta — o registro do que aconteceu, feito pelo psicólogo (ADR-060).
 
-É a âncora do produto: o prontuário pende da consulta **realizada** (ADR-016) e a cobrança, da consulta
-**cobrada**. Desde a ADR-060 a cobrança deriva da situação: realizada é sempre cobrada; falta é cobrada ou
-remarcada.
+É a âncora do produto: o prontuário pende da consulta **presente** (ADR-016) e a cobrança, da consulta
+**cobrada**. São cinco situações (ADR-065) — presente, faltou sem avisar, cliente cancelou, profissional
+cancelou e remarcada —, e a cobrança decorre delas; só o cancelamento pelo cliente admite escolha.
 
 **O sistema nunca cria consulta.** A frequência prevê sessões (`atendimentos.servicos.sessoes_previstas`), mas
 previsão não é registro: a consulta nasce quando o psicólogo a cadastra, e sessão prevista que passou sem
@@ -20,16 +20,31 @@ from django.utils import timezone
 
 from agenda.models import Recorrencia
 from core.models import TenantOwnedModel, exigir_mesmo_dono
-from pacientes.models import Caso
+from pacientes.models import Caso, Paciente
 
 DURACAO_MAXIMA = 240
 
 
 class Consulta(TenantOwnedModel):
     class Estado(models.TextChoices):
-        REALIZADA = "REALIZADA", "Realizada"
-        FALTA_COBRADA = "FALTA_COBRADA", "Falta cobrada"
-        FALTA_REMARCADA = "FALTA_REMARCADA", "Falta remarcada"
+        REALIZADA = "REALIZADA", "Presente"
+        FALTOU = "FALTOU", "Faltou sem avisar"
+        CANCELADA_CLIENTE = "CANCELADA_CLIENTE", "Cliente cancelou"
+        CANCELADA_PROFISSIONAL = "CANCELADA_PROFISSIONAL", "Profissional cancelou"
+        REMARCADA = "REMARCADA", "Remarcada"
+
+    # A cobrança decorre da situação (ADR-065): nas quatro primeiras é consequência, não pergunta.
+    COBRA_POR_PADRAO = {
+        Estado.REALIZADA: True,
+        Estado.FALTOU: True,
+        Estado.CANCELADA_CLIENTE: True,
+        Estado.CANCELADA_PROFISSIONAL: False,
+        Estado.REMARCADA: False,
+    }
+    # A única situação em que o psicólogo escolhe se cobra, na hora do cadastro.
+    ESCOLHE_SE_COBRA = {Estado.CANCELADA_CLIENTE}
+    # Cancelamento libera o horário; presente e falta sem aviso o ocupam — foi guardado e perdido.
+    OCUPAM_O_HORARIO = {Estado.REALIZADA, Estado.FALTOU}
 
     # `PROTECT`, e não `CASCADE`: consulta registrada é histórico clínico e financeiro. Apagar o caso
     # não pode levá-la junto em silêncio — a exclusão de paciente trata isso explicitamente (ADR-048).
@@ -44,7 +59,16 @@ class Consulta(TenantOwnedModel):
     inicio = models.DateTimeField("Início")
     duracao = models.PositiveSmallIntegerField(
         "Duração (minutos)", validators=[MinValueValidator(10), MaxValueValidator(DURACAO_MAXIMA)])
-    estado = models.CharField("Situação", max_length=16, choices=Estado.choices)
+    estado = models.CharField("Situação", max_length=24, choices=Estado.choices)
+    cobrada = models.BooleanField(
+        "Entra na cobrança", default=True,
+        help_text="Vem da situação. Só o cancelamento pelo cliente admite escolha (ADR-065).")
+    modalidade = models.CharField("Modalidade", max_length=10, choices=Paciente.Modalidade.choices,
+                                  default=Paciente.Modalidade.PRESENCIAL)
+
+    # ADR-068: a sessão remarcada diz **para quando** foi. O destino não é uma consulta — a sessão nova só
+    # vira registro quando acontecer (ADR-060) —, é a sessão que a agenda passa a esperar naquele horário.
+    remarcada_para = models.DateTimeField("Remarcada para", null=True, blank=True)
 
     class Meta:
         verbose_name = "Consulta"
@@ -76,9 +100,8 @@ class Consulta(TenantOwnedModel):
         return self.recorrencia_id is None
 
     @property
-    def cobrada(self) -> bool:
-        """Deriva da situação (ADR-060): só a falta remarcada não é cobrada."""
-        return self.estado != self.Estado.FALTA_REMARCADA
+    def ocupa_horario(self) -> bool:
+        return self.estado in self.OCUPAM_O_HORARIO
 
     def clean(self):
         super().clean()
@@ -91,20 +114,25 @@ class Consulta(TenantOwnedModel):
             raise ValidationError("A frequência pertence a outro atendimento.")
         if self.recorrencia_id and self.data_prevista and not self.recorrencia.ocorre_em(self.data_prevista):
             raise ValidationError("Esta data não é uma sessão prevista pela frequência.")
+        if self.remarcada_para:
+            if self.estado != self.Estado.REMARCADA:
+                raise ValidationError("Só sessão remarcada tem data nova.")
+            if self.inicio and self.remarcada_para == self.inicio:
+                raise ValidationError("A data nova é a mesma da sessão. Remarcar é mudar o horário.")
         self._recusar_colisao()
 
     def _recusar_colisao(self):
         """ADR-024: duas consultas não ocupam o mesmo horário.
 
-        Falta remarcada não ocupa horário — a sessão não aconteceu e o horário ficou livre. A busca é limitada às
-        consultas que começam até `DURACAO_MAXIMA` minutos antes desta — nenhuma que comece antes disso consegue
-        alcançá-la — e a sobreposição é conferida em Python, sem aritmética de intervalo no banco.
+        Cancelada ou remarcada não ocupa horário: o lugar ficou livre e pode ter sido reaproveitado. A busca é
+        limitada às consultas que começam até `DURACAO_MAXIMA` minutos antes desta — nenhuma que comece antes
+        disso alcança — e a sobreposição é conferida em Python, sem aritmética de intervalo no banco.
         """
-        if not (self.inicio and self.duracao) or self.estado == self.Estado.FALTA_REMARCADA:
+        if not (self.inicio and self.duracao) or not self.ocupa_horario:
             return
         vizinhas = (
             Consulta.objects.exclude(pk=self.pk)
-            .exclude(estado=self.Estado.FALTA_REMARCADA)
+            .filter(estado__in=self.OCUPAM_O_HORARIO)
             .filter(inicio__lt=self.fim, inicio__gt=self.inicio - timedelta(minutes=DURACAO_MAXIMA))
             .select_related("caso")
         )

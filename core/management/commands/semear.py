@@ -19,7 +19,7 @@ atendimento de casal cujos participantes têm também seus casos individuais.
 duas contas de porta aberta.
 """
 
-from datetime import date, time, timedelta
+from datetime import date, datetime, time, timedelta
 from decimal import Decimal
 
 from django.conf import settings
@@ -67,7 +67,12 @@ def _frequencia_de_demonstracao(caso, *, semanas_atras: int = 0, cadastradas=(),
     passadas = [s for s in sessoes_previstas(recorrencia.inicio, hoje, caso=caso)
                 if s.regra.pk == recorrencia.pk and s.pendente()]
     for sessao, estado in zip(passadas, cadastradas):
-        cadastrar_prevista(recorrencia, sessao.data, estado=estado)
+        # A remarcada da semente já diz para quando foi (ADR-068): daqui a dois dias, no mesmo horário.
+        remarcada_para = None
+        if estado == "REMARCADA":
+            destino = hoje + timedelta(days=2)
+            remarcada_para = timezone.make_aware(datetime.combine(destino, recorrencia.hora))
+        cadastrar_prevista(recorrencia, sessao.data, estado=estado, remarcada_para=remarcada_para)
 
 
 def _pagamento_de_demonstracao(caso, *, forma: str, meses_atras: int | None = None, sessao: int | None = None):
@@ -81,7 +86,7 @@ def _pagamento_de_demonstracao(caso, *, forma: str, meses_atras: int | None = No
         registrar_pagamento_mensalidade(
             caso, ano=ano, mes=mes, valor=cobranca.devido, data=cobranca.vencimento, forma=forma)
         return
-    consulta = caso.consultas.filter(estado__in=["REALIZADA", "FALTA_COBRADA"]).order_by("inicio")[sessao]
+    consulta = caso.consultas.filter(cobrada=True).order_by("inicio")[sessao]
     registrar_pagamento_sessao(consulta, data=timezone.localtime(consulta.inicio).date(), forma=forma)
 
 
@@ -118,9 +123,10 @@ PSICOLOGOS = [
                  cidade="Belo Horizonte", uf="MG", data_primeira_sessao=date(2026, 3, 2),
                  medicamento="Sertralina 50mg, uso contínuo (relato do paciente).",
                  cobranca=dict(valor=Decimal("200"), modalidade=_POR_SESSAO)),
+            # Atende online: com ela a agenda mostra o percentual de online × presencial (ADR-065).
             dict(nome="Juliana Alves", cpf="15350946056", data_nascimento=date(1995, 11, 30),
                  telefone="31977445566", email="juliana@exemplo.com", cidade="Belo Horizonte",
-                 uf="MG", data_primeira_sessao=date(2026, 7, 15),
+                 uf="MG", data_primeira_sessao=date(2026, 7, 15), modalidade="ONLINE",
                  observacoes="Prefere horário no fim da tarde.",
                  cobranca=dict(valor=Decimal("700"), modalidade=_MENSAL,
                                tipo_vencimento="DIA_UTIL", dia_vencimento=5)),
@@ -144,14 +150,15 @@ PSICOLOGOS = [
         # da faixa dela; o Rafael no sábado aparece como "fora da grade" (ADR-056).
         "grade": [(dia, 8, 12) for dia in range(4)] + [(dia, 14, 19) for dia in range(4)],
         # Frequências que começaram semanas atrás, com parte das sessões já cadastradas e o resto pendente — sem
-        # passado, a agenda não teria nem consulta cadastrada nem pendência para mostrar (ADR-060).
+        # passado, a agenda não teria nem consulta cadastrada nem pendência para mostrar (ADR-060). As situações
+        # cobrem as cinco da ADR-065: presente, falta sem aviso, cancelamento dos dois lados e remarcada.
         "frequencias": {
-            "Marcos Vieira": dict(frequencia=_SEMANAL, dia_semana=1, hora=time(14), semanas_atras=4,
-                                  cadastradas=["REALIZADA", "REALIZADA", "FALTA_COBRADA"]),
-            "Juliana Alves": dict(frequencia=_QUINZENAL, dia_semana=3, hora=time(18), semanas_atras=4,
-                                  cadastradas=["REALIZADA"]),
+            "Marcos Vieira": dict(frequencia=_SEMANAL, dia_semana=1, hora=time(14), semanas_atras=5,
+                                  cadastradas=["REALIZADA", "REALIZADA", "FALTOU", "CANCELADA_PROFISSIONAL"]),
+            "Juliana Alves": dict(frequencia=_QUINZENAL, dia_semana=3, hora=time(18), semanas_atras=6,
+                                  cadastradas=["REALIZADA", "CANCELADA_CLIENTE"]),
             "Rafael Pinto": dict(frequencia=_SEMANAL, dia_semana=5, hora=time(9), semanas_atras=3,
-                                 cadastradas=["REALIZADA", "FALTA_REMARCADA"]),
+                                 cadastradas=["REALIZADA", "REMARCADA"]),
         },
         # Beatriz desistiu antes de começar: exercita a aba "Encerrados" e o botão de retomar (ADR-055).
         "desfechos": {
@@ -178,7 +185,7 @@ PSICOLOGOS = [
         "pacientes": [
             dict(nome="Camila Duarte", cpf="03119999708", data_nascimento=date(1990, 9, 3),
                  telefone="21988776655", cidade="Rio de Janeiro", uf="RJ",
-                 data_primeira_sessao=date(2026, 5, 10),
+                 data_primeira_sessao=date(2026, 5, 10), modalidade="ONLINE",
                  cobranca=dict(valor=Decimal("250"), modalidade=_POR_SESSAO)),
             dict(nome="Pedro Henrique Sá", data_nascimento=date(2001, 2, 17),
                  telefone="21977665544", data_primeira_sessao=date(2026, 8, 28),

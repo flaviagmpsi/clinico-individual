@@ -42,6 +42,8 @@
           <dd class="col-7 py-1">{{ paciente.email|default:"—" }}</dd>
           <dt class="col-5 fw-normal text-muted py-1">Endereço</dt>
           <dd class="col-7 py-1">{{ paciente.endereco|default:"—" }}</dd>
+          <dt class="col-5 fw-normal text-muted py-1">Modalidade</dt>
+          <dd class="col-7 py-1">{{ paciente.get_modalidade_display }}</dd>
           <dt class="col-5 fw-normal text-muted py-1">1ª sessão</dt>
           <dd class="col-7 py-1">{{ paciente.data_primeira_sessao|date:"d/m/Y"|default:"—" }}</dd>
         </dl>

@@ -9,16 +9,21 @@ from django import forms
 from django.core.exceptions import ValidationError
 
 from core.calendario import MAIOR_DIA_UTIL, TipoDia, descrever_dia
+from core.formularios import LimpaMascara
 from pacientes.models import Caso, CondicaoCobranca, Paciente, ResponsavelLegal
 
 _TEXTO = {"class": "form-control"}
 _NUM = {"class": "form-control", "inputmode": "numeric"}
+_CPF = {**_NUM, "data-mascara": "cpf", "placeholder": "000.000.000-00"}
+_TELEFONE = {**_NUM, "data-mascara": "telefone", "placeholder": "(31) 98888-7777"}
+_CEP = {**_NUM, "data-mascara": "cep", "data-busca-cep": "1", "placeholder": "30140-071"}
+_VALOR = {"class": "form-control", "inputmode": "numeric", "data-mascara": "valor", "placeholder": "0,00"}
 _DATA = {"class": "form-control", "type": "date"}
 _SELECT = {"class": "form-select"}
 _CHECK = {"class": "form-check-input"}
 
 
-class CondicaoCobrancaForm(forms.Form):
+class CondicaoCobrancaForm(LimpaMascara, forms.Form):
     """Valor e forma de cobrança, no mesmo cadastro do paciente — sem a palavra "caso" (ADR-026).
 
     `Form`, e não `ModelForm`, de propósito: o valor é **opcional** no cadastro (ADR-012), e o model
@@ -26,6 +31,8 @@ class CondicaoCobrancaForm(forms.Form):
     cadastro de quem ainda não combinou preço. A validação de verdade acontece no `save()` do
     serviço, que só cria a condição quando há valor.
     """
+
+    CAMPOS_DECIMAIS = ("valor",)
 
     modalidade = forms.ChoiceField(
         label="Forma de cobrança", choices=CondicaoCobranca.Modalidade.choices,
@@ -36,7 +43,7 @@ class CondicaoCobrancaForm(forms.Form):
     # forma não importa; com valor e sem forma, vale o padrão "por sessão".
     valor = forms.DecimalField(
         label="Valor", required=False, min_value=0, max_digits=10, decimal_places=2,
-        widget=forms.NumberInput(attrs={**_TEXTO, "step": "0.01", "placeholder": "0,00"}),
+        widget=forms.TextInput(attrs=_VALOR),
         help_text="Opcional. Pode ser combinado depois.")
     tipo_vencimento = forms.ChoiceField(
         label="Vence em", required=False, choices=TipoDia.choices, initial=TipoDia.DIA_FIXO,
@@ -81,12 +88,14 @@ class CondicaoCobrancaForm(forms.Form):
                 "dia_vencimento": dados.get("dia_vencimento"), "tipo_vencimento": dados.get("tipo_vencimento") or ""}
 
 
-class PagadorForm(forms.ModelForm):
+class PagadorForm(LimpaMascara, forms.ModelForm):
     """Quem paga o atendimento individual: o próprio paciente, ou outra pessoa (ADR-009).
 
     O caso comum não pede campo nenhum. Os de nome e CPF só importam quando "outra pessoa" está
     marcado — pai pagando pelo filho, empresa custeando funcionário.
     """
+
+    CAMPOS_NUMERICOS = ("pagador_cpf",)
 
     outra_pessoa = forms.BooleanField(
         label="Quem paga é outra pessoa", required=False, widget=forms.CheckboxInput(attrs=_CHECK))
@@ -96,7 +105,7 @@ class PagadorForm(forms.ModelForm):
         fields = ["pagador_nome", "pagador_cpf"]
         widgets = {
             "pagador_nome": forms.TextInput(attrs=_TEXTO),
-            "pagador_cpf": forms.TextInput(attrs={**_NUM, "placeholder": "só números"}),
+            "pagador_cpf": forms.TextInput(attrs=_CPF),
         }
 
     def __init__(self, *args, paciente: Paciente, **kwargs):
@@ -119,15 +128,17 @@ class PagadorForm(forms.ModelForm):
         return dados
 
 
-class ResponsavelLegalForm(forms.ModelForm):
+class ResponsavelLegalForm(LimpaMascara, forms.ModelForm):
+    CAMPOS_NUMERICOS = ("cpf", "telefone")
+
     class Meta:
         model = ResponsavelLegal
         fields = ["nome", "parentesco", "cpf", "telefone", "email", "guarda", "detem_guarda"]
         widgets = {
             "nome": forms.TextInput(attrs={**_TEXTO, "autofocus": True}),
             "parentesco": forms.TextInput(attrs={**_TEXTO, "placeholder": "mãe, avô, tutora"}),
-            "cpf": forms.TextInput(attrs={**_NUM, "placeholder": "só números"}),
-            "telefone": forms.TextInput(attrs={**_NUM, "placeholder": "31988887777"}),
+            "cpf": forms.TextInput(attrs=_CPF),
+            "telefone": forms.TextInput(attrs=_TELEFONE),
             "email": forms.EmailInput(attrs=_TEXTO),
             "guarda": forms.Select(attrs=_SELECT),
             "detem_guarda": forms.CheckboxInput(attrs=_CHECK),
@@ -168,19 +179,21 @@ class TrocaCobrancaForm(CondicaoCobrancaForm):
         self.fields["valor"].help_text = ""
 
 
-class PacienteForm(forms.ModelForm):
+class PacienteForm(LimpaMascara, forms.ModelForm):
+    CAMPOS_NUMERICOS = ("cpf", "telefone", "cep")
+
     class Meta:
         model = Paciente
         fields = ["nome", "cpf", "data_nascimento", "telefone", "email",
                   "cep", "logradouro", "numero", "complemento", "bairro", "cidade", "uf",
-                  "medicamento", "data_primeira_sessao", "observacoes"]
+                  "medicamento", "modalidade", "data_primeira_sessao", "observacoes"]
         widgets = {
             "nome": forms.TextInput(attrs={**_TEXTO, "autofocus": True}),
-            "cpf": forms.TextInput(attrs={**_NUM, "placeholder": "só números"}),
+            "cpf": forms.TextInput(attrs=_CPF),
             "data_nascimento": forms.DateInput(attrs=_DATA),
-            "telefone": forms.TextInput(attrs={**_NUM, "placeholder": "31988887777"}),
+            "telefone": forms.TextInput(attrs=_TELEFONE),
             "email": forms.EmailInput(attrs=_TEXTO),
-            "cep": forms.TextInput(attrs={**_NUM, "placeholder": "30140071"}),
+            "cep": forms.TextInput(attrs=_CEP),
             "logradouro": forms.TextInput(attrs=_TEXTO),
             "numero": forms.TextInput(attrs=_TEXTO),
             "complemento": forms.TextInput(attrs=_TEXTO),
@@ -189,10 +202,21 @@ class PacienteForm(forms.ModelForm):
             "uf": forms.Select(attrs={"class": "form-select"}),
             "medicamento": forms.Textarea(attrs={**_TEXTO, "rows": 2,
                 "placeholder": "O que o paciente relata usar. Deixe vazio se não houver."}),
+            "modalidade": forms.Select(attrs=_SELECT),
             "data_primeira_sessao": forms.DateInput(attrs=_DATA),
             "observacoes": forms.Textarea(attrs={**_TEXTO, "rows": 3}),
         }
         help_texts = {
             "cpf": "Opcional. Quem nasceu antes de 2018 pode não ter.",
             "medicamento": "Registro do relato do paciente — o psicólogo não prescreve.",
+            "modalidade": "Proposta a cada sessão deste paciente, e ajustável sessão a sessão (ADR-065).",
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # A modalidade tem padrão no model, e o `<select>` da tela nunca chega vazio. Exigi-la no
+        # formulário só quebraria quem grava sem passar pela tela — importação, comando, teste.
+        self.fields["modalidade"].required = False
+
+    def clean_modalidade(self):
+        return self.cleaned_data.get("modalidade") or Paciente.Modalidade.PRESENCIAL

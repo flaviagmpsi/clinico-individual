@@ -2177,6 +2177,104 @@ nunca os dois. O vencimento da mensalidade guarda o **tipo** (dia fixo ou dia ú
 **Consequências:** a IA (ADR-058) passará a preencher o mesmo rascunho. Os quatro campos do CFP, se voltarem,
 cabem como estrutura dentro do texto ou como campos da versão, sem mexer no ciclo rascunho → confirmação → correção.
 
+---
+
+## ADR-065 — Cinco situações da sessão, presença presumida e modalidade (revisa a ADR-060)
+
+**Status:** ✅ Aceita — Rodada 41 (pedidos do teste do usuário).
+
+**Decisões do usuário:**
+- **A sessão prevista é dada como confirmada.** Nada a clicar antes: o psicólogo só mexe quando o paciente
+  avisa. Continua valendo a ADR-060 — previsão é cálculo, e nenhuma sessão é gravada antes de acontecer.
+- **Cinco situações** no cadastro, no lugar das três da ADR-060, e a cobrança decorre de cada uma:
+
+  | Situação | Cobra? |
+  |---|---|
+  | **Presente** | Sim |
+  | **Faltou sem avisar** | Sim |
+  | **Cliente cancelou** | Sim, por padrão — **desmarcável na hora** |
+  | **Profissional cancelou** | Não |
+  | **Remarcada** | Não. A sessão nova é cadastrada quando acontecer |
+
+- **Modalidade da sessão:** online ou presencial. O padrão fica **nas informações do paciente** e é editável
+  em cada sessão, como a duração.
+- **Agenda:** filtro por **período** (de uma data a outra) e por **situação**, e o **percentual de online ×
+  presencial** das sessões do período.
+
+**Decisões de arquitetura:**
+- "Cliente cancelou" é a única situação com escolha de cobrança, então a consulta volta a ter um campo
+  `cobrada` — preenchido pelo padrão da situação e alterável só nesse caso. Não é o eixo independente que a
+  ADR-060 tirou: nas outras quatro situações o valor é consequência, não pergunta.
+- **Cancelamento libera o horário** para a colisão (ADR-024); presente e falta sem aviso continuam ocupando —
+  o horário foi guardado e perdido.
+- Gráfico de presença e gráfico de resultado do ano vão para a tela de **análise**, nunca para o painel
+  (ADR-027). O do ano depende de despesas (N-05), que ainda não existem.
+
+**Migração dos dados:** "falta cobrada" vira **faltou sem avisar**; "falta remarcada" vira **remarcada**.
+
+## ADR-066 — Máscara é da tela; o banco guarda número puro
+
+**Status:** ✅ Aceita — Rodada 42 (segundo teste do usuário).
+
+**Decisão:** CPF, CNPJ, telefone e CEP aparecem formatados enquanto o psicólogo digita, e o valor da cobrança
+ganha o separador de milhar e a vírgula. O CEP preenchido busca o endereço sozinho.
+
+**Decisões de arquitetura:**
+- O banco continua guardando **só dígitos**, e o valor continua `Decimal`. A máscara é apresentação: quem
+  formata é o navegador, quem limpa é `core.formularios.LimpaMascara`, antes da validação.
+- A limpeza acontece no `__init__` do formulário, **não** em `clean_<campo>`: o `max_length=11` do CPF roda
+  no `_clean_fields`, antes de qualquer `clean_` nosso, e recusaria a máscara como "longo demais".
+- A busca de CEP usa o **ViaCEP, chamado pelo navegador** do psicólogo, e leva só o CEP — nenhum dado de
+  paciente sai daqui. Se a busca falhar, o endereço continua digitável à mão; nada trava.
+- O valor é digitado **em centavos**, como em aplicativo de banco: 20000 vira `200,00`.
+
+## ADR-067 — O regime (PF ou PJ) e os dados da clínica moram no perfil
+
+**Status:** ✅ Aceita — Rodada 42.
+
+**Decisão:** o perfil guarda a identificação completa do psicólogo, o **regime** (pessoa física ou jurídica,
+com CNPJ e razão social) e os **dados da clínica**: nome, telefone e endereço.
+
+**Decisões de arquitetura:**
+- O regime não é papelada: é o eixo que decide os recursos fiscais que o sistema vai oferecer — recibo de
+  pessoa física e carnê-leão de um lado (ADR-008), documentos da empresa do outro (ADR-013). A tela diz isso.
+- **PJ sem CNPJ é recusado**, e PF **com** CNPJ também: um cadastro que parece completo e produz documento
+  errado lá na frente é pior que um erro na hora.
+- UF e validadores de CEP e telefone saíram da duplicação entre `pacientes` e `contas` para `core.enderecos`.
+- Isto entrega a maior parte da **C-11 ("Minha clínica")**. O quiz de cadastro (C-10) continua esperando a
+  P-77: o que se pergunta na criação da conta é decisão de produto, não de arquitetura.
+
+## ADR-068 — Remarcada diz para quando (revisa a ADR-065)
+
+**Status:** ✅ Aceita — Rodada 42.
+
+**Decisão:** ao marcar uma sessão como **remarcada**, o psicólogo informa a **nova data e horário**. A sessão
+remarcada guarda esse destino; a data nova aparece na agenda como **sessão a cadastrar**.
+
+**Decisões de arquitetura:**
+- A sessão nova **não é gravada** quando a remarcação é registrada: continua valendo a ADR-060 — consulta só
+  existe depois de acontecer. O que existe é uma sessão prevista extra, fora da frequência, que o psicólogo
+  confirma no dia.
+- O destino é opcional no dado (remarcação sem data combinada existe), mas a tela pergunta sempre.
+- O horário de destino **não é reservado** contra colisão enquanto não for cadastrado, pela mesma razão que a
+  sessão prevista da frequência não reserva (ADR-024): previsão não é registro.
+
+## ADR-069 — O painel é a agenda de hoje, não uma lista de pacientes (revisa a ADR-061)
+
+**Status:** ✅ Aceita — Rodada 42.
+
+**Decisão do usuário:** "achei péssimo o jeito que está o atendimentos em curso". O painel passa a mostrar
+**as sessões de hoje**, em ordem de horário, com as **pendências de cadastro dos dias anteriores logo acima**.
+
+**Decisões de arquitetura:**
+- Cada linha traz horário, paciente, modalidade, situação da sessão e os avisos que mudam o que o psicólogo
+  faz agora: pagamento em aberto e prontuário por escrever.
+- **"Dias sem sessão" sai da linha** e vira alerta: com a sessão sempre cadastrada, o número já está na
+  agenda. Ele só reaparece quando o paciente passa do intervalo da própria frequência (semanal, 14 dias;
+  quinzenal, 21) — o caso em que ninguém cadastrou nada e o atendimento pode estar morrendo em silêncio.
+- A semana continua na Agenda, a um clique. O painel responde "o que eu faço agora"; a agenda, "como está a
+  minha semana".
+
 ## Impeditivos
 
 | # | Impeditivo | Situação |

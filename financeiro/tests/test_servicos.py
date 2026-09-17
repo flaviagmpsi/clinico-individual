@@ -31,8 +31,8 @@ from pacientes.servicos import cadastrar_paciente
 MENSAL = CondicaoCobranca.Modalidade.MENSAL
 PIX = Pagamento.Forma.PIX
 REALIZADA = Consulta.Estado.REALIZADA
-FALTA_COBRADA = Consulta.Estado.FALTA_COBRADA
-FALTA_REMARCADA = Consulta.Estado.FALTA_REMARCADA
+FALTOU = Consulta.Estado.FALTOU
+REMARCADA = Consulta.Estado.REMARCADA
 
 
 def setembro(dia):
@@ -129,8 +129,8 @@ class PorSessao(BaseFinanceiro):
     def test_cada_sessao_cobrada_gera_a_sua_pendencia_e_remarcada_nao(self):
         with contexto.como(self.ana.pk):
             self.sessao(self.caso_marcos, 3)
-            self.sessao(self.caso_marcos, 4, FALTA_COBRADA)
-            self.sessao(self.caso_marcos, 5, FALTA_REMARCADA)
+            self.sessao(self.caso_marcos, 4, FALTOU)
+            self.sessao(self.caso_marcos, 5, REMARCADA)
             cobrancas = servicos.cobrancas_do_mes(2026, 9, caso=self.caso_marcos)
         self.assertEqual([(c.tipo, c.vencimento, c.devido) for c in cobrancas],
                          [(servicos.SESSAO, setembro(3), Decimal("200")), (servicos.SESSAO, setembro(4), Decimal("200"))])
@@ -197,8 +197,8 @@ class ConsultaComPagamento(BaseFinanceiro):
             with self.assertRaises(ValidationError):
                 agenda.excluir_consulta(consulta)
             with self.assertRaises(ValidationError):
-                agenda.alterar_situacao(consulta, FALTA_REMARCADA)
-            agenda.alterar_situacao(consulta, FALTA_COBRADA)  # continua cobrada: permitido
+                agenda.alterar_situacao(consulta, REMARCADA)
+            agenda.alterar_situacao(consulta, FALTOU)  # continua cobrada: permitido
 
 
 class Isolamento(BaseFinanceiro):

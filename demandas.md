@@ -20,7 +20,7 @@ correu 27 rodadas antes da primeira linha de código, de propósito.
 
 ## ⚡ Onde o código está hoje
 
-**Passos 0 a 3 concluídos: fundação, cadastro, agenda, financeiro básico, painel e prontuário escrito à mão.** Rodando, com 297 testes verdes contra PostgreSQL real.
+**Passos 0 a 3 concluídos: fundação, cadastro, agenda, financeiro básico, painel e prontuário escrito à mão.** Rodando, com 338 testes verdes contra PostgreSQL real.
 
 | App | Situação | O que existe |
 |---|---|---|
@@ -30,14 +30,15 @@ correu 27 rodadas antes da primeira linha de código, de propósito.
 | `agenda` `atendimentos` | 🟢 no ar | Frequência semanal, quinzenal ou avulso; sessões previstas calculadas; cadastro do que aconteceu (realizada, falta cobrada, falta remarcada); pendência; colisão; desfecho e retomada; grade de horários com mapa da semana. Google Agenda depois (ADR-051) |
 | `financeiro` | 🟠 parcial | Devido calculado por mês e por sessão; registro de pagamento com forma; lembrete de pendência. Faltam despesas e faturamento líquido |
 | `prontuarios` | 🟠 parcial | Texto livre com rascunho, confirmação e correção em versão nova; versão confirmada imutável até no banco; pendentes no painel. IA na etapa final (ADR-058) |
-| `indicadores` | 🟠 parcial | Painel com sessões, receita e situação de cada atendimento. Falta a tela de análise |
+| `indicadores` | 🟠 parcial | Painel com a agenda de hoje, o que ficou para trás e o resumo do mês. Falta a tela de análise |
 | `documentos` `assinaturas` | ⚪ | **Nem o app existe.** Nenhum `startapp` foi rodado |
 
 **O passo 2 está fechado. Do passo 3, a trilha de auditoria (F-05) está no ar** — cadastro e
 responsável legal já entram nela. **A construção segue do mais simples ao mais complexo, com a IA
 por último** (ADR-058): nada que dependa de IA, transcrição ou provedor entra antes de todo o resto
 estar feito e testado. **Ordem definida pelo teste do usuário (ADR-061):** financeiro básico ✅ →
-painel novo ✅ → prontuário escrito à mão ✅ → **lixeira de pacientes** (o próximo, ADR-048).
+painel novo ✅ → prontuário escrito à mão ✅ → situações da sessão e modalidade ✅ → máscaras, CEP, perfil com
+regime e clínica, remarcação com destino e painel como agenda do dia ✅ → **lixeira de pacientes** (o próximo, ADR-048).
 
 ### Antes de escrever a primeira linha, entenda a fundação
 
@@ -125,8 +126,8 @@ que só fazem sentido quando houver saída fiscal.
 | C-07 | Validação de **formato** do CRP. **Sem** consulta ao cadastro do CFP | ⚙️ | ✅ | 🟢 | ADR-044 |
 | C-08 | Campos vazios para `situacao_registro` e `verificado_em`, prontos caso a verificação volte | 🗄️ | ✅ | 🟢 | ADR-044 |
 | C-09 | CRP da empresa (PJ): campo **opcional** | 🎨🗄️ | ✅ | 🟢 | ADR-044 |
-| C-10 | **Quiz de cadastro**: as informações do psicólogo e da clínica coletadas em passos, na criação da conta | 🎨⚙️ | 🟡 | ⚪ | P-77 |
-| C-11 | Aba **"Minha clínica"**: dados do psicólogo, dados da clínica e dados da conta num lugar só | 🎨 | 🟡 | ⚪ | P-77 |
+| C-10 | **Quiz de cadastro**: as informações do psicólogo e da clínica coletadas em passos, na criação da conta | 🎨⚙️ | 🟡 | ⚪ | P-77 — o perfil já guarda os campos (ADR-067) |
+| C-11 | **Dados da clínica no perfil**: nome, telefone e endereço, com regime PF/PJ, CNPJ e razão social | 🎨🗄️ | ✅ | 🟢 | ADR-067 |
 | C-03 | Padrões do psicólogo: duração da sessão (50 min), vencimento da mensalidade, cobro falta (sim/não) | 🎨🗄️ | ✅ | 🟢 | ADR-025 |
 | C-04 | Toda tela de cadastro mostra **de onde veio** o valor herdado do perfil | 🎨 | ✅ | 🟢 | ADR-025 |
 | C-05 | Dados fiscais **opcionais** (outras rendas, INSS, dependentes, pensão), fora do onboarding | 🎨 | ✅ | ⚪ | ADR-012 |
@@ -183,8 +184,9 @@ em atendimento de casal. Ver **P-70**, resolvida em parte.
 | A-09 | Grade de horários declarada pelo psicólogo, com ocupação **derivada** — sem manutenção dupla. Fora da grade **avisa**, não bloqueia | 🎨⚙️ | ✅ | 🟢 | ADR-029, ADR-056 |
 | A-10 | Tela de horários como mapa da semana: o que está ocupado, por quem, e o que sobrou | 🎨 | ✅ | 🟢 | ADR-029 |
 | A-11 | Férias, feriados e pausas em bloco | — | ⏸️ | ⚪ | P-47 |
-| A-17 | **Filtro de período** na agenda: ver de uma data a outra, e não só a semana | 🎨⚙️ | ✅ | ⚪ | pedido do usuário |
-| A-18 | **Percentual de online × presencial** entre as sessões da agenda | 🎨⚙️ | 🟡 | ⚪ | P-79 |
+| A-17 | **Filtro de período** na agenda, com filtro por situação junto | 🎨⚙️ | ✅ | 🟢 | ADR-065 |
+| A-18 | **Percentual de online × presencial** entre as sessões da agenda | 🎨⚙️ | ✅ | 🟢 | ADR-065 |
+| A-19 | **Remarcada diz para quando**: a data nova entra na agenda esperando cadastro | 🎨⚙️🗄️ | ✅ | 🟢 | ADR-068 |
 
 ### Integração com Google Agenda — depois da agenda própria (ADR-051)
 
@@ -206,13 +208,13 @@ Exige verificação do Google, de 4 a 6 semanas, e sem ela o produto trava em 10
 
 | # | História | Camada | Estado | Código | ADR |
 |---|---|---|---|---|---|
-| T-01 | Consulta **cadastrada pelo psicólogo**, só depois de acontecer: `REALIZADA`, `FALTA_COBRADA` ou `FALTA_REMARCADA`; da frequência ou avulsa | 🎨🗄️ | ✅ | 🟢 | ADR-060 |
-| T-02 | Cobrança **deriva da situação**: realizada e falta cobrada entram; falta remarcada não | 🗄️ | ✅ | 🟢 | ADR-060 |
+| T-01 | Consulta **cadastrada pelo psicólogo**, só depois de acontecer, da frequência ou avulsa | 🎨🗄️ | ✅ | 🟢 | ADR-060 |
+| T-02 | Cobrança **deriva da situação**, e só o cancelamento do cliente aceita desmarcar | 🗄️ | ✅ | 🟢 | ADR-060, ADR-065 |
 | T-03 | ~~Presença registrada por participante~~ — consulta de casal registrada uma vez; ausência vai no prontuário | 🗄️ | ❌ | — | ADR-054 |
 | T-04 | `REALIZADA` dispara **prontuário pendente**; consulta cobrada dispara **conta a receber** | ⚙️ | ✅ | 🟠 | ADR-016, ADR-060 |
 | T-05 | Desfecho (alta, desistência, encaminhamento, interrupção), com o número de sessões derivado, não perguntado; encerra a agenda do caso e pode ser retomado | ⚙️🗄️ | ✅ | 🟢 | ADR-027, ADR-049, ADR-055 |
-| T-06 | Situações pedidas no teste: **agendada, confirmada, presente, ausente, cancelada pelo cliente, cancelada pelo profissional** — revisa as três da ADR-060 | 🎨🗄️ | 🟡 | ⚪ | P-78 |
-| T-07 | **Modalidade da sessão**: online ou presencial, com padrão vindo do paciente | 🎨🗄️ | 🟡 | ⚪ | P-79 |
+| T-06 | **Cinco situações**: presente, faltou sem avisar, cliente cancelou, profissional cancelou, remarcada — a sessão é presumida confirmada | 🎨🗄️ | ✅ | 🟢 | ADR-065 |
+| T-07 | **Modalidade da sessão**: online ou presencial, com padrão vindo do paciente | 🎨🗄️ | ✅ | 🟢 | ADR-065 |
 
 ---
 
@@ -331,9 +333,9 @@ dias sem sessão, sessões no mês e o financeiro do mês. A tela de análise (I
 
 | # | História | Camada | Estado | Código | ADR |
 |---|---|---|---|---|---|
-| I-01 | Atendimentos em curso com **situação** (regular ou precisa de atenção: pagamento vencido, sessão pendente, mais de 14/21 dias sem sessão) e **dias sem sessão** desde a última realizada | 🎨⚙️ | ✅ | 🟢 | ADR-061 |
-| I-02 | Por atendimento: sessões realizadas no mês e **"R$ pago / R$ devido"** do mês, com pendente e forma de pagamento | 🎨 | ✅ | 🟢 | ADR-061 |
-| I-03 | Pendências de ação: sessões pendentes de cadastro e pagamentos pendentes. Prontuários não escritos quando houver prontuário | 🎨 | ✅ | 🟠 | ADR-017, ADR-061 |
+| I-01 | **A agenda de hoje** no painel: horário, paciente, modalidade, situação e os avisos de pagamento em aberto e prontuário por escrever | 🎨⚙️ | ✅ | 🟢 | ADR-069 |
+| I-02 | **Sem sessão há tempo demais**: alerta quando o atendimento passa do próprio ritmo (14/21 dias). Sai a coluna "dias sem sessão" | 🎨⚙️ | ✅ | 🟢 | ADR-069 |
+| I-03 | Pendências de ação: o que ficou para trás sem cadastro vem **antes do dia**; pagamentos pendentes e prontuários por escrever | 🎨 | ✅ | 🟢 | ADR-017, ADR-061, ADR-069 |
 | I-04 | Resumo do mês: **sessões feitas × que faltam**; **receita recebida × a receber** (previsto) | 🎨 | ✅ | 🟢 | ADR-061 |
 | I-05 | Curto o bastante para caber numa tela, **sem gráfico decorativo** | 🎨 | ✅ | ⚪ | ADR-027 |
 

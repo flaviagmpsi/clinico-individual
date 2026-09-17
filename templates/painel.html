@@ -5,14 +5,90 @@
 {% block conteudo %}
 <div class="d-flex align-items-center flex-wrap gap-2 mb-3">
   <h1 class="h5 mb-0">Olá, {{ user.nome_completo.split.0 }}
-    <span class="text-muted fw-normal">· {{ mes|date:"F"|capfirst }} de {{ mes|date:"Y" }}</span></h1>
+    <span class="text-muted fw-normal">· {{ hoje|date:"l, d \d\e F"|capfirst }}</span></h1>
   <div class="ms-auto d-flex gap-2">
-    <a href="{% url 'atendimentos:agenda' %}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-calendar-week"></i> Agenda</a>
+    <a href="{% url 'atendimentos:agenda' %}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-calendar-week"></i> Agenda da semana</a>
     <a href="{% url 'financeiro:mes' %}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-cash-stack"></i> Financeiro</a>
   </div>
 </div>
 
-{% comment %}ADR-061: o resumo do mês. "A receber" é previsão, e a tela diz isso.{% endcomment %}
+{% comment %}
+ADR-069: o que passou sem cadastro vem **antes** do dia. Enquanto não for cadastrado não gera cobrança nem
+prontuário, e é a única coisa do painel que já devia ter sido feita.
+{% endcomment %}
+{% if atrasadas %}
+  <div class="alert alert-warning py-2 small">
+    <div class="fw-semibold mb-1"><i class="bi bi-exclamation-triangle"></i>
+      {{ total_atrasadas }} sess{{ total_atrasadas|pluralize:"ão,ões" }} de dias anteriores esperando cadastro</div>
+    {% for s in atrasadas %}
+      <a href="{% if s.origem %}{% url 'atendimentos:cadastrar_remarcada' s.origem.pk %}{% else %}{% url 'atendimentos:cadastrar_prevista' s.regra.pk s.data_iso %}{% endif %}"
+         class="badge text-bg-light text-decoration-none me-1">
+        {{ s.inicio|date:"d/m H:i" }} · {{ s.caso }}{% if s.origem %} · remarcada{% endif %}</a>
+    {% endfor %}
+  </div>
+{% endif %}
+
+{% comment %}A agenda de hoje: é o que o painel existe para responder (ADR-069).{% endcomment %}
+<div class="card mb-3">
+  <div class="card-header bg-white py-2 d-flex align-items-center flex-wrap gap-2">
+    <span class="fw-semibold">Hoje</span>
+    <span class="text-muted small">
+      {{ total_hoje }} sess{{ total_hoje|pluralize:"ão,ões" }}{% if online %} · {{ online }} online{% endif %}
+    </span>
+    <a href="{% url 'atendimentos:agenda' %}" class="ms-auto small text-decoration-none">ver a semana</a>
+  </div>
+  {% if itens %}
+    <div class="list-group list-group-flush">
+      {% for item in itens %}
+        <div class="list-group-item d-flex align-items-center flex-wrap py-2 small">
+          <span class="text-muted me-2" style="min-width:52px">{{ item.inicio|date:"H:i" }}</span>
+          <span class="fw-medium">{{ item.caso }}</span>
+          <span class="text-muted ms-2" title="Modalidade">
+            {% if item.online %}<i class="bi bi-camera-video"></i> online{% else %}<i class="bi bi-person"></i> presencial{% endif %}
+          </span>
+          {% if item.cadastrada %}
+            <span class="badge ms-2
+              {% if item.consulta.estado == 'REALIZADA' %}text-bg-success
+              {% elif item.consulta.estado == 'FALTOU' %}text-bg-danger
+              {% elif item.consulta.estado == 'REMARCADA' %}text-bg-info
+              {% else %}text-bg-secondary{% endif %}">{{ item.situacao }}</span>
+          {% elif item.situacao == "a cadastrar" %}
+            <span class="badge text-bg-warning ms-2">a cadastrar</span>
+          {% else %}
+            <span class="badge text-bg-light border ms-2">prevista</span>
+          {% endif %}
+
+          {% comment %}Os avisos que mudam o que fazer agora: dinheiro em aberto e prontuário por escrever.{% endcomment %}
+          {% if item.pagamento_em_aberto %}
+            <a href="{% url 'financeiro:mes' %}" class="badge text-bg-light border text-decoration-none ms-2">
+              <i class="bi bi-cash-coin"></i> pagamento em aberto</a>
+          {% endif %}
+          {% if item.prontuario_pendente %}
+            <a href="{% url 'prontuarios:lista' %}" class="badge text-bg-light border text-decoration-none ms-2">
+              <i class="bi bi-journal-medical"></i> prontuário por escrever</a>
+          {% endif %}
+
+          <span class="ms-auto">
+            {% if item.cadastrada %}
+              <a href="{% url 'atendimentos:editar' item.consulta.pk %}" class="text-decoration-none">corrigir</a>
+            {% elif item.espera.origem %}
+              <a href="{% url 'atendimentos:cadastrar_remarcada' item.espera.origem.pk %}" class="text-decoration-none">cadastrar</a>
+            {% else %}
+              <a href="{% url 'atendimentos:cadastrar_prevista' item.espera.regra.pk item.espera.data_iso %}" class="text-decoration-none">cadastrar</a>
+            {% endif %}
+          </span>
+        </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="card-body text-center text-muted py-4">
+      Nenhuma sessão hoje.
+      <a href="{% url 'atendimentos:nova' %}" class="text-decoration-none">Cadastrar consulta avulsa</a>.
+    </div>
+  {% endif %}
+</div>
+
+{% comment %}ADR-061 e ADR-069: o resumo do mês. "A receber" é previsão, e a tela diz isso.{% endcomment %}
 <div class="row g-3 mb-3">
   <div class="col-6 col-lg-3"><div class="card h-100"><div class="card-body py-3">
     <div class="rotulo">Sessões no mês</div>
@@ -34,7 +110,7 @@
   <div class="col-6 col-lg-3"><div class="card h-100"><div class="card-body py-3">
     <div class="rotulo">Pendências</div>
     <div class="small mt-1"><a href="{% url 'atendimentos:agenda' %}" class="text-decoration-none">
-      <strong>{{ total_pendentes }}</strong> sess{{ total_pendentes|pluralize:"ão,ões" }} para cadastrar</a></div>
+      <strong>{{ total_atrasadas }}</strong> sess{{ total_atrasadas|pluralize:"ão,ões" }} para cadastrar</a></div>
     <div class="small"><a href="{% url 'financeiro:mes' %}" class="text-decoration-none">
       <strong>{{ total_pagamentos_pendentes }}</strong> pagamento{{ total_pagamentos_pendentes|pluralize }} pendente{{ total_pagamentos_pendentes|pluralize }}</a></div>
     <div class="small"><a href="{% url 'prontuarios:lista' %}" class="text-decoration-none">
@@ -42,66 +118,24 @@
   </div></div></div>
 </div>
 
-<div class="card mb-3">
-  <div class="card-header bg-white py-2 d-flex align-items-center">
-    <span class="fw-semibold">Atendimentos em curso</span>
-    <a href="{% url 'pacientes:lista' %}" class="ms-auto small text-decoration-none">ver pacientes</a>
-  </div>
-  {% if linhas %}
-  <div class="table-responsive">
-    <table class="table table-sm align-middle mb-0 small">
-      <thead class="table-light">
-        <tr><th>Paciente</th><th>Situação</th><th>Dias sem sessão</th><th>Sessões no mês</th><th>Pago / devido no mês</th></tr>
-      </thead>
-      <tbody>
-      {% for l in linhas %}
-        <tr>
-          <td><a href="{% url 'pacientes:caso' l.caso.pk %}" class="text-decoration-none fw-medium">{{ l.caso }}</a></td>
-          <td>
-            {% if l.atencao %}
-              <span class="badge text-bg-warning">Precisa de atenção</span>
-              <div class="text-muted">{{ l.motivos|join:" · " }}</div>
-            {% else %}
-              <span class="badge text-bg-success">Regular</span>
-            {% endif %}
-          </td>
-          <td>{% if l.dias_sem_sessao is None %}<span class="text-muted">sem sessão ainda</span>{% else %}{{ l.dias_sem_sessao }}{% endif %}</td>
-          <td>{{ l.sessoes_no_mes }}</td>
-          <td class="text-nowrap">
-            {% if l.situacao_financeira == "sem cobrança" %}
-              <span class="text-muted">—</span>
-            {% else %}
-              R$ {{ l.pago|floatformat:2 }} / R$ {{ l.devido|floatformat:2 }}
-              <div class="{% if l.situacao_financeira == 'pendente' %}text-danger{% else %}text-muted{% endif %}">
-                {{ l.situacao_financeira }}{% if l.formas %} · {{ l.formas|join:", " }}{% endif %}</div>
-            {% endif %}
-          </td>
-        </tr>
-      {% endfor %}
-      </tbody>
-    </table>
-  </div>
-  {% else %}
-    <div class="card-body text-center text-muted py-4">
-      Nenhum atendimento em curso. <a href="{% url 'pacientes:novo' %}" class="text-decoration-none">Cadastrar paciente</a>.
-    </div>
-  {% endif %}
-</div>
-
 <div class="row g-3">
-  {% comment %}ADR-052 e ADR-060: sessão que passou sem cadastro. Só o psicólogo sabe se aconteceu.{% endcomment %}
-  {% if sessoes_pendentes %}
+  {% comment %}
+  ADR-069: "dias sem sessão" saiu da lista de pacientes e virou alerta. Só aparece quando o atendimento passa
+  do próprio ritmo — semanal, 14 dias; quinzenal, 21 —, que é quando ninguém cadastrou nada e ele pode estar
+  morrendo em silêncio.
+  {% endcomment %}
+  {% if alertas %}
   <div class="col-lg-6">
     <div class="card h-100 border-warning-subtle">
       <div class="card-header bg-white py-2 d-flex align-items-center">
-        <span class="fw-semibold">Sessões pendentes de cadastro</span>
-        <span class="badge text-bg-warning ms-2">{{ total_pendentes }}</span>
-        <a href="{% url 'atendimentos:agenda' %}" class="ms-auto small text-decoration-none">abrir agenda</a>
+        <span class="fw-semibold">Sem sessão há tempo demais</span>
+        <span class="badge text-bg-warning ms-2">{{ total_alertas }}</span>
+        <a href="{% url 'pacientes:lista' %}" class="ms-auto small text-decoration-none">ver pacientes</a>
       </div>
       <ul class="list-unstyled mb-0 card-body py-2 small">
-      {% for s in sessoes_pendentes %}
-        <li class="py-1"><a href="{% url 'atendimentos:cadastrar_prevista' s.regra.pk s.data_iso %}" class="text-decoration-none">
-          {{ s.inicio|date:"d/m H:i" }} · {{ s.caso }}</a></li>
+      {% for a in alertas %}
+        <li class="py-1"><a href="{% url 'pacientes:caso' a.caso.pk %}" class="text-decoration-none">{{ a.caso }}</a>
+          <span class="text-muted">· {{ a.dias }} dias · frequência {{ a.frequencia|lower }}</span></li>
       {% endfor %}
       </ul>
     </div>

@@ -72,6 +72,33 @@ class Perfil(BaseConta):
         self.ana.refresh_from_db()
         self.assertEqual(self.ana.nome_completo, "Ana Ribeiro Souza")
 
+    def test_pessoa_juridica_sem_cnpj_e_recusada(self):
+        """ADR-067: o regime decide os recursos fiscais adiante. PJ sem CNPJ deixaria a escolha no ar."""
+        self.client.login(username=self.ana.email, password=SENHA)
+        resposta = self.client.post(reverse("contas:perfil"), {
+            "nome_completo": "Ana", "email": self.ana.email, "cpf": "11111111111",
+            "telefone": "31999990000", "crp_regiao": "04", "crp_numero": "303030",
+            "regime": "PJ", "cnpj": "", "crp_empresa": "",
+            "duracao_sessao": "50", "tipo_vencimento_mensalidade": "DIA_FIXO", "dia_vencimento_mensalidade": "10"})
+        self.assertContains(resposta, "precisa do CNPJ")
+
+    def test_dados_da_clinica_gravam_com_a_mascara_que_a_tela_manda(self):
+        """ADR-066: o navegador manda formatado; o banco guarda número puro."""
+        self.client.login(username=self.ana.email, password=SENHA)
+        self.client.post(reverse("contas:perfil"), {
+            "nome_completo": "Ana", "email": self.ana.email, "cpf": "111.111.111-11",
+            "telefone": "(31) 99999-0000", "crp_regiao": "04", "crp_numero": "303030",
+            "regime": "PJ", "cnpj": "11.222.333/0001-81", "razao_social": "Ana Ribeiro Psicologia Ltda",
+            "crp_empresa": "", "nome_clinica": "Consultório da Ana", "telefone_clinica": "(31) 3333-4444",
+            "cep": "30140-071", "logradouro": "Rua da Bahia", "numero": "1200", "complemento": "sala 5",
+            "bairro": "Lourdes", "cidade": "Belo Horizonte", "uf": "MG",
+            "duracao_sessao": "50", "tipo_vencimento_mensalidade": "DIA_FIXO", "dia_vencimento_mensalidade": "10"})
+        self.ana.refresh_from_db()
+        self.assertEqual(
+            (self.ana.cpf, self.ana.telefone, self.ana.cnpj, self.ana.cep, self.ana.telefone_clinica),
+            ("11111111111", "31999990000", "11222333000181", "30140071", "3133334444"))
+        self.assertEqual((self.ana.nome_clinica, self.ana.cidade), ("Consultório da Ana", "Belo Horizonte"))
+
     def test_pessoa_fisica_com_cnpj_e_recusado(self):
         self.client.login(username=self.ana.email, password=SENHA)
         resposta = self.client.post(reverse("contas:perfil"), {

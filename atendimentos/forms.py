@@ -8,7 +8,7 @@ from django.utils import timezone
 from agenda.models import Recorrencia
 from atendimentos.models import DURACAO_MAXIMA, Consulta, Desfecho
 from atendimentos.servicos import AVULSO
-from pacientes.models import Caso
+from pacientes.models import Caso, Paciente
 
 _TEXTO = {"class": "form-control"}
 _SELECT = {"class": "form-select"}
@@ -18,8 +18,54 @@ _RADIO = {"class": "form-check-input"}
 def _campo_situacao() -> forms.ChoiceField:
     return forms.ChoiceField(
         label="O que aconteceu", choices=Consulta.Estado.choices, widget=forms.RadioSelect(attrs=_RADIO),
-        help_text="Realizada é sempre cobrada. Falta remarcada não é cobrada: cadastre a sessão nova quando ela "
-                  "acontecer (ADR-060).")
+        help_text="Presente e falta sem aviso cobram; cancelamento pelo profissional e remarcação não. Na "
+                  "remarcada, cadastre a sessão nova quando ela acontecer (ADR-065).")
+
+
+def _campo_cobrar() -> forms.BooleanField:
+    return forms.BooleanField(
+        label="Cobrar esta sessão", required=False, initial=True,
+        widget=forms.CheckboxInput(attrs={"class": "form-check-input"}),
+        help_text="Só tem efeito quando o cliente cancelou — nas outras situações a cobrança vem da situação.")
+
+
+def _campo_modalidade() -> forms.ChoiceField:
+    return forms.ChoiceField(
+        label="Modalidade", choices=Paciente.Modalidade.choices, required=False,
+        widget=forms.Select(attrs=_SELECT),
+        help_text="Vem do padrão do paciente; mude se esta sessão foi diferente.")
+
+
+class _Remarcacao(forms.Form):
+    """Para quando a sessão foi remarcada (ADR-068).
+
+    Os dois campos são opcionais no dado — remarcação sem data combinada existe —, mas andam juntos: dia sem
+    horário não coloca nada na agenda. A data nova **não** cria consulta: cria a espera que o psicólogo
+    confirma quando a sessão acontecer (ADR-060).
+    """
+
+    nova_data = forms.DateField(
+        label="Remarcada para o dia", required=False,
+        widget=forms.DateInput(attrs={**_TEXTO, "type": "date"}, format="%Y-%m-%d"),
+        help_text="Só para remarcada. A sessão nova entra na agenda para você cadastrar quando acontecer.")
+    nova_hora = forms.TimeField(
+        label="às", required=False,
+        widget=forms.TimeInput(attrs={**_TEXTO, "type": "time"}, format="%H:%M"))
+
+    def clean(self):
+        dados = super().clean()
+        if dados.get("estado") != Consulta.Estado.REMARCADA:
+            dados["nova_data"] = dados["nova_hora"] = None
+        elif bool(dados.get("nova_data")) != bool(dados.get("nova_hora")):
+            self.add_error("nova_hora" if dados.get("nova_data") else "nova_data",
+                           "Informe o dia e o horário da sessão remarcada, ou deixe os dois vazios.")
+        return dados
+
+    def remarcada_para(self) -> datetime | None:
+        dados = self.cleaned_data
+        if not (dados.get("nova_data") and dados.get("nova_hora")):
+            return None
+        return timezone.make_aware(datetime.combine(dados["nova_data"], dados["nova_hora"]))
 
 
 class _HoraEDuracao(forms.Form):
@@ -29,23 +75,28 @@ class _HoraEDuracao(forms.Form):
         widget=forms.NumberInput(attrs={**_TEXTO, "step": 5}))
 
 
-class CadastroPrevistaForm(_HoraEDuracao):
+class CadastroPrevistaForm(_Remarcacao, _HoraEDuracao):
     """Cadastrar uma sessão da frequência. A data é a da sessão prevista e não se escolhe aqui."""
 
     estado = _campo_situacao()
+    cobrar = _campo_cobrar()
+    modalidade = _campo_modalidade()
 
-    field_order = ["estado", "hora", "duracao"]
+    field_order = ["estado", "cobrar", "modalidade", "hora", "duracao", "nova_data", "nova_hora"]
 
 
-class CadastroAvulsaForm(_HoraEDuracao):
+class CadastroAvulsaForm(_Remarcacao, _HoraEDuracao):
     # `objetos_todos.none()` na declaração: o atributo de classe é avaliado na importação, fora de
     # requisição, e o `TenantManager` levantaria `EscopoNaoDefinido`. O queryset real vem no `__init__`.
     caso = forms.ModelChoiceField(
         label="Paciente ou atendimento", queryset=Caso.objetos_todos.none(), widget=forms.Select(attrs=_SELECT))
     estado = _campo_situacao()
+    cobrar = _campo_cobrar()
+    modalidade = _campo_modalidade()
     data = forms.DateField(label="Data", widget=forms.DateInput(attrs={**_TEXTO, "type": "date"}, format="%Y-%m-%d"))
 
-    field_order = ["caso", "estado", "data", "hora", "duracao"]
+    field_order = ["caso", "estado", "cobrar", "modalidade", "data", "hora", "duracao",
+                   "nova_data", "nova_hora"]
 
     def __init__(self, *args, duracao_padrao: int, **kwargs):
         super().__init__(*args, **kwargs)
@@ -58,10 +109,14 @@ class CadastroAvulsaForm(_HoraEDuracao):
         return timezone.make_aware(datetime.combine(self.cleaned_data["data"], self.cleaned_data["hora"]))
 
 
-class SituacaoForm(forms.Form):
-    """Corrigir a situação de uma consulta já cadastrada."""
+class SituacaoForm(_Remarcacao):
+    """Corrigir a situação, a cobrança, a modalidade e o destino da remarcação de uma consulta cadastrada."""
 
     estado = _campo_situacao()
+    cobrar = _campo_cobrar()
+    modalidade = _campo_modalidade()
+
+    field_order = ["estado", "cobrar", "modalidade", "nova_data", "nova_hora"]
 
 
 class FrequenciaForm(forms.Form):

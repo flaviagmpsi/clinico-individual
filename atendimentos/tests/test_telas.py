@@ -8,6 +8,7 @@ passar pelo manager do dono passaria em todos os testes de serviço e vazaria aq
 que se prende à transação.
 """
 
+import re
 from datetime import datetime, time, timedelta
 
 from django.db import connection, transaction
@@ -30,8 +31,11 @@ QUINZENAL = Recorrencia.Frequencia.QUINZENAL
 TERCA = Recorrencia.DiaSemana.TERCA
 QUINTA = Recorrencia.DiaSemana.QUINTA
 REALIZADA = Consulta.Estado.REALIZADA
-FALTA_COBRADA = Consulta.Estado.FALTA_COBRADA
-FALTA_REMARCADA = Consulta.Estado.FALTA_REMARCADA
+FALTOU = Consulta.Estado.FALTOU
+REMARCADA = Consulta.Estado.REMARCADA
+CANCELADA_CLIENTE = Consulta.Estado.CANCELADA_CLIENTE
+ONLINE = Paciente.Modalidade.ONLINE
+PRESENCIAL = Paciente.Modalidade.PRESENCIAL
 
 
 def momento(dia, hora, minuto=0):
@@ -129,7 +133,7 @@ class NaoAtravessaAFronteira(BaseTelasAgenda):
         self.entrar(self.ana)
         editar = reverse("atendimentos:editar", args=[self.consulta_do_bruno.pk])
         excluir = reverse("atendimentos:excluir", args=[self.consulta_do_bruno.pk])
-        self.assertEqual(self.client.post(editar, {"estado": FALTA_REMARCADA}).status_code, 404)
+        self.assertEqual(self.client.post(editar, {"estado": REMARCADA}).status_code, 404)
         self.assertEqual(self.client.post(excluir).status_code, 404)
         self.assertEqual(Consulta.objetos_todos.get(pk=self.consulta_do_bruno.pk).estado, REALIZADA)
 
@@ -168,10 +172,10 @@ class CadastroPelaTela(BaseTelasAgenda):
         self.entrar(self.ana)
         self.assertContains(self.client.get(self.semana_de(self.ontem)), "pendente")
         resposta = self.client.post(self.prevista_de_ontem(self.regra_joao),
-                                    {"estado": FALTA_COBRADA, "hora": "09:00", "duracao": "50"})
+                                    {"estado": FALTOU, "hora": "09:00", "duracao": "50"})
         self.assertEqual(resposta.status_code, 302)
         consulta = Consulta.objetos_todos.get(recorrencia=self.regra_joao, data_prevista=self.ontem)
-        self.assertEqual(consulta.estado, FALTA_COBRADA)
+        self.assertEqual(consulta.estado, FALTOU)
         with contexto.como(self.ana.pk):
             self.assertNotIn(self.ontem, [s.data for s in servicos.sessoes_pendentes(caso=self.caso_joao)])
 
@@ -219,9 +223,9 @@ class CadastroPelaTela(BaseTelasAgenda):
         with contexto.como(self.ana.pk):
             consulta = servicos.cadastrar_avulsa(self.caso_joao, estado=REALIZADA, inicio=momento(self.ontem, 16))
         self.entrar(self.ana)
-        resposta = self.client.post(reverse("atendimentos:editar", args=[consulta.pk]), {"estado": FALTA_REMARCADA})
+        resposta = self.client.post(reverse("atendimentos:editar", args=[consulta.pk]), {"estado": REMARCADA})
         self.assertEqual(resposta.status_code, 302)
-        self.assertEqual(Consulta.objetos_todos.get(pk=consulta.pk).estado, FALTA_REMARCADA)
+        self.assertEqual(Consulta.objetos_todos.get(pk=consulta.pk).estado, REMARCADA)
 
     def test_excluir_o_cadastro_devolve_a_pendencia(self):
         with contexto.como(self.ana.pk):
@@ -242,9 +246,12 @@ class CadastroPelaTela(BaseTelasAgenda):
         self.assertEqual(Recorrencia.objetos_todos.get(caso=self.caso_joao, fim__isnull=True).frequencia, QUINZENAL)
         self.assertContains(self.client.get(self.semana_de(quinta)), "João Agenda")
 
-    def test_painel_mostra_as_sessoes_pendentes(self):
+    def test_painel_mostra_o_que_ficou_para_tras(self):
+        """ADR-069: a pendência de cadastro vem antes do dia, no painel."""
         self.entrar(self.ana)
-        self.assertContains(self.client.get(reverse("painel")), "Sessões pendentes de cadastro")
+        resposta = self.client.get(reverse("painel"))
+        self.assertContains(resposta, "esperando cadastro")
+        self.assertContains(resposta, "João Agenda")
 
     def test_a_ficha_do_paciente_mostra_a_frequencia(self):
         self.entrar(self.ana)
@@ -327,6 +334,137 @@ class GradePelaTela(BaseTelasAgenda):
             "caso": self.caso_joao.pk, "estado": REALIZADA, "data": f"{self.ontem:%Y-%m-%d}",
             "hora": "10:00", "duracao": "50"}, follow=True)
         self.assertNotContains(resposta, "fora da sua grade")
+
+
+
+class FiltroDaAgenda(BaseTelasAgenda):
+    """ADR-065: ver o período que se quer, filtrar por situação e saber quanto é online."""
+
+    def setUp(self):
+        super().setUp()
+        # Três dias atrás: nenhuma frequência prevê nada nesse dia, então só aparece o que este teste cadastrar.
+        self.dia = self.hoje - timedelta(days=3)
+        with contexto.como(self.ana.pk):
+            servicos.cadastrar_avulsa(self.caso_joao, estado=REALIZADA, modalidade=ONLINE,
+                                      inicio=momento(self.dia, 8))
+            servicos.cadastrar_avulsa(self.caso_maria, estado=FALTOU, modalidade=PRESENCIAL,
+                                      inicio=momento(self.dia, 12))
+
+    def periodo(self, de, ate, situacao=""):
+        return f"{reverse('atendimentos:agenda')}?de={de:%Y-%m-%d}&ate={ate:%Y-%m-%d}&situacao={situacao}"
+
+    def total(self, resposta):
+        """O contador da tela. Lido do HTML porque o número vem dentro do `<strong>`, e não solto no texto."""
+        return int(re.search(r'text-body">(\d+)</strong> sess', resposta.content.decode()).group(1))
+
+    def test_mostra_o_periodo_pedido_com_a_proporcao_de_online(self):
+        self.entrar(self.ana)
+        resposta = self.client.get(self.periodo(self.dia, self.dia))
+        self.assertEqual(self.total(resposta), 2)
+        self.assertContains(resposta, "1 online (50%)")
+        self.assertContains(resposta, "Maria Agenda")
+
+    def test_dia_vizinho_nao_traz_as_sessoes_do_periodo(self):
+        self.entrar(self.ana)
+        vespera = self.dia - timedelta(days=1)
+        self.assertEqual(self.total(self.client.get(self.periodo(vespera, vespera))), 0)
+
+    def test_filtra_por_situacao(self):
+        self.entrar(self.ana)
+        resposta = self.client.get(self.periodo(self.dia, self.dia, situacao=FALTOU))
+        self.assertEqual(self.total(resposta), 1)
+        self.assertContains(resposta, "Maria Agenda")
+
+    def test_previstas_e_cadastradas_nao_se_misturam_no_filtro(self):
+        self.entrar(self.ana)
+        self.assertEqual(self.total(self.client.get(self.periodo(self.dia, self.dia, situacao="PREVISTA"))), 0)
+        self.assertContains(self.client.get(self.periodo(self.terca, self.terca, situacao="PREVISTA")),
+                            "Maria Agenda")
+
+    def test_periodo_invertido_cai_na_semana_de_hoje(self):
+        self.entrar(self.ana)
+        resposta = self.client.get(self.periodo(self.dia, self.dia - timedelta(days=5)))
+        self.assertContains(resposta, f"{self.hoje - timedelta(days=self.hoje.weekday()):%d/%m/%Y}")
+
+
+class CobrancaEModalidadePelaTela(BaseTelasAgenda):
+    def test_cliente_cancelou_sem_marcar_cobrar_nao_cobra_e_a_modalidade_vai_junto(self):
+        self.entrar(self.ana)
+        resposta = self.client.post(reverse("atendimentos:nova"), {
+            "caso": self.caso_joao.pk, "estado": CANCELADA_CLIENTE, "data": f"{self.ontem:%Y-%m-%d}",
+            "hora": "17:00", "duracao": "50", "modalidade": ONLINE})
+        self.assertEqual(resposta.status_code, 302)
+        consulta = Consulta.objetos_todos.get(caso=self.caso_joao)
+        self.assertEqual((consulta.cobrada, consulta.modalidade), (False, ONLINE))
+
+    def test_corrigir_para_cobrar_o_cancelamento(self):
+        with contexto.como(self.ana.pk):
+            consulta = servicos.cadastrar_avulsa(self.caso_joao, estado=CANCELADA_CLIENTE, cobrada=False,
+                                                 inicio=momento(self.ontem, 18))
+        self.entrar(self.ana)
+        resposta = self.client.post(reverse("atendimentos:editar", args=[consulta.pk]),
+                                    {"estado": CANCELADA_CLIENTE, "cobrar": "on"})
+        self.assertEqual(resposta.status_code, 302)
+        consulta.refresh_from_db()
+        self.assertEqual((consulta.cobrada, consulta.modalidade), (True, PRESENCIAL))
+
+class RemarcacaoPelaTela(BaseTelasAgenda):
+    """ADR-068: marcar "remarcada" pergunta para quando, e a data nova vira sessão a cadastrar."""
+
+    def editar(self, consulta):
+        return reverse("atendimentos:editar", args=[consulta.pk])
+
+    def remarcar_pela_tela(self, consulta, dia, hora="15:00"):
+        return self.client.post(self.editar(consulta), {
+            "estado": REMARCADA, "nova_data": f"{dia:%Y-%m-%d}", "nova_hora": hora})
+
+    def consulta_de_ontem(self):
+        with contexto.como(self.ana.pk):
+            return servicos.cadastrar_avulsa(self.caso_joao, estado=REALIZADA, inicio=momento(self.ontem, 16))
+
+    def test_remarcar_guarda_a_data_nova_e_a_agenda_espera_a_sessao(self):
+        consulta = self.consulta_de_ontem()
+        self.entrar(self.ana)
+        destino = self.hoje + timedelta(days=1)
+        self.assertEqual(self.remarcar_pela_tela(consulta, destino).status_code, 302)
+        consulta.refresh_from_db()
+        self.assertEqual(timezone.localtime(consulta.remarcada_para).date(), destino)
+
+        resposta = self.client.get(f"{reverse('atendimentos:agenda')}?de={destino:%Y-%m-%d}&ate={destino:%Y-%m-%d}")
+        self.assertContains(resposta, "remarcada de")
+        self.assertContains(resposta, reverse("atendimentos:cadastrar_remarcada", args=[consulta.pk]))
+
+    def test_dia_sem_horario_volta_explicando(self):
+        consulta = self.consulta_de_ontem()
+        self.entrar(self.ana)
+        resposta = self.client.post(self.editar(consulta), {
+            "estado": REMARCADA, "nova_data": f"{self.hoje + timedelta(days=1):%Y-%m-%d}", "nova_hora": ""})
+        self.assertEqual(resposta.status_code, 200)
+        self.assertContains(resposta, "Informe o dia e o horário")
+        consulta.refresh_from_db()
+        self.assertIsNone(consulta.remarcada_para)
+
+    def test_cadastrar_a_sessao_remarcada_ja_vem_preenchida(self):
+        consulta = self.consulta_de_ontem()
+        self.entrar(self.ana)
+        self.remarcar_pela_tela(consulta, self.ontem, hora="18:00")  # destino no passado: cadastrável hoje
+        rota = reverse("atendimentos:cadastrar_remarcada", args=[consulta.pk])
+        self.assertContains(self.client.get(rota), "Sessão remarcada de")
+
+        resposta = self.client.post(rota, {
+            "caso": self.caso_joao.pk, "estado": REALIZADA, "data": f"{self.ontem:%Y-%m-%d}",
+            "hora": "18:00", "duracao": "50"})
+        self.assertEqual(resposta.status_code, 302)
+        nova = Consulta.objetos_todos.get(caso=self.caso_joao, inicio=momento(self.ontem, 18))
+        self.assertEqual(nova.estado, REALIZADA)
+
+    def test_remarcada_de_outro_psicologo_da_404(self):
+        with contexto.como(self.bruno.pk):
+            servicos.alterar_situacao(self.consulta_do_bruno, REMARCADA,
+                                      remarcada_para=momento(self.hoje + timedelta(days=1), 11))
+        self.entrar(self.ana)
+        rota = reverse("atendimentos:cadastrar_remarcada", args=[self.consulta_do_bruno.pk])
+        self.assertEqual(self.client.get(rota).status_code, 404)
 
 
 class RLSNaAgenda(TransactionTestCase):

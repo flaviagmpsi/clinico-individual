@@ -8,10 +8,17 @@
   <a href="{% url 'atendimentos:agenda' %}" class="btn btn-sm btn-outline-secondary ms-auto">Cancelar</a>
 </div>
 
+{% if origem %}
+  <div class="alert alert-info py-2 small" style="max-width:640px">
+    Sessão remarcada de <strong>{{ origem.inicio|date:"d/m/Y H:i" }}</strong>, de {{ origem.caso }}.
+    Confirme o que aconteceu neste novo horário.
+  </div>
+{% endif %}
+
 {% if prevista %}
   <div class="alert alert-light border py-2 small" style="max-width:640px">
-    Sessão prevista pela frequência ({{ prevista.regra }}). Se ela aconteceu em <strong>outro dia</strong>, marque
-    <strong>falta remarcada</strong> aqui e cadastre a sessão nova como avulsa quando ela acontecer.
+    Sessão prevista pela frequência ({{ prevista.regra }}). Se ela foi para <strong>outro dia</strong>, marque
+    <strong>remarcada</strong> e informe a data nova: ela entra na agenda esperando o cadastro.
   </div>
 {% endif %}
 
@@ -24,10 +31,22 @@
     <div class="card-body">
       {% if form.caso %}<div class="mb-3">{% include "components/_campo.html" with campo=form.caso %}</div>{% endif %}
       {% include "atendimentos/_situacao.html" with campo=form.estado %}
+      <div class="form-check mt-2">
+        {{ form.cobrar }}
+        <label class="form-check-label" for="{{ form.cobrar.id_for_label }}">{{ form.cobrar.label }}</label>
+        <div class="form-text small">{{ form.cobrar.help_text }}</div>
+      </div>
       <div class="row g-3 mt-1">
+        <div class="col-md-4">{% include "components/_campo.html" with campo=form.modalidade %}</div>
         {% if form.data %}<div class="col-md-4">{% include "components/_campo.html" with campo=form.data %}</div>{% endif %}
         <div class="col-md-4">{% include "components/_campo.html" with campo=form.hora %}</div>
         <div class="col-md-4">{% include "components/_campo.html" with campo=form.duracao %}</div>
+      </div>
+      {% comment %}ADR-068: a remarcada diz para quando foi. A sessão nova não é gravada agora — ela entra na
+      agenda esperando o cadastro, no dia em que acontecer.{% endcomment %}
+      <div class="row g-3 mt-1 border-top pt-3">
+        <div class="col-md-5">{% include "components/_campo.html" with campo=form.nova_data %}</div>
+        <div class="col-md-3">{% include "components/_campo.html" with campo=form.nova_hora %}</div>
       </div>
     </div>
   </div>

@@ -73,5 +73,95 @@ importa é a tela existir e não mentir, não o CSS ser autoral.
 </main>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+{% comment %}
+Máscaras e busca de CEP. O servidor tira a máscara antes de validar (core/formularios.py), então a tela
+pode formatar à vontade sem mudar o que é gravado.
+
+A consulta de CEP sai do navegador do psicólogo e leva **só o CEP** — nenhum dado do paciente vai ao ViaCEP.
+Se a busca falhar, o endereço continua digitável à mão; nada trava.
+{% endcomment %}
+<script>
+(function () {
+  const digitos = (valor) => (valor || '').replace(/\D/g, '');
+
+  const mascaras = {
+    cpf(valor) {
+      const d = digitos(valor).slice(0, 11);
+      let saida = d.slice(0, 3);
+      if (d.length > 3) saida += '.' + d.slice(3, 6);
+      if (d.length > 6) saida += '.' + d.slice(6, 9);
+      if (d.length > 9) saida += '-' + d.slice(9);
+      return saida;
+    },
+    cnpj(valor) {
+      const d = digitos(valor).slice(0, 14);
+      let saida = d.slice(0, 2);
+      if (d.length > 2) saida += '.' + d.slice(2, 5);
+      if (d.length > 5) saida += '.' + d.slice(5, 8);
+      if (d.length > 8) saida += '/' + d.slice(8, 12);
+      if (d.length > 12) saida += '-' + d.slice(12);
+      return saida;
+    },
+    cep(valor) {
+      const d = digitos(valor).slice(0, 8);
+      return d.length > 5 ? d.slice(0, 5) + '-' + d.slice(5) : d;
+    },
+    telefone(valor) {
+      const d = digitos(valor).slice(0, 11);
+      if (!d) return '';
+      const fim = d.length > 10 ? 7 : 6;
+      let saida = '(' + d.slice(0, 2);
+      if (d.length > 2) saida += ') ' + d.slice(2, fim);
+      if (d.length > fim) saida += '-' + d.slice(fim);
+      return saida;
+    },
+    // Centavos primeiro, como em aplicativo de banco: digitar 20000 mostra 200,00.
+    valor(entrada) {
+      const d = digitos(entrada).slice(0, 12).replace(/^0+(?=\d{3})/, '');
+      if (!d) return '';
+      const centavos = d.padStart(3, '0');
+      const inteiro = centavos.slice(0, -2).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+      return inteiro + ',' + centavos.slice(-2);
+    },
+  };
+
+  function aplicar(campo) {
+    const mascara = mascaras[campo.dataset.mascara];
+    if (mascara) campo.value = mascara(campo.value);
+  }
+
+  document.querySelectorAll('[data-mascara]').forEach((campo) => {
+    aplicar(campo);
+    campo.addEventListener('input', () => aplicar(campo));
+  });
+
+  // CEP preenche o endereço (ViaCEP). Preenche o que veio vazio e o que a busca souber melhor;
+  // número e complemento são sempre do psicólogo.
+  document.querySelectorAll('[data-busca-cep]').forEach((campo) => {
+    const formulario = campo.form;
+    if (!formulario) return;
+    campo.addEventListener('blur', async () => {
+      const cep = digitos(campo.value);
+      if (cep.length !== 8) return;
+      try {
+        const resposta = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
+        const endereco = await resposta.json();
+        if (endereco.erro) return;
+        const preencher = { logradouro: endereco.logradouro, bairro: endereco.bairro,
+                            cidade: endereco.localidade, uf: endereco.uf };
+        for (const [nome, valor] of Object.entries(preencher)) {
+          const destino = formulario.elements[nome];
+          if (destino && valor) destino.value = valor;
+        }
+        const numero = formulario.elements['numero'];
+        if (numero && !numero.value) numero.focus();
+      } catch (erro) {
+        /* Sem internet ou ViaCEP fora do ar: o endereço continua digitável à mão. */
+      }
+    });
+  });
+})();
+</script>
 </body>
 </html>

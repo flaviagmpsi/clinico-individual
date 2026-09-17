@@ -41,7 +41,7 @@ class BaseTelasProntuario(TransactionTestCase):
             self.marcos = Paciente(nome="Marcos Tela")
             caso = cadastrar_paciente(self.marcos)
             self.sessao = agenda.cadastrar_avulsa(caso, estado=REALIZADA, inicio=momento(3))
-            self.falta = agenda.cadastrar_avulsa(caso, estado=Consulta.Estado.FALTA_COBRADA, inicio=momento(4))
+            self.falta = agenda.cadastrar_avulsa(caso, estado=Consulta.Estado.FALTOU, inicio=momento(4))
         with contexto.como(self.bruno.pk):
             self.carla = Paciente(nome="Carla Tela")
             caso_carla = cadastrar_paciente(self.carla)

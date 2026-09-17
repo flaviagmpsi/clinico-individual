@@ -24,7 +24,6 @@ from pacientes.models import Caso, CondicaoCobranca
 MENSALIDADE = "MENSALIDADE"
 SESSAO = "SESSAO"
 
-_COBRADAS = [Consulta.Estado.REALIZADA, Consulta.Estado.FALTA_COBRADA]
 _MESES = ["janeiro", "fevereiro", "março", "abril", "maio", "junho",
           "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"]
 _DESDE_SEMPRE = date(2000, 1, 1)
@@ -126,7 +125,7 @@ def sessao(consulta: Consulta) -> Cobranca | None:
 
 def _consultas_cobradas(de: date, ate: date, caso: Caso | None = None):
     consultas = (
-        Consulta.objects.filter(estado__in=_COBRADAS, inicio__gte=_meia_noite(de),
+        Consulta.objects.filter(cobrada=True, inicio__gte=_meia_noite(de),
                                 inicio__lt=_meia_noite(ate + timedelta(days=1)))
         .select_related("caso").prefetch_related("caso__pacientes", "pagamentos")
     )

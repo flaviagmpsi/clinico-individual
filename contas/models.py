@@ -12,6 +12,7 @@ from django.core.validators import MaxValueValidator, MinValueValidator, RegexVa
 from django.db import models
 
 from core.calendario import TipoDia
+from core.enderecos import UF, cep_valido, telefone_opcional
 from core.models import ValidaAoSalvar
 
 
@@ -86,7 +87,22 @@ class Psicologo(ValidaAoSalvar, AbstractUser):
 
     regime = models.CharField("Regime", max_length=2, choices=Regime.choices, default=Regime.PF)
     cnpj = models.CharField("CNPJ", max_length=14, blank=True, validators=[cnpj_valido])
+    razao_social = models.CharField("Razão social", max_length=255, blank=True)
     crp_empresa = models.CharField("CRP da empresa", max_length=20, blank=True)
+
+    # --- Clínica ou consultório (C-11) -----------------------------------------------------------
+    # Onde o psicólogo atende. Hoje serve à identificação do profissional na tela; é também o endereço
+    # que o recibo e o documento com timbre vão pedir quando existirem (ADR-008, ADR-030).
+    nome_clinica = models.CharField("Nome da clínica ou consultório", max_length=255, blank=True)
+    telefone_clinica = models.CharField(
+        "Telefone da clínica", max_length=20, blank=True, validators=[telefone_opcional])
+    cep = models.CharField("CEP", max_length=8, blank=True, validators=[cep_valido])
+    logradouro = models.CharField("Logradouro", max_length=255, blank=True)
+    numero = models.CharField("Número", max_length=20, blank=True)
+    complemento = models.CharField("Complemento", max_length=100, blank=True)
+    bairro = models.CharField("Bairro", max_length=100, blank=True)
+    cidade = models.CharField("Cidade", max_length=100, blank=True)
+    uf = models.CharField("UF", max_length=2, choices=UF.choices, blank=True)
 
     # --- Padrões de atendimento (ADR-025, C-03) -------------------------------------------------
     # "Configura uma vez, ajusta na exceção": cada um é o valor que o sistema propõe, e todos são

@@ -29,7 +29,7 @@ from prontuarios import servicos
 from prontuarios.models import Prontuario, VersaoCongelada, VersaoProntuario
 
 REALIZADA = Consulta.Estado.REALIZADA
-FALTA_COBRADA = Consulta.Estado.FALTA_COBRADA
+FALTOU = Consulta.Estado.FALTOU
 
 
 def momento(dia, hora=10):
@@ -55,7 +55,7 @@ class BaseProntuario(TestCase):
             cls.joao = Paciente(nome="João")
             cadastrar_paciente(cls.joao)
             cls.sessao_marcos = agenda.cadastrar_avulsa(caso_marcos, estado=REALIZADA, inicio=momento(3))
-            cls.falta_marcos = agenda.cadastrar_avulsa(caso_marcos, estado=FALTA_COBRADA, inicio=momento(4))
+            cls.falta_marcos = agenda.cadastrar_avulsa(caso_marcos, estado=FALTOU, inicio=momento(4))
             casal = criar_caso_coletivo([cls.maria, cls.joao], descricao="Maria e João")
             cls.sessao_casal = agenda.cadastrar_avulsa(casal, estado=REALIZADA, inicio=momento(5))
         with contexto.como(cls.bruno.pk):
@@ -147,7 +147,7 @@ class Protecao(BaseProntuario):
         with contexto.como(self.ana.pk):
             servicos.salvar_rascunho(self.sessao_marcos, self.marcos, texto="Registro.")
             with self.assertRaises(ValidationError):
-                agenda.alterar_situacao(self.sessao_marcos, FALTA_COBRADA)
+                agenda.alterar_situacao(self.sessao_marcos, FALTOU)
             with self.assertRaises(ValidationError):
                 agenda.excluir_consulta(self.sessao_marcos)
 

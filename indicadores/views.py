@@ -1,4 +1,4 @@
-"""O painel — a tela que responde "o que eu preciso fazer hoje?" (ADR-027, ADR-061).
+"""O painel — a tela que responde "o que eu preciso fazer agora?" (ADR-027, ADR-061, ADR-069).
 
 Mora em `indicadores`, que depende de todos os apps e de quem ninguém depende (regra 2). Até a Rodada 39 vivia em
 `core`, importando domínio — exceção que a regra 1 não permite e que sai com este app.
@@ -17,8 +17,11 @@ class Painel(LoginRequiredMixin, TemplateView):
         contexto = super().get_context_data(**kwargs)
         painel = montar_painel()
         contexto.update(
-            mes=painel.mes, resumo=painel.resumo, linhas=painel.linhas,
-            sessoes_pendentes=painel.sessoes_pendentes[:5], total_pendentes=len(painel.sessoes_pendentes),
+            hoje=painel.hoje, mes=painel.mes, resumo=painel.resumo,
+            itens=painel.hoje_itens,
+            online=sum(1 for item in painel.hoje_itens if item.online), total_hoje=len(painel.hoje_itens),
+            atrasadas=painel.atrasadas[:8], total_atrasadas=len(painel.atrasadas),
+            alertas=painel.alertas[:5], total_alertas=len(painel.alertas),
             pagamentos_pendentes=painel.pagamentos_pendentes[:5],
             total_pagamentos_pendentes=len(painel.pagamentos_pendentes),
             prontuarios_pendentes=painel.prontuarios_pendentes[:5],
