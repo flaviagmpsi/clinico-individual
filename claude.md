@@ -83,8 +83,9 @@ Dez apps. A fronteira é **quem é dono do dado**, nunca em que tela ele aparece
 | `pacientes` | `Paciente`, `Caso`, `ResponsavelLegal`, `Pagador` |
 | `agenda` | `HorarioDisponivel`, `Recorrencia`; integração Google Agenda **depois** (ADR-051) |
 | `atendimentos` | `Consulta`, `Desfecho` |
-| `prontuarios` | `Relato`, `Prontuario`, versões, exportação |
+| `prontuarios` | `Relato`, `Prontuario`, versões, `FichaDoProntuario` (demanda e encerramento, só-acréscimo — ADR-079), folha por paciente, exportação |
 | `documentos` | `Documento` (contrato, anexo de avaliação, cópia emitida), IA de documentos |
+| `core.exportacao` | Folha composta → PDF (`reportlab`) e DOCX (`python-docx`). Não conhece o domínio: quem compõe a folha é o app de origem (ADR-078) |
 | `financeiro` | `ContaReceber`, `Pagamento`, `Despesa`, `TipoDespesa` |
 | `assinaturas` | Ciclo de vida da conta, Asaas, exportação e descarte |
 | `indicadores` | Painel e análise. **Só leitura** |

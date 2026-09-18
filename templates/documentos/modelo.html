@@ -1,0 +1,167 @@
+{% extends "base.html" %}
+{% block titulo %}{{ modelo.nome }}{% endblock %}
+{% block secao %}Documentos{% endblock %}
+
+{% block conteudo %}
+{% comment %}
+ADR-077: preenche-se **dentro do documento**. À direita está a folha como ela sai no papel — timbre, título, texto,
+assinatura — e cada espaço dela é um campo. Não há formulário separado nem "emitir para ver como ficou".
+
+A explicação de cada campo (ADR-076) aparece na faixa acima da folha quando o campo recebe o foco, e embaixo dos
+campos de texto longo. À esquerda continua a orientação do CFP para a modalidade.
+{% endcomment %}
+{% include "documentos/_folha_estilo.html" %}
+{% include "_folha_preenchivel_estilo.html" %}
+
+<ul class="nav nav-pills flex-wrap gap-1 small mb-3">
+  <li class="nav-item"><a class="nav-link py-1 px-2" href="{% url 'documentos:aba' %}"><i class="bi bi-grid"></i> Todos</a></li>
+  {% for titulo, lista in grupos %}{% for m in lista %}
+    <li class="nav-item">
+      <a class="nav-link py-1 px-2{% if m.codigo == modelo.codigo %} active{% endif %}"
+         href="{% url 'documentos:modelo' m.codigo %}">{{ m.nome }}</a>
+    </li>
+  {% endfor %}{% endfor %}
+</ul>
+
+<div class="row g-3">
+  <div class="col-xl-4 col-lg-5">
+    <div class="card">
+      <div class="card-header bg-white py-2">
+        <div class="fw-semibold">{{ modelo.nome }}</div>
+        <div class="text-muted small">{{ modelo.norma }}</div>
+      </div>
+      <div class="card-body small">
+        <p>{{ modelo.resumo }}</p>
+        <div class="alert alert-warning py-2 mb-3"><strong>Antes de emitir:</strong> {{ modelo.prerequisito }}</div>
+
+        <div class="rotulo mb-2">Como o CFP espera este documento — e por quê</div>
+        {% for o in modelo.orientacoes %}
+          <div class="mb-3">
+            <div class="fw-semibold">{{ o.titulo }}</div>
+            <div>{{ o.texto }}</div>
+          </div>
+        {% endfor %}
+
+        <div class="border-top pt-2 text-muted">
+          Base: {{ versao_da_norma }}.
+          <a href="{{ resolucao }}" target="_blank" rel="noopener">Resolução comentada</a> ·
+          <a href="{{ manual }}" target="_blank" rel="noopener">Manual Orientativo do CFP</a>.
+          O documento é seu: o sistema organiza a forma, e o conteúdo técnico é responsabilidade de quem assina.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-xl-8 col-lg-7">
+    <form method="post" novalidate id="formulario-do-documento" data-folha data-marca-exigido="1">
+      {% csrf_token %}
+      {% if form.non_field_errors %}
+        <div class="alert alert-danger py-2 small">{{ form.non_field_errors }}</div>
+      {% endif %}
+
+      {% comment %}ADR-034 e ADR-076: escolher o paciente preenche só a identificação — nome, CPF, nascimento. Nada
+      clínico vem do sistema para o documento.{% endcomment %}
+      <div class="card mb-3">
+        <div class="card-body py-2 small d-flex align-items-center flex-wrap gap-2">
+          <label for="id_paciente" class="mb-0 fw-semibold">Paciente</label>
+          <select name="paciente" id="id_paciente" class="form-select form-select-sm" style="max-width:320px"
+                  {% if not documento %}data-recarrega="1"{% endif %}>
+            <option value="">— nenhum —</option>
+            {% for p in pacientes %}
+              <option value="{{ p.pk }}"{% if paciente and paciente.pk == p.pk %} selected{% endif %}>{{ p.nome }}</option>
+            {% endfor %}
+          </select>
+          <span class="text-muted">
+            {% if documento %}O documento fica guardado junto deste paciente.
+            {% else %}Opcional. Escolher preenche nome, CPF e nascimento — nada clínico.{% endif %}
+          </span>
+        </div>
+      </div>
+
+      <div class="faixa-de-ajuda" id="faixa-de-ajuda">
+        <span class="nome"><i class="bi bi-lightbulb"></i> Preencha dentro do documento.</span>
+        <span class="texto">Clique num espaço da folha: aqui aparece o que o CFP espera naquele campo. Os espaços em
+          amarelo são exigidos para emitir.</span>
+      </div>
+
+      <div class="mesa">
+        <div class="folha">
+          {% if user.nome_clinica or user.logradouro %}
+            <div class="timbre">
+              {% if user.nome_clinica %}<strong>{{ user.nome_clinica }}</strong><br>{% endif %}
+              {% if user.logradouro %}{{ user.logradouro }}{% if user.numero %}, {{ user.numero }}{% endif %}{% if user.complemento %} — {{ user.complemento }}{% endif %}{% if user.bairro %} · {{ user.bairro }}{% endif %}{% if user.cidade %} · {{ user.cidade }}{% if user.uf %}/{{ user.uf }}{% endif %}{% endif %}{% endif %}
+            </div>
+          {% endif %}
+
+          <h1>{{ modelo.titulo_impresso }}</h1>
+          {% if form.subtitulo %}<div class="subtitulo">{{ form.subtitulo }}</div>{% endif %}
+
+          {% if modelo.itemizado %}
+            <div class="bloco">
+              <h2>Identificação</h2>
+              {% for campo in form.identificacao %}
+                <div class="linha-id"><span>{{ campo.label }}:</span> {{ campo }}</div>
+              {% endfor %}
+            </div>
+            {% for titulo, campos in form.itens %}
+              <div class="bloco">
+                <h2>{{ titulo }}</h2>
+                {% for campo in campos %}
+                  {{ campo }}
+                  <div class="dica">{{ campo.help_text }}</div>
+                {% endfor %}
+              </div>
+            {% endfor %}
+          {% else %}
+            <div class="bloco">
+              <div class="texto">{% for tipo, item in form.corpo %}{{ item }}{% endfor %}{% if modelo.preenche_com_tracos %} <span class="tracos">------------------------------------------------------------</span>{% endif %}</div>
+            </div>
+          {% endif %}
+
+          {% with fecho=form.encerramento %}
+            <div class="local">{{ fecho.local }}, {{ fecho.data }}.</div>
+            <div class="assinaturas">
+              {% if modelo.codigo == "termo-de-entrega" %}
+                <div class="assinatura"><div class="linha">Assinatura de quem recebeu o documento</div></div>
+              {% elif modelo.codigo == "autorizacao-crianca-adolescente" %}
+                <div class="assinatura"><div class="linha">Responsável legal pela criança ou adolescente</div></div>
+              {% endif %}
+              <div class="assinatura"><div class="linha">{{ fecho.nome }}<br>{{ fecho.crp }}</div></div>
+            </div>
+          {% endwith %}
+        </div>
+      </div>
+
+      <div class="d-flex flex-wrap gap-2 align-items-center mt-3">
+        <button type="submit" name="acao" value="rascunho" class="btn btn-outline-primary">Salvar rascunho</button>
+        <button type="submit" name="acao" value="emitir" class="btn btn-primary"
+                onclick="return confirm('Emitir congela o documento: a cópia fica guardada como foi entregue e não se altera mais. Emitir agora?')">Emitir</button>
+        {% comment %}ADR-078: salvar em arquivo. Só depois do primeiro "Salvar rascunho": o download acontece sem
+        sair da página, e numa página de documento novo cada clique criaria outro rascunho.{% endcomment %}
+        {% if documento %}
+          <div class="btn-group ms-2" role="group" aria-label="Salvar em arquivo">
+            <button type="submit" name="acao" value="pdf" class="btn btn-outline-secondary" title="Salva o rascunho e baixa em PDF">
+              <i class="bi bi-file-earmark-pdf"></i> PDF</button>
+            <button type="submit" name="acao" value="docx" class="btn btn-outline-secondary" title="Salva o rascunho e baixa em DOCX (Word)">
+              <i class="bi bi-file-earmark-word"></i> DOCX</button>
+            <a href="{% url 'documentos:imprimir' documento.pk %}" class="btn btn-outline-secondary" target="_blank" title="Abre a folha para imprimir">
+              <i class="bi bi-printer"></i></a>
+          </div>
+        {% else %}
+          <span class="text-muted small">Salve o rascunho para baixar em PDF ou DOCX.</span>
+        {% endif %}
+        <span class="text-muted small ms-auto">Com mais de uma lauda: numere, rubrique até a penúltima e assine a última.</span>
+      </div>
+    </form>
+
+    {% if documento %}
+    <form method="post" action="{% url 'documentos:excluir' documento.pk %}" class="mt-3">
+      {% csrf_token %}
+      <button type="submit" class="btn btn-sm btn-link text-danger p-0">Excluir este rascunho</button>
+    </form>
+    {% endif %}
+  </div>
+</div>
+
+{% include "_folha_preenchivel_js.html" %}
+{% endblock %}

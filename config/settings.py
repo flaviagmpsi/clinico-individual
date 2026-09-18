@@ -35,6 +35,7 @@ INSTALLED_APPS = [
     "financeiro",
     "indicadores",
     "prontuarios",
+    "documentos",
 ]
 
 MIDDLEWARE = [

@@ -1,0 +1,36 @@
+{% comment %}
+A folha do documento (ADR-076, ADR-077). Uma marcação só, usada em três lugares — a prévia ao lado do formulário,
+a atualização ao vivo e a impressão —, para que o que se vê enquanto escreve seja exatamente o que sai no papel.
+Recebe `folha` (de `modelos.compor`) e, opcionalmente, `marca_rascunho`.
+{% endcomment %}
+<div class="folha">
+  {% if marca_rascunho %}<div class="marca-rascunho">RASCUNHO</div>{% endif %}
+
+  {% if user.nome_clinica or user.logradouro %}
+    <div class="timbre">
+      {% if user.nome_clinica %}<strong>{{ user.nome_clinica }}</strong><br>{% endif %}
+      {% if user.logradouro %}{{ user.logradouro }}{% if user.numero %}, {{ user.numero }}{% endif %}{% if user.complemento %} — {{ user.complemento }}{% endif %}{% if user.bairro %} · {{ user.bairro }}{% endif %}{% if user.cidade %} · {{ user.cidade }}{% if user.uf %}/{{ user.uf }}{% endif %}{% endif %}{% endif %}
+    </div>
+  {% endif %}
+
+  <h1>{{ folha.titulo }}</h1>
+  {% if folha.subtitulo %}<div class="subtitulo">{{ folha.subtitulo }}</div>{% endif %}
+
+  {% for titulo, texto in folha.blocos %}
+    <div class="bloco">
+      {% if titulo %}<h2>{{ titulo }}</h2>{% endif %}
+      <div class="texto">{{ texto }}{% if folha.tracos %} <span class="tracos">------------------------------------------------------------------------------------------------------------------------</span>{% endif %}</div>
+    </div>
+  {% endfor %}
+
+  <div class="local">{{ folha.local_e_data }}{% if folha.local_e_data %}.{% endif %}</div>
+
+  <div class="assinaturas">
+    {% if folha.segunda_assinatura %}
+      <div class="assinatura"><div class="linha">{{ folha.segunda_assinatura }}</div></div>
+    {% endif %}
+    <div class="assinatura">
+      <div class="linha">{{ folha.assinatura_nome }}<br>{{ folha.assinatura_crp }}</div>
+    </div>
+  </div>
+</div>

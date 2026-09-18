@@ -11,30 +11,24 @@
   <a href="{% url 'prontuarios:lista' %}?paciente={{ paciente.pk }}" class="btn btn-sm btn-outline-secondary ms-auto">Prontuários do paciente</a>
 </div>
 
-{% comment %}ADR-064: as versões confirmadas ficam todas à vista, na ordem. Nenhuma se altera.{% endcomment %}
-{% for v in registro.confirmadas %}
-<div class="card mb-3" style="max-width:820px">
-  <div class="card-header bg-white py-2 small d-flex align-items-center">
-    <span class="fw-semibold">Versão {{ v.numero }}</span>
-    <span class="text-muted ms-2">· confirmada em {{ v.confirmada_em|date:"d/m/Y H:i" }}</span>
-    {% if forloop.last %}<span class="badge text-bg-success ms-auto">vigente</span>{% endif %}
+{% comment %}
+ADR-075: para o psicólogo, o prontuário salvo tem um botão — "Editar". Sem motivo, sem falar em versão. Por
+baixo, cada edição grava uma versão nova e a anterior fica guardada (ADR-064): o histórico aparece recolhido
+no fim da página, para quando for preciso mostrar o que o registro dizia numa data.
+{% endcomment %}
+{% if registro.vigente and not registro.rascunho and not form.errors %}
+  <div class="card mb-3" style="max-width:820px">
+    <div class="card-header bg-white py-2 small d-flex align-items-center">
+      <span class="text-muted">Salvo em {{ registro.vigente.confirmada_em|date:"d/m/Y H:i" }}</span>
+      <button type="button" class="btn btn-sm btn-outline-primary ms-auto" id="botao-editar">
+        <i class="bi bi-pencil"></i> Editar</button>
+    </div>
+    <div class="card-body small" id="texto-salvo" style="white-space: pre-wrap">{{ registro.vigente.texto }}</div>
   </div>
-  <div class="card-body small">
-    {% if v.motivo %}<div class="text-muted mb-2"><strong>Motivo da correção:</strong> {{ v.motivo }}</div>{% endif %}
-    <div style="white-space: pre-wrap">{{ v.texto }}</div>
-  </div>
-</div>
-{% endfor %}
+{% endif %}
 
-<div class="alert alert-light border py-2 small" style="max-width:820px">
-  {% if registro.confirmadas %}
-    <strong>Correção.</strong> Confirmar cria uma nova versão com o motivo informado; as anteriores continuam guardadas como estão.
-  {% else %}
-    Enquanto for rascunho, você edita à vontade. <strong>Depois de confirmado, o texto não se altera</strong> — uma correção cria nova versão, com motivo.
-  {% endif %}
-</div>
-
-<form method="post" novalidate style="max-width:820px">
+<form method="post" novalidate style="max-width:820px" id="formulario"
+      {% if registro.vigente and not registro.rascunho and not form.errors %}hidden{% endif %}>
   {% csrf_token %}
   {% if form.non_field_errors %}
     <div class="alert alert-danger py-2 small">{{ form.non_field_errors }}</div>
@@ -42,13 +36,16 @@
   <div class="card mb-3">
     <div class="card-body">
       {% if registro.rascunho %}<div class="small text-muted mb-2">Rascunho salvo em {{ registro.rascunho.atualizado_em|date:"d/m/Y H:i" }}.</div>{% endif %}
-      {% if form.motivo %}<div class="mb-3">{% include "components/_campo.html" with campo=form.motivo %}</div>{% endif %}
       {% include "components/_campo.html" with campo=form.texto %}
     </div>
   </div>
-  <button type="submit" name="acao" value="rascunho" class="btn btn-outline-primary">Salvar rascunho</button>
-  <button type="submit" name="acao" value="confirmar" class="btn btn-primary">
-    {% if registro.confirmadas %}Confirmar correção{% else %}Confirmar prontuário{% endif %}</button>
+  {% if registro.confirmadas %}
+    <button type="submit" name="acao" value="confirmar" class="btn btn-primary">Salvar alterações</button>
+    <a href="{% url 'prontuarios:escrever' consulta.pk paciente.pk %}" class="btn btn-link">Cancelar</a>
+  {% else %}
+    <button type="submit" name="acao" value="rascunho" class="btn btn-outline-primary">Salvar rascunho</button>
+    <button type="submit" name="acao" value="confirmar" class="btn btn-primary">Salvar prontuário</button>
+  {% endif %}
 </form>
 
 {% if registro.rascunho %}
@@ -57,4 +54,33 @@
   <button type="submit" class="btn btn-sm btn-link text-danger p-0">Descartar rascunho</button>
 </form>
 {% endif %}
+
+{% if registro.confirmadas|length > 1 %}
+<details class="mt-4 small" style="max-width:820px">
+  <summary class="text-muted">Histórico · {{ registro.confirmadas|length|add:"-1" }} vers{{ registro.confirmadas|length|add:"-1"|pluralize:"ão,ões" }} anterior{{ registro.confirmadas|length|add:"-1"|pluralize:"es" }}</summary>
+  {% for v in registro.confirmadas %}
+    {% if not forloop.last %}
+    <div class="card mt-2">
+      <div class="card-header bg-white py-1 text-muted">Versão {{ v.numero }} · salva em {{ v.confirmada_em|date:"d/m/Y H:i" }}</div>
+      <div class="card-body py-2">
+        {% if v.motivo %}<div class="text-muted mb-1"><strong>Motivo registrado:</strong> {{ v.motivo }}</div>{% endif %}
+        <div style="white-space: pre-wrap">{{ v.texto }}</div>
+      </div>
+    </div>
+    {% endif %}
+  {% endfor %}
+</details>
+{% endif %}
+
+<script>
+(function () {
+  const botao = document.getElementById('botao-editar');
+  if (!botao) return;
+  botao.addEventListener('click', function () {
+    document.getElementById('formulario').hidden = false;
+    botao.closest('.card').hidden = true;
+    document.querySelector('#formulario textarea').focus();
+  });
+})();
+</script>
 {% endblock %}

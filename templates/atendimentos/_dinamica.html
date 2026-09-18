@@ -1,0 +1,22 @@
+{% comment %}
+ADR-074: o formulário só mostra o que a situação escolhida pede. "Cobrar esta sessão" só existe quando o cliente
+cancelou; "remarcada para" só quando a sessão foi remarcada. Sem JavaScript os blocos ficam visíveis, e o
+servidor continua ignorando o que não se aplica — a tela é conveniência, a regra é do serviço.
+{% endcomment %}
+<script>
+(function () {
+  const formulario = document.currentScript.closest('form') || document.querySelector('form[method="post"]');
+  const radios = formulario.querySelectorAll('input[name="estado"]');
+  const blocoCobrar = formulario.querySelector('[data-so-para="CANCELADA_CLIENTE"]');
+  const blocoRemarcada = formulario.querySelector('[data-so-para="REMARCADA"]');
+  if (!radios.length) return;
+  function ajustar() {
+    const escolhido = formulario.querySelector('input[name="estado"]:checked');
+    const estado = escolhido ? escolhido.value : '';
+    if (blocoCobrar) blocoCobrar.hidden = estado !== 'CANCELADA_CLIENTE';
+    if (blocoRemarcada) blocoRemarcada.hidden = estado !== 'REMARCADA';
+  }
+  radios.forEach((radio) => radio.addEventListener('change', ajustar));
+  ajustar();
+})();
+</script>

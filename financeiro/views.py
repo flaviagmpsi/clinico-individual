@@ -53,7 +53,9 @@ class MesFinanceiro(LoginRequiredMixin, TemplateView):
             devido=sum((c.devido for c in cobrancas), 0), pago=sum((c.pago for c in cobrancas), 0),
             saldo=sum((c.saldo for c in cobrancas), 0),
             recebidos=recebidos, total_recebido=sum((p.valor for p in recebidos), 0),
-            pendentes=servicos.pagamentos_pendentes(hoje),
+            # ADR-074: a tabela do mês já marca o que está pendente nele. Só entra à parte o que ela não
+            # alcança — cobrança vencida de mês anterior que ninguém quitou.
+            pendentes_anteriores=[c for c in servicos.pagamentos_pendentes(hoje) if c.vencimento < inicio],
         )
         return contexto
 

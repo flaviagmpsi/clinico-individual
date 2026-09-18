@@ -25,7 +25,9 @@ mostrar a forma do produto e declarar o que ainda não está pronto vale mais qu
   <a href="{% url 'financeiro:mes' %}" title="Financeiro"
      class="{% if request.resolver_match.app_name == 'financeiro' %}ativo{% endif %}">
     <i class="bi bi-cash-stack"></i></a>
-  <span class="adiado" title="Documentos — passo 5"><i class="bi bi-file-earmark-text"></i></span>
+  <a href="{% url 'documentos:aba' %}" title="Documentos"
+     class="{% if request.resolver_match.app_name == 'documentos' %}ativo{% endif %}">
+    <i class="bi bi-file-earmark-text"></i></a>
 
   <div class="espaco"></div>
 

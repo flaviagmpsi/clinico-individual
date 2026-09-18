@@ -3,112 +3,121 @@
 {% block secao %}Agenda{% endblock %}
 
 {% block conteudo %}
-<div class="d-flex align-items-center flex-wrap gap-2 mb-3">
-  <h1 class="h5 mb-0">Agenda <span class="text-muted fw-normal">{{ de|date:"d/m/Y" }} a {{ ate|date:"d/m/Y" }}</span></h1>
-  <div class="ms-auto d-flex gap-2">
-    <a href="?de={{ anterior_de|date:'Y-m-d' }}&ate={{ anterior_ate|date:'Y-m-d' }}&situacao={{ situacao }}"
-       class="btn btn-sm btn-outline-secondary" title="Período anterior"><i class="bi bi-chevron-left"></i></a>
-    <a href="?semana={{ esta_semana|date:'Y-m-d' }}" class="btn btn-sm btn-outline-secondary">Esta semana</a>
-    <a href="?de={{ proxima_de|date:'Y-m-d' }}&ate={{ proxima_ate|date:'Y-m-d' }}&situacao={{ situacao }}"
-       class="btn btn-sm btn-outline-secondary" title="Próximo período"><i class="bi bi-chevron-right"></i></a>
-    <a href="{% url 'atendimentos:nova' %}" class="btn btn-sm btn-primary"><i class="bi bi-plus-lg"></i> Cadastrar consulta avulsa</a>
+{% comment %}
+ADR-073 e ADR-074: a agenda no desenho da planilha do psicólogo. Colunas por dia, cartões empilhados em
+ordem de horário, horários livres visíveis onde há grade cadastrada. Amarelo é o que ainda vai acontecer; a
+sessão cadastrada muda de cor (presente verde, falta vermelha, cancelada cinza riscada); livre é cinza.
+{% endcomment %}
+<style>
+  .calendario { display: grid; gap: 8px; }
+  .coluna .cabecalho { background: #6c757d; color: #fff; font-size: .72rem; letter-spacing: .04em;
+                       text-transform: uppercase; text-align: center; padding: 4px; border-radius: 4px 4px 0 0; }
+  .coluna .cabecalho.hoje { background: var(--tinta); }
+  .coluna .corpo { border: 1px solid #dee2e6; border-top: 0; min-height: 120px; padding: 6px;
+                   display: flex; flex-direction: column; gap: 6px; border-radius: 0 0 4px 4px; background: #fff; }
+  .cartao { display: block; padding: 4px 6px; border-radius: 3px; font-size: .78rem; font-weight: 600;
+            text-transform: uppercase; line-height: 1.2; text-decoration: none; color: #212529; border: 1px solid transparent; }
+  .cartao small { display: block; font-weight: 400; text-transform: none; font-size: .72rem; color: #495057; }
+  .cartao.livre { background: #eef0f2; color: #6c757d; border-color: #d3d7db; border-style: dashed; font-weight: 500; }
+  .cartao.esperada { background: #ffe98a; }
+  .cartao.pendente { background: #ffe98a; border-color: #e8890c; border-style: solid; }
+  .cartao.realizada { background: #c7ebc0; color: #1f5a16; }
+  .cartao.faltou { background: #f8c2c2; }
+  .cartao.cancelada { background: #e2e3e5; color: #6c757d; text-decoration: line-through; }
+  .cartao.remarcada { background: #cfe2ff; }
+  .cartao:hover { filter: brightness(.96); color: inherit; }
+  .mes .coluna .corpo { min-height: 96px; padding: 4px; gap: 3px; }
+  .mes .cartao { font-size: .68rem; padding: 2px 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .mes .numero { font-size: .75rem; font-weight: 600; color: #6c757d; }
+  .mes .numero.hoje { color: var(--tinta); }
+</style>
+
+<div class="d-flex align-items-center flex-wrap gap-2 mb-2">
+  <h1 class="h5 mb-0">Agenda
+    <span class="text-muted fw-normal">
+      {% if visao == "mes" %}{{ de|date:"F \d\e Y"|capfirst }}
+      {% elif visao == "dia" %}{{ de|date:"l, d/m/Y"|capfirst }}
+      {% else %}{{ de|date:"d/m/Y" }} a {{ ate|date:"d/m/Y" }}{% endif %}
+    </span>
+  </h1>
+  <div class="btn-group btn-group-sm ms-2" role="group" aria-label="Visão">
+    <a href="{{ rota_dia }}" class="btn btn-outline-secondary{% if visao == 'dia' %} active{% endif %}">Dia</a>
+    <a href="{{ rota_semana }}" class="btn btn-outline-secondary{% if visao == 'semana' or visao == 'periodo' %} active{% endif %}">Semana</a>
+    <a href="{{ rota_mes }}" class="btn btn-outline-secondary{% if visao == 'mes' %} active{% endif %}">Mês</a>
   </div>
+  <div class="btn-group btn-group-sm" role="group" aria-label="Navegar">
+    <a href="{{ rota_anterior }}" class="btn btn-outline-secondary" title="Anterior"><i class="bi bi-chevron-left"></i></a>
+    <a href="{{ rota_hoje }}" class="btn btn-outline-secondary">Hoje</a>
+    <a href="{{ rota_proxima }}" class="btn btn-outline-secondary" title="Próximo"><i class="bi bi-chevron-right"></i></a>
+  </div>
+  <form method="get" class="d-flex align-items-center gap-1 small">
+    <input type="hidden" name="visao" value="{% if visao == 'periodo' %}semana{% else %}{{ visao }}{% endif %}">
+    <input type="hidden" name="data" value="{{ de|date:'Y-m-d' }}">
+    <select class="form-select form-select-sm" name="situacao" onchange="this.form.submit()" aria-label="Situação">
+      <option value="">Todas as situações</option>
+      {% for valor, rotulo in situacoes %}
+        <option value="{{ valor }}"{% if situacao == valor %} selected{% endif %}>{{ rotulo }}</option>
+      {% endfor %}
+    </select>
+  </form>
+  <a href="{% url 'atendimentos:nova' %}" class="btn btn-sm btn-primary ms-auto"><i class="bi bi-plus-lg"></i> Cadastrar consulta avulsa</a>
 </div>
 
-{% comment %}ADR-065: o período e a situação que o psicólogo quer ver.{% endcomment %}
-<form method="get" class="card card-body py-2 mb-3">
-  <div class="row g-2 align-items-end small">
-    <div class="col-md-3">
-      <label class="form-label small mb-1" for="id_de">De</label>
-      <input type="date" class="form-control form-control-sm" id="id_de" name="de" value="{{ de|date:'Y-m-d' }}">
-    </div>
-    <div class="col-md-3">
-      <label class="form-label small mb-1" for="id_ate">Até</label>
-      <input type="date" class="form-control form-control-sm" id="id_ate" name="ate" value="{{ ate|date:'Y-m-d' }}">
-    </div>
-    <div class="col-md-4">
-      <label class="form-label small mb-1" for="id_situacao">Situação</label>
-      <select class="form-select form-select-sm" id="id_situacao" name="situacao">
-        <option value="">Todas</option>
-        {% for valor, rotulo in situacoes %}
-          <option value="{{ valor }}"{% if situacao == valor %} selected{% endif %}>{{ rotulo }}</option>
-        {% endfor %}
-      </select>
-    </div>
-    <div class="col-md-2 d-flex gap-2">
-      <button class="btn btn-sm btn-outline-primary w-100">Filtrar</button>
-      {% if situacao or tamanho != 7 %}<a href="{% url 'atendimentos:agenda' %}" class="btn btn-sm btn-link">Limpar</a>{% endif %}
-    </div>
-  </div>
-</form>
-
-{% comment %}
-ADR-060 e 065: previsão não é registro, e a sessão prevista é dada como confirmada. A que já passou sem
-cadastro é pendente e vem primeiro, porque enquanto não for cadastrada não gera cobrança nem prontuário.
-{% endcomment %}
-{% if pendentes %}
-  <div class="alert alert-warning py-2 small">
-    <div class="fw-semibold mb-1"><i class="bi bi-exclamation-triangle"></i>
-      {{ total_pendentes }} sess{{ total_pendentes|pluralize:"ão,ões" }} pendente{{ total_pendentes|pluralize }} de cadastro</div>
-    {% for s in pendentes %}
-      {% comment %}Duas origens de espera: a frequência prevê, a remarcação marcou data nova (ADR-068).{% endcomment %}
-      <a href="{% if s.origem %}{% url 'atendimentos:cadastrar_remarcada' s.origem.pk %}{% else %}{% url 'atendimentos:cadastrar_prevista' s.regra.pk s.data_iso %}{% endif %}"
-         class="badge text-bg-light text-decoration-none me-1">
-        {{ s.inicio|date:"d/m H:i" }} · {{ s.caso }}{% if s.origem %} · remarcada{% endif %}</a>
-    {% endfor %}
-  </div>
-{% endif %}
-
+{% comment %}ADR-074: sem alerta de pendências aqui — a sessão que passou sem cadastro já aparece no próprio
+calendário, como cartão "pendente"; repetir em cima seria a mesma informação duas vezes.{% endcomment %}
 <div class="d-flex flex-wrap gap-3 align-items-center small text-muted mb-2">
   <span><strong class="text-body">{{ total_sessoes }}</strong> sess{{ total_sessoes|pluralize:"ão,ões" }} no período</span>
   {% if percentual_online is not None %}
     <span><i class="bi bi-camera-video"></i> {{ online }} online ({{ percentual_online }}%)</span>
     <span><i class="bi bi-person"></i> {{ presenciais }} presencia{{ presenciais|pluralize:"l,is" }}</span>
   {% endif %}
-  <span class="ms-auto">
-    <span class="badge text-bg-light border">prevista</span> ainda não cadastrada ·
-    <span class="badge text-bg-warning">pendente</span> passou e falta cadastrar
-  </span>
+  {% if not situacao %}
+    <span class="ms-auto"><span class="cartao esperada d-inline-block py-0 px-2">prevista</span> ainda não cadastrada ·
+      <span class="cartao realizada d-inline-block py-0 px-2">presente</span> cadastrada ·
+      <span class="cartao livre d-inline-block py-0 px-2">livre</span> horário da grade sem sessão</span>
+  {% endif %}
 </div>
 
-<div class="card">
-  <div class="list-group list-group-flush">
-  {% for dia, itens in dias %}
-    <div class="list-group-item{% if dia == hoje %} bg-light{% endif %}">
-      <div class="fw-semibold small mb-1">{{ dia|date:"l, d/m"|capfirst }}{% if dia == hoje %} <span class="badge text-bg-primary">hoje</span>{% endif %}</div>
-      {% for tipo, item in itens %}
-        <div class="d-flex align-items-center flex-wrap py-1 small">
-          <span class="text-muted me-2" style="min-width:92px">{{ item.inicio|time:"H:i" }}–{{ item.fim|time:"H:i" }}</span>
-          <span class="fw-medium">{{ item.caso }}</span>
-          <span class="text-muted ms-2" title="Modalidade">
-            {% if item.modalidade == "ONLINE" %}<i class="bi bi-camera-video"></i> online{% else %}<i class="bi bi-person"></i> presencial{% endif %}
-          </span>
-          {% if tipo == "consulta" %}
-            <span class="badge ms-2
-              {% if item.estado == 'REALIZADA' %}text-bg-success
-              {% elif item.estado == 'FALTOU' %}text-bg-danger
-              {% elif item.estado == 'REMARCADA' %}text-bg-light border
-              {% else %}text-bg-secondary{% endif %}">{{ item.get_estado_display }}</span>
-            <span class="text-muted ms-2">{% if item.avulsa %}avulsa{% else %}da frequência{% endif %}{% if not item.cobrada %} · não cobrada{% endif %}</span>
-            {% if item.remarcada_para %}
-              <span class="text-muted ms-2"><i class="bi bi-arrow-right-short"></i> para {{ item.remarcada_para|date:"d/m H:i" }}</span>
-            {% endif %}
-            <a href="{% url 'atendimentos:editar' item.pk %}" class="ms-auto text-decoration-none">corrigir</a>
-          {% elif tipo == "remarcada" %}
-            <span class="badge text-bg-info ms-2">remarcada de {{ item.origem.inicio|date:"d/m" }}</span>
-            <a href="{% url 'atendimentos:cadastrar_remarcada' item.origem.pk %}" class="ms-auto text-decoration-none">cadastrar</a>
-          {% elif item.pendente %}
-            <span class="badge text-bg-warning ms-2">pendente</span>
-            <a href="{% url 'atendimentos:cadastrar_prevista' item.regra.pk item.data_iso %}" class="ms-auto text-decoration-none">cadastrar</a>
-          {% else %}
-            <span class="badge text-bg-light border ms-2">prevista</span>
+{% if visao == "mes" %}
+  <div class="calendario mes" style="grid-template-columns: repeat({% if fim_de_semana %}7{% else %}5{% endif %}, minmax(0, 1fr))">
+    {% for semana in semanas %}
+      {% for dia in semana %}
+        <div class="coluna">
+          {% if forloop.parentloop.first %}
+            <div class="cabecalho">{% if dia %}{{ dia.dia|date:"l" }}{% endif %}</div>
           {% endif %}
+          <div class="corpo{% if not dia %} bg-light{% endif %}">
+            {% if dia %}
+              <div class="numero{% if dia.dia == hoje %} hoje{% endif %}">{{ dia.dia|date:"j" }}</div>
+              {% for tipo, item, hora in dia.cartoes %}
+                {% if tipo != "livre" %}
+                  {% if forloop.counter <= 4 %}
+                    {% include "atendimentos/_cartao.html" with tipo=tipo item=item hora=hora %}
+                  {% elif forloop.counter == 5 %}
+                    <a href="{% url 'atendimentos:agenda' %}?visao=dia&data={{ dia.dia|date:'Y-m-d' }}" class="small text-decoration-none">+{{ dia.sessoes|length|add:"-4" }}</a>
+                  {% endif %}
+                {% endif %}
+              {% endfor %}
+            {% endif %}
+          </div>
         </div>
-      {% empty %}
-        <div class="text-muted small">—</div>
       {% endfor %}
-    </div>
-  {% endfor %}
+    {% endfor %}
   </div>
-</div>
+{% else %}
+  <div class="calendario" style="grid-template-columns: repeat({{ colunas|length }}, minmax(0, 1fr))">
+    {% for dia in colunas %}
+      <div class="coluna">
+        <div class="cabecalho{% if dia.dia == hoje %} hoje{% endif %}">{{ dia.dia|date:"l" }} · {{ dia.dia|date:"d/m" }}</div>
+        <div class="corpo">
+          {% for tipo, item, hora in dia.cartoes %}
+            {% include "atendimentos/_cartao.html" with tipo=tipo item=item hora=hora %}
+          {% empty %}
+            <div class="text-muted small text-center py-3">—</div>
+          {% endfor %}
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+{% endif %}
 {% endblock %}

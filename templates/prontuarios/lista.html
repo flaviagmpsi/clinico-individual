@@ -8,9 +8,36 @@
     {% if paciente %}Prontuários <span class="text-muted fw-normal">· {{ paciente.nome }}</span>{% else %}Prontuários para escrever{% endif %}
   </h1>
   {% if paciente %}
-    <a href="{% url 'pacientes:detalhe' paciente.pk %}" class="btn btn-sm btn-outline-secondary ms-auto">Voltar à ficha</a>
+    <a href="{% url 'prontuarios:paciente' paciente.pk %}" class="btn btn-sm btn-primary ms-auto">Abrir o prontuário completo</a>
+    <a href="{% url 'pacientes:detalhe' paciente.pk %}" class="btn btn-sm btn-outline-secondary ms-2">Voltar à ficha</a>
   {% endif %}
 </div>
+
+{% comment %}ADR-079: o prontuário completo de um paciente — as quatro partes da Res. CFP nº 001/2009 numa folha
+só, com a orientação do CFP ao lado. A lista abaixo continua sendo o atalho para o que falta escrever.{% endcomment %}
+{% if not paciente %}
+<div class="card mb-3">
+  <div class="card-body py-3">
+    <div class="fw-semibold">Prontuário por paciente</div>
+    <div class="text-muted small mb-2" style="max-width:760px">
+      A folha completa no formato que o CFP pede: identificação, avaliação da demanda e objetivos, evolução sessão a
+      sessão e encerramento — com a orientação de cada parte, o que é administrativo já preenchido, e PDF ou DOCX.
+    </div>
+    {% if pacientes %}
+    <form method="get" action="{% url 'prontuarios:abrir' %}" class="d-flex flex-wrap gap-2 align-items-center">
+      <select name="paciente" class="form-select form-select-sm" style="max-width:320px" aria-label="Paciente" required>
+        <option value="">Escolha o paciente…</option>
+        {% for p in pacientes %}<option value="{{ p.pk }}">{{ p.nome }}</option>{% endfor %}
+      </select>
+      <button type="submit" class="btn btn-sm btn-primary">Abrir prontuário</button>
+    </form>
+    {% else %}
+      <div class="small text-muted">Cadastre um paciente para abrir o prontuário dele.</div>
+    {% endif %}
+  </div>
+</div>
+<div class="rotulo mb-2">Sessões sem prontuário</div>
+{% endif %}
 
 {% comment %}ADR-064: toda sessão realizada pede um prontuário confirmado por participante.{% endcomment %}
 <p class="text-muted small mb-3" style="max-width:760px">
@@ -31,7 +58,7 @@
           <td class="text-muted">{{ r.consulta.caso }}</td>
           <td>
             {% if r.situacao == "confirmado" %}<span class="badge text-bg-success">Confirmado</span>
-            {% elif r.situacao == "em correção" %}<span class="badge text-bg-info">Em correção</span>
+            {% elif r.situacao == "em edição" %}<span class="badge text-bg-info">Em edição</span>
             {% elif r.situacao == "rascunho" %}<span class="badge text-bg-light border">Rascunho</span>
             {% else %}<span class="badge text-bg-warning">Não escrito</span>{% endif %}
           </td>

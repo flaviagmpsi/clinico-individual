@@ -2317,6 +2317,215 @@ psicólogo: nome completo, telefone, endereço da clínica, CPF e/ou CNPJ, se at
 - A assinatura (ADR-038) continua no passo 7: hoje a conta se cria e entra. Quando houver cobrança, ela entra
   **entre** o passo 1 e o painel, sem mexer no quiz.
 
+## ADR-072 — O painel diz cada coisa uma vez (revisa a ADR-069)
+
+**Status:** ✅ Aceita — Rodada 44 (terceiro teste do usuário).
+
+**Decisões do usuário:**
+- As pendências apareciam em **três lugares** — um card-resumo, um bloco de pagamentos, um bloco de prontuários,
+  mais o aviso de sessões atrasadas. Passa a ser **um bloco só**, direto, com o necessário para agir.
+- **"Dias sem sessão" sai por completo**, inclusive o alerta de ritmo que a ADR-069 tinha mantido. O recurso não
+  é relevante: com a sessão sempre cadastrada, esse número já é a própria agenda.
+- A agenda do painel mostra **só os atendimentos do dia**.
+
+**Decisões de arquitetura:**
+- O painel tem três blocos e nada mais: **Hoje** (a agenda do dia), **Pendências** (sessão de dia anterior sem
+  cadastro, pagamento vencido, prontuário por escrever — cada item com o link que o resolve) e o **resumo do mês**.
+- **Cada informação aparece uma vez.** A sessão de hoje que já passou sem cadastro fica no "Hoje" como "a
+  cadastrar" e não se repete nas pendências; os avisos por linha que a ADR-069 pôs na agenda do dia saem, porque
+  o bloco de pendências já os carrega.
+- Sai o `LIMITE_DE_DIAS_SEM_SESSAO` e tudo o que derivava dele, inclusive "precisa de atenção" no resumo.
+
+## ADR-073 — A agenda no desenho da planilha do psicólogo (revisa a ADR-065)
+
+**Status:** ✅ Aceita — Rodada 44.
+
+**Decisão do usuário:** a agenda deixa de ser lista e passa a ter **estética de agenda**, como a planilha que
+ele usa hoje: colunas por dia da semana, cada uma uma pilha de cartões em ordem de horário — `NOME - 14H` —,
+com os **horários livres visíveis** (`LIVRE - 8H`). Semana por padrão; dia e mês a um clique. Compromissos
+pessoais (academia, supervisão) **não entram**. "Livre" só existe onde há horário cadastrado na aba de
+Horários — e essa aba fica como está.
+
+**Decisões de arquitetura:**
+- **Livre é derivado**, nunca gravado: cada faixa de uma sessão (a duração padrão do psicólogo, de hora em hora)
+  dentro da grade que não tenha consulta ocupando nem sessão esperada. Cancelada e remarcada não ocupam
+  (ADR-024), então o horário delas volta a ser livre. Dia sem grade não tem livre nenhum.
+- **Segunda a sexta**; sábado e domingo entram só quando têm grade, sessão ou espera. Coluna vazia é largura
+  jogada fora.
+- As cores são as da planilha — amarelo sessão, verde livre — e falta, cancelamento e remarcação ganham a
+  própria cor para saltarem aos olhos.
+- O **mês** mostra até quatro cartões por dia e "+N"; sem livres, que ali seriam ruído. O **dia** é uma coluna
+  com tudo.
+- `de`/`ate` e `semana` continuam valendo como período (ADR-065), e o filtro de situação vale para a visão
+  aberta. Com filtro, nem previsão nem livre aparecem: a pergunta é "onde estão as faltas?".
+- O cálculo mora em `atendimentos.servicos.calendario`; a view só escolhe o período e navega.
+
+## ADR-074 — A tela só mostra o que a escolha pede (refina as ADRs 068, 070, 072 e 073)
+
+**Status:** ✅ Aceita — Rodada 44 (terceiro teste do usuário, continuação).
+
+**Decisões do usuário:**
+- **Valor desta sessão** só aparece na sessão **avulsa** ou para quem **paga por sessão**. Quem paga mensalidade,
+  cadastrando uma sessão da frequência, não vê o campo.
+- **"Remarcada para"** só aparece depois de marcar *Remarcada*. Pelo mesmo raciocínio, **"Cobrar esta sessão"**
+  só aparece depois de marcar *Cliente cancelou* — era a única situação em que ele tinha efeito.
+- No calendário, a sessão **cadastrada muda de cor**: amarelo é só o que ainda vai acontecer. Presente é verde;
+  falta, vermelho; cancelada e remarcada, cinza riscado. **Horário livre é cinza**.
+- No painel, o bloco "Hoje" tem o **tamanho do dia**, e as **pendências cabem na tela**: a lista é inteira e
+  rola por dentro do bloco.
+- No **financeiro**, sai o alerta amarelo que repetia a tabela do mês: o "Pendente" já está na linha da
+  cobrança. Só o que a tabela não alcança — cobrança vencida de **mês anterior** — aparece à parte.
+
+**Decisões de arquitetura:**
+- O valor some **na view**, que tira o campo do formulário quando a condição vigente é mensalidade; o serviço
+  continua aceitando o valor por qualquer caminho (ADR-070). A avulsa mostra sempre: é justamente onde a extra
+  do mensalista entra.
+- Os blocos condicionais são JavaScript de conveniência. Sem ele, ficam visíveis — e o servidor já ignorava o
+  que não se aplica à situação escolhida.
+
+## ADR-075 — No prontuário, "Editar" — e a versão anterior continua guardada (revisa a ADR-064)
+
+**Status:** ✅ Aceita — Rodada 45.
+
+**Decisão do usuário:** sai a função de "corrigir e explicar o motivo". O prontuário salvo tem um botão **Editar**
+e nada mais.
+
+**Decisões de arquitetura:**
+- A tela não fala em versão nem pede motivo. **Por baixo, nada mudou:** cada edição grava uma versão nova, a
+  anterior fica congelada pelo model e pelo gatilho do banco, e o histórico aparece recolhido no fim da página.
+- O campo `motivo` continua existindo, para as versões gravadas antes desta decisão.
+- Por que não editar em cima: o Manual do CFP (2025) trata o registro como prova idônea em processo ético, manda
+  evitar o que permita adulteração e pede que plataforma eletrônica assegure a **autenticidade do conteúdo**.
+  Histórico apagado não volta; histórico invisível não incomoda ninguém.
+
+## ADR-076 — Aba de documentos psicológicos: modelos em branco, no formato do CFP (revisa as ADRs 032 e 034)
+
+**Status:** ✅ Aceita — Rodada 45. O usuário enviou o Manual Orientativo do CFP (1ª ed., 2025), lido na íntegra.
+
+**Decisão do usuário:** uma aba com **modelos prontos** de documento psicológico, o mais fiéis possível às
+orientações do conselho. Os campos chegam **em branco**, cada um com a explicação do que se espera ali, e cada
+sub-aba explica **como o CFP espera o documento e por quê**. O documento preenchido **fica guardado** (rascunho →
+emitido), e o sistema sugere só o que é administrativo: a identificação do paciente escolhido e a assinatura.
+
+**O que entra:** as cinco modalidades da Res. CFP nº 06/2019 — **declaração, atestado, relatório psicológico,
+laudo e parecer** — e três termos de apoio: **termo de entrega**, **autorização para atender criança ou
+adolescente** (Res. CFP nº 13/2022, Anexo I) e **encaminhamento**. Ficam de fora o relatório multiprofissional
+(pressupõe equipe), os termos de serviço-escola e de acolhimento institucional, e a ficha SINAN, que é formulário
+do Ministério da Saúde.
+
+**Por que isto revisa a ADR-034.** Ela adiou atestado, laudo e parecer porque a **IA** os geraria sem a avaliação
+que os fundamenta. Modelo em branco não gera nada: quem escreve é o psicólogo, e a sub-aba diz o pré-requisito no
+topo — atestado e laudo só depois de avaliação psicológica (Res. 31/2022); parecer exige titulação. A geração
+por IA continua para o fim (ADR-058), e o Manual a baliza: apoio à redação, nunca ao conteúdo clínico.
+
+**Decisões de arquitetura:**
+- **Direito autoral (ADR-033).** A estrutura dos documentos vem da resolução, que é ato oficial e pode ser
+  reproduzida. O Manual é obra protegida: é **fonte e link**, nunca cópia — as orientações e as ajudas de campo
+  são escritas com palavras nossas. A aba mostra em que versão da norma os modelos se apoiam.
+- **O catálogo é código** (`documentos.modelos`), não tabela: muda quando a norma muda, com teste e revisão.
+- **Nada clínico chega ao documento pelo sistema.** A origem de uma sugestão é o paciente (nome, CPF,
+  nascimento), o perfil ou a data de hoje — e um teste garante que nenhuma outra existe. É a ADR-034 aplicada ao
+  modelo em branco: a declaração é proibida de conter sintoma, e a garantia é o dado nem estar à mão.
+- **Rascunho → emitido.** Emitir exige os campos obrigatórios e **congela**: a cópia guardada é a que foi
+  entregue (Res. 01/2009, Art. 2º, VI — a D-05). Model e gatilho de banco recusam alterar, como no prontuário.
+  Corrigir é "Novo a partir deste". Paciente com documento emitido não é excluído; rascunho sai junto.
+- **A forma é do sistema; o conteúdo é de quem assina.** Texto corrido ou itens conforme a modalidade; atestado
+  fechado com traços (Art. 10, §5º); validade no último parágrafo de atestado, relatório e laudo (Art. 17);
+  data por extenso; laudas numeradas na impressão; segunda assinatura no termo de entrega e na autorização.
+- Impressão e PDF são do navegador. Assinatura eletrônica ICP-Brasil fica para depois.
+
+## ADR-077 — O documento se preenche dentro dele (refina a ADR-076)
+
+**Status:** ✅ Aceita — Rodada 45 (mesmo dia).
+
+**Decisão do usuário:** a primeira versão da sub-aba — formulário para preencher, documento só depois de emitir —
+"ficou muito ruim porque não dá pra ver o modelo final". O que fica como estava: as opções de documento no topo, o
+card de explicação do CFP, o preenchimento automático e o seletor de paciente. O que muda: **o design final do
+documento já está na tela, e preenche-se dentro dele.**
+
+**Decisões de arquitetura:**
+- A tela à direita é **a folha** — timbre, título, texto, local e data, assinatura —, e cada espaço dela é um
+  campo do formulário, com a letra do próprio documento e um sublinhado tracejado no lugar da caixa. Espaço
+  exigido e ainda vazio fica amarelo. Não existe mais formulário separado.
+- **Gabarito.** Cada documento em texto corrido é descrito por um texto com `{campo}` onde o valor cai e `[[…]]` em
+  volta do trecho opcional. A folha de preencher e a folha impressa saem **do mesmo gabarito**: o que se vê
+  enquanto escreve é o que sai no papel, e não há segunda composição para divergir. Um teste garante que todo
+  campo tem lugar no texto, e que nenhum lugar fica sem campo.
+- Documento em itens (relatório, laudo, parecer) traz os títulos da resolução na folha, com o campo de texto
+  embaixo de cada um e a explicação logo abaixo.
+- **A explicação de cada campo continua** (ADR-076): aparece numa faixa fixa acima da folha quando o campo recebe
+  o foco — sem poluir o documento — e embaixo dos campos de texto longo.
+- A idade, no atestado, virou campo próprio e opcional: como aposto, entra com as duas vírgulas ou não entra. É o
+  que o gabarito sabe fazer sem adivinhar pontuação.
+- Descartada no caminho: uma prévia ao lado do formulário, atualizada pelo servidor. Resolvia "ver antes de
+  emitir", mas não "preencher dentro" — e era uma tela a mais para o mesmo trabalho.
+
+## ADR-078 — Salvar em PDF e em DOCX, da mesma composição da folha
+
+**Contexto.** Rodada 46. O documento só saía pela impressão do navegador. O usuário pediu "a opção de salvar em
+pdf e docs": PDF para entregar, DOCX para quem precisa ajustar no Word ou mandar a quem só aceita Word.
+
+**Decisões de arquitetura:**
+- **Um módulo, `core.exportacao`**, que recebe a folha já composta — título, blocos, local e data, assinaturas,
+  timbre — e devolve bytes. Ele não conhece documento nem prontuário; quem compõe é o app de origem
+  (`documentos.modelos.compor`, `prontuarios.servicos.folha_para_arquivo`). A tela, a impressão e os dois arquivos
+  saem da mesma composição: não há segunda redação para divergir (ADR-077).
+- **Bibliotecas em Python puro**: `reportlab` (PDF) e `python-docx` (DOCX). Descartado WeasyPrint, que reaproveitaria
+  o HTML da folha mas exige GTK/Pango no sistema — instalação frágil no Windows de desenvolvimento e peso no
+  Render. Descartado também converter DOCX em PDF via LibreOffice, pelo mesmo motivo.
+- **A forma que o CFP pede vai para o arquivo**: laudas numeradas "1/N" no rodapé (no DOCX, campos `PAGE` e
+  `NUMPAGES`, que o Word atualiza sozinho); traços fechando o espaço do atestado; traço de assinatura do tamanho de
+  uma assinatura. No PDF, o último parágrafo — e o título do item, se for o único parágrafo dele — vai junto com a
+  assinatura: **lauda só com assinatura** é o que permite trocar o conteúdo que veio antes.
+- **Rascunho pode ser baixado, mas sai marcado**: marca d'água no PDF, cabeçalho no DOCX e `rascunho-` no nome do
+  arquivo. Arquivo solto não pode se passar por documento emitido.
+- **Exportar entra na trilha de auditoria** (`Acao.EXPORTAR`, ADR-057): é o momento em que o conteúdo deixa o
+  sistema. Nada é guardado em disco — o arquivo é gerado na hora, e o disco do Render é efêmero (I-04).
+- **"PDF" e "DOCX" na folha salvam antes de baixar**: o arquivo sai com o que está escrito agora. Em documento
+  ainda não salvo os botões não aparecem — cada clique criaria outro rascunho.
+- **Limite conhecido:** o DOCX é editável por natureza. A cópia que vale como registro documental continua sendo
+  a emitida e congelada no sistema (ADR-076), não o arquivo.
+
+## ADR-079 — O prontuário na forma da Res. CFP nº 001/2009, preenchido dentro da folha (fecha a P-80)
+
+**Contexto.** Rodada 46. O prontuário era um texto livre por sessão — só a *evolução*. A Res. CFP nº 001/2009,
+Art. 2º, pede quatro partes, e o Manual de 2025 avisa que plataforma sem essa estrutura "necessita realizar
+adequações" numa fiscalização (P-80). O usuário pediu, para a aba de prontuários, "a mesma coisa" da aba de
+documentos: explicação das orientações, coisas pré-preenchidas e a visualização do documento.
+
+**Decisões de arquitetura:**
+- **Uma folha por paciente** (`/prontuarios/paciente/<pk>/`), no desenho das ADR-076 e ADR-077: à esquerda, o que
+  o CFP espera do prontuário e por quê (`prontuarios/orientacoes.py`); à direita, a folha "PRONTUÁRIO PSICOLÓGICO"
+  com as quatro partes, e cada espaço dela é um campo, com a explicação na faixa de ajuda.
+  1. **Identificação** — vem do cadastro e não se edita na folha: uma verdade só, com link para a ficha.
+  2. **Avaliação da demanda e objetivos do trabalho** — texto por paciente.
+  3. **Evolução** — uma entrada datada por sessão **realizada**, da mais antiga para a mais recente. É o mesmo
+     registro de sessão da ADR-064: a folha é outra porta para ele, não outro dado.
+  4. **Encaminhamento ou encerramento** — texto por paciente, em branco enquanto o trabalho segue.
+- **Pré-preenchido só com o que é administrativo** (ADR-034): a demanda chega com modalidade, frequência, duração
+  e data de início; o encerramento, com o desfecho registrado (ADR-055), se houver. Motivo da busca, objetivos e
+  tudo o que é clínico o sistema não supõe. A sugestão é marcada na tela como sugestão e **não vai para o
+  arquivo** enquanto não for salva.
+- **`FichaDoProntuario` só se acrescenta.** Demanda e encerramento ficam num model próprio, por paciente; cada
+  mudança grava uma linha nova e a anterior fica guardada — vale a mais recente. O model recusa alterar e apagar,
+  e um gatilho recusa `UPDATE` até para o dono do banco, como na versão confirmada (ADR-064). RLS em migração
+  própria. Descartado: `OneToOne` editável, que perderia a redação anterior de um texto que é prova.
+- **A folha não tem rascunho.** "Salvar prontuário" confirma cada evolução que mudou, como versão nova da sessão
+  (ADR-075). Texto igual ao que vale não gera versão; texto apagado é ignorado — registro feito não se apaga. A
+  tela de uma sessão só, com rascunho e histórico, continua existindo: é para onde levam as pendências do painel.
+- **PDF e DOCX** pela ADR-078, com `Acao.EXPORTAR` na trilha. O arquivo leva só o que está **confirmado**; parte
+  sem texto sai como "Sem registro até esta data", e não em branco — o Manual pede que não fiquem espaços vazios.
+  É a cópia a que a pessoa atendida tem direito.
+- **Paciente com ficha escrita não é apagado** (ADR-048): a avaliação da demanda pode nascer na entrevista inicial,
+  antes de qualquer sessão realizada, e já é prontuário.
+- **Direito autoral** (ADR-033): a resolução é ato oficial e é citada; o Manual do CFP é fonte e link — os textos
+  de orientação são redação nossa.
+- **O que a folha diz que ainda não temos:** o *registro documental* de uso exclusivo da psicóloga (hipóteses não
+  compartilhadas, protocolos de teste — Art. 2º, V). A orientação avisa que ele deve ser guardado à parte. Virou
+  a P-84.
+- O estilo e o script da folha preenchível saíram de `documentos/modelo.html` para `templates/_folha_preenchivel_*`,
+  usados pelas duas abas.
+
 ## Impeditivos
 
 | # | Impeditivo | Situação |

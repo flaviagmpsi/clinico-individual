@@ -1,0 +1,56 @@
+{% comment %}
+A folha do documento, pronta para imprimir ou salvar em PDF pelo navegador (ADR-076). Página própria, sem a
+moldura do sistema: o que sai no papel é só o documento.
+
+Forma, conforme a Res. CFP nº 06/2019: título centralizado; texto corrido ou itens, conforme a modalidade; no
+atestado, o espaço que sobra é fechado com traços (Art. 10, §5º); encerramento com local, data, nome, CRP e
+assinatura; laudas numeradas — a rubrica e o carimbo são de punho, ou a assinatura é eletrônica.
+{% endcomment %}
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ documento.nome }} · Hamilton</title>
+  {% include "documentos/_folha_estilo.html" %}
+  <style>
+    @page { size: A4; margin: 2.5cm 2.5cm 2.2cm; @bottom-center { content: counter(page) "/" counter(pages); font-size: 9pt; } }
+    body { background: #e9ecef; margin: 0; }
+    .barra { font-family: system-ui, sans-serif; font-size: .85rem; background: #fff; border-bottom: 1px solid #dee2e6;
+             padding: 10px 16px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+    .barra a, .barra button { font: inherit; padding: 5px 12px; border-radius: 6px; border: 1px solid #ced4da; background: #fff;
+             color: #1f6f68; text-decoration: none; cursor: pointer; }
+    .barra .principal { background: #1f6f68; border-color: #1f6f68; color: #fff; }
+    .barra .situacao { margin-left: auto; color: #6c757d; }
+    .aviso { font-family: system-ui, sans-serif; font-size: .85rem; background: #fff3cd; border-bottom: 1px solid #ffe69c; padding: 8px 16px; }
+    .folha { width: 21cm; min-height: 29.7cm; margin: 24px auto; }
+    @media print {
+      body { background: #fff; } .barra, .aviso { display: none; }
+      .folha { box-shadow: none; margin: 0; width: auto; min-height: 0; padding: 0; }
+    }
+  </style>
+</head>
+<body>
+<div class="barra">
+  <a href="{% if documento.rascunho %}{% url 'documentos:editar' documento.pk %}{% else %}{% url 'documentos:aba' %}{% endif %}">← Voltar</a>
+  <button class="principal" onclick="window.print()">Imprimir</button>
+  <a href="{% url 'documentos:baixar' documento.pk 'pdf' %}">Baixar PDF</a>
+  <a href="{% url 'documentos:baixar' documento.pk 'docx' %}">Baixar DOCX</a>
+  {% if not documento.rascunho %}
+    <form method="post" action="{% url 'documentos:duplicar' documento.pk %}" style="margin:0">
+      {% csrf_token %}<button type="submit">Novo a partir deste</button>
+    </form>
+  {% endif %}
+  <span class="situacao">
+    {% if documento.rascunho %}Rascunho — ainda não faz parte do registro documental.
+    {% else %}Emitido em {{ documento.emitido_em|date:"d/m/Y H:i" }} · cópia guardada{% if documento.paciente %} no registro de {{ documento.paciente.nome }}{% endif %}.{% endif %}
+  </span>
+</div>
+{% if faltando %}
+  <div class="aviso"><strong>Falta para emitir:</strong>
+    {% for campo in faltando %}{{ campo.rotulo }}{% if not forloop.last %} · {% endif %}{% endfor %}.</div>
+{% endif %}
+
+{% include "documentos/_folha.html" with marca_rascunho=documento.rascunho %}
+</body>
+</html>

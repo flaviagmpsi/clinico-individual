@@ -408,6 +408,33 @@ class CobrancaEModalidadePelaTela(BaseTelasAgenda):
         consulta.refresh_from_db()
         self.assertEqual((consulta.cobrada, consulta.modalidade), (True, PRESENCIAL))
 
+class ValorSoOndeFazSentido(BaseTelasAgenda):
+    """ADR-074: o campo "valor desta sessão" só aparece na avulsa ou para quem paga por sessão."""
+
+    def test_avulsa_sempre_mostra_o_valor(self):
+        self.entrar(self.ana)
+        self.assertContains(self.client.get(reverse("atendimentos:nova")), "Valor desta sessão")
+
+    def test_sessao_da_frequencia_de_quem_paga_mensalidade_nao_mostra(self):
+        with contexto.como(self.ana.pk):
+            from decimal import Decimal
+            from pacientes.models import CondicaoCobranca
+            mensalista = cadastrar_paciente(Paciente(nome="Mensalista Agenda"), valor=Decimal("700"),
+                                            modalidade=CondicaoCobranca.Modalidade.MENSAL, dia_vencimento=10,
+                                            vigente_desde=self.hoje - timedelta(days=60))
+            regra = frequencia_desde(mensalista, self.hoje)
+        self.entrar(self.ana)
+        resposta = self.client.get(self.prevista_de_ontem(regra))
+        self.assertNotContains(resposta, "Valor desta sessão")
+        # E cadastrar sem o campo continua funcionando.
+        resposta = self.client.post(self.prevista_de_ontem(regra), {"estado": REALIZADA, "hora": "09:00", "duracao": "50"})
+        self.assertEqual(resposta.status_code, 302)
+
+    def test_sessao_da_frequencia_de_quem_paga_por_sessao_mostra(self):
+        self.entrar(self.ana)
+        self.assertContains(self.client.get(self.prevista_de_ontem(self.regra_joao)), "Valor desta sessão")
+
+
 class RemarcacaoPelaTela(BaseTelasAgenda):
     """ADR-068: marcar "remarcada" pergunta para quando, e a data nova vira sessão a cadastrar."""
 
@@ -465,6 +492,66 @@ class RemarcacaoPelaTela(BaseTelasAgenda):
         self.entrar(self.ana)
         rota = reverse("atendimentos:cadastrar_remarcada", args=[self.consulta_do_bruno.pk])
         self.assertEqual(self.client.get(rota).status_code, 404)
+
+
+class CalendarioPelaTela(BaseTelasAgenda):
+    """ADR-073: a agenda no desenho da planilha — colunas por dia, cartões por horário, livres onde há grade."""
+
+    def grade(self, dia_semana, de, ate):
+        with contexto.como(self.ana.pk):
+            return HorarioDisponivel.objects.create(dia_semana=dia_semana, inicio=time(de), fim=time(ate))
+
+    def rota(self, visao, data, situacao=""):
+        return f"{reverse('atendimentos:agenda')}?visao={visao}&data={data:%Y-%m-%d}&situacao={situacao}"
+
+    def test_semana_e_o_padrao_com_uma_coluna_por_dia(self):
+        self.entrar(self.ana)
+        resposta = self.client.get(self.rota("semana", self.terca))
+        for dia in ["Segunda-feira", "Terça-feira", "Sexta-feira"]:
+            self.assertContains(resposta, dia)
+        self.assertContains(resposta, "Maria Agenda - 14H")
+
+    def test_livre_so_onde_ha_horario_cadastrado_e_nao_em_cima_de_sessao(self):
+        """Grade de terça 13h–16h com a Maria às 14h: livre às 13h e às 15h, e em nenhum outro dia."""
+        self.grade(TERCA, 13, 16)
+        self.entrar(self.ana)
+        corpo = self.client.get(self.rota("semana", self.terca)).content.decode()
+        self.assertIn("LIVRE - 13H", corpo)
+        self.assertIn("LIVRE - 15H", corpo)
+        self.assertNotIn("LIVRE - 14H", corpo)
+        self.assertEqual(corpo.count("LIVRE - "), 2)
+
+    def test_sem_grade_nao_ha_livre_nenhum(self):
+        self.entrar(self.ana)
+        self.assertNotContains(self.client.get(self.rota("semana", self.terca)), "LIVRE - ")
+
+    def test_fim_de_semana_so_aparece_com_conteudo(self):
+        self.entrar(self.ana)
+        self.assertNotContains(self.client.get(self.rota("semana", self.terca)), "Sábado")
+        self.grade(5, 9, 11)  # sábado
+        self.assertContains(self.client.get(self.rota("semana", self.terca)), "Sábado")
+
+    def test_visao_do_dia_e_do_mes(self):
+        self.entrar(self.ana)
+        dia = self.client.get(self.rota("dia", self.terca))
+        self.assertContains(dia, "Maria Agenda - 14H")
+        self.assertNotContains(dia, "Segunda-feira")
+        mes = self.client.get(self.rota("mes", self.terca))
+        self.assertContains(mes, f"{self.terca:%Y}")
+        self.assertContains(mes, "Maria Agenda - 14H")
+
+    def test_filtro_de_situacao_esconde_livres_e_previstas(self):
+        self.grade(TERCA, 13, 16)
+        self.entrar(self.ana)
+        corpo = self.client.get(self.rota("semana", self.terca, situacao=REALIZADA)).content.decode()
+        self.assertNotIn("LIVRE - ", corpo)
+        self.assertNotIn("Maria Agenda - 14H", corpo)  # prevista, não cadastrada
+
+    def test_a_grade_de_outro_psicologo_nao_vira_livre_aqui(self):
+        with contexto.como(self.bruno.pk):
+            HorarioDisponivel.objects.create(dia_semana=TERCA, inicio=time(8), fim=time(10))
+        self.entrar(self.ana)
+        self.assertNotContains(self.client.get(self.rota("semana", self.terca)), "LIVRE - ")
 
 
 class RLSNaAgenda(TransactionTestCase):

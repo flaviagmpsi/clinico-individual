@@ -12,6 +12,7 @@ urlpatterns = [
     path("horarios/", include("agenda.urls")),
     path("financeiro/", include("financeiro.urls")),
     path("prontuarios/", include("prontuarios.urls")),
+    path("documentos/", include("documentos.urls")),
 
     # ⚠️ Precisa vir **antes** de `admin/`: o logout do admin apaga a linha da sessão durante a
     # view, e `hamilton_app` não alcança `django_session` desde a ADR-046. Esta rota entrega a

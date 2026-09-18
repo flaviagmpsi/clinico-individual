@@ -1,0 +1,154 @@
+{% extends "base.html" %}
+{% block titulo %}Prontuário · {{ paciente.nome }}{% endblock %}
+{% block secao %}Prontuários{% endblock %}
+
+{% block conteudo %}
+{% comment %}
+ADR-079: o prontuário no mesmo desenho da aba de documentos (ADR-076, ADR-077). À esquerda, o que o CFP espera do
+prontuário e por quê. À direita, a folha como ela sai no papel, com as quatro partes da Res. CFP nº 001/2009 — e
+cada espaço dela é um campo. A identificação vem do cadastro; a demanda e o encerramento chegam com o que é
+administrativo já escrito; a evolução tem uma entrada por sessão realizada.
+{% endcomment %}
+{% include "documentos/_folha_estilo.html" %}
+{% include "_folha_preenchivel_estilo.html" %}
+<style>
+  .folha .sessao { margin-bottom: 14px; }
+  .folha .sessao .quando { font-weight: 700; }
+  .folha .sessao .quando small { font-family: system-ui, sans-serif; font-weight: 400; font-size: 8.5pt; color: #6c757d; }
+  .folha .sessao .quando small a { color: inherit; }
+  .folha .do-cadastro { font-family: system-ui, sans-serif; font-size: 8.5pt; color: #6c757d; margin: 6px 0 0; }
+  .folha .sugerido { font-family: system-ui, sans-serif; font-size: 8.5pt; color: #8a6d00; margin: 0 0 2px; }
+</style>
+
+<div class="d-flex align-items-center flex-wrap gap-2 mb-3">
+  <h1 class="h5 mb-0">Prontuário <span class="text-muted fw-normal">· {{ paciente.nome }}</span></h1>
+  <form method="get" action="{% url 'prontuarios:abrir' %}" class="ms-auto d-flex gap-2 align-items-center small">
+    <label for="outro-paciente" class="text-muted mb-0">Paciente</label>
+    <select name="paciente" id="outro-paciente" class="form-select form-select-sm" style="max-width:260px" onchange="this.form.submit()">
+      {% for p in pacientes %}<option value="{{ p.pk }}"{% if p.pk == paciente.pk %} selected{% endif %}>{{ p.nome }}</option>{% endfor %}
+    </select>
+    <a href="{% url 'pacientes:detalhe' paciente.pk %}" class="btn btn-sm btn-outline-secondary text-nowrap">Ficha do paciente</a>
+  </form>
+</div>
+
+<div class="row g-3">
+  <div class="col-xl-4 col-lg-5">
+    <div class="card">
+      <div class="card-header bg-white py-2">
+        <div class="fw-semibold">Prontuário psicológico</div>
+        <div class="text-muted small">Res. CFP nº 001/2009, Art. 2º</div>
+      </div>
+      <div class="card-body small">
+        <p>{{ resumo }}</p>
+        <div class="alert alert-warning py-2 mb-3"><strong>Antes de escrever:</strong> {{ antes }}</div>
+
+        <div class="rotulo mb-2">Como o CFP espera o prontuário — e por quê</div>
+        {% for o in orientacoes %}
+          <div class="mb-3">
+            <div class="fw-semibold">{{ o.titulo }}</div>
+            <div>{{ o.texto }}</div>
+          </div>
+        {% endfor %}
+
+        <div class="border-top pt-2 text-muted">
+          Base: {{ versao_da_norma }}.
+          <a href="{{ resolucao }}" target="_blank" rel="noopener">Resolução CFP nº 001/2009</a> ·
+          <a href="{{ manual }}" target="_blank" rel="noopener">Manual Orientativo do CFP</a>.
+          O prontuário é seu: o sistema organiza a forma, e o conteúdo técnico é responsabilidade de quem assina.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-xl-8 col-lg-7">
+    <form method="post" novalidate data-folha>
+      {% csrf_token %}
+      {% if form.non_field_errors %}
+        <div class="alert alert-danger py-2 small">{{ form.non_field_errors }}</div>
+      {% endif %}
+
+      <div class="faixa-de-ajuda" id="faixa-de-ajuda">
+        <span class="nome"><i class="bi bi-lightbulb"></i> Preencha dentro do prontuário.</span>
+        <span class="texto">Clique num espaço da folha: aqui aparece o que o CFP espera naquela parte. A
+          identificação vem do cadastro do paciente.</span>
+      </div>
+
+      <div class="mesa">
+        <div class="folha">
+          {% if user.nome_clinica or user.logradouro %}
+            <div class="timbre">
+              {% if user.nome_clinica %}<strong>{{ user.nome_clinica }}</strong><br>{% endif %}
+              {% if user.logradouro %}{{ user.logradouro }}{% if user.numero %}, {{ user.numero }}{% endif %}{% if user.complemento %} — {{ user.complemento }}{% endif %}{% if user.bairro %} · {{ user.bairro }}{% endif %}{% if user.cidade %} · {{ user.cidade }}{% if user.uf %}/{{ user.uf }}{% endif %}{% endif %}{% endif %}
+            </div>
+          {% endif %}
+
+          <h1>{{ titulo_da_folha }}</h1>
+
+          <div class="bloco">
+            <h2>Identificação</h2>
+            <div class="linha-id"><span>Nome completo:</span> {{ paciente.nome }}</div>
+            {% if paciente.data_nascimento %}<div class="linha-id"><span>Data de nascimento:</span> {{ paciente.data_nascimento|date:"d/m/Y" }}</div>{% endif %}
+            {% if paciente.cpf %}<div class="linha-id"><span>CPF:</span> {{ paciente.cpf|slice:":3" }}.{{ paciente.cpf|slice:"3:6" }}.{{ paciente.cpf|slice:"6:9" }}-{{ paciente.cpf|slice:"9:" }}</div>{% endif %}
+            {% for responsavel in paciente.responsaveis.all %}
+              <div class="linha-id"><span>Responsável legal:</span> {{ responsavel.nome }}{% if responsavel.parentesco %} ({{ responsavel.parentesco }}){% endif %}</div>
+            {% endfor %}
+            <div class="linha-id"><span>Psicóloga(o) responsável:</span> {{ user.nome_completo }} — CRP {{ user.crp }}</div>
+            <p class="do-cadastro">Vem do cadastro. Para corrigir, <a href="{% url 'pacientes:editar' paciente.pk %}">edite a ficha do paciente</a>.</p>
+          </div>
+
+          <div class="bloco">
+            <h2>Avaliação da demanda e objetivos do trabalho</h2>
+            {% if folha.demanda_sugerida %}<p class="sugerido">Começo sugerido a partir do cadastro — só o que é administrativo. Complete com a demanda e os objetivos.</p>{% endif %}
+            {{ form.demanda }}
+            <div class="dica">{{ form.demanda.help_text }}</div>
+          </div>
+
+          <div class="bloco">
+            <h2>Evolução do trabalho e procedimentos adotados</h2>
+            {% for registro, campo in form.sessoes %}
+              <div class="sessao">
+                <div class="quando">{{ registro.consulta.inicio|date:"d/m/Y" }}, {{ registro.consulta.inicio|date:"H:i" }}
+                  <small>· {{ registro.consulta.get_modalidade_display|lower }}{% if not registro.consulta.caso.individual %} · {{ registro.consulta.caso }}{% endif %}
+                    {% if registro.situacao == "rascunho" or registro.situacao == "em edição" %} · rascunho ainda não confirmado{% endif %}
+                    {% if registro.confirmadas|length > 1 %} · <a href="{{ registro.url }}">histórico de edições</a>{% endif %}</small>
+                </div>
+                {{ campo }}
+              </div>
+            {% empty %}
+              <div class="dica">Nenhuma sessão realizada ainda. Cada sessão marcada como realizada na agenda abre aqui um espaço datado para a evolução.</div>
+            {% endfor %}
+            {% if form.sessoes %}<div class="dica">{{ ajuda_evolucao }}</div>{% endif %}
+          </div>
+
+          <div class="bloco">
+            <h2>Encaminhamento ou encerramento</h2>
+            {% if folha.encerramento_sugerido and folha.encerramento %}<p class="sugerido">Começo sugerido a partir do desfecho registrado no atendimento.</p>{% endif %}
+            {{ form.encerramento }}
+            <div class="dica">{{ form.encerramento.help_text }}</div>
+          </div>
+
+          <div class="assinaturas">
+            <div class="assinatura"><div class="linha">{{ user.nome_completo }}<br>CRP {{ user.crp }}</div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="d-flex flex-wrap gap-2 align-items-center mt-3">
+        <button type="submit" name="acao" value="salvar" class="btn btn-primary">Salvar prontuário</button>
+        <div class="btn-group ms-2" role="group" aria-label="Salvar em arquivo">
+          <button type="submit" name="acao" value="pdf" class="btn btn-outline-secondary" title="Salva e baixa em PDF">
+            <i class="bi bi-file-earmark-pdf"></i> PDF</button>
+          <button type="submit" name="acao" value="docx" class="btn btn-outline-secondary" title="Salva e baixa em DOCX (Word)">
+            <i class="bi bi-file-earmark-word"></i> DOCX</button>
+        </div>
+        <span class="text-muted small ms-auto" style="max-width:420px">
+          Cada edição guarda a redação anterior. O arquivo leva só o que está salvo{% if folha.sem_registro %} —
+          {{ folha.sem_registro }} sess{{ folha.sem_registro|pluralize:"ão,ões" }} ainda sem registro{% endif %}.
+        </span>
+      </div>
+    </form>
+  </div>
+</div>
+
+{% include "_folha_preenchivel_js.html" %}
+{% endblock %}

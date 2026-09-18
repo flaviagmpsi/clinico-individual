@@ -9,7 +9,7 @@ Registro da evolução e da arquitetura do projeto. Atualizado a cada rodada de 
 > Para saber **o que falta construir**, o documento é [demandas.md](demandas.md). Este aqui
 > registra o que existe e por quê.
 
-**357 testes verdes contra PostgreSQL real, nenhum pulado.** A suíte roda em **~1,7 min com `--parallel 4`**; em série leva ~11 min. A diferença não é teste lento: medida app a app, a suíte inteira soma ~3,7 min, e o excesso aparece só quando tudo roda num processo só — é a limpeza do banco entre os testes de tela (`TransactionTestCase`), que cresce a cada app novo. Rode em paralelo num PostgreSQL 17 local; contra o Neon gratuito, a suspensão automática do banco derrubava a execução no meio.
+**450 testes verdes contra PostgreSQL real, nenhum pulado.** A suíte roda em **~1,7 min com `--parallel 4`**; em série leva ~11 min. A diferença não é teste lento: medida app a app, a suíte inteira soma ~3,7 min, e o excesso aparece só quando tudo roda num processo só — é a limpeza do banco entre os testes de tela (`TransactionTestCase`), que cresce a cada app novo. Rode em paralelo num PostgreSQL 17 local; contra o Neon gratuito, a suspensão automática do banco derrubava a execução no meio.
 
 ### Apps que existem
 
@@ -225,6 +225,25 @@ encaminhamento entre profissionais.
 - [Resolução CFP nº 001/2009](https://site.cfp.org.br/wp-content/uploads/2009/04/resolucao2009_01.pdf) — obrigatoriedade do registro documental; estrutura do prontuário (Art. 2º) e guarda de 5 anos (Art. 4º).
 - [Resolução CFP nº 06/2019 comentada](https://site.cfp.org.br/wp-content/uploads/2019/09/Resolu%C3%A7%C3%A3o-CFP-n-06-2019-comentada.pdf) — elementos mínimos dos documentos escritos.
 - [Manual Orientativo de Registro e Elaboração de Documentos Psicológicos (CFP, 2025)](https://site.cfp.org.br/wp-content/uploads/2025/11/Manual_Orientativo.pdf) — orientação vigente mais recente.
+  Lido na íntegra na Rodada 45. O que ele traz e que pesa em decisão nossa:
+  - **Estrutura mínima do registro** (Res. 01/2009): identificação · avaliação da demanda e objetivos · evolução ·
+    encaminhamento ou encerramento. Plataforma de prontuário que não garanta essa estrutura "necessita realizar
+    adequações" numa fiscalização (nota 4) — ver P-80.
+  - **Prontuário × registro documental**: o prontuário é direito do paciente, que pode pedi-lo. Hipótese
+    diagnóstica e interpretação não compartilhada vão no *registro documental*, não no prontuário.
+  - **Integridade**: evitar espaço em branco para prevenir adulteração; o registro é "prova idônea" em processo
+    ético; plataforma eletrônica deve assegurar autenticidade e segurança do conteúdo (nota 3).
+  - **Cinco modalidades de documento** (Res. 06/2019) e a tabela de estrutura de cada uma (p. 31). Declaração não
+    informa sintoma nem estado psicológico; atestado e laudo resultam de avaliação psicológica (Res. 31/2022);
+    parecer **não** decorre de avaliação nem de intervenção. Validade só em atestado, laudo e relatório, no último
+    parágrafo. Laudas numeradas ("1/10"), rubricadas até a penúltima, assinatura na última; assinatura
+    eletrônica ICP-Brasil dispensa rubrica (Lei 14.063/2020).
+  - **Entrega**: protocolo de entrega assinado; relatório e laudo pedem **entrevista devolutiva**.
+  - **Guarda**: 5 anos do último registro; 20 anos para prontuário em serviço de saúde (Lei 13.787/2018);
+    criança e adolescente, até a maioridade e depois os prazos gerais.
+  - **IA** (pergunta 16): permitida como apoio à redação e organização; conteúdo clínico é exclusivo da psicóloga;
+    evitar inserir dado sensível em sistema de IA sem respaldo legal ou ético; a responsabilidade não se
+    terceiriza. Baliza a IA de prontuário e de documentos, que ficaram para o fim (ADR-058).
 - [Guarda de documentos e termo de descarte — CRP-PR](https://crppr.org.br/orientacoes/guarda-de-documentos-e-termo-de-descarte/) — prazos e conflito com a Lei nº 13.787/2018.
 
 ---
@@ -255,6 +274,9 @@ encaminhamento entre profissionais.
 | 2026-09-15 | 37 | ADR-063 (revisa a 062): mensalidade vence numa data do mês — dia fixo ou dia útil —, e quem paga por sessão tem um pagamento pendente por sessão. Lembrete no vencimento, que não aparece se o pagamento vier antes; forma de pagamento obrigatória. Abertas P-74 (dia útil), P-75 (várias sessões num pagamento) e P-76 (falta cobrada gera pendência). |
 | 2026-09-15 | 38 | P-74 a P-76 fechadas: dia útil é seg–sex sem feriado nacional; quem acerta várias sessões é mensalidade; falta cobrada gera pendência. **Financeiro básico no ar** (app `financeiro`): devido calculado por mês e por sessão, registro de pagamento com forma obrigatória, lembrete de pendência no financeiro e no painel. Calendário de feriados nacionais em `core.calendario`. 264 testes. |
 | 2026-09-15 | 39 | Definições do painel fechadas (recebido é o referente ao mês; dias sem sessão desde a última realizada; por sessão numa linha só). **Painel novo no ar**, no app `indicadores`: sessões feitas × que faltam, receita recebida × a receber, e cada atendimento em curso com situação, dias sem sessão, sessões e financeiro do mês. `core` volta a não importar domínio. 274 testes. |
+| 2026-09-18 | 45 | O usuário enviou o **Manual Orientativo do CFP (2025)**, lido na íntegra; os fatos que pesam em decisão nossa foram para a seção 5. ADR-075 (**prontuário com "Editar"**: sem motivo e sem falar em versão na tela; por baixo, a versão anterior continua congelada) e ADR-076 (**aba de documentos psicológicos**, app `documentos`: cinco modalidades da Res. 06/2019 e três termos de apoio, em branco, com a orientação do CFP e a ajuda de cada campo escritas com palavras nossas; rascunho → emitido com cópia congelada por model e gatilho; sugestão só de identificação e assinatura, nunca dado clínico; impressão e PDF pelo navegador — revisa as ADRs 032 e 034). ADR-077, no mesmo dia: **o documento se preenche dentro dele** — a tela é a folha, cada espaço é um campo, e a folha de preencher e a impressa saem do mesmo gabarito. Aberta a P-80: a estrutura mínima do prontuário da Res. 01/2009. 407 testes. |
+| 2026-09-18 | 46 | Pedido do usuário: salvar em PDF e DOCX, e o prontuário no mesmo desenho da aba de documentos. ADR-078 (**PDF e DOCX** por `core.exportacao`, com `reportlab` e `python-docx`; rascunho sai marcado; exportar entra na trilha) e ADR-079 (**prontuário na forma da Res. CFP 001/2009**: folha por paciente com as quatro partes, orientação do CFP ao lado, administrativo pré-preenchido, `FichaDoProntuario` só-acréscimo com gatilho e RLS). Fecha a P-80; abre a P-84 (registro documental restrito). |
+| 2026-09-17 | 44 | Terceiro teste do usuário. ADR-072 (**painel diz cada coisa uma vez**: um bloco só de pendências; "dias sem sessão" retirado por completo; a agenda do painel é só o dia) e ADR-073 (**agenda em formato de calendário**, no desenho da planilha do psicólogo: colunas por dia, cartões `NOME - 14H`, `LIVRE - 8H` só onde há horário cadastrado, segunda a sexta com fim de semana sob demanda, visões de dia, semana e mês). Semente com 12 pacientes e grade realista. 361 testes. |
 | 2026-09-17 | 43 | ADR-070 (**valor desta sessão**: campo opcional na consulta que cobra à parte a extra do mensalista e a sessão de quem não tem valor combinado; paciente infrequente já era coberto pela avulsa) e ADR-071 (**quiz de cadastro** em quatro passos — conta, regime, abordagem e formas de atendimento, clínica —, cada um gravando o que coleta; `CadastroCompletoMiddleware` tranca o sistema até o fim; endereço só para quem atende presencialmente; tudo editável no perfil). Fecha a P-77. 357 testes. |
 | 2026-09-16 | 41 | ADR-065: **cinco situações da sessão** — presente, faltou sem avisar, cliente cancelou, profissional cancelou, remarcada —, com a sessão **presumida confirmada** (nada a clicar antes) e a cobrança decorrendo da situação; só o cancelamento do cliente admite desmarcar. **Modalidade** online × presencial com padrão no paciente e ajuste por sessão. Agenda com filtro de período e de situação e o percentual de online. 310 testes. |
 | 2026-09-17 | 42 | Segundo teste do produto pelo usuário. ADR-066 (máscara é da tela: CPF, CNPJ, telefone, CEP e valor formatados no navegador, banco com número puro; CEP busca o endereço no ViaCEP), ADR-067 (**regime PF/PJ e dados da clínica no perfil** — o regime decide os recursos fiscais adiante; PJ sem CNPJ é recusado; UF e validadores de endereço vão para `core.enderecos`), ADR-068 (**a remarcada diz para quando**: a data nova entra na agenda esperando cadastro, sem gravar consulta antes de acontecer) e ADR-069 (**o painel é a agenda de hoje**, com o que ficou para trás logo acima; "dias sem sessão" sai da lista e vira alerta de ritmo perdido). 338 testes. |

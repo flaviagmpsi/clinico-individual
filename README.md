@@ -10,7 +10,7 @@ O contexto de produto e as decisões estão em [claude.md](claude.md) (resumo op
 
 **Passos 0 a 3 concluídos**: a fundação do isolamento (ADR-001) e a prova de que ela segura; conta com
 quiz de cadastro e perfil; pacientes; agenda com as cinco situações da sessão e remarcação com destino;
-financeiro básico; painel como agenda do dia; prontuário escrito à mão. Os próximos são **despesas** (N-05)
+financeiro básico; painel como agenda do dia; prontuário escrito à mão; documentos psicológicos no formato do CFP. Os próximos são **despesas** (N-05)
 e a **lixeira de pacientes** (ADR-048). A IA de prontuário fica por último (ADR-058).
 
 👉 **Se você vai programar aqui, leia [demandas.md](demandas.md) antes de tudo.** Ele diz, história
@@ -97,18 +97,19 @@ Abra **http://127.0.0.1:8000** e entre com:
 
 | Login | Senha | Tem |
 |---|---|---|
-| `ana@exemplo.com` | `hamilton123` | 4 pacientes |
+| `ana@exemplo.com` | `hamilton123` | 12 pacientes, uma semana cheia |
 | `bruno@exemplo.com` | `hamilton123` | 2 pacientes |
 
-Entre com um, depois com o outro. O banco tem 6 pacientes; cada psicólogo vê só os seus, e só o
+Entre com um, depois com o outro. O banco tem 14 pacientes; cada psicólogo vê só os seus, e só o
 próprio cadastro em "Meu perfil". Nenhuma view filtra por psicólogo — quem corta é o RLS.
 
 ### O que existe de tela
 
 Criar conta e quiz de cadastro · login · painel (agenda de hoje) · pacientes com busca, ficha, cadastro,
 edição e exclusão · agenda com filtros, frequência, cadastro de sessão, remarcação e desfecho · grade de
-horários · financeiro do mês com registro de pagamento · prontuários · meu perfil. O módulo de documentos
-aparece **apagado** na barra lateral, com o passo que o constrói.
+horários · financeiro do mês com registro de pagamento · prontuários (por sessão e a folha completa do paciente,
+na forma da Res. CFP 001/2009) · documentos psicológicos (modelos, rascunho, emissão e impressão) · PDF e DOCX de
+documentos e prontuários · meu perfil.
 
 ## Testes
 
@@ -120,7 +121,7 @@ DATABASE_URL="postgresql://hamilton_owner:ownerpass@127.0.0.1:5432/hamilton_dev"
   python manage.py test --parallel 4
 ```
 
-O runner precisa criar o banco de teste, então roda com o papel dono. São **357 testes**, e nenhum
+O runner precisa criar o banco de teste, então roda com o papel dono. São **450 testes**, e nenhum
 fica pulado. Contra um PostgreSQL local levam cerca de **1 minuto e 40 segundos com `--parallel 4`**.
 
 ⚠️ **Rode em paralelo.** Em série a mesma suíte leva ~11 minutos, e não é por teste lento: medida app a app,

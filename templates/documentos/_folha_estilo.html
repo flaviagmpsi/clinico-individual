@@ -1,0 +1,21 @@
+{% comment %}O desenho da folha, igual na prévia e na impressão (ADR-077).{% endcomment %}
+<style>
+  .folha { font-family: Georgia, "Times New Roman", serif; font-size: 12pt; line-height: 1.6; color: #111; background: #fff;
+           padding: 2.2cm 2.2cm 2.6cm; box-sizing: border-box; position: relative; box-shadow: 0 1px 8px rgba(0,0,0,.15); }
+  .folha .timbre { text-align: center; font-size: 10pt; color: #444; border-bottom: 1px solid #999; padding-bottom: 8px; margin-bottom: 28px; }
+  .folha .timbre strong { font-size: 12pt; color: #111; }
+  .folha h1 { text-align: center; font-size: 13pt; font-weight: 700; letter-spacing: .04em; margin: 0 0 4px; }
+  .folha .subtitulo { text-align: center; font-style: italic; }
+  .folha .bloco { margin-top: 22px; }
+  .folha h1 + .bloco, .folha .subtitulo + .bloco { margin-top: 28px; }
+  .folha h2 { font-size: 11.5pt; font-weight: 700; text-transform: uppercase; letter-spacing: .03em; margin: 0 0 6px;
+              border-bottom: 1px solid #bbb; padding-bottom: 2px; }
+  .folha .texto { text-align: justify; white-space: pre-wrap; }
+  .folha .tracos { word-break: break-all; color: #333; }
+  .folha .local { text-align: right; margin-top: 40px; }
+  .folha .assinaturas { display: flex; justify-content: center; gap: 48px; margin-top: 64px; flex-wrap: wrap; }
+  .folha .assinatura { text-align: center; min-width: 7cm; }
+  .folha .assinatura .linha { border-top: 1px solid #111; padding-top: 4px; }
+  .folha .marca-rascunho { position: absolute; top: 40%; left: 0; right: 0; text-align: center; font-family: system-ui, sans-serif;
+                           font-size: 72pt; font-weight: 700; color: rgba(200, 40, 40, .12); transform: rotate(-24deg); pointer-events: none; }
+</style>

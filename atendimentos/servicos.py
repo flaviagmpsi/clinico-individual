@@ -24,7 +24,7 @@ from django.db import transaction
 from django.db.models import Q
 from django.utils import timezone
 
-from agenda.models import Recorrencia
+from agenda.models import HorarioDisponivel, Recorrencia
 from atendimentos.models import Consulta, Desfecho
 from core import contexto
 from pacientes.models import Caso, Paciente
@@ -184,6 +184,98 @@ def sessoes_pendentes(agora: datetime | None = None,
                  + sessoes_remarcadas(_DESDE_SEMPRE, hoje, caso=caso))
     return sorted([sessao for sessao in esperadas if sessao.pendente(agora)],
                   key=lambda sessao: sessao.inicio)
+
+
+# --- Calendário (ADR-073) ------------------------------------------------------------------------------------
+
+PREVISTA = "PREVISTA"  # o "filtro de situação" das sessões esperadas, que não têm situação ainda
+
+
+@dataclass(frozen=True)
+class HorarioLivre:
+    """Uma faixa da grade de horários em que ninguém está. Só existe onde há horário cadastrado (ADR-073)."""
+
+    inicio: datetime
+    duracao: int
+
+    @property
+    def fim(self) -> datetime:
+        return self.inicio + timedelta(minutes=self.duracao)
+
+
+def horarios_livres(dia: date, ocupados: list, blocos, duracao: int) -> list[HorarioLivre]:
+    """Da grade do dia, as faixas de uma sessão em que ninguém está — de hora em hora, como na planilha.
+
+    `ocupados` são os itens do dia que seguram o horário: consulta que ocupa (ADR-024) e sessão esperada.
+    Consulta cancelada ou remarcada não segura — o horário dela está livre de novo.
+    """
+    livres = []
+    for bloco in blocos:
+        inicio, fim = momento(dia, bloco.inicio), momento(dia, bloco.fim)
+        while inicio + timedelta(minutes=duracao) <= fim:
+            if not any(_sobrepoe(inicio, duracao, item.inicio, item.duracao) for item in ocupados):
+                livres.append(HorarioLivre(inicio, duracao))
+            inicio += timedelta(hours=1)
+    return livres
+
+
+def hora_curta(instante: datetime) -> str:
+    """`14H`, `8H30` — o jeito da planilha, sem os zeros que não dizem nada."""
+    local = timezone.localtime(instante)
+    return f"{local.hour}H" + (f"{local.minute:02d}" if local.minute else "")
+
+
+@dataclass
+class DiaDoCalendario:
+    """Uma coluna do calendário: os cartões do dia em ordem de horário, cada um `(tipo, item, hora)`."""
+
+    dia: date
+    cartoes: list
+
+    @property
+    def sessoes(self) -> list:
+        return [item for tipo, item, _ in self.cartoes if tipo != "livre"]
+
+    @property
+    def vazio(self) -> bool:
+        return not self.cartoes
+
+
+def calendario(de: date, ate: date, *, situacao: str = "", duracao: int = 50) -> list[DiaDoCalendario]:
+    """Um dia por data entre `de` e `ate`: sessões cadastradas, esperadas e, sem filtro, os horários livres.
+
+    Com filtro de situação a tela responde "onde estão as faltas?" — nem previsão nem horário livre cabem
+    nessa pergunta. `PREVISTA` é o filtro das esperadas.
+    """
+    consultas = []
+    if situacao != PREVISTA:
+        achadas = (
+            Consulta.objects.filter(inicio__gte=momento(de, time.min),
+                                    inicio__lt=momento(ate + timedelta(days=1), time.min))
+            .select_related("caso", "recorrencia").prefetch_related("caso__pacientes")
+        )
+        consultas = list(achadas.filter(estado=situacao) if situacao else achadas)
+    esperadas = []
+    if situacao in ("", PREVISTA):
+        esperadas = ([("prevista", s) for s in sessoes_previstas(de, ate)]
+                     + [("remarcada", s) for s in sessoes_remarcadas(de, ate)])
+    itens = [("consulta", c) for c in consultas] + esperadas
+
+    blocos_por_dia: dict[int, list] = {}
+    if not situacao:
+        for bloco in HorarioDisponivel.objects.all():
+            blocos_por_dia.setdefault(bloco.dia_semana, []).append(bloco)
+
+    dias = []
+    for n in range((ate - de).days + 1):
+        dia = de + timedelta(days=n)
+        do_dia = [par for par in itens if timezone.localtime(par[1].inicio).date() == dia]
+        ocupados = [item for tipo, item in do_dia if tipo != "consulta" or item.ocupa_horario]
+        livres = horarios_livres(dia, ocupados, blocos_por_dia.get(dia.weekday(), []), duracao)
+        cartoes = [(tipo, item, hora_curta(item.inicio)) for tipo, item in do_dia]
+        cartoes += [("livre", livre, hora_curta(livre.inicio)) for livre in livres]
+        dias.append(DiaDoCalendario(dia, sorted(cartoes, key=lambda cartao: cartao[1].inicio)))
+    return dias
 
 
 # --- Frequência ------------------------------------------------------------------------------------------------

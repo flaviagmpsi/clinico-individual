@@ -34,8 +34,11 @@ from contas.models import Psicologo
 from core import contexto
 from financeiro.models import Pagamento
 from financeiro.servicos import cobrancas_do_mes, registrar_pagamento_mensalidade, registrar_pagamento_sessao
+from documentos import modelos as modelos_de_documento
+from documentos import servicos as documentos
+from documentos.models import Documento
 from prontuarios import servicos as prontuarios
-from prontuarios.models import Prontuario, VersaoProntuario
+from prontuarios.models import FichaDoProntuario, Prontuario, VersaoProntuario
 from pacientes.models import Caso, CondicaoCobranca, Paciente, ResponsavelLegal
 from pacientes.servicos import cadastrar_paciente, criar_caso_coletivo
 
@@ -67,10 +70,11 @@ def _frequencia_de_demonstracao(caso, *, semanas_atras: int = 0, cadastradas=(),
     passadas = [s for s in sessoes_previstas(recorrencia.inicio, hoje, caso=caso)
                 if s.regra.pk == recorrencia.pk and s.pendente()]
     for sessao, estado in zip(passadas, cadastradas):
-        # A remarcada da semente já diz para quando foi (ADR-068): daqui a dois dias, no mesmo horário.
+        # A remarcada da semente já diz para quando foi (ADR-068): amanhã, no mesmo horário — um dia que a
+        # frequência dela não prevê, senão o calendário mostraria dois cartões no mesmo lugar.
         remarcada_para = None
         if estado == "REMARCADA":
-            destino = hoje + timedelta(days=2)
+            destino = hoje + timedelta(days=1)
             remarcada_para = timezone.make_aware(datetime.combine(destino, recorrencia.hora))
         cadastrar_prevista(recorrencia, sessao.data, estado=estado, remarcada_para=remarcada_para)
 
@@ -108,7 +112,9 @@ def _apagar_conta_de_demonstracao(psicologo) -> int:
     """
     dono = {"psicologo": psicologo}
     total = 0
-    for modelo in (VersaoProntuario, Prontuario, Pagamento, Consulta, Desfecho, Recorrencia, Caso):
+    # `Documento` primeiro: ele protege o paciente (ADR-076), e a cascata do psicólogo esbarraria nele.
+    for modelo in (Documento, FichaDoProntuario, VersaoProntuario, Prontuario, Pagamento, Consulta, Desfecho,
+                   Recorrencia, Caso):
         total += modelo.objetos_todos.filter(**dono).delete()[0]
     return total + psicologo.delete()[0]
 
@@ -144,11 +150,42 @@ PSICOLOGOS = [
             dict(nome="Beatriz Nogueira", cpf="71428793860", data_nascimento=date(1972, 1, 25),
                  telefone="31988990011", cidade="Nova Lima", uf="MG",
                  data_primeira_sessao=date(2026, 9, 1)),
+            # Daqui para baixo, pacientes para a agenda ficar parecida com uma semana de verdade (ADR-073):
+            # um ou dois por dia, online e presencial, mensalidade e por sessão.
+            dict(nome="Carolina Mendes", cpf="10203040506", data_nascimento=date(1991, 3, 14),
+                 telefone="31981010101", cidade="Belo Horizonte", uf="MG", data_primeira_sessao=date(2026, 6, 1),
+                 cobranca=dict(valor=Decimal("220"), modalidade=_POR_SESSAO)),
+            dict(nome="Diego Ferreira", cpf="20304050607", data_nascimento=date(1985, 8, 2),
+                 telefone="31982020202", cidade="Contagem", uf="MG", data_primeira_sessao=date(2026, 6, 1),
+                 modalidade="ONLINE",
+                 cobranca=dict(valor=Decimal("600"), modalidade=_MENSAL, tipo_vencimento="DIA_FIXO",
+                               dia_vencimento=5)),
+            dict(nome="Fernanda Lopes", cpf="30405060708", data_nascimento=date(1998, 12, 9),
+                 telefone="31983030303", cidade="Belo Horizonte", uf="MG", data_primeira_sessao=date(2026, 6, 1),
+                 modalidade="ONLINE", cobranca=dict(valor=Decimal("200"), modalidade=_POR_SESSAO)),
+            dict(nome="Gustavo Rocha", cpf="40506070809", data_nascimento=date(1979, 5, 21),
+                 telefone="31984040404", cidade="Belo Horizonte", uf="MG", data_primeira_sessao=date(2026, 6, 1),
+                 cobranca=dict(valor=Decimal("250"), modalidade=_POR_SESSAO)),
+            dict(nome="Helena Castro", cpf="50607080910", data_nascimento=date(2003, 10, 30),
+                 telefone="31985050505", cidade="Betim", uf="MG", data_primeira_sessao=date(2026, 6, 1),
+                 cobranca=dict(valor=Decimal("180"), modalidade=_POR_SESSAO)),
+            dict(nome="Igor Santana", cpf="60708091011", data_nascimento=date(1994, 1, 7),
+                 telefone="31986060606", cidade="Belo Horizonte", uf="MG", data_primeira_sessao=date(2026, 8, 1),
+                 modalidade="ONLINE",
+                 cobranca=dict(valor=Decimal("720"), modalidade=_MENSAL, tipo_vencimento="DIA_FIXO",
+                               dia_vencimento=10)),
+            dict(nome="Larissa Duarte", cpf="70809101112", data_nascimento=date(1989, 7, 18),
+                 telefone="31987070707", cidade="Belo Horizonte", uf="MG", data_primeira_sessao=date(2026, 6, 1),
+                 cobranca=dict(valor=Decimal("200"), modalidade=_POR_SESSAO)),
+            dict(nome="Otávio Nunes", cpf="80910111213", data_nascimento=date(1982, 11, 25),
+                 telefone="31988080808", cidade="Nova Lima", uf="MG", data_primeira_sessao=date(2026, 6, 1),
+                 modalidade="ONLINE", cobranca=dict(valor=Decimal("200"), modalidade=_POR_SESSAO)),
         ],
         "casais": [],
-        # Grade de segunda a quinta, manhã e fim de tarde (ADR-029). A quinzenal da Juliana ocupa metade
-        # da faixa dela; o Rafael no sábado aparece como "fora da grade" (ADR-056).
-        "grade": [(dia, 8, 12) for dia in range(4)] + [(dia, 14, 19) for dia in range(4)],
+        # A grade é o que a Ana cadastrou como disponível (ADR-029), e é só dela que sai o "LIVRE" do
+        # calendário (ADR-073). Blocos curtos em volta das sessões: sobra pouca coisa livre, como numa
+        # semana de verdade. O Rafael no sábado, sem grade, aparece como "fora da grade" (ADR-056).
+        "grade": [(0, 8, 11), (1, 9, 12), (1, 14, 16), (2, 14, 18), (3, 8, 11), (3, 17, 19), (4, 9, 13)],
         # Frequências que começaram semanas atrás, com parte das sessões já cadastradas e o resto pendente — sem
         # passado, a agenda não teria nem consulta cadastrada nem pendência para mostrar (ADR-060). As situações
         # cobrem as cinco da ADR-065: presente, falta sem aviso, cancelamento dos dois lados e remarcada.
@@ -159,6 +196,22 @@ PSICOLOGOS = [
                                   cadastradas=["REALIZADA", "CANCELADA_CLIENTE"]),
             "Rafael Pinto": dict(frequencia=_SEMANAL, dia_semana=5, hora=time(9), semanas_atras=3,
                                  cadastradas=["REALIZADA", "REMARCADA"]),
+            "Carolina Mendes": dict(frequencia=_SEMANAL, dia_semana=0, hora=time(8), semanas_atras=4,
+                                    cadastradas=["REALIZADA", "REALIZADA", "REALIZADA"]),
+            "Diego Ferreira": dict(frequencia=_QUINZENAL, dia_semana=0, hora=time(9), semanas_atras=6,
+                                   cadastradas=["REALIZADA", "CANCELADA_CLIENTE"]),
+            "Fernanda Lopes": dict(frequencia=_SEMANAL, dia_semana=1, hora=time(10), semanas_atras=3,
+                                   cadastradas=["REALIZADA", "FALTOU"]),
+            "Gustavo Rocha": dict(frequencia=_SEMANAL, dia_semana=2, hora=time(15), semanas_atras=5,
+                                  cadastradas=["REALIZADA", "REALIZADA", "REALIZADA", "REALIZADA"]),
+            "Helena Castro": dict(frequencia=_QUINZENAL, dia_semana=2, hora=time(16), semanas_atras=4,
+                                  cadastradas=["REALIZADA"]),
+            "Igor Santana": dict(frequencia=_SEMANAL, dia_semana=3, hora=time(9), semanas_atras=2,
+                                 cadastradas=["REALIZADA"]),
+            "Larissa Duarte": dict(frequencia=_SEMANAL, dia_semana=4, hora=time(10), semanas_atras=3,
+                                   cadastradas=["REALIZADA", "REALIZADA"]),
+            "Otávio Nunes": dict(frequencia=_SEMANAL, dia_semana=4, hora=time(11), semanas_atras=3,
+                                 cadastradas=["REALIZADA", "REALIZADA"]),
         },
         # Beatriz desistiu antes de começar: exercita a aba "Encerrados" e o botão de retomar (ADR-055).
         "desfechos": {
@@ -170,8 +223,24 @@ PSICOLOGOS = [
             dict(paciente="Juliana Alves", meses_atras=2, forma="PIX"),
             dict(paciente="Juliana Alves", meses_atras=1, forma="TRANSFERENCIA"),
             dict(paciente="Marcos Vieira", sessao=0, forma="DINHEIRO"),
+            dict(paciente="Carolina Mendes", sessao=0, forma="PIX"),
+            dict(paciente="Carolina Mendes", sessao=1, forma="PIX"),
+            dict(paciente="Gustavo Rocha", sessao=0, forma="CARTAO"),
+            dict(paciente="Gustavo Rocha", sessao=1, forma="CARTAO"),
+            dict(paciente="Larissa Duarte", sessao=0, forma="DINHEIRO"),
         ],
         # Da primeira sessão do Marcos, um prontuário confirmado; as outras ficam para escrever (ADR-064).
+        # Uma declaração emitida — a cópia guardada no registro documental — e um relatório pela metade, para
+        # a aba de documentos mostrar os dois estados (ADR-076). Texto fictício, e nada clínico na declaração.
+        "documentos": [
+            dict(paciente="Marcos Vieira", modelo="declaracao", emitir=True, dados=dict(
+                finalidade="apresentação ao setor de recursos humanos da empresa em que trabalha",
+                informacao="encontra-se em atendimento psicológico com frequência semanal, às terças-feiras, "
+                           "das 14h às 14h50, desde março de 2026.")),
+            dict(paciente="Juliana Alves", modelo="relatorio", emitir=False, dados=dict(
+                solicitante="a própria pessoa atendida",
+                finalidade="apresentação ao médico psiquiatra que a acompanha")),
+        ],
         "prontuarios": [
             dict(paciente="Marcos Vieira", sessao=0, confirmar=True,
                  texto="Registro fictício de demonstração. Sessão centrada nas dificuldades de sono relatadas na "
@@ -238,6 +307,7 @@ class Command(BaseCommand):
             desfechos = dados.pop("desfechos", {})
             pagamentos = dados.pop("pagamentos", [])
             registros_de_prontuario = dados.pop("prontuarios", [])
+            documentos_de_demonstracao = dados.pop("documentos", [])
             psicologo = Psicologo.objects.create_user(
                 password=SENHA, telefone="31988887777", crp_regiao="04",
                 # `is_staff`/`is_superuser` só para o `/admin/` continuar servindo de conferência
@@ -291,6 +361,23 @@ class Command(BaseCommand):
                 for registro in registros_de_prontuario:
                     campos_do_registro = dict(registro)
                     _prontuario_de_demonstracao(casos[campos_do_registro.pop("paciente")], **campos_do_registro)
+                # A folha do prontuário (ADR-079): o primeiro paciente com registro ganha a avaliação da demanda.
+                if registros_de_prontuario:
+                    da_folha = por_nome[registros_de_prontuario[0]["paciente"]]
+                    prontuarios.salvar_folha(
+                        da_folha, encerramento="", evolucoes={},
+                        demanda=prontuarios.sugestao_de_demanda(da_folha) + " Texto fictício de demonstração. "
+                                "Procurou atendimento por dificuldades de sono associadas a sobrecarga no trabalho. "
+                                "Objetivos combinados: identificar os fatores que mantêm a insônia e construir uma "
+                                "rotina de sono compatível com a jornada.")
+                for item in documentos_de_demonstracao:
+                    # Como na tela: o sistema sugere identificação e assinatura; o resto é de quem escreve.
+                    paciente = por_nome[item["paciente"]]
+                    modelo = modelos_de_documento.obter(item["modelo"])
+                    conteudo = {**documentos.sugestoes(modelo, psicologo, paciente), **item["dados"]}
+                    documento = documentos.salvar_rascunho(item["modelo"], conteudo, paciente=paciente)
+                    if item["emitir"]:
+                        documentos.emitir(documento)
 
             self.stdout.write(self.style.SUCCESS(
                 f"  {psicologo.email}  senha: {SENHA}  ({len(pacientes)} pacientes, "

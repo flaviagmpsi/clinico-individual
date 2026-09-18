@@ -183,7 +183,8 @@
     <ul class="nav nav-tabs">
       <li class="nav-item"><a class="nav-link active" href="#">Cadastro</a></li>
       <li class="nav-item"><span class="nav-link disabled" title="passo 2">Consultas</span></li>
-      <li class="nav-item"><a class="nav-link" href="{% url 'prontuarios:lista' %}?paciente={{ paciente.pk }}">Prontuários</a></li>
+      <li class="nav-item"><a class="nav-link" href="{% url 'prontuarios:paciente' paciente.pk %}">Prontuário</a></li>
+      <li class="nav-item"><a class="nav-link" href="{% url 'documentos:aba' %}?paciente={{ paciente.pk }}">Documentos</a></li>
       <li class="nav-item"><span class="nav-link disabled" title="passo 4">Financeiro</span></li>
     </ul>
     <div class="card border-top-0 rounded-top-0">

@@ -1,7 +1,7 @@
 """O prontuário por dentro: pendência, rascunho, confirmação, correção e as travas (ADR-064).
 
 - `Pendencia` — sessão realizada gera um por participante; falta não gera; rascunho continua pendente.
-- `CicloDeVida` — rascunho se edita; confirmada não muda; correção cria versão nova com motivo.
+- `CicloDeVida` — rascunho se edita; confirmada não muda; editar cria versão nova, sem pedir motivo (ADR-075).
 - `Protecao` — sessão com prontuário não vira falta nem é excluída; auditoria sem o texto.
 - `Isolamento` — ADR-001.
 - `NoBanco` — o gatilho recusa alterar versão confirmada, até para o dono do banco; RLS nas duas tabelas.
@@ -107,15 +107,15 @@ class CicloDeVida(BaseProntuario):
             with self.assertRaises(VersaoCongelada):
                 versao.delete()
 
-    def test_correcao_cria_versao_nova_com_motivo_e_guarda_a_anterior(self):
+    def test_editar_cria_versao_nova_sem_motivo_e_guarda_a_anterior(self):
+        """ADR-075: para o psicólogo é só "Editar"; por baixo, a versão anterior continua guardada."""
         with contexto.como(self.ana.pk):
             servicos.confirmar(self.sessao_marcos, self.marcos, texto="Primeira.")
-            with self.assertRaises(ValidationError):
-                servicos.salvar_rascunho(self.sessao_marcos, self.marcos, texto="Corrigida.")
-            servicos.confirmar(self.sessao_marcos, self.marcos, texto="Corrigida.", motivo="Troquei o nome do remédio.")
+            servicos.confirmar(self.sessao_marcos, self.marcos, texto="Editada.")
             registro = servicos.registro_de(self.sessao_marcos, self.marcos)
-        self.assertEqual([(v.numero, v.texto) for v in registro.confirmadas], [(1, "Primeira."), (2, "Corrigida.")])
-        self.assertEqual((registro.vigente.motivo, registro.situacao), ("Troquei o nome do remédio.", "confirmado"))
+        self.assertEqual([(v.numero, v.texto) for v in registro.confirmadas], [(1, "Primeira."), (2, "Editada.")])
+        self.assertEqual((registro.vigente.texto, registro.vigente.motivo, registro.situacao),
+                         ("Editada.", "", "confirmado"))
 
     def test_texto_vazio_e_recusado_sem_criar_prontuario(self):
         with contexto.como(self.ana.pk):

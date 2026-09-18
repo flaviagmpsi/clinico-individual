@@ -7,179 +7,148 @@
   <h1 class="h5 mb-0">Olá, {{ user.nome_completo.split.0 }}
     <span class="text-muted fw-normal">· {{ hoje|date:"l, d \d\e F"|capfirst }}</span></h1>
   <div class="ms-auto d-flex gap-2">
-    <a href="{% url 'atendimentos:agenda' %}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-calendar-week"></i> Agenda da semana</a>
+    <a href="{% url 'atendimentos:agenda' %}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-calendar-week"></i> Agenda</a>
     <a href="{% url 'financeiro:mes' %}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-cash-stack"></i> Financeiro</a>
   </div>
 </div>
 
 {% comment %}
-ADR-069: o que passou sem cadastro vem **antes** do dia. Enquanto não for cadastrado não gera cobrança nem
-prontuário, e é a única coisa do painel que já devia ter sido feita.
+ADR-069 e ADR-072: o painel responde "o que eu faço agora", e cada informação aparece uma vez só.
+Primeiro o dia; depois as pendências, num bloco; por fim o resumo do mês.
 {% endcomment %}
-{% if atrasadas %}
-  <div class="alert alert-warning py-2 small">
-    <div class="fw-semibold mb-1"><i class="bi bi-exclamation-triangle"></i>
-      {{ total_atrasadas }} sess{{ total_atrasadas|pluralize:"ão,ões" }} de dias anteriores esperando cadastro</div>
-    {% for s in atrasadas %}
-      <a href="{% if s.origem %}{% url 'atendimentos:cadastrar_remarcada' s.origem.pk %}{% else %}{% url 'atendimentos:cadastrar_prevista' s.regra.pk s.data_iso %}{% endif %}"
-         class="badge text-bg-light text-decoration-none me-1">
-        {{ s.inicio|date:"d/m H:i" }} · {{ s.caso }}{% if s.origem %} · remarcada{% endif %}</a>
-    {% endfor %}
-  </div>
-{% endif %}
-
-{% comment %}A agenda de hoje: é o que o painel existe para responder (ADR-069).{% endcomment %}
-<div class="card mb-3">
-  <div class="card-header bg-white py-2 d-flex align-items-center flex-wrap gap-2">
-    <span class="fw-semibold">Hoje</span>
-    <span class="text-muted small">
-      {{ total_hoje }} sess{{ total_hoje|pluralize:"ão,ões" }}{% if online %} · {{ online }} online{% endif %}
-    </span>
-    <a href="{% url 'atendimentos:agenda' %}" class="ms-auto small text-decoration-none">ver a semana</a>
-  </div>
-  {% if itens %}
-    <div class="list-group list-group-flush">
-      {% for item in itens %}
-        <div class="list-group-item d-flex align-items-center flex-wrap py-2 small">
-          <span class="text-muted me-2" style="min-width:52px">{{ item.inicio|date:"H:i" }}</span>
-          <span class="fw-medium">{{ item.caso }}</span>
-          <span class="text-muted ms-2" title="Modalidade">
-            {% if item.online %}<i class="bi bi-camera-video"></i> online{% else %}<i class="bi bi-person"></i> presencial{% endif %}
-          </span>
-          {% if item.cadastrada %}
-            <span class="badge ms-2
-              {% if item.consulta.estado == 'REALIZADA' %}text-bg-success
-              {% elif item.consulta.estado == 'FALTOU' %}text-bg-danger
-              {% elif item.consulta.estado == 'REMARCADA' %}text-bg-info
-              {% else %}text-bg-secondary{% endif %}">{{ item.situacao }}</span>
-          {% elif item.situacao == "a cadastrar" %}
-            <span class="badge text-bg-warning ms-2">a cadastrar</span>
-          {% else %}
-            <span class="badge text-bg-light border ms-2">prevista</span>
-          {% endif %}
-
-          {% comment %}Os avisos que mudam o que fazer agora: dinheiro em aberto e prontuário por escrever.{% endcomment %}
-          {% if item.pagamento_em_aberto %}
-            <a href="{% url 'financeiro:mes' %}" class="badge text-bg-light border text-decoration-none ms-2">
-              <i class="bi bi-cash-coin"></i> pagamento em aberto</a>
-          {% endif %}
-          {% if item.prontuario_pendente %}
-            <a href="{% url 'prontuarios:lista' %}" class="badge text-bg-light border text-decoration-none ms-2">
-              <i class="bi bi-journal-medical"></i> prontuário por escrever</a>
-          {% endif %}
-
-          <span class="ms-auto">
-            {% if item.cadastrada %}
-              <a href="{% url 'atendimentos:editar' item.consulta.pk %}" class="text-decoration-none">corrigir</a>
-            {% elif item.espera.origem %}
-              <a href="{% url 'atendimentos:cadastrar_remarcada' item.espera.origem.pk %}" class="text-decoration-none">cadastrar</a>
-            {% else %}
-              <a href="{% url 'atendimentos:cadastrar_prevista' item.espera.regra.pk item.espera.data_iso %}" class="text-decoration-none">cadastrar</a>
-            {% endif %}
-          </span>
+<style>
+  /* ADR-074: o "Hoje" tem o tamanho do dia; as pendências cabem na tela e rolam por dentro. */
+  .pendencias .card-body { max-height: 60vh; overflow-y: auto; }
+</style>
+<div class="row g-3 mb-3 align-items-start">
+  <div class="col-lg-7">
+    <div class="card">
+      <div class="card-header bg-white py-2 d-flex align-items-center flex-wrap gap-2">
+        <span class="fw-semibold">Hoje</span>
+        <span class="text-muted small">
+          {{ total_hoje }} sess{{ total_hoje|pluralize:"ão,ões" }}{% if online %} · {{ online }} online{% endif %}
+        </span>
+        <a href="{% url 'atendimentos:agenda' %}" class="ms-auto small text-decoration-none">ver a semana</a>
+      </div>
+      {% if itens %}
+        <div class="list-group list-group-flush">
+          {% for item in itens %}
+            <div class="list-group-item d-flex align-items-center flex-wrap py-2 small">
+              <span class="text-muted me-2" style="min-width:52px">{{ item.inicio|date:"H:i" }}</span>
+              <span class="fw-medium">{{ item.caso }}</span>
+              <span class="text-muted ms-2" title="Modalidade">
+                {% if item.online %}<i class="bi bi-camera-video"></i> online{% else %}<i class="bi bi-person"></i> presencial{% endif %}
+              </span>
+              {% if item.cadastrada %}
+                <span class="badge ms-2
+                  {% if item.consulta.estado == 'REALIZADA' %}text-bg-success
+                  {% elif item.consulta.estado == 'FALTOU' %}text-bg-danger
+                  {% elif item.consulta.estado == 'REMARCADA' %}text-bg-info
+                  {% else %}text-bg-secondary{% endif %}">{{ item.situacao }}</span>
+              {% elif item.situacao == "a cadastrar" %}
+                <span class="badge text-bg-warning ms-2">a cadastrar</span>
+              {% else %}
+                <span class="badge text-bg-light border ms-2">prevista</span>
+              {% endif %}
+              <span class="ms-auto">
+                {% if item.cadastrada %}
+                  <a href="{% url 'atendimentos:editar' item.consulta.pk %}" class="text-decoration-none">corrigir</a>
+                {% elif item.espera.origem %}
+                  <a href="{% url 'atendimentos:cadastrar_remarcada' item.espera.origem.pk %}" class="text-decoration-none">cadastrar</a>
+                {% else %}
+                  <a href="{% url 'atendimentos:cadastrar_prevista' item.espera.regra.pk item.espera.data_iso %}" class="text-decoration-none">cadastrar</a>
+                {% endif %}
+              </span>
+            </div>
+          {% endfor %}
         </div>
-      {% endfor %}
+      {% else %}
+        <div class="card-body text-center text-muted py-4">
+          Nenhuma sessão hoje.
+          <a href="{% url 'atendimentos:nova' %}" class="text-decoration-none">Cadastrar consulta avulsa</a>.
+        </div>
+      {% endif %}
     </div>
-  {% else %}
-    <div class="card-body text-center text-muted py-4">
-      Nenhuma sessão hoje.
-      <a href="{% url 'atendimentos:nova' %}" class="text-decoration-none">Cadastrar consulta avulsa</a>.
+  </div>
+
+  {% comment %}
+  ADR-072: um bloco só de pendências. Três grupos — o que trava cobrança, o que é dinheiro em aberto, o que é
+  registro clínico por escrever —, cada item com o link para resolver. Vazio, diz que está vazio.
+  {% endcomment %}
+  <div class="col-lg-5 pendencias">
+    <div class="card{% if total_pendencias %} border-warning-subtle{% endif %}">
+      <div class="card-header bg-white py-2 d-flex align-items-center">
+        <span class="fw-semibold">Pendências</span>
+        {% if total_pendencias %}<span class="badge text-bg-warning ms-2">{{ total_pendencias }}</span>{% endif %}
+      </div>
+      {% if total_pendencias %}
+        <div class="card-body py-2 small">
+          {% if sessoes_pendentes %}
+            <div class="d-flex align-items-center mt-1 mb-1">
+              <span class="rotulo">Sessões esperando cadastro · {{ total_sessoes_pendentes }}</span>
+              <a href="{% url 'atendimentos:agenda' %}" class="ms-auto text-decoration-none">agenda</a>
+            </div>
+            <ul class="list-unstyled mb-2">
+            {% for s in sessoes_pendentes %}
+              <li class="py-1">
+                <a href="{% if s.origem %}{% url 'atendimentos:cadastrar_remarcada' s.origem.pk %}{% else %}{% url 'atendimentos:cadastrar_prevista' s.regra.pk s.data_iso %}{% endif %}"
+                   class="text-decoration-none">{{ s.inicio|date:"d/m H:i" }} · {{ s.caso }}</a>
+                {% if s.origem %}<span class="text-muted">· remarcada</span>{% endif %}
+              </li>
+            {% endfor %}
+            </ul>
+          {% endif %}
+
+          {% if pagamentos_pendentes %}
+            <div class="d-flex align-items-center mt-1 mb-1">
+              <span class="rotulo">Pagamentos pendentes · {{ total_pagamentos_pendentes }}</span>
+              <a href="{% url 'financeiro:mes' %}" class="ms-auto text-decoration-none">financeiro</a>
+            </div>
+            <ul class="list-unstyled mb-2">
+            {% for c in pagamentos_pendentes %}
+              <li class="py-1"><a href="{{ c.url_pagar }}" class="text-decoration-none">
+                {{ c.caso }} · {{ c.descricao }} · R$ {{ c.saldo|floatformat:2 }}</a>
+                <span class="text-muted">· venceu {{ c.vencimento|date:"d/m" }}</span></li>
+            {% endfor %}
+            </ul>
+          {% endif %}
+
+          {% if prontuarios_pendentes %}
+            <div class="d-flex align-items-center mt-1 mb-1">
+              <span class="rotulo">Prontuários para escrever · {{ total_prontuarios_pendentes }}</span>
+              <a href="{% url 'prontuarios:lista' %}" class="ms-auto text-decoration-none">prontuários</a>
+            </div>
+            <ul class="list-unstyled mb-1">
+            {% for r in prontuarios_pendentes %}
+              <li class="py-1"><a href="{{ r.url }}" class="text-decoration-none">
+                {{ r.consulta.inicio|date:"d/m H:i" }} · {{ r.paciente.nome }}</a></li>
+            {% endfor %}
+            </ul>
+          {% endif %}
+        </div>
+      {% else %}
+        <div class="card-body text-center text-muted py-4">Nada pendente.</div>
+      {% endif %}
     </div>
-  {% endif %}
+  </div>
 </div>
 
-{% comment %}ADR-061 e ADR-069: o resumo do mês. "A receber" é previsão, e a tela diz isso.{% endcomment %}
-<div class="row g-3 mb-3">
-  <div class="col-6 col-lg-3"><div class="card h-100"><div class="card-body py-3">
+{% comment %}ADR-061: o resumo do mês. "A receber" é previsão, e a tela diz isso.{% endcomment %}
+<div class="row g-3">
+  <div class="col-md-4"><div class="card h-100"><div class="card-body py-3">
     <div class="rotulo">Sessões no mês</div>
     <div class="h3 mb-0">{{ resumo.sessoes_feitas }} <span class="fs-6 text-muted fw-normal">feita{{ resumo.sessoes_feitas|pluralize }}</span></div>
     <div class="small text-muted">faltam {{ resumo.sessoes_faltam }} prevista{{ resumo.sessoes_faltam|pluralize }}</div>
   </div></div></div>
-  <div class="col-6 col-lg-3"><div class="card h-100"><div class="card-body py-3">
+  <div class="col-md-4"><div class="card h-100"><div class="card-body py-3">
     <div class="rotulo">Receita do mês</div>
     <div class="h3 mb-0">R$ {{ resumo.recebido|floatformat:2 }} <span class="fs-6 text-muted fw-normal">recebido</span></div>
     <div class="small text-muted">a receber R$ {{ resumo.a_receber|floatformat:2 }} (previsto)</div>
   </div></div></div>
-  <div class="col-6 col-lg-3"><div class="card h-100"><div class="card-body py-3">
+  <div class="col-md-4"><div class="card h-100"><div class="card-body py-3">
     <div class="rotulo">Pacientes ativos</div>
     <div class="h3 mb-0">{{ resumo.pacientes_ativos }}</div>
-    <div class="small {% if resumo.precisam_de_atencao %}text-warning-emphasis{% else %}text-muted{% endif %}">
-      {% if resumo.precisam_de_atencao %}{{ resumo.precisam_de_atencao }} atendimento{{ resumo.precisam_de_atencao|pluralize }} precisa{{ resumo.precisam_de_atencao|pluralize:"m" }} de atenção{% else %}todos em dia{% endif %}
-    </div>
+    <div class="small text-muted"><a href="{% url 'pacientes:lista' %}" class="text-decoration-none">ver pacientes</a></div>
   </div></div></div>
-  <div class="col-6 col-lg-3"><div class="card h-100"><div class="card-body py-3">
-    <div class="rotulo">Pendências</div>
-    <div class="small mt-1"><a href="{% url 'atendimentos:agenda' %}" class="text-decoration-none">
-      <strong>{{ total_atrasadas }}</strong> sess{{ total_atrasadas|pluralize:"ão,ões" }} para cadastrar</a></div>
-    <div class="small"><a href="{% url 'financeiro:mes' %}" class="text-decoration-none">
-      <strong>{{ total_pagamentos_pendentes }}</strong> pagamento{{ total_pagamentos_pendentes|pluralize }} pendente{{ total_pagamentos_pendentes|pluralize }}</a></div>
-    <div class="small"><a href="{% url 'prontuarios:lista' %}" class="text-decoration-none">
-      <strong>{{ total_prontuarios_pendentes }}</strong> prontuário{{ total_prontuarios_pendentes|pluralize }} para escrever</a></div>
-  </div></div></div>
-</div>
-
-<div class="row g-3">
-  {% comment %}
-  ADR-069: "dias sem sessão" saiu da lista de pacientes e virou alerta. Só aparece quando o atendimento passa
-  do próprio ritmo — semanal, 14 dias; quinzenal, 21 —, que é quando ninguém cadastrou nada e ele pode estar
-  morrendo em silêncio.
-  {% endcomment %}
-  {% if alertas %}
-  <div class="col-lg-6">
-    <div class="card h-100 border-warning-subtle">
-      <div class="card-header bg-white py-2 d-flex align-items-center">
-        <span class="fw-semibold">Sem sessão há tempo demais</span>
-        <span class="badge text-bg-warning ms-2">{{ total_alertas }}</span>
-        <a href="{% url 'pacientes:lista' %}" class="ms-auto small text-decoration-none">ver pacientes</a>
-      </div>
-      <ul class="list-unstyled mb-0 card-body py-2 small">
-      {% for a in alertas %}
-        <li class="py-1"><a href="{% url 'pacientes:caso' a.caso.pk %}" class="text-decoration-none">{{ a.caso }}</a>
-          <span class="text-muted">· {{ a.dias }} dias · frequência {{ a.frequencia|lower }}</span></li>
-      {% endfor %}
-      </ul>
-    </div>
-  </div>
-  {% endif %}
-
-  {% comment %}ADR-064: sessão realizada sem prontuário confirmado — um por participante.{% endcomment %}
-  {% if prontuarios_pendentes %}
-  <div class="col-lg-6">
-    <div class="card h-100 border-warning-subtle">
-      <div class="card-header bg-white py-2 d-flex align-items-center">
-        <span class="fw-semibold">Prontuários para escrever</span>
-        <span class="badge text-bg-warning ms-2">{{ total_prontuarios_pendentes }}</span>
-        <a href="{% url 'prontuarios:lista' %}" class="ms-auto small text-decoration-none">ver todos</a>
-      </div>
-      <ul class="list-unstyled mb-0 card-body py-2 small">
-      {% for r in prontuarios_pendentes %}
-        <li class="py-1"><a href="{{ r.url }}" class="text-decoration-none">
-          {{ r.consulta.inicio|date:"d/m H:i" }} · {{ r.paciente.nome }}</a>
-          <span class="text-muted">· {{ r.situacao }}</span></li>
-      {% endfor %}
-      </ul>
-    </div>
-  </div>
-  {% endif %}
-
-  {% comment %}ADR-063: lembrete de pagamento — aparece no vencimento, e nunca se foi pago antes.{% endcomment %}
-  {% if pagamentos_pendentes %}
-  <div class="col-lg-6">
-    <div class="card h-100 border-warning-subtle">
-      <div class="card-header bg-white py-2 d-flex align-items-center">
-        <span class="fw-semibold">Pagamentos pendentes</span>
-        <span class="badge text-bg-warning ms-2">{{ total_pagamentos_pendentes }}</span>
-        <a href="{% url 'financeiro:mes' %}" class="ms-auto small text-decoration-none">abrir financeiro</a>
-      </div>
-      <ul class="list-unstyled mb-0 card-body py-2 small">
-      {% for c in pagamentos_pendentes %}
-        <li class="py-1"><a href="{{ c.url_pagar }}" class="text-decoration-none">
-          {{ c.caso }} · {{ c.descricao }} · falta R$ {{ c.saldo|floatformat:2 }}</a>
-          <span class="text-muted">· venceu {{ c.vencimento|date:"d/m" }}</span></li>
-      {% endfor %}
-      </ul>
-    </div>
-  </div>
-  {% endif %}
 </div>
 {% endblock %}

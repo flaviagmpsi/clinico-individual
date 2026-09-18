@@ -36,7 +36,7 @@
   <div class="card mb-3">
     <div class="card-body">
       {% include "atendimentos/_situacao.html" with campo=form.estado %}
-      <div class="form-check mt-2">
+      <div class="form-check mt-2" data-so-para="CANCELADA_CLIENTE">
         {{ form.cobrar }}
         <label class="form-check-label" for="{{ form.cobrar.id_for_label }}">{{ form.cobrar.label }}</label>
         <div class="form-text small">{{ form.cobrar.help_text }}</div>
@@ -44,20 +44,24 @@
       <div class="row g-3 mt-1">
         <div class="col-md-4">{% include "components/_campo.html" with campo=form.modalidade %}</div>
       </div>
-      {% comment %}ADR-070: o valor desta sessão, quando ela não segue o combinado do paciente.{% endcomment %}
+      {% comment %}ADR-070 e ADR-074: o valor desta sessão só aparece na avulsa ou para quem paga por sessão —
+      a view tira o campo quando o paciente paga mensalidade.{% endcomment %}
+      {% if form.valor %}
       <div class="row g-3 mt-1">
         <div class="col-md-4">{% include "components/_campo.html" with campo=form.valor %}</div>
       </div>
+      {% endif %}
 
       {% comment %}ADR-068: a remarcada diz para quando foi. A sessão nova não é gravada agora — ela entra na
       agenda esperando o cadastro, no dia em que acontecer.{% endcomment %}
-      <div class="row g-3 mt-1 border-top pt-3">
+      <div class="row g-3 mt-1 border-top pt-3" data-so-para="REMARCADA">
         <div class="col-md-5">{% include "components/_campo.html" with campo=form.nova_data %}</div>
         <div class="col-md-3">{% include "components/_campo.html" with campo=form.nova_hora %}</div>
       </div>
     </div>
   </div>
   <button type="submit" class="btn btn-primary">Salvar</button>
+  {% include "atendimentos/_dinamica.html" %}
 </form>
 
 <form method="post" action="{% url 'atendimentos:excluir' consulta.pk %}" class="mt-4" style="max-width:640px">

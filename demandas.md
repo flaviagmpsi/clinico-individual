@@ -20,7 +20,7 @@ correu 27 rodadas antes da primeira linha de código, de propósito.
 
 ## ⚡ Onde o código está hoje
 
-**Passos 0 a 3 concluídos: fundação, cadastro, agenda, financeiro básico, painel e prontuário escrito à mão.** Rodando, com 357 testes verdes contra PostgreSQL real.
+**Passos 0 a 3 concluídos: fundação, cadastro, agenda, financeiro básico, painel e prontuário escrito à mão.** Rodando, com 407 testes verdes contra PostgreSQL real.
 
 | App | Situação | O que existe |
 |---|---|---|
@@ -31,7 +31,8 @@ correu 27 rodadas antes da primeira linha de código, de propósito.
 | `financeiro` | 🟠 parcial | Devido calculado por mês e por sessão; registro de pagamento com forma; lembrete de pendência. Faltam despesas e faturamento líquido |
 | `prontuarios` | 🟠 parcial | Texto livre com rascunho, confirmação e correção em versão nova; versão confirmada imutável até no banco; pendentes no painel. IA na etapa final (ADR-058) |
 | `indicadores` | 🟠 parcial | Painel com a agenda de hoje, o que ficou para trás e o resumo do mês. Falta a tela de análise |
-| `documentos` `assinaturas` | ⚪ | **Nem o app existe.** Nenhum `startapp` foi rodado |
+| `documentos` | 🟠 parcial | Modelos de documento psicológico em branco, rascunho → emitido, cópia congelada |
+| `assinaturas` | ⚪ | **Nem o app existe.** Nenhum `startapp` foi rodado |
 
 **O passo 2 está fechado. Do passo 3, a trilha de auditoria (F-05) está no ar** — cadastro e
 responsável legal já entram nela. **A construção segue do mais simples ao mais complexo, com a IA
@@ -188,6 +189,7 @@ em atendimento de casal. Ver **P-70**, resolvida em parte.
 | A-18 | **Percentual de online × presencial** entre as sessões da agenda | 🎨⚙️ | ✅ | 🟢 | ADR-065 |
 | A-19 | **Remarcada diz para quando**: a data nova entra na agenda esperando cadastro | 🎨⚙️🗄️ | ✅ | 🟢 | ADR-068 |
 | A-20 | **Valor desta sessão**: cobrar à parte a extra do mensalista e a sessão de quem não tem valor combinado | 🎨⚙️🗄️ | ✅ | 🟢 | ADR-070 |
+| A-21 | **Agenda em formato de calendário**: colunas por dia, cartões por horário, horários livres da grade, visões de dia, semana e mês | 🎨⚙️ | ✅ | 🟢 | ADR-073 |
 
 ### Integração com Google Agenda — depois da agenda própria (ADR-051)
 
@@ -239,7 +241,10 @@ e a IA depois passa a preencher o mesmo rascunho. Avaliação do protótipo Exyo
 | R-04 | **Rascunho obrigatório**: revisão e confirmação explícita antes de virar registro oficial | 🎨 | ✅ | 🟢 | ADR-005, ADR-064 |
 | R-05 | Versão congelada na confirmação, com trilha de auditoria — é meio de prova em processo disciplinar. Imutável no model **e no banco** (gatilho) | ⚙️🔒 | ✅ | 🟢 | ADR-005, ADR-064 |
 | R-15 | Prontuário escrito à mão, **texto livre**, um por participante de cada sessão realizada; pendente calculado | 🎨⚙️ | ✅ | 🟢 | ADR-064 |
-| R-16 | Correção de prontuário confirmado **cria nova versão com motivo**; as anteriores ficam visíveis | 🎨⚙️ | ✅ | 🟢 | ADR-064 |
+| R-16 | **Editar** prontuário confirmado cria nova versão, em silêncio — sem motivo e sem falar em versão na tela; as anteriores ficam no histórico | 🎨⚙️ | ✅ | 🟢 | ADR-064, ADR-075 |
+| R-17 | **Folha do prontuário por paciente**, na forma da Res. CFP 001/2009: identificação (do cadastro), avaliação da demanda e objetivos, evolução por sessão, encaminhamento ou encerramento — preenchida dentro da folha, com a orientação do CFP ao lado e o administrativo pré-preenchido | 🎨⚙️ | ✅ | 🟢 | ADR-079 |
+| R-18 | `FichaDoProntuario` (demanda e encerramento) **só se acrescenta**: imutável no model e no banco (gatilho), RLS própria; paciente com ficha escrita não é apagado | 🗄️🔒 | ✅ | 🟢 | ADR-079 |
+| R-19 | Prontuário em **PDF e DOCX** — só o que está confirmado; exportação na trilha de auditoria | ⚙️🔒 | ✅ | 🟢 | ADR-078, ADR-079 |
 | R-06 | Sessão de casal: **um relato gravado por participante**; `Relato` é 1:1 com `Prontuario` | 🎨⚙️ | ✅ | ⚪ | ADR-041 |
 | R-07 | Risco de migração da fala entre prontuários: **eliminado por construção** | 🔒 | ✅ | ⚪ | ADR-041 |
 | R-08 | Exportação de uma sessão ou do histórico completo, em PDF ou DOC | 🎨⚙️ | ✅ | ⚪ | escopo |
@@ -253,7 +258,7 @@ e a IA depois passa a preencher o mesmo rascunho. Avaliação do protótipo Exyo
 ---
 
 ## 6. Documentos — app `documentos`
-**Código: ⚪ nada. O app não existe.** Passo 5.
+**Código: 🟠 aba de modelos no ar.** Cinco modalidades da Res. 06/2019 e três termos de apoio, em branco, com a orientação do CFP em cada sub-aba; rascunho → emitido, com a cópia congelada no registro documental (ADR-076). Faltam a guarda de arquivos (D-01 a D-04) e a geração por IA, que fica para o fim (ADR-058).
 
 
 | # | História | Camada | Estado | Código | ADR |
@@ -262,15 +267,18 @@ e a IA depois passa a preencher o mesmo rascunho. Avaliação do protótipo Exyo
 | D-02 | Guarda do **contrato terapêutico** escrito pelo psicólogo, para conferência | 🎨⚙️ | ✅ | ⚪ | ADR-015 |
 | D-03 | Alterar **cria versão**; apagar move para **lixeira**; exclusão definitiva só de dentro dela | 🎨⚙️ | ✅ | ⚪ | ADR-015 |
 | D-04 | Anexos de avaliação psicológica em **pasta de acesso exclusivo do psicólogo** (inciso V) | 🗄️🔒 | ✅ | ⚪ | ADR-021 |
-| D-05 | Cópias de documentos emitidos, com data, finalidade e destinatário (inciso VI) | 🗄️ | ✅ | ⚪ | ADR-021 |
+| D-05 | Cópias de documentos emitidos, com data, finalidade e destinatário (inciso VI) | 🗄️ | ✅ | 🟢 | ADR-021, ADR-076 |
 | D-06 | **IA gera Declaração** — sem acesso ao prontuário, proibida de citar sintomas | ⚙️🔒 | ✅ | ⚪ | ADR-032, ADR-034 |
 | D-07 | **IA gera Relatório Psicológico** — 5 itens: identificação, demanda, procedimento, análise, conclusão | ⚙️ | ✅ | ⚪ | ADR-032 |
 | D-08 | Prazo de validade do conteúdo no **último parágrafo** (Art. 17) | ⚙️ | ✅ | ⚪ | ADR-032 |
 | D-09 | Rascunho obrigatório também para documentos gerados | 🎨 | ✅ | ⚪ | ADR-034 |
-| D-10 | Diretrizes do CFP consultáveis, com data da versão visível | 🎨 | ✅ | ⚪ | ADR-033 |
-| D-11 | Atestado e Laudo | — | ⏸️ | ⚪ | ADR-034 |
-| D-12 | Parecer Psicológico | — | ⏸️ | ⚪ | ADR-034 |
+| D-10 | Diretrizes do CFP em cada sub-aba, com palavras nossas, link para a fonte e versão da norma visível | 🎨 | ✅ | 🟢 | ADR-033, ADR-076 |
+| D-11 | Atestado e Laudo — **modelo em branco**, com o pré-requisito da avaliação no topo. Geração por IA segue adiada | 🎨 | ✅ | 🟢 | ADR-076 |
+| D-12 | Parecer Psicológico — modelo em branco, com titulação e referências obrigatórias | 🎨 | ✅ | 🟢 | ADR-076 |
 | D-13 | Relatório Multiprofissional | — | ❌ Fora | ⚪ | ADR-034 |
+| D-14 | **Modelos em branco**, preenchidos **dentro da folha do documento**, com a explicação do campo em foco; rascunho → emitido; impressão pelo navegador | 🎨⚙️🗄️ | ✅ | 🟢 | ADR-076, ADR-077 |
+| D-15 | Termos de apoio: entrega de documento, autorização para criança e adolescente (Res. 13/2022), encaminhamento | 🎨 | ✅ | 🟢 | ADR-076 |
+| D-16 | **Salvar em PDF e em DOCX**, da mesma composição da folha: laudas numeradas, traços do atestado, rascunho marcado; exportação na trilha de auditoria | ⚙️🔒 | ✅ | 🟢 | ADR-078 |
 
 ---
 
@@ -334,9 +342,9 @@ dias sem sessão, sessões no mês e o financeiro do mês. A tela de análise (I
 
 | # | História | Camada | Estado | Código | ADR |
 |---|---|---|---|---|---|
-| I-01 | **A agenda de hoje** no painel: horário, paciente, modalidade, situação e os avisos de pagamento em aberto e prontuário por escrever | 🎨⚙️ | ✅ | 🟢 | ADR-069 |
-| I-02 | **Sem sessão há tempo demais**: alerta quando o atendimento passa do próprio ritmo (14/21 dias). Sai a coluna "dias sem sessão" | 🎨⚙️ | ✅ | 🟢 | ADR-069 |
-| I-03 | Pendências de ação: o que ficou para trás sem cadastro vem **antes do dia**; pagamentos pendentes e prontuários por escrever | 🎨 | ✅ | 🟢 | ADR-017, ADR-061, ADR-069 |
+| I-01 | **A agenda de hoje** no painel: horário, paciente, modalidade e situação — só o dia | 🎨⚙️ | ✅ | 🟢 | ADR-069, ADR-072 |
+| I-02 | ~~Dias sem sessão~~ — retirado por completo: não é relevante | 🎨⚙️ | ❌ | — | ADR-072 |
+| I-03 | **Um bloco só de pendências**: sessões esperando cadastro, pagamentos pendentes, prontuários por escrever — cada item com o link que o resolve | 🎨 | ✅ | 🟢 | ADR-017, ADR-072 |
 | I-04 | Resumo do mês: **sessões feitas × que faltam**; **receita recebida × a receber** (previsto) | 🎨 | ✅ | 🟢 | ADR-061 |
 | I-05 | Curto o bastante para caber numa tela, **sem gráfico decorativo** | 🎨 | ✅ | ⚪ | ADR-027 |
 

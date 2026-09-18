@@ -1,21 +1,22 @@
-"""Prontuário escrito à mão: o que está pendente, rascunho, confirmação e correção (ADR-064).
+"""Prontuário escrito à mão: o que está pendente, rascunho, confirmação e edição (ADR-064, ADR-075).
 
 Tudo roda no escopo do psicólogo corrente. O que está **pendente** não é gravado: é a sessão realizada cujo
 participante ainda não tem versão confirmada.
 """
 
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import date, datetime
 
 from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.db.models import Max
 from django.urls import reverse
 from django.utils import timezone
+from django.utils.formats import date_format
 
 from atendimentos.models import Consulta
-from pacientes.models import Paciente
-from prontuarios.models import Prontuario, VersaoProntuario
+from pacientes.models import Caso, Paciente
+from prontuarios.models import FichaDoProntuario, Prontuario, VersaoProntuario
 
 
 @dataclass
@@ -53,7 +54,7 @@ class Registro:
             return "não escrito"
         if not self.confirmadas:
             return "rascunho"
-        return "em correção" if self.rascunho else "confirmado"
+        return "em edição" if self.rascunho else "confirmado"
 
     @property
     def url(self) -> str:
@@ -93,7 +94,7 @@ def registro_de(consulta: Consulta, paciente: Paciente) -> Registro:
 
 @transaction.atomic
 def salvar_rascunho(consulta: Consulta, paciente: Paciente, *, texto: str, motivo: str = "") -> VersaoProntuario:
-    """Cria ou atualiza o rascunho. Havendo versão confirmada, o rascunho é uma correção e pede motivo."""
+    """Cria ou atualiza o rascunho. Havendo versão confirmada, o rascunho é a edição dela — versão nova (ADR-075)."""
     prontuario = Prontuario.objects.filter(consulta=consulta, paciente=paciente).first()
     if prontuario is None:
         prontuario = Prontuario.objects.create(consulta=consulta, paciente=paciente)
@@ -127,3 +128,152 @@ def descartar_rascunho(consulta: Consulta, paciente: Paciente) -> None:
     rascunho.delete()
     if not prontuario.versoes.exists():
         prontuario.delete()
+
+
+
+# --- A folha do prontuário: as quatro partes da Res. CFP nº 001/2009 numa página só (ADR-079) ---------------------
+
+@dataclass
+class FolhaDoProntuario:
+    """O prontuário inteiro de um paciente, na ordem em que a resolução o descreve."""
+
+    paciente: Paciente
+    ficha: FichaDoProntuario | None
+    demanda: str
+    demanda_sugerida: bool  # o texto veio do cadastro, e não de algo que o psicólogo já salvou
+    encerramento: str
+    encerramento_sugerido: bool
+    evolucao: list  # `Registro`, da sessão mais antiga para a mais recente: prontuário se lê em ordem
+
+    @property
+    def sem_registro(self) -> int:
+        return sum(1 for registro in self.evolucao if registro.vigente is None)
+
+
+def ficha_de(paciente: Paciente) -> FichaDoProntuario | None:
+    """A ficha que vale: a mais recente. As anteriores ficam guardadas."""
+    return FichaDoProntuario.objects.filter(paciente=paciente).first()
+
+
+def _casos(paciente: Paciente) -> list:
+    casos = list(Caso.objects.filter(participacoes__paciente=paciente).prefetch_related("participacoes"))
+    return sorted(casos, key=lambda caso: (not caso.individual, caso.pk))  # o individual primeiro
+
+
+def _por_extenso(dia: date) -> str:
+    return date_format(dia, "j \\d\\e F \\d\\e Y").lower()
+
+
+def sugestao_de_demanda(paciente: Paciente) -> str:
+    """O começo do texto, só com o que é administrativo (ADR-034): modalidade, frequência, duração e início.
+
+    O motivo da busca e os objetivos são conteúdo clínico — esses o sistema não supõe.
+    """
+    caso = next(iter(_casos(paciente)), None)
+    regra = caso.regra_aberta() if caso else None
+    partes = [f"Atendimento psicológico {'individual' if caso is None or caso.individual else 'conjunto'}",
+              f"na modalidade {paciente.get_modalidade_display().lower()}"]
+    if regra is not None:
+        partes.append(f"com frequência {regra.get_frequencia_display().lower()} "
+                      f"({regra.get_dia_semana_display().lower()}, às {regra.hora:%H:%M}), "
+                      f"em sessões de {regra.duracao} minutos")
+    else:
+        partes.append("com sessões marcadas conforme a necessidade, sem frequência fixa")
+    inicio = paciente.data_primeira_sessao
+    if inicio is None:
+        primeira = (Consulta.objects.filter(caso__participacoes__paciente=paciente, estado=Consulta.Estado.REALIZADA)
+                    .order_by("inicio").first())
+        inicio = timezone.localtime(primeira.inicio).date() if primeira else None
+    if inicio is not None:
+        partes.append(f"iniciado em {_por_extenso(inicio)}")
+    return ", ".join(partes) + "."
+
+
+def sugestao_de_encerramento(paciente: Paciente) -> str:
+    """Se o atendimento já tem desfecho registrado (ADR-055), ele vira o começo do registro de encerramento."""
+    for caso in _casos(paciente):
+        desfecho = caso.desfecho_aberto()
+        if desfecho is None:
+            continue
+        texto = (f"Atendimento encerrado em {_por_extenso(desfecho.data)}. Desfecho: "
+                 f"{desfecho.get_tipo_display().lower()}; iniciativa: {desfecho.get_iniciativa_display().lower()}.")
+        return f"{texto} {desfecho.motivo.strip()}".strip()
+    return ""
+
+
+def folha_do_prontuario(paciente: Paciente) -> FolhaDoProntuario:
+    ficha = ficha_de(paciente)
+    demanda = ficha.demanda if ficha else ""
+    encerramento = ficha.encerramento if ficha else ""
+    return FolhaDoProntuario(
+        paciente=paciente, ficha=ficha,
+        demanda=demanda or sugestao_de_demanda(paciente), demanda_sugerida=not demanda,
+        encerramento=encerramento or sugestao_de_encerramento(paciente), encerramento_sugerido=not encerramento,
+        evolucao=list(reversed(registros(paciente=paciente))),
+    )
+
+
+@transaction.atomic
+def salvar_folha(paciente: Paciente, *, demanda: str, encerramento: str, evolucoes: dict) -> int:
+    """Grava o que mudou na folha e devolve quantas partes mudaram.
+
+    `evolucoes` é `{pk da consulta: texto}`. Cada texto que mudou é **confirmado** como versão nova da sessão
+    (ADR-064, ADR-075) — a folha não tem rascunho: o que se salva nela é o prontuário. Texto apagado é ignorado,
+    porque registro feito não se apaga; texto igual ao que já vale não gera versão.
+    """
+    mudancas = 0
+    demanda, encerramento = demanda.strip(), encerramento.strip()
+    ficha = ficha_de(paciente)
+    atual = (ficha.demanda, ficha.encerramento) if ficha else ("", "")
+    if (demanda, encerramento) != atual and (demanda or encerramento):
+        FichaDoProntuario.objects.create(paciente=paciente, demanda=demanda, encerramento=encerramento)
+        mudancas += 1
+    por_consulta = {registro.consulta.pk: registro for registro in registros(paciente=paciente)}
+    for consulta_pk, texto in evolucoes.items():
+        registro = por_consulta.get(consulta_pk)
+        texto = (texto or "").strip()
+        if registro is None or not texto:
+            continue
+        if registro.rascunho is None and registro.vigente is not None and registro.vigente.texto.strip() == texto:
+            continue
+        confirmar(registro.consulta, paciente, texto=texto)
+        mudancas += 1
+    return mudancas
+
+
+def folha_para_arquivo(paciente: Paciente, psicologo, hoje: date | None = None) -> dict:
+    """A folha no formato que `core.exportacao` escreve em PDF e DOCX.
+
+    Só entra o que está **confirmado**: rascunho de sessão não é prontuário e não sai em cópia.
+    """
+    folha = folha_do_prontuario(paciente)
+    identificacao = [f"Nome completo: {paciente.nome}"]
+    if paciente.data_nascimento:
+        identificacao.append(f"Data de nascimento: {paciente.data_nascimento:%d/%m/%Y}")
+    if paciente.cpf:
+        cpf = paciente.cpf
+        identificacao.append(f"CPF: {cpf[:3]}.{cpf[3:6]}.{cpf[6:9]}-{cpf[9:]}")
+    for responsavel in paciente.responsaveis.all():
+        parentesco = f" ({responsavel.parentesco})" if responsavel.parentesco else ""
+        identificacao.append(f"Responsável legal: {responsavel.nome}{parentesco}")
+    identificacao.append(f"Psicóloga(o) responsável: {psicologo.nome_completo} — CRP {psicologo.crp}")
+    sessoes = []
+    for registro in folha.evolucao:
+        if registro.vigente is None:
+            continue
+        inicio = timezone.localtime(registro.consulta.inicio)
+        sessoes.append(f"{inicio:%d/%m/%Y}, {inicio:%H:%M} — {registro.vigente.texto.strip()}")
+    sem_texto = "Sem registro até esta data."
+    hoje = hoje or timezone.localdate()
+    return {
+        "titulo": "PRONTUÁRIO PSICOLÓGICO", "subtitulo": "",
+        "blocos": [
+            ("Identificação", "\n".join(identificacao)),
+            ("Avaliação da demanda e objetivos do trabalho", (folha.ficha.demanda if folha.ficha else "") or sem_texto),
+            ("Evolução do trabalho e procedimentos adotados", "\n\n".join(sessoes) or sem_texto),
+            ("Encaminhamento ou encerramento", (folha.ficha.encerramento if folha.ficha else "") or sem_texto),
+        ],
+        "local_e_data": ", ".join(parte for parte in [psicologo.cidade, _por_extenso(hoje)] if parte),
+        "assinatura_nome": psicologo.nome_completo, "assinatura_crp": f"CRP {psicologo.crp}",
+        "tracos": False,
+    }

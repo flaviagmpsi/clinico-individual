@@ -1,0 +1,28 @@
+{% comment %}
+Um cartão do calendário (ADR-073, ADR-074): "NOME - 14H", na cor do que ele é. Recebe `tipo`, `item` e `hora`.
+- livre: faixa da grade sem sessão, em cinza; o link já abre o cadastro avulso.
+- consulta: cadastrada — muda de cor pela situação, e nunca fica amarela (amarelo é o que ainda vai acontecer).
+- prevista / remarcada: esperada; passou sem cadastro vira "pendente".
+{% endcomment %}
+{% if tipo == "livre" %}
+  <a href="{% url 'atendimentos:nova' %}" class="cartao livre" title="Horário livre">LIVRE - {{ hora }}</a>
+{% elif tipo == "consulta" %}
+  <a href="{% url 'atendimentos:editar' item.pk %}"
+     class="cartao {% if item.estado == 'REALIZADA' %}realizada{% elif item.estado == 'FALTOU' %}faltou{% else %}cancelada{% endif %}"
+     title="{{ item.get_estado_display }}{% if not item.cobrada %} · não cobrada{% endif %}">
+    {{ item.caso }} - {{ hora }}{% if item.modalidade == "ONLINE" %} <i class="bi bi-camera-video"></i>{% endif %}
+    {% if item.estado != "REALIZADA" %}<small>{{ item.get_estado_display }}{% if item.remarcada_para %} → {{ item.remarcada_para|date:"d/m H:i" }}{% endif %}</small>{% endif %}
+  </a>
+{% elif tipo == "remarcada" %}
+  <a href="{% url 'atendimentos:cadastrar_remarcada' item.origem.pk %}" class="cartao remarcada" title="Sessão remarcada, esperando cadastro">
+    {{ item.caso }} - {{ hora }}{% if item.modalidade == "ONLINE" %} <i class="bi bi-camera-video"></i>{% endif %}
+    <small>remarcada de {{ item.origem.inicio|date:"d/m" }}{% if item.pendente %} · cadastrar{% endif %}</small>
+  </a>
+{% else %}
+  <a href="{% url 'atendimentos:cadastrar_prevista' item.regra.pk item.data_iso %}"
+     class="cartao {% if item.pendente %}pendente{% else %}esperada{% endif %}"
+     title="{% if item.pendente %}Passou e falta cadastrar{% else %}Prevista pela frequência{% endif %}">
+    {{ item.caso }} - {{ hora }}{% if item.modalidade == "ONLINE" %} <i class="bi bi-camera-video"></i>{% endif %}
+    {% if item.pendente %}<small>pendente · cadastrar</small>{% endif %}
+  </a>
+{% endif %}

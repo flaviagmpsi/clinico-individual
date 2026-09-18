@@ -33,7 +33,7 @@ from atendimentos.forms import (
     SituacaoForm,
 )
 from atendimentos.models import Consulta, Desfecho
-from pacientes.models import Caso, Paciente
+from pacientes.models import Caso, CondicaoCobranca, Paciente
 
 
 def _segunda(dia: date) -> date:
@@ -64,60 +64,90 @@ def _avisar_se_fora_da_grade(request, dia_semana: int, hora: time, duracao: int)
         messages.warning(request, "Este horário fica fora da sua grade de horários. Gravado mesmo assim.")
 
 
-PREVISTA = "PREVISTA"
+def _mes_seguinte(dia: date) -> date:
+    return date(dia.year + (dia.month == 12), dia.month % 12 + 1, 1)
+
+
+def _mes_anterior(dia: date) -> date:
+    return date(dia.year - (dia.month == 1), (dia.month - 2) % 12 + 1, 1)
 
 
 class Agenda(LoginRequiredMixin, TemplateView):
-    """A agenda de um período, com filtro de situação e o percentual de online e presencial (ADR-065)."""
+    """A agenda no desenho da planilha do psicólogo (ADR-073).
+
+    Colunas por dia, cartões em ordem de horário, e os horários livres visíveis onde há grade cadastrada. A
+    semana é o padrão; dia e mês ficam a um clique. `de`/`ate` e `semana` continuam valendo como período
+    (ADR-065), e o filtro de situação vale para a visão aberta.
+    """
 
     template_name = "atendimentos/agenda.html"
 
-    def periodo(self) -> tuple[date, date]:
-        """De uma data a outra. Sem período informado, a semana pedida — ou a de hoje."""
-        de, ate = _data(self.request.GET.get("de")), _data(self.request.GET.get("ate"))
+    def periodo(self) -> tuple[str, date, date, date]:
+        """(visão, data-âncora, de, até)."""
+        pedido = self.request.GET
+        hoje = timezone.localdate()
+        de, ate = _data(pedido.get("de")), _data(pedido.get("ate"))
         if de and ate and ate >= de:
-            return de, ate
-        segunda = _segunda(_data(self.request.GET.get("semana")) or timezone.localdate())
-        return segunda, segunda + timedelta(days=6)
+            return "periodo", de, de, ate
+        semana = _data(pedido.get("semana"))
+        if semana:
+            segunda = _segunda(semana)
+            return "semana", segunda, segunda, segunda + timedelta(days=6)
+        visao = pedido.get("visao", "semana")
+        data = _data(pedido.get("data")) or hoje
+        if visao == "dia":
+            return "dia", data, data, data
+        if visao == "mes":
+            primeiro = data.replace(day=1)
+            return "mes", primeiro, primeiro, _mes_seguinte(primeiro) - timedelta(days=1)
+        segunda = _segunda(data)
+        return "semana", segunda, segunda, segunda + timedelta(days=6)
+
+    @staticmethod
+    def _rota(visao: str, data: date, situacao: str) -> str:
+        return f"{reverse('atendimentos:agenda')}?visao={visao}&data={data:%Y-%m-%d}&situacao={situacao}"
 
     def get_context_data(self, **kwargs):
         contexto = super().get_context_data(**kwargs)
         hoje = timezone.localdate()
-        de, ate = self.periodo()
-        tamanho = (ate - de).days + 1
+        visao, ancora, de, ate = self.periodo()
         situacao = self.request.GET.get("situacao", "")
+        dias = servicos.calendario(de, ate, situacao=situacao, duracao=self.request.user.duracao_sessao)
 
-        consultas = []
-        if situacao != PREVISTA:
-            achadas = (
-                Consulta.objects.filter(inicio__gte=servicos.momento(de, time.min),
-                                        inicio__lt=servicos.momento(ate + timedelta(days=1), time.min))
-                .select_related("caso", "recorrencia").prefetch_related("caso__pacientes")
-            )
-            consultas = list(achadas.filter(estado=situacao) if situacao else achadas)
-        esperando_cadastro = situacao in ("", PREVISTA)
-        previstas = servicos.sessoes_previstas(de, ate) if esperando_cadastro else []
-        remarcadas = servicos.sessoes_remarcadas(de, ate) if esperando_cadastro else []
+        # ADR-073: segunda a sexta; sábado e domingo só quando tiverem alguma coisa.
+        fim_de_semana = any(not dia.vazio for dia in dias if dia.dia.weekday() >= 5)
+        colunas = [dia for dia in dias if dia.dia.weekday() < 5 or not dia.vazio]
 
-        itens = sorted([("consulta", c) for c in consultas] + [("prevista", s) for s in previstas]
-                       + [("remarcada", s) for s in remarcadas],
-                       key=lambda item: item[1].inicio)
-        dias = []
-        for n in range(tamanho):
-            dia = de + timedelta(days=n)
-            dias.append((dia, [item for item in itens if timezone.localtime(item[1].inicio).date() == dia]))
+        semanas = []
+        if visao == "mes":
+            por_data = {dia.dia: dia for dia in dias}
+            cursor = _segunda(de)
+            while cursor <= ate:
+                linha = [por_data.get(cursor + timedelta(days=n)) for n in range(7)]
+                semanas.append(linha if fim_de_semana else linha[:5])
+                cursor += timedelta(days=7)
 
-        online = sum(1 for _, item in itens if item.modalidade == Paciente.Modalidade.ONLINE)
-        pendentes = servicos.sessoes_pendentes()
+        if visao == "mes":
+            anterior, proxima = _mes_anterior(ancora), _mes_seguinte(ancora)
+        else:
+            passo = timedelta(days=(ate - de).days + 1)
+            anterior, proxima = ancora - passo, ancora + passo
+        visao_nav = "semana" if visao == "periodo" else visao
+
+        sessoes = [item for dia in dias for item in dia.sessoes]
+        online = sum(1 for item in sessoes if item.modalidade == Paciente.Modalidade.ONLINE)
         contexto.update(
-            dias=dias, de=de, ate=ate, hoje=hoje, situacao=situacao, tamanho=tamanho,
-            situacoes=[(PREVISTA, "Previstas")] + list(Consulta.Estado.choices),
-            anterior_de=de - timedelta(days=tamanho), anterior_ate=ate - timedelta(days=tamanho),
-            proxima_de=de + timedelta(days=tamanho), proxima_ate=ate + timedelta(days=tamanho),
-            esta_semana=_segunda(hoje),
-            total_sessoes=len(itens), online=online, presenciais=len(itens) - online,
-            percentual_online=round(100 * online / len(itens)) if itens else None,
-            pendentes=pendentes[:10], total_pendentes=len(pendentes),
+            visao=visao, de=de, ate=ate, hoje=hoje, situacao=situacao,
+            situacoes=[(servicos.PREVISTA, "Previstas")] + list(Consulta.Estado.choices),
+            colunas=colunas, semanas=semanas, fim_de_semana=fim_de_semana,
+            rota_anterior=self._rota(visao_nav, anterior, situacao),
+            rota_proxima=self._rota(visao_nav, proxima, situacao),
+            rota_hoje=self._rota(visao_nav, hoje, situacao),
+            rota_dia=self._rota("dia", ancora if visao != "mes" else hoje, situacao),
+            rota_semana=self._rota("semana", ancora, situacao),
+            rota_mes=self._rota("mes", ancora, situacao),
+            total_sessoes=len(sessoes), online=online, presenciais=len(sessoes) - online,
+            percentual_online=round(100 * online / len(sessoes)) if sessoes else None,
         )
         return contexto
 
@@ -154,7 +184,7 @@ class CadastrarAvulsa(LoginRequiredMixin, FormView):
         try:
             consulta = servicos.cadastrar_avulsa(
                 dados["caso"], estado=dados["estado"], inicio=form.inicio(), duracao=dados["duracao"],
-                modalidade=dados["modalidade"] or None, cobrada=dados["cobrar"], valor=dados["valor"],
+                modalidade=dados["modalidade"] or None, cobrada=dados["cobrar"], valor=dados.get("valor"),
                 remarcada_para=form.remarcada_para())
         except ValidationError as erro:
             form.add_error(None, erro.messages[0])
@@ -205,13 +235,24 @@ class CadastrarRemarcada(LoginRequiredMixin, FormView):
         try:
             consulta = servicos.cadastrar_avulsa(
                 dados["caso"], estado=dados["estado"], inicio=form.inicio(), duracao=dados["duracao"],
-                modalidade=dados["modalidade"] or None, cobrada=dados["cobrar"], valor=dados["valor"],
+                modalidade=dados["modalidade"] or None, cobrada=dados["cobrar"], valor=dados.get("valor"),
                 remarcada_para=form.remarcada_para())
         except ValidationError as erro:
             form.add_error(None, erro.messages[0])
             return self.form_invalid(form)
         messages.success(self.request, f"Sessão remarcada cadastrada: {consulta.get_estado_display().lower()}.")
         return redirect(_semana_de(timezone.localtime(consulta.inicio).date()))
+
+
+def _paga_mensalidade(caso: Caso, dia: date) -> bool:
+    condicao = caso.condicao_vigente(dia)
+    return condicao is not None and condicao.modalidade == CondicaoCobranca.Modalidade.MENSAL
+
+
+def _sem_valor(form):
+    """Tira o campo de valor do formulário (ADR-074). `cleaned_data.get("valor")` continua funcionando."""
+    form.fields.pop("valor", None)
+    return form
 
 
 class CadastrarPrevista(LoginRequiredMixin, FormView):
@@ -245,6 +286,11 @@ class CadastrarPrevista(LoginRequiredMixin, FormView):
         return {"estado": Consulta.Estado.REALIZADA, "hora": regra.hora, "duracao": regra.duracao,
                 "modalidade": servicos.modalidade_do_caso(regra.caso)}
 
+    def get_form(self, form_class=None):
+        form = super().get_form(form_class)
+        prevista = self.prevista()
+        return _sem_valor(form) if _paga_mensalidade(prevista.caso, prevista.data) else form
+
     def get_context_data(self, **kwargs):
         contexto = super().get_context_data(**kwargs)
         contexto.update(titulo="Cadastrar sessão", prevista=self.prevista())
@@ -256,7 +302,7 @@ class CadastrarPrevista(LoginRequiredMixin, FormView):
         try:
             consulta = servicos.cadastrar_prevista(
                 prevista.regra, prevista.data, estado=dados["estado"], hora=dados["hora"], duracao=dados["duracao"],
-                modalidade=dados["modalidade"] or None, cobrada=dados["cobrar"], valor=dados["valor"],
+                modalidade=dados["modalidade"] or None, cobrada=dados["cobrar"], valor=dados.get("valor"),
                 remarcada_para=form.remarcada_para())
         except ValidationError as erro:
             form.add_error(None, erro.messages[0])
@@ -288,6 +334,13 @@ class EditarConsulta(LoginRequiredMixin, _ComConsulta, FormView):
             inicial.update(nova_data=local.date(), nova_hora=local.time())
         return inicial
 
+    def get_form(self, form_class=None):
+        form = super().get_form(form_class)
+        consulta = self.consulta()
+        if not consulta.avulsa and _paga_mensalidade(consulta.caso, timezone.localtime(consulta.inicio).date()):
+            return _sem_valor(form)
+        return form
+
     def get_context_data(self, **kwargs):
         contexto = super().get_context_data(**kwargs)
         contexto["consulta"] = self.consulta()
@@ -298,7 +351,7 @@ class EditarConsulta(LoginRequiredMixin, _ComConsulta, FormView):
         dados = form.cleaned_data
         try:
             servicos.alterar_situacao(consulta, dados["estado"], cobrada=dados["cobrar"],
-                                      modalidade=dados["modalidade"] or None, valor=dados["valor"],
+                                      modalidade=dados["modalidade"] or None, valor=dados.get("valor"),
                                       remarcada_para=form.remarcada_para())
         except ValidationError as erro:
             form.add_error(None, erro.messages[0])

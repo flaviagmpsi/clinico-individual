@@ -1,0 +1,26 @@
+{% comment %}A folha que se preenche por dentro (ADR-077): usada pelos documentos e pelo prontuário (ADR-079).{% endcomment %}
+<style>
+  .mesa { background: #e9ecef; border-radius: 8px; padding: 18px; }
+  .mesa .folha { max-width: 21cm; margin: 0 auto; font-size: 11.5pt; }
+
+  /* O campo é um espaço do documento: mesma letra do texto, sem caixa — só o sublinhado tracejado de "preencha aqui". */
+  .folha .na-folha { font: inherit; color: #0b3d38; border: 0; border-bottom: 1px dashed #7aa7a1; background: #f1f7f6;
+                     padding: 0 4px; border-radius: 3px 3px 0 0; min-width: 9ch; max-width: 100%; vertical-align: baseline; }
+  .folha textarea.na-folha { display: block; width: 100%; margin: 4px 0; padding: 4px 6px; resize: none; overflow: hidden;
+                             line-height: 1.6; text-align: justify; }
+  .folha .na-folha::placeholder { color: #7a9a96; font-style: italic; }
+  .folha .na-folha[data-obrigatorio]:placeholder-shown { background: #fff6d6; border-bottom-color: #d9a400; }
+  .folha .na-folha:focus { outline: 2px solid var(--tinta); outline-offset: 1px; background: #fff; }
+  .folha .linha-id { margin-bottom: 4px; }
+  .folha .linha-id > span { font-weight: 700; }
+  .folha .linha-id textarea.na-folha { margin-top: 2px; }
+  .folha .dica { font-family: system-ui, sans-serif; font-size: 8.5pt; line-height: 1.35; color: #6c757d; text-align: left;
+                 margin: 0 0 12px; }
+  .folha .local .na-folha { text-align: right; }
+  .folha .assinatura .na-folha { text-align: center; width: 100%; }
+
+  .faixa-de-ajuda { position: sticky; top: 56px; z-index: 5; background: #fff; border: 1px solid #cfe3e0;
+                    border-left: 4px solid var(--tinta); border-radius: 6px; padding: 8px 12px; margin-bottom: 12px;
+                    font-size: .82rem; min-height: 3.2em; }
+  .faixa-de-ajuda .nome { font-weight: 600; color: var(--tinta); }
+</style>

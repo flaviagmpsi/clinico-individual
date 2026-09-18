@@ -1,0 +1,47 @@
+{% comment %}Comportamento da folha preenchível: o campo cresce com o texto e a faixa explica o campo em foco.{% endcomment %}
+<script>
+(function () {
+  const formulario = document.querySelector('form[data-folha]');
+  const faixa = document.getElementById('faixa-de-ajuda');
+  const campos = formulario.querySelectorAll('.na-folha');
+
+  // Num documento novo, escolher o paciente recarrega o modelo já com a identificação dele.
+  const seletor = formulario.querySelector('select[data-recarrega]');
+  if (seletor) {
+    seletor.addEventListener('change', function () {
+      const destino = new URL(window.location.href);
+      if (seletor.value) destino.searchParams.set('paciente', seletor.value);
+      else destino.searchParams.delete('paciente');
+      window.location.href = destino.toString();
+    });
+  }
+
+  // O campo cresce com o que se escreve: a folha nunca tem barra de rolagem nem texto cortado.
+  function ajustar(campo) {
+    if (campo.tagName === 'TEXTAREA') {
+      campo.style.height = 'auto';
+      campo.style.height = (campo.scrollHeight + 2) + 'px';
+    } else if (campo.type !== 'date') {
+      const texto = campo.value || campo.placeholder || '';
+      campo.style.width = Math.min(Math.max(texto.length + 2, 9), 60) + 'ch';
+    }
+  }
+
+  // A explicação do campo em foco: é o que o CFP espera ali (ADR-076).
+  function explicar(campo) {
+    // "Exigido" e "opcional" só fazem sentido onde há emissão: o formulário diz se quer a marca.
+    const exigido = !formulario.dataset.marcaExigido ? ''
+                  : campo.dataset.obrigatorio ? ' <span class="text-danger">· exigido para emitir</span>'
+                                              : ' <span class="text-muted">· opcional</span>';
+    faixa.innerHTML = '<span class="nome"></span>' + exigido + '<div class="texto"></div>';
+    faixa.querySelector('.nome').textContent = campo.dataset.rotulo;
+    faixa.querySelector('.texto').textContent = campo.dataset.ajuda;
+  }
+
+  campos.forEach(function (campo) {
+    ajustar(campo);
+    campo.addEventListener('input', function () { ajustar(campo); });
+    campo.addEventListener('focus', function () { explicar(campo); });
+  });
+})();
+</script>

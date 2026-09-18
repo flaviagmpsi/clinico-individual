@@ -90,26 +90,33 @@ class EscritaPelaTela(BaseTelasProntuario):
         versao = VersaoProntuario.objetos_todos.get()
         self.assertEqual((versao.texto, versao.confirmada_em is not None), ("Registro final.", True))
 
-    def test_correcao_sem_motivo_volta_explicando(self):
+    def test_editar_nao_pede_motivo_e_guarda_a_versao_anterior(self):
+        """ADR-075: a tela tem um botão "Editar" e nenhum campo de motivo; a versão antiga fica no histórico."""
         with contexto.como(self.ana.pk):
             servicos.confirmar(self.sessao, self.marcos, texto="Original.")
         self.entrar(self.ana)
-        resposta = self.client.post(self.escrever(), {"texto": "Corrigido.", "acao": "confirmar"})
-        self.assertEqual(resposta.status_code, 200)
-        self.assertContains(resposta, "Motivo da correção")
-        self.assertEqual(VersaoProntuario.objetos_todos.count(), 1)
+        tela = self.client.get(self.escrever())
+        self.assertContains(tela, "Editar")
+        self.assertNotContains(tela, "Motivo da correção")
+
+        resposta = self.client.post(self.escrever(), {"texto": "Editado.", "acao": "confirmar"})
+        self.assertEqual(resposta.status_code, 302)
+        self.assertEqual([v.texto for v in VersaoProntuario.objetos_todos.order_by("numero")],
+                         ["Original.", "Editado."])
+        self.assertContains(self.client.get(self.escrever()), "Histórico")
 
     def test_abrir_prontuario_registra_visualizacao(self):
         with contexto.como(self.ana.pk):
             servicos.confirmar(self.sessao, self.marcos, texto="Original.")
         self.entrar(self.ana)
-        self.assertContains(self.client.get(self.escrever()), "Versão 1")
+        self.assertContains(self.client.get(self.escrever()), "Original.")
         self.assertTrue(RegistroAuditoria.objetos_todos.filter(
             acao=RegistroAuditoria.Acao.VER, alvo="prontuarios.prontuario", titular_id=self.marcos.pk).exists())
 
     def test_ficha_e_painel_levam_ao_prontuario(self):
         self.entrar(self.ana)
+        # A ficha leva à folha completa do prontuário (ADR-079); a lista por paciente continua existindo.
         self.assertContains(self.client.get(reverse("pacientes:detalhe", args=[self.marcos.pk])),
-                            f"{reverse('prontuarios:lista')}?paciente={self.marcos.pk}")
+                            reverse("prontuarios:paciente", args=[self.marcos.pk]))
         self.assertContains(self.client.get(reverse("painel")), "Prontuários para escrever")
         self.assertContains(self.client.get(reverse("prontuarios:lista"), {"paciente": self.marcos.pk}), "Não escrito")

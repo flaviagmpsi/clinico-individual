@@ -119,6 +119,19 @@ def excluir_paciente(paciente: Paciente) -> None:
         raise ValidationError(
             "Este paciente já tem atendimento registrado e não pode ser apagado — o prontuário tem guarda "
             "obrigatória. Para tirá-lo da lista de ativos, registre o desfecho do atendimento.")
+    # Documento emitido é registro documental (ADR-076). Nome reverso `documentos`, sem importar o app, que
+    # depende deste (regra 5 de dependência). Rascunho não é registro de nada e sai junto.
+    if paciente.documentos.filter(emitido_em__isnull=False).exists():
+        raise ValidationError(
+            "Este paciente tem documento psicológico emitido, que faz parte do registro documental e tem guarda "
+            "obrigatória. Não pode ser apagado.")
+    # A ficha do prontuário (ADR-079) pode existir antes da primeira sessão — a avaliação da demanda se escreve na
+    # entrevista inicial. Escrita, é prontuário. Nome reverso, pelo mesmo motivo de `documentos`.
+    if paciente.fichas_do_prontuario.exists():
+        raise ValidationError(
+            "Este paciente já tem prontuário escrito, que tem guarda obrigatória. Não pode ser apagado.")
+    for rascunho in paciente.documentos.all():
+        rascunho.delete()
     for caso in casos:
         caso.consultas.all().delete()  # restam só cancelamentos e remarcações sem cobrança
         caso.delete()
