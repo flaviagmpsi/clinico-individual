@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+{% block titulo %}Links de cadastro{% endblock %}
+{% block secao %}Pacientes{% endblock %}
+
+{% block conteudo %}
+{% comment %}
+ADR-081: a segunda porta do cadastro. O psicólogo gera um link, o paciente preenche, e a resposta espera aqui a
+revisão — só vira paciente quando o psicólogo abre, confere, completa e salva.
+{% endcomment %}
+<div class="d-flex align-items-center mb-2">
+  <h1 class="h5 mb-0">Links de cadastro</h1>
+  <a href="{% url 'pacientes:lista' %}" class="btn btn-sm btn-outline-secondary ms-auto">Voltar aos pacientes</a>
+</div>
+<p class="text-muted small mb-3" style="max-width:760px">
+  Gere um link e envie ao paciente: ele mesmo preenche identificação, contato, contato de emergência, endereço e
+  perfil. Quando ele enviar, a resposta aparece aqui para você <strong>revisar e completar</strong> — cobrança,
+  modalidade e o que mais faltar — antes de virar cadastro. Cada link vale {{ validade }} dias e serve uma vez.
+</p>
+
+{% if link %}
+<div class="card border-success mb-3">
+  <div class="card-body">
+    <div class="fw-semibold mb-1"><i class="bi bi-check-circle text-success"></i> Link gerado{% if rotulo_do_link %} para {{ rotulo_do_link }}{% endif %}</div>
+    <div class="input-group input-group-sm mb-2">
+      <input type="text" class="form-control font-monospace" id="link-do-convite" value="{{ link }}" readonly>
+      <button type="button" class="btn btn-primary" id="copiar-link"><i class="bi bi-clipboard"></i> Copiar</button>
+      <a href="{{ whatsapp }}" target="_blank" rel="noopener noreferrer" class="btn btn-outline-success"><i class="bi bi-whatsapp"></i> WhatsApp</a>
+    </div>
+    <div class="small text-muted"><strong>Copie agora.</strong> Por segurança o sistema não guarda o link, só uma
+      impressão digital dele: ao sair desta página ele não aparece de novo. Se perder, cancele e gere outro.</div>
+  </div>
+</div>
+{% endif %}
+
+<form method="post" action="{% url 'pacientes:convite_gerar' %}" class="card mb-3">
+  {% csrf_token %}
+  <div class="card-body py-3 d-flex flex-wrap gap-2 align-items-end">
+    <div class="flex-grow-1" style="max-width:360px">
+      <label for="rotulo" class="form-label small mb-1">Para quem é <span class="text-muted">— opcional, só para você reconhecer na lista</span></label>
+      <input type="text" name="rotulo" id="rotulo" maxlength="120" class="form-control form-control-sm" placeholder="Ex.: Mariana, indicação da Dra. Paula">
+    </div>
+    <button type="submit" class="btn btn-sm btn-primary"><i class="bi bi-link-45deg"></i> Gerar link de cadastro</button>
+  </div>
+</form>
+
+{% if convites %}
+<div class="card">
+  <div class="table-responsive">
+    <table class="table table-sm align-middle mb-0 small">
+      <thead class="table-light"><tr><th>Para quem</th><th>Gerado em</th><th>Situação</th><th></th></tr></thead>
+      <tbody>
+      {% for c in convites %}
+        <tr>
+          <td class="fw-medium">
+            {% if c.paciente %}<a href="{% url 'pacientes:detalhe' c.paciente.pk %}" class="text-decoration-none">{{ c.paciente.nome }}</a>
+            {% else %}{{ c.nome_informado|default:c.rotulo|default:"—" }}{% endif %}
+            {% if c.rotulo and c.nome_informado %}<span class="text-muted fw-normal">· {{ c.rotulo }}</span>{% endif %}
+          </td>
+          <td class="text-nowrap text-muted">{{ c.criado_em|date:"d/m/Y H:i" }}</td>
+          <td>
+            {% if c.situacao == "respondido" %}<span class="badge text-bg-warning">Respondido — revisar</span>
+              <span class="text-muted">{{ c.respondido_em|date:"d/m H:i" }}</span>
+            {% elif c.situacao == "aguardando" %}<span class="badge text-bg-light border">Aguardando o paciente</span>
+              <span class="text-muted">até {{ c.expira_em|date:"d/m" }}</span>
+            {% elif c.situacao == "expirado" %}<span class="badge text-bg-secondary">Venceu sem resposta</span>
+            {% else %}<span class="badge text-bg-success">Cadastrado</span> <span class="text-muted">{{ c.aceito_em|date:"d/m/Y" }}</span>{% endif %}
+          </td>
+          <td class="text-end text-nowrap">
+            {% if c.situacao == "respondido" %}
+              <a href="{% url 'pacientes:novo' %}?convite={{ c.pk }}" class="btn btn-sm btn-primary py-0">Revisar e cadastrar</a>
+            {% endif %}
+            {% if c.situacao != "cadastrado" %}
+              <form method="post" action="{% url 'pacientes:convite_cancelar' c.pk %}" class="d-inline"
+                    onsubmit="return confirm('{% if c.situacao == "respondido" %}Cancelar apaga o que o paciente respondeu. Continuar?{% else %}Cancelar este link?{% endif %}')">
+                {% csrf_token %}<button type="submit" class="btn btn-sm btn-link text-danger py-0">{% if c.situacao == "expirado" %}remover{% else %}cancelar{% endif %}</button>
+              </form>
+            {% endif %}
+          </td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% else %}
+  <div class="card"><div class="card-body text-muted small">Nenhum link gerado ainda.</div></div>
+{% endif %}
+
+<script>
+(function () {
+  const botao = document.getElementById('copiar-link');
+  if (!botao) return;
+  botao.addEventListener('click', function () {
+    const campo = document.getElementById('link-do-convite');
+    campo.select();
+    (navigator.clipboard ? navigator.clipboard.writeText(campo.value) : Promise.reject()).catch(function () {
+      document.execCommand('copy');
+    });
+    botao.innerHTML = '<i class="bi bi-check2"></i> Copiado';
+  });
+})();
+</script>
+{% endblock %}

@@ -10,7 +10,8 @@ from django.core.exceptions import ValidationError
 
 from core.calendario import MAIOR_DIA_UTIL, TipoDia, descrever_dia
 from core.formularios import LimpaMascara
-from pacientes.models import Caso, CondicaoCobranca, Paciente, ResponsavelLegal
+from pacientes import servicos
+from pacientes.models import Caso, CondicaoCobranca, Paciente, ResponsavelLegal, telefone_valido
 
 _TEXTO = {"class": "form-control"}
 _NUM = {"class": "form-control", "inputmode": "numeric"}
@@ -179,16 +180,46 @@ class TrocaCobrancaForm(CondicaoCobrancaForm):
         self.fields["valor"].help_text = ""
 
 
+GENEROS_SUGERIDOS = ["Mulher cisgênero", "Homem cisgênero", "Mulher transgênero", "Homem transgênero",
+                     "Pessoa não binária", "Prefiro não informar"]
+
+
+def _campo_de_emergencia(rotulo: str, **atributos) -> forms.CharField:
+    return forms.CharField(label=rotulo, required=False, max_length=255,
+                           widget=forms.TextInput(attrs={**_TEXTO, **atributos}))
+
+
 class PacienteForm(LimpaMascara, forms.ModelForm):
-    CAMPOS_NUMERICOS = ("cpf", "telefone", "cep")
+    """O cadastro feito pelo psicólogo. Traz os mesmos dados que o paciente pode informar pelo link (ADR-081):
+    as duas portas chegam ao mesmo cadastro. Os contatos de emergência têm model próprio e entram aqui como
+    campos avulsos — até dois, que é o que a tela pública pede."""
+
+    CAMPOS_NUMERICOS = ("cpf", "telefone", "cep", "emergencia1_telefone", "emergencia2_telefone")
+
+    emergencia1_nome = _campo_de_emergencia("Nome")
+    emergencia1_parentesco = _campo_de_emergencia("Parentesco", placeholder="mãe, irmão, amiga")
+    emergencia1_telefone = forms.CharField(label="Telefone", required=False, max_length=20,
+                                           validators=[telefone_valido], widget=forms.TextInput(attrs=_TELEFONE))
+    emergencia2_nome = _campo_de_emergencia("Nome")
+    emergencia2_parentesco = _campo_de_emergencia("Parentesco", placeholder="mãe, irmão, amiga")
+    emergencia2_telefone = forms.CharField(label="Telefone", required=False, max_length=20,
+                                           validators=[telefone_valido], widget=forms.TextInput(attrs=_TELEFONE))
 
     class Meta:
         model = Paciente
-        fields = ["nome", "cpf", "data_nascimento", "telefone", "email",
-                  "cep", "logradouro", "numero", "complemento", "bairro", "cidade", "uf",
+        fields = ["nome", "nome_social", "cpf", "documento_estrangeiro", "data_nascimento", "telefone", "email",
+                  "estado_civil", "genero", "raca_cor", "profissao",
+                  "pais", "cep", "logradouro", "numero", "complemento", "bairro", "cidade", "uf",
                   "medicamento", "modalidade", "data_primeira_sessao", "observacoes"]
         widgets = {
             "nome": forms.TextInput(attrs={**_TEXTO, "autofocus": True}),
+            "nome_social": forms.TextInput(attrs=_TEXTO),
+            "documento_estrangeiro": forms.TextInput(attrs=_TEXTO),
+            "estado_civil": forms.Select(attrs=_SELECT),
+            "genero": forms.TextInput(attrs={**_TEXTO, "list": "generos-sugeridos"}),
+            "raca_cor": forms.Select(attrs=_SELECT),
+            "profissao": forms.TextInput(attrs=_TEXTO),
+            "pais": forms.TextInput(attrs=_TEXTO),
             "cpf": forms.TextInput(attrs=_CPF),
             "data_nascimento": forms.DateInput(attrs=_DATA),
             "telefone": forms.TextInput(attrs=_TELEFONE),
@@ -208,6 +239,9 @@ class PacienteForm(LimpaMascara, forms.ModelForm):
         }
         help_texts = {
             "cpf": "Opcional. Quem nasceu antes de 2018 pode não ter.",
+            "nome_social": "Opcional. Como a pessoa prefere ser chamada.",
+            "raca_cor": "Opcional. Dado sensível: só o que a pessoa declarar.",
+            "genero": "Opcional. Como a pessoa se identifica.",
             "medicamento": "Registro do relato do paciente — o psicólogo não prescreve.",
             "modalidade": "Proposta a cada sessão deste paciente, e ajustável sessão a sessão (ADR-065).",
         }
@@ -217,6 +251,46 @@ class PacienteForm(LimpaMascara, forms.ModelForm):
         # A modalidade tem padrão no model, e o `<select>` da tela nunca chega vazio. Exigi-la no
         # formulário só quebraria quem grava sem passar pela tela — importação, comando, teste.
         self.fields["modalidade"].required = False
+        if self.instance.pk and not self.is_bound:
+            for posicao, contato in enumerate(self.instance.contatos_de_emergencia.all()[:2], start=1):
+                for campo in ("nome", "parentesco", "telefone"):
+                    self.fields[f"emergencia{posicao}_{campo}"].initial = getattr(contato, campo)
 
     def clean_modalidade(self):
         return self.cleaned_data.get("modalidade") or Paciente.Modalidade.PRESENCIAL
+
+    def clean_cpf(self):
+        """CPF repetido vira erro no campo, com o nome de quem já o tem.
+
+        A unicidade é por psicólogo e está no banco; mas o `psicologo` não é campo do formulário, então o Django
+        não a valida aqui — e o cadastro repetido estourava como erro de servidor. Com o link de cadastro (ADR-081)
+        isso deixa de ser raro: o paciente que já está cadastrado preenche de novo.
+        """
+        cpf = self.cleaned_data.get("cpf", "")
+        if cpf:
+            outro = Paciente.objects.filter(cpf=cpf).exclude(pk=self.instance.pk).first()
+            if outro is not None:
+                raise ValidationError(f"Você já tem um paciente com este CPF: {outro.nome}.")
+        return cpf
+
+    def clean(self):
+        dados = super().clean()
+        for posicao in (1, 2):
+            nome, telefone = dados.get(f"emergencia{posicao}_nome"), dados.get(f"emergencia{posicao}_telefone")
+            if nome and not telefone and f"emergencia{posicao}_telefone" not in self.errors:
+                self.add_error(f"emergencia{posicao}_telefone", "Contato de emergência precisa de telefone.")
+            if telefone and not nome:
+                self.add_error(f"emergencia{posicao}_nome", "De quem é este telefone?")
+        return dados
+
+    def emergencias(self) -> list:
+        return [(self[f"emergencia{n}_nome"], self[f"emergencia{n}_parentesco"], self[f"emergencia{n}_telefone"])
+                for n in (1, 2)]
+
+    def salvar_contatos_de_emergencia(self, paciente: Paciente) -> None:
+        """Depois de o paciente estar gravado — é o serviço que compara e só regrava o que mudou."""
+        dados = self.cleaned_data
+        servicos.definir_contatos_de_emergencia(paciente, [
+            {"nome": dados[f"emergencia{n}_nome"], "parentesco": dados.get(f"emergencia{n}_parentesco", ""),
+             "telefone": dados.get(f"emergencia{n}_telefone", "")}
+            for n in (1, 2) if dados.get(f"emergencia{n}_nome")])

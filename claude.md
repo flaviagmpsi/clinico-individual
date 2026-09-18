@@ -57,9 +57,15 @@ outro, em nenhuma hipótese.** Três camadas:
 ⚠️ O mecanismo de supervisão / "view-as" do `hamilton-api` é **funcionalidade proibida** aqui.
 
 ### 3.2 O sistema não se comunica com pacientes (ADR-039)
-Sem portal do paciente, sem login do paciente, sem envio automático, sem link compartilhável.
-O único destinatário de qualquer coisa que sai do sistema é **o próprio psicólogo**.
+Sem portal do paciente, sem login do paciente, sem envio automático, sem link compartilhável de prontuário
+ou documento. O único destinatário de qualquer coisa que **sai** do sistema é **o próprio psicólogo**.
 Toda feature que proponha falar com o paciente precisa revogar esta ADR antes de existir.
+
+**Única exceção (ADR-081): o link de cadastro.** Uma tela pública, de uso único, que só **recebe** — o paciente
+preenche os próprios dados, e a resposta espera no convite até o psicólogo revisar e salvar. A view é anônima,
+corre sob `hamilton_web` e só alcança a linha do próprio convite (`core.db.aplicar_convite` + RLS). Ela **nunca**
+mostra dado de paciente nem toca tabela clínica; quem um dia escrever ali uma consulta a `Paciente` recebe
+`permission denied`, e é para ser assim.
 
 ### 3.3 O prontuário é peça de defesa legal (ADR-005)
 A Res. CFP 001/2009, Art. 4º, §2º o define como meio de prova em processo disciplinar. Portanto:
@@ -80,7 +86,7 @@ Dez apps. A fronteira é **quem é dono do dado**, nunca em que tela ele aparece
 |---|---|
 | `core` | `TenantOwnedModel`, `TenantManager`, middleware de RLS, trilha de auditoria. **Nenhum domínio** |
 | `contas` | `User`, `Psicologo` (CRP, CPF, regime PF/PJ, padrões, dados fiscais opcionais). Raiz do tenant |
-| `pacientes` | `Paciente`, `Caso`, `ResponsavelLegal`, `Pagador` |
+| `pacientes` | `Paciente`, `Caso`, `ResponsavelLegal`, `Pagador`, `ContatoDeEmergencia`, `ConviteDeCadastro` (link de cadastro, ADR-081) |
 | `agenda` | `HorarioDisponivel`, `Recorrencia`; integração Google Agenda **depois** (ADR-051) |
 | `atendimentos` | `Consulta`, `Desfecho` |
 | `prontuarios` | `Relato`, `Prontuario`, versões, `FichaDoProntuario` (demanda e encerramento, só-acréscimo — ADR-079), exportação. **A aba é só dos registros de sessão** (ADR-080) |

@@ -13,6 +13,18 @@ mão, e raramente o CEP. O que é obrigatório fica no topo; o resto pode espera
   <a href="{% url 'pacientes:lista' %}" class="btn btn-sm btn-outline-secondary ms-auto">Cancelar</a>
 </div>
 
+{% comment %}ADR-081: cadastro que o paciente preencheu pelo link. É o formulário de sempre, já com as respostas
+dele — nada vira paciente antes deste "Salvar".{% endcomment %}
+{% if convite %}
+<div class="alert alert-info py-2 small">
+  <strong>Revisão do cadastro enviado pelo paciente</strong> em {{ convite.respondido_em|date:"d/m/Y H:i" }}.
+  Confira o que ele preencheu e complete o que só você sabe — cobrança, modalidade, primeira sessão.
+  {% if convite.respostas.responsavel.nome %}<br>Ao salvar, entra também o <strong>responsável legal</strong>:
+    {{ convite.respostas.responsavel.nome }}{% if convite.respostas.responsavel.parentesco %} ({{ convite.respostas.responsavel.parentesco }}){% endif %}.{% endif %}
+  {% if convite.respostas.pagador.nome %}<br>Ao salvar, quem paga fica registrado como <strong>{{ convite.respostas.pagador.nome }}</strong>.{% endif %}
+</div>
+{% endif %}
+
 <form method="post" novalidate>
   {% csrf_token %}
   {% if form.non_field_errors %}
@@ -26,6 +38,9 @@ mão, e raramente o CEP. O que é obrigatório fica no topo; o resto pode espera
         <div class="col-md-6">{% include "components/_campo.html" with campo=form.nome %}</div>
         <div class="col-md-3">{% include "components/_campo.html" with campo=form.cpf %}</div>
         <div class="col-md-3">{% include "components/_campo.html" with campo=form.data_nascimento %}</div>
+        <div class="col-md-6">{% include "components/_campo.html" with campo=form.nome_social %}</div>
+        <div class="col-md-3">{% include "components/_campo.html" with campo=form.documento_estrangeiro %}</div>
+        <div class="col-md-3">{% include "components/_campo.html" with campo=form.estado_civil %}</div>
         <div class="col-md-4">{% include "components/_campo.html" with campo=form.telefone %}</div>
         <div class="col-md-5">{% include "components/_campo.html" with campo=form.email %}</div>
         <div class="col-md-3">{% include "components/_campo.html" with campo=form.modalidade %}</div>
@@ -36,9 +51,37 @@ mão, e raramente o CEP. O que é obrigatório fica no topo; o resto pode espera
 
   <div class="card mb-3">
     <div class="card-header bg-white py-2 fw-semibold">
+      Contato de emergência <span class="text-muted fw-normal small">— quem avisar se algo acontecer</span></div>
+    <div class="card-body">
+      {% for nome, parentesco, telefone in form.emergencias %}
+      <div class="row g-3{% if not forloop.first %} mt-0{% endif %}">
+        <div class="col-md-5">{% include "components/_campo.html" with campo=nome %}</div>
+        <div class="col-md-3">{% include "components/_campo.html" with campo=parentesco %}</div>
+        <div class="col-md-4">{% include "components/_campo.html" with campo=telefone %}</div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <div class="card mb-3">
+    <div class="card-header bg-white py-2 fw-semibold">
+      Perfil <span class="text-muted fw-normal small">— opcional</span></div>
+    <div class="card-body">
+      <div class="row g-3">
+        <div class="col-md-4">{% include "components/_campo.html" with campo=form.genero %}</div>
+        <div class="col-md-4">{% include "components/_campo.html" with campo=form.raca_cor %}</div>
+        <div class="col-md-4">{% include "components/_campo.html" with campo=form.profissao %}</div>
+      </div>
+      <datalist id="generos-sugeridos">{% for g in generos %}<option value="{{ g }}">{% endfor %}</datalist>
+    </div>
+  </div>
+
+  <div class="card mb-3">
+    <div class="card-header bg-white py-2 fw-semibold">
       Endereço <span class="text-muted fw-normal small">— opcional</span></div>
     <div class="card-body">
       <div class="row g-3">
+        <div class="col-md-3">{% include "components/_campo.html" with campo=form.pais %}</div>
         <div class="col-md-2">{% include "components/_campo.html" with campo=form.cep %}</div>
         <div class="col-md-6">{% include "components/_campo.html" with campo=form.logradouro %}</div>
         <div class="col-md-2">{% include "components/_campo.html" with campo=form.numero %}</div>

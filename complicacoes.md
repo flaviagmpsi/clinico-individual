@@ -1296,6 +1296,9 @@ porque o silêncio é que causaria o dano.
 
 ## ADR-039 — O sistema não se comunica com pacientes. Nunca.
 
+> ⚠️ **Revogada em parte pela ADR-081:** existe uma tela pública que **recebe** o cadastro do paciente por link de
+> uso único. Nada sai do sistema para ele — o resto desta ADR continua valendo inteiro.
+
 **Status:** ✅ Aceita — Rodada 22
 **Contexto:** Discutia-se como o sistema entregaria prontuário ou documento ao paciente ou ao
 responsável legal, e como limitar isso ao "estritamente necessário". O usuário cortou a premissa:
@@ -2555,6 +2558,72 @@ para escrever a mesma evolução, confundem sobre qual deles se está fazendo.
 - **Continua "vivo", sem emitir.** O prontuário geral é sempre o estado atual; cada PDF ou DOCX baixado entra na
   trilha como exportação (ADR-078). Se a entrega de uma cópia deve ficar registrada com data, finalidade e
   destinatário, como pede o inciso VI para documentos entregues, é a P-85.
+
+## ADR-081 — Duas portas para o cadastro: o psicólogo escreve, ou o paciente preenche por um link
+
+**Contexto.** Rodada 48. O usuário quer continuar cadastrando à mão e, além disso, **gerar um link** para o paciente
+preencher os próprios dados; o que faltar, o psicólogo completa. Mandou a lista do que o link pode pedir: criança ou
+adolescente, nome e nome social, raça/cor, CPF ou documento estrangeiro, nascimento, estado civil, telefone, e-mail,
+responsável financeiro, até dois contatos de emergência, endereço com país, gênero, profissão e medicamento.
+
+É a **primeira tela pública do produto que recebe dado de paciente** — e boa parte dele é dado sensível (LGPD,
+Art. 5º, II: saúde, raça/cor, e o próprio fato de estar em psicoterapia). A arquitetura inteira foi desenhada para
+o anônimo não alcançar tabela clínica (ADR-046); esta decisão não abre mão disso.
+
+**Relação com a ADR-039 — esta ADR abre nela uma exceção, e só uma.** A ADR-039 diz que o Hamilton não tem
+superfície voltada ao paciente, "sem link compartilhável", e que toda feature que fale com o paciente precisa
+revogá-la antes de existir. O usuário, que é quem decide, pediu o link: a ADR-039 fica **revogada em parte**, no
+menor pedaço possível.
+- O que muda: existe **uma** tela que o paciente abre — e ela só **recebe**. É formulário em branco, de uso único.
+- O que continua valendo, inteiro: **nada sai do sistema para o paciente.** Sem portal, sem login de paciente, sem
+  envio automático (quem manda o link é o psicólogo, pelo canal dele), sem link de prontuário ou documento. A tela
+  pública não mostra dado nenhum de paciente — nem o que ele mesmo acabou de enviar.
+- As consequências boas da ADR-039 se mantêm por isso: P-11, P-32 e P-33 (acesso do paciente, do responsável e sigilo
+  do adolescente) continuam fora da arquitetura, porque não há o que o paciente possa **ver**. O custo real é a
+  superfície de ataque, que deixa de ter "uma porta só": as decisões de segurança abaixo existem para que a porta
+  nova dê para uma sala vazia.
+
+**Decisões de arquitetura:**
+- **O convite é uma sala de espera.** `ConviteDeCadastro` guarda o que o paciente respondeu, em JSON. Nada vira
+  `Paciente` até o psicólogo — autenticado, no escopo dele — **revisar e salvar**. Link vazado, repassado ou
+  preenchido por engano não cria paciente, não lê paciente e não revela nada além do nome e do CRP de quem convidou.
+  Descartado: criar o paciente direto da tela pública, que exigiria dar a `hamilton_web` permissão de escrita em
+  tabela clínica.
+- **A revisão é o próprio "Novo paciente"**, aberto com as respostas já preenchidas (`?convite=<id>`). O psicólogo
+  confere e completa o que só ele sabe — cobrança, modalidade, primeira sessão. Ao salvar entram junto os contatos
+  de emergência, o responsável legal (cadastro de criança ou adolescente) e o responsável financeiro (pagador de
+  fora, ADR-009); o convite é marcado como cadastrado e **as respostas são apagadas dele** — o dado passa a existir
+  num lugar só.
+- **As duas portas chegam ao mesmo cadastro.** O formulário do psicólogo ganhou os mesmos dados: nome social,
+  documento estrangeiro, estado civil, gênero, raça/cor, profissão, país e até dois contatos de emergência
+  (`ContatoDeEmergencia`, com RLS). Gênero é texto com sugestões, e não lista fechada; raça/cor usa as categorias do
+  IBGE mais "prefiro não informar".
+- **Segurança do link:**
+  - Token de 256 bits (`secrets.token_urlsafe(32)`); **no banco fica só o SHA-256**. O link aparece uma vez, na hora
+    de gerar, com botões de copiar e de WhatsApp; perdeu, cancela e gera outro.
+  - **Uso único e validade de 7 dias.** A condição vai no próprio `UPDATE`: dois envios simultâneos não passam os dois.
+  - **No banco, o visitante enxerga uma linha.** `hamilton_web` ganhou `SELECT` e `UPDATE` **por coluna**
+    (`respostas`, `respondido_em`) só nesta tabela, atrás de duas policies endereçadas a ele: a linha cujo hash foi
+    apresentado na transação (`core.db.aplicar_convite`, mesma mecânica do escopo), e `UPDATE` só enquanto não houver
+    resposta. Sem apresentar token, um `SELECT *` não devolve nada. Ele não troca dono, prazo nem hash, não cria nem
+    apaga convite, e continua sem grant em `pacientes_paciente`.
+  - A resposta sai com `Referrer-Policy: no-referrer` (o token está na URL, e a página carrega CDN e ViaCEP),
+    `Cache-Control: no-store` e `noindex`. Link inexistente dá 404; vencido, 410; usado, uma página que não diz nada.
+- **LGPD na tela pública:** pedir o mínimo. Obrigatórios são nome, nascimento, um telefone e um contato de
+  emergência; raça/cor, gênero e medicamento são sempre opcionais, e os dois primeiros ficam atrás de "Adicionar…".
+  Antes do envio há um **aviso de privacidade** — quem recebe, para quê, sigilo, como pedir correção ou exclusão —
+  e um aceite obrigatório, cuja data fica registrada na resposta. Em cadastro de criança ou adolescente quem preenche
+  e aceita é o responsável (LGPD, Art. 14), e nome e telefone dele passam a ser obrigatórios; o telefone da criança
+  deixa de ser.
+- **Campo só aparece quando a escolha pede** (ADR-074): responsável legal, responsável financeiro, segundo contato,
+  passaporte. O JavaScript só esconde; a regra está no formulário, no servidor — idade conferida pela data de
+  nascimento nos dois sentidos.
+- **Achado no caminho:** CPF repetido derrubava o "Novo paciente" com erro de servidor — a unicidade por psicólogo
+  está no banco, mas `psicologo` não é campo do formulário e o Django não a validava. Virou erro no campo, com o
+  nome de quem já tem o CPF. Com o link isso deixa de ser raro: paciente antigo preenche de novo.
+- **Fora desta rodada, de propósito:** link para paciente **já cadastrado** atualizar os próprios dados (P-86);
+  aviso ao psicólogo quando a resposta chega — hoje é um contador no botão "Link de cadastro" da lista de pacientes;
+  limite de tentativas por IP, desnecessário com token de 256 bits e sem nada a enumerar.
 
 ## Impeditivos
 

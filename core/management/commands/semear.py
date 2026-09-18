@@ -39,6 +39,7 @@ from documentos import servicos as documentos
 from documentos.models import Documento
 from prontuarios import servicos as prontuarios
 from prontuarios.models import FichaDoProntuario, Prontuario, VersaoProntuario
+from pacientes import convites as convites_de_cadastro
 from pacientes.models import Caso, CondicaoCobranca, Paciente, ResponsavelLegal
 from pacientes.servicos import cadastrar_paciente, criar_caso_coletivo
 
@@ -390,6 +391,21 @@ class Command(BaseCommand):
                     prontuarios.salvar_folha(
                         da_folha, encerramento="",
                         demanda=f"{prontuarios.sugestao_de_demanda(da_folha)} Texto fictício de demonstração. {demanda}")
+                # Links de cadastro (ADR-081): um já respondido, esperando a revisão, e um ainda com o paciente.
+                if modelo["email"] == "ana@exemplo.com":
+                    respondido, _ = convites_de_cadastro.gerar_convite("Helena, indicação da Dra. Paula")
+                    convites_de_cadastro.responder(respondido, {
+                        "nome": "Helena Prado Martins", "nome_social": "Lena", "raca_cor": "PARDA",
+                        "cpf": "11144477735", "data_nascimento": "1991-08-14", "estado_civil": "UNIAO_ESTAVEL",
+                        "telefone": "31991234567", "email": "helena.prado@exemplo.com", "pais": "Brasil",
+                        "cep": "30130110", "logradouro": "Avenida Afonso Pena", "numero": "1500",
+                        "bairro": "Centro", "cidade": "Belo Horizonte", "uf": "MG",
+                        "genero": "Mulher cisgênero", "profissao": "Arquiteta", "medicamento": "Nenhum",
+                        "contatos_de_emergencia": [
+                            {"nome": "Rosa Prado", "parentesco": "mãe", "telefone": "31977776666"}],
+                        "pagador": {"nome": "Caio Martins", "cpf": ""},
+                    })
+                    convites_de_cadastro.gerar_convite("Rafael (primeiro contato pelo Instagram)")
                 for item in documentos_de_demonstracao:
                     # Como na tela: o sistema sugere identificação e assinatura; o resto é de quem escreve.
                     paciente = por_nome[item["paciente"]]

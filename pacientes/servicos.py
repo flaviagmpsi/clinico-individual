@@ -16,7 +16,7 @@ from decimal import Decimal
 from django.core.exceptions import ValidationError
 from django.db import transaction
 
-from pacientes.models import Caso, CondicaoCobranca, Paciente, Participacao
+from pacientes.models import Caso, CondicaoCobranca, ContatoDeEmergencia, Paciente, Participacao
 
 
 @transaction.atomic
@@ -226,3 +226,22 @@ def trocar_condicao(
         dia_vencimento=dia_vencimento, tipo_vencimento=tipo_vencimento,
         vigente_desde=vigente_desde,
     )
+
+
+@transaction.atomic
+def definir_contatos_de_emergencia(paciente: Paciente, contatos: list[dict]) -> None:
+    """Deixa o paciente com exatamente estes contatos de emergência (ADR-081).
+
+    Compara antes de mexer: salvar o cadastro sem tocar nos contatos não pode encher a trilha de auditoria de
+    "excluiu" e "criou" que não aconteceram.
+    """
+    atuais = list(paciente.contatos_de_emergencia.all())
+    como_estao = [(c.nome, c.parentesco, c.telefone) for c in atuais]
+    como_ficam = [(c["nome"].strip(), c.get("parentesco", "").strip(), c.get("telefone", "")) for c in contatos]
+    if como_estao == como_ficam:
+        return
+    for contato in atuais:
+        contato.delete()
+    for nome, parentesco, telefone in como_ficam:
+        ContatoDeEmergencia.objects.create(paciente=paciente, nome=nome, parentesco=parentesco, telefone=telefone)
+

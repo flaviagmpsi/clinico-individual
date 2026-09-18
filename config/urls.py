@@ -3,10 +3,14 @@ from django.urls import include, path
 
 from contas.views import Sair
 from indicadores.views import Painel
+from pacientes.views_convite import CadastroPeloPaciente
 
 urlpatterns = [
     path("", Painel.as_view(), name="painel"),
     path("pacientes/", include("pacientes.urls")),
+    # Pública e sem login: o link que o psicólogo manda ao paciente (ADR-081). Fora de `pacientes/` de
+    # propósito — o endereço que o paciente vê não diz nada sobre a estrutura do sistema.
+    path("cadastro/<str:token>/", CadastroPeloPaciente.as_view(), name="cadastro_pelo_paciente"),
     path("conta/", include("contas.urls")),
     path("agenda/", include("atendimentos.urls")),
     path("horarios/", include("agenda.urls")),

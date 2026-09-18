@@ -45,7 +45,35 @@ class Paciente(Auditado, TenantOwnedModel):
         PRESENCIAL = "PRESENCIAL", "Presencial"
         ONLINE = "ONLINE", "Online"
 
+    class RacaCor(models.TextChoices):
+        # As categorias do IBGE, que são as dos sistemas de saúde. "Prefiro não informar" é resposta, não vazio.
+        BRANCA = "BRANCA", "Branca"
+        PRETA = "PRETA", "Preta"
+        PARDA = "PARDA", "Parda"
+        AMARELA = "AMARELA", "Amarela"
+        INDIGENA = "INDIGENA", "Indígena"
+        NAO_INFORMA = "NAO_INFORMA", "Prefiro não informar"
+
+    class EstadoCivil(models.TextChoices):
+        SOLTEIRO = "SOLTEIRO", "Solteiro(a)"
+        CASADO = "CASADO", "Casado(a)"
+        UNIAO_ESTAVEL = "UNIAO_ESTAVEL", "União estável"
+        SEPARADO = "SEPARADO", "Separado(a)"
+        DIVORCIADO = "DIVORCIADO", "Divorciado(a)"
+        VIUVO = "VIUVO", "Viúvo(a)"
+
     nome = models.CharField("Nome completo", max_length=255)
+    # ADR-081. Nome social é o nome pelo qual a pessoa é tratada: quando existe, é o que as telas mostram ao lado
+    # do nome civil, e o que o documento usa se o psicólogo assim escolher.
+    nome_social = models.CharField("Nome social", max_length=255, blank=True)
+    # Raça/cor e gênero são **dado sensível** (LGPD, Art. 5º, II): sempre opcionais, nunca inferidos.
+    raca_cor = models.CharField("Raça/cor", max_length=12, choices=RacaCor.choices, blank=True)
+    genero = models.CharField("Gênero", max_length=60, blank=True)
+    estado_civil = models.CharField("Estado civil", max_length=15, choices=EstadoCivil.choices, blank=True)
+    profissao = models.CharField("Profissão", max_length=120, blank=True)
+    # Para quem não tem CPF por não ser brasileiro: passaporte ou RNM, como texto.
+    documento_estrangeiro = models.CharField("Documento (estrangeiro)", max_length=40, blank=True,
+                                             help_text="Passaporte ou RNM, para quem não tem CPF.")
 
     # Sem CPF é aceitável: quem nasceu antes de 2018 pode não ter (ADR-040 / P-34). A tela avisa,
     # não bloqueia — o CPF só vira obrigatório quando houver saída fiscal, que está fora do MVP.
@@ -62,6 +90,7 @@ class Paciente(Auditado, TenantOwnedModel):
     bairro = models.CharField("Bairro", max_length=100, blank=True)
     cidade = models.CharField("Cidade", max_length=100, blank=True)
     uf = models.CharField("UF", max_length=2, choices=UF.choices, blank=True)
+    pais = models.CharField("País", max_length=60, blank=True, default="Brasil")
 
     # Texto livre, e não um catálogo de medicamentos: o psicólogo não prescreve, ele **registra
     # o que o paciente relata usar**. Estruturar isso sugeriria uma precisão clínica que o dado
@@ -348,3 +377,82 @@ class ResponsavelLegal(Auditado, TenantOwnedModel):
     def clean(self):
         super().clean()
         _exigir_mesmo_dono(self, paciente=self.paciente if self.paciente_id else None)
+
+
+
+class ContatoDeEmergencia(Auditado, TenantOwnedModel):
+    """Quem avisar se algo acontecer com o paciente (ADR-081). Até dois por paciente, na ordem em que foram dados.
+
+    Não é responsável legal (ADR-014) nem pagador (ADR-009): é só um nome e um telefone, que o psicólogo usa numa
+    situação de risco. Pertence ao paciente e sai junto com ele.
+    """
+
+    paciente = models.ForeignKey(Paciente, on_delete=models.CASCADE, related_name="contatos_de_emergencia")
+    nome = models.CharField("Nome", max_length=255)
+    parentesco = models.CharField("Parentesco", max_length=60, blank=True, help_text="Ex.: mãe, irmão, amiga.")
+    telefone = models.CharField("Telefone", max_length=20, validators=[telefone_valido])
+
+    class Meta:
+        verbose_name = "Contato de emergência"
+        verbose_name_plural = "Contatos de emergência"
+        ordering = ["pk"]
+
+    def __str__(self) -> str:
+        return f"{self.nome} ({self.parentesco})" if self.parentesco else self.nome
+
+    def auditoria_titular(self):
+        return self.paciente
+
+    def clean(self):
+        super().clean()
+        _exigir_mesmo_dono(self, paciente=self.paciente if self.paciente_id else None)
+
+
+class ConviteDeCadastro(TenantOwnedModel):
+    """O link que o psicólogo manda para o paciente preencher o próprio cadastro (ADR-081).
+
+    **O convite é uma sala de espera, e não um atalho para dentro do sistema.** Quem abre o link é anônimo e corre
+    sob `hamilton_web`, que não alcança tabela clínica nenhuma. O que ele preenche fica guardado **aqui**, em
+    `respostas`, e só vira paciente quando o psicólogo — autenticado, no escopo dele — revisa e salva. Link vazado
+    não cria paciente, não lê paciente e não revela nada além do nome de quem convidou.
+
+    - **Só o hash do token é guardado.** O link aparece uma vez, na hora de gerar; quem lê o banco não o reconstrói.
+    - **Uso único e com validade.** Respondido, o link morre. Sem resposta, expira.
+    - **Sem cópia sobrando.** Ao virar paciente, `respostas` é esvaziado: o dado passa a existir num lugar só.
+    - No banco, `hamilton_web` enxerga **uma linha**: a do token que a requisição apresentou (migração de RLS).
+
+    Não é `Auditado`: a trilha é gravada pelo papel da aplicação, que o visitante anônimo não tem. O que interessa
+    auditar — a criação do paciente — acontece depois, pelo psicólogo, e entra na trilha normalmente.
+    """
+
+    token_hash = models.CharField("Hash do token", max_length=64, unique=True, editable=False)
+    rotulo = models.CharField("Para quem é", max_length=120, blank=True,
+                              help_text="Só para você reconhecer o link na lista. O paciente não vê.")
+    expira_em = models.DateTimeField("Expira em")
+    respondido_em = models.DateTimeField("Respondido em", null=True, blank=True)
+    respostas = models.JSONField("Respostas", default=dict, blank=True)
+    aceito_em = models.DateTimeField("Cadastrado em", null=True, blank=True)
+    paciente = models.ForeignKey(Paciente, on_delete=models.SET_NULL, null=True, blank=True,
+                                 related_name="convites_de_cadastro")
+
+    class Meta:
+        verbose_name = "Convite de cadastro"
+        verbose_name_plural = "Convites de cadastro"
+        ordering = ["-criado_em"]
+
+    def __str__(self) -> str:
+        return f"Convite {self.pk} · {self.situacao}"
+
+    @property
+    def situacao(self) -> str:
+        from django.utils import timezone
+
+        if self.aceito_em is not None:
+            return "cadastrado"
+        if self.respondido_em is not None:
+            return "respondido"
+        return "expirado" if self.expira_em <= timezone.now() else "aguardando"
+
+    @property
+    def nome_informado(self) -> str:
+        return (self.respostas or {}).get("nome", "")

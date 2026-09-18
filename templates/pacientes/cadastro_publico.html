@@ -1,0 +1,204 @@
+{% extends "base.html" %}
+{% block titulo %}Cadastro de paciente{% endblock %}
+{% block secao %}Cadastro de paciente{% endblock %}
+
+{% block conteudo %}
+{% comment %}
+ADR-081: a única tela pública com dado de paciente. Quem preenche é o paciente (ou o responsável), sem login. O que
+ele envia **não vira cadastro sozinho**: fica esperando o psicólogo revisar.
+
+ADR-074: campo só aparece quando a escolha o pede — responsável legal só para criança e adolescente, responsável
+financeiro e segundo contato só para quem clicar, passaporte só para estrangeiro. O JavaScript apenas esconde; a
+regra de verdade está no formulário, no servidor.
+{% endcomment %}
+<div style="max-width:680px; margin-inline:auto">
+  <div class="text-center mb-4">
+    <h1 class="h5 mb-1">Bem-vindo(a) ao cadastro de paciente</h1>
+    <div class="text-muted small">
+      Você foi convidado(a) por <strong>{{ psicologo.nome_completo }}</strong> (CRP {{ psicologo.crp }}) para
+      preencher seu cadastro. Campos com <span class="text-danger">*</span> são obrigatórios.
+    </div>
+  </div>
+
+  <form method="post" novalidate id="cadastro-publico">
+    {% csrf_token %}
+    {% if form.errors %}
+      <div class="alert alert-danger py-2 small">Alguns campos precisam de atenção — eles estão marcados abaixo.</div>
+    {% endif %}
+
+    <div class="card mb-3">
+      <div class="card-header bg-white py-2 fw-semibold">Sobre você</div>
+      <div class="card-body">
+        <div class="form-check mb-3">
+          {{ form.menor }}
+          <label class="form-check-label" for="{{ form.menor.id_for_label }}">{{ form.menor.label }}</label>
+          <div class="form-text small">{{ form.menor.help_text }}</div>
+          {% for erro in form.menor.errors %}<div class="text-danger small">{{ erro }}</div>{% endfor %}
+        </div>
+        <div class="row g-3">
+          <div class="col-12">{% include "components/_campo.html" with campo=form.nome %}</div>
+          <div class="col-12" data-opcional="nome_social" data-rotulo-do-botao="Adicionar nome social">
+            {% include "components/_campo.html" with campo=form.nome_social %}</div>
+          <div class="col-md-6" data-opcional="raca_cor" data-rotulo-do-botao="Adicionar raça/cor">
+            {% include "components/_campo.html" with campo=form.raca_cor %}</div>
+          <div class="col-md-6">{% include "components/_campo.html" with campo=form.documento_tipo %}</div>
+          <div class="col-md-6" data-so-para-documento="CPF">{% include "components/_campo.html" with campo=form.cpf %}</div>
+          <div class="col-md-6" data-so-para-documento="ESTRANGEIRO">{% include "components/_campo.html" with campo=form.documento_estrangeiro %}</div>
+          <div class="col-md-6">{% include "components/_campo.html" with campo=form.data_nascimento %}</div>
+          <div class="col-md-6">{% include "components/_campo.html" with campo=form.estado_civil %}</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card mb-3" data-so-para-menor>
+      <div class="card-header bg-white py-2 fw-semibold">Responsável pela criança ou adolescente</div>
+      <div class="card-body">
+        <div class="row g-3">
+          <div class="col-md-8">{% include "components/_campo.html" with campo=form.resp_nome %}</div>
+          <div class="col-md-4">{% include "components/_campo.html" with campo=form.resp_parentesco %}</div>
+          <div class="col-md-4">{% include "components/_campo.html" with campo=form.resp_cpf %}</div>
+          <div class="col-md-4">{% include "components/_campo.html" with campo=form.resp_telefone %}</div>
+          <div class="col-md-4">{% include "components/_campo.html" with campo=form.resp_email %}</div>
+        </div>
+        <div class="form-text small mt-2">Nome e telefone do responsável são obrigatórios neste caso.</div>
+      </div>
+    </div>
+
+    <div class="card mb-3">
+      <div class="card-header bg-white py-2 fw-semibold">Contato</div>
+      <div class="card-body">
+        <div class="row g-3">
+          <div class="col-md-5">{% include "components/_campo.html" with campo=form.telefone %}</div>
+          <div class="col-md-7">{% include "components/_campo.html" with campo=form.email %}</div>
+        </div>
+        <div class="form-text small mt-2" data-so-para-adulto>O telefone é obrigatório.</div>
+
+        <div class="mt-3" data-alterna="pagador">
+          <div class="form-check">
+            {{ form.pagador_outro }}
+            <label class="form-check-label" for="{{ form.pagador_outro.id_for_label }}">
+              Adicionar responsável financeiro <span class="text-muted small">— opcional, se quem paga é outra pessoa</span></label>
+          </div>
+          <div class="row g-3 mt-0" data-so-com-pagador>
+            <div class="col-md-8">{% include "components/_campo.html" with campo=form.pagador_nome %}</div>
+            <div class="col-md-4">{% include "components/_campo.html" with campo=form.pagador_cpf %}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card mb-3">
+      <div class="card-header bg-white py-2 fw-semibold">Contato de emergência</div>
+      <div class="card-body">
+        <div class="row g-3">
+          <div class="col-md-5">{% include "components/_campo.html" with campo=form.emergencia1_nome %}</div>
+          <div class="col-md-3">{% include "components/_campo.html" with campo=form.emergencia1_parentesco %}</div>
+          <div class="col-md-4">{% include "components/_campo.html" with campo=form.emergencia1_telefone %}</div>
+        </div>
+        <div class="row g-3 mt-0" data-opcional="emergencia2_nome" data-rotulo-do-botao="+ Adicionar segundo contato de emergência (opcional)" data-grupo>
+          <div class="col-md-5">{% include "components/_campo.html" with campo=form.emergencia2_nome %}</div>
+          <div class="col-md-3">{% include "components/_campo.html" with campo=form.emergencia2_parentesco %}</div>
+          <div class="col-md-4">{% include "components/_campo.html" with campo=form.emergencia2_telefone %}</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card mb-3">
+      <div class="card-header bg-white py-2 fw-semibold">Endereço <span class="text-muted fw-normal small">— opcional</span></div>
+      <div class="card-body">
+        <div class="row g-3">
+          <div class="col-md-4">{% include "components/_campo.html" with campo=form.pais %}</div>
+          <div class="col-md-4">{% include "components/_campo.html" with campo=form.cep %}</div>
+          <div class="col-md-4">{% include "components/_campo.html" with campo=form.numero %}</div>
+          <div class="col-md-8">{% include "components/_campo.html" with campo=form.logradouro %}</div>
+          <div class="col-md-4">{% include "components/_campo.html" with campo=form.bairro %}</div>
+          <div class="col-md-5">{% include "components/_campo.html" with campo=form.cidade %}</div>
+          <div class="col-md-3">{% include "components/_campo.html" with campo=form.uf %}</div>
+          <div class="col-md-4">{% include "components/_campo.html" with campo=form.complemento %}</div>
+        </div>
+        <div class="form-text small mt-2">Digite o CEP e o endereço é preenchido sozinho.</div>
+      </div>
+    </div>
+
+    <div class="card mb-3">
+      <div class="card-header bg-white py-2 fw-semibold">Perfil e saúde <span class="text-muted fw-normal small">— opcional</span></div>
+      <div class="card-body">
+        <div class="row g-3">
+          <div class="col-md-6">{% include "components/_campo.html" with campo=form.genero %}</div>
+          <div class="col-md-6">{% include "components/_campo.html" with campo=form.profissao %}</div>
+          <div class="col-12">{% include "components/_campo.html" with campo=form.medicamento %}</div>
+        </div>
+        <datalist id="generos-sugeridos">{% for g in generos %}<option value="{{ g }}">{% endfor %}</datalist>
+      </div>
+    </div>
+
+    {% comment %}LGPD: quem recebe, para quê, e o que acontece depois — dito antes de pedir o aceite.{% endcomment %}
+    <div class="card mb-3 border-secondary-subtle">
+      <div class="card-body small">
+        <div class="fw-semibold mb-1">Aviso de privacidade</div>
+        <p class="mb-2">Estes dados são enviados <strong>somente a {{ psicologo.nome_completo }}</strong>, que é
+          responsável por eles, e servem para o seu atendimento psicológico: identificação, contato, segurança em
+          caso de emergência e emissão de recibos. Os campos de raça/cor, gênero e medicamento são opcionais. O
+          atendimento é protegido por sigilo profissional. Você pode pedir a correção ou a exclusão dos seus dados
+          diretamente a quem o convidou.</p>
+        <div class="form-check">
+          {{ form.consentimento }}
+          <label class="form-check-label" for="{{ form.consentimento.id_for_label }}">{{ form.consentimento.label }}
+            <span class="text-danger">*</span></label>
+          {% for erro in form.consentimento.errors %}<div class="text-danger small">{{ erro }}</div>{% endfor %}
+        </div>
+      </div>
+    </div>
+
+    <button type="submit" class="btn btn-primary w-100">Enviar cadastro</button>
+    <div class="text-muted small text-center mt-2">Depois de enviar, este link deixa de funcionar.</div>
+  </form>
+</div>
+
+<script>
+(function () {
+  const f = document.getElementById('cadastro-publico');
+  const campo = (nome) => f.querySelector('[name="' + nome + '"]');
+  const mostrar = (seletor, sim) => f.querySelectorAll(seletor).forEach((el) => el.classList.toggle('d-none', !sim));
+
+  // Criança ou adolescente: abre o responsável e tira a obrigação do telefone do próprio paciente.
+  function menor() {
+    const sim = campo('menor').checked;
+    mostrar('[data-so-para-menor]', sim);
+    mostrar('[data-so-para-adulto]', !sim);
+  }
+  function documento() {
+    const tipo = campo('documento_tipo').value || 'CPF';
+    f.querySelectorAll('[data-so-para-documento]').forEach((el) =>
+      el.classList.toggle('d-none', el.dataset.soParaDocumento !== tipo));
+  }
+  function pagador() { mostrar('[data-so-com-pagador]', campo('pagador_outro').checked); }
+
+  campo('menor').addEventListener('change', menor);
+  campo('documento_tipo').addEventListener('change', documento);
+  campo('pagador_outro').addEventListener('change', pagador);
+  menor(); documento(); pagador();
+
+  // "Adicionar…": o campo opcional fica atrás de um botão, a não ser que já tenha valor ou erro.
+  f.querySelectorAll('[data-opcional]').forEach(function (bloco) {
+    const preenchido = Array.from(bloco.querySelectorAll('input, select, textarea')).some((c) => c.value);
+    if (preenchido || bloco.querySelector('.text-danger.small')) return;
+    const botao = document.createElement('button');
+    botao.type = 'button';
+    botao.className = 'btn btn-link btn-sm p-0 text-decoration-none';
+    botao.textContent = bloco.dataset.rotuloDoBotao;
+    const lugar = document.createElement('div');
+    lugar.className = 'col-12';
+    lugar.appendChild(botao);
+    bloco.classList.add('d-none');
+    bloco.parentNode.insertBefore(lugar, bloco);
+    botao.addEventListener('click', function () {
+      bloco.classList.remove('d-none');
+      lugar.remove();
+      const primeiro = bloco.querySelector('input, select');
+      if (primeiro) primeiro.focus();
+    });
+  });
+})();
+</script>
+{% endblock %}

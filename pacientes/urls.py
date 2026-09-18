@@ -1,12 +1,15 @@
 from django.urls import path
 
-from pacientes import views, views_cobranca
+from pacientes import views, views_cobranca, views_convite
 
 app_name = "pacientes"
 
 urlpatterns = [
     path("", views.ListaPacientes.as_view(), name="lista"),
     path("novo/", views.NovoPaciente.as_view(), name="novo"),
+    path("convites/", views_convite.Convites.as_view(), name="convites"),
+    path("convites/gerar/", views_convite.GerarConvite.as_view(), name="convite_gerar"),
+    path("convites/<int:pk>/cancelar/", views_convite.CancelarConvite.as_view(), name="convite_cancelar"),
     path("<int:pk>/", views.DetalhePaciente.as_view(), name="detalhe"),
     path("<int:pk>/editar/", views.EditarPaciente.as_view(), name="editar"),
     path("<int:pk>/excluir/", views.ExcluirPaciente.as_view(), name="excluir"),

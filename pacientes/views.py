@@ -32,7 +32,9 @@ from pacientes.forms import (
     PagadorForm,
     ResponsavelLegalForm,
 )
-from pacientes.models import Caso, Paciente, ResponsavelLegal
+from pacientes import convites
+from pacientes.forms import GENEROS_SUGERIDOS
+from pacientes.models import Caso, ConviteDeCadastro, Paciente, ResponsavelLegal
 from pacientes.servicos import (
     cadastrar_paciente,
     caso_individual_de,
@@ -67,7 +69,8 @@ class ListaPacientes(LoginRequiredMixin, ListView):
     def get_context_data(self, **kwargs):
         contexto = super().get_context_data(**kwargs)
         contexto.update(busca=self.request.GET.get("q", ""), situacao=self.situacao(),
-                        total_ativos=pacientes_ativos().count(), total_encerrados=pacientes_encerrados().count())
+                        total_ativos=pacientes_ativos().count(), total_encerrados=pacientes_encerrados().count(),
+                        cadastros_para_revisar=convites.esperando_revisao())
         return contexto
 
 
@@ -107,11 +110,30 @@ class NovoPaciente(LoginRequiredMixin, CreateView):
     form_class = PacienteForm
     template_name = "pacientes/formulario.html"
 
+    def convite(self) -> ConviteDeCadastro | None:
+        """`?convite=<id>`: o cadastro que o paciente preencheu pelo link, aberto para revisão (ADR-081).
+
+        O formulário é o mesmo de sempre, já com as respostas dele. Nada vira paciente antes de o psicólogo
+        salvar — e é nesse salvar que ele completa o que só ele sabe: cobrança, modalidade, primeira sessão.
+        """
+        if not hasattr(self, "_convite"):
+            codigo = self.request.GET.get("convite", "")
+            self._convite = (get_object_or_404(ConviteDeCadastro, pk=int(codigo), respondido_em__isnull=False,
+                                               aceito_em__isnull=True) if codigo.isdigit() else None)
+        return self._convite
+
+    def get_initial(self):
+        inicial = super().get_initial()
+        if self.convite() is not None:
+            inicial.update(convites.iniciais_do_paciente(self.convite()))
+        return inicial
+
     def get_context_data(self, **kwargs):
         contexto = super().get_context_data(**kwargs)
         contexto.setdefault("cobranca", CondicaoCobrancaForm(
             prefix="cobranca", dia_vencimento_padrao=self.request.user.dia_vencimento_mensalidade,
             tipo_vencimento_padrao=self.request.user.tipo_vencimento_mensalidade))
+        contexto.update(convite=self.convite(), generos=GENEROS_SUGERIDOS)
         return contexto
 
     def post(self, request, *args, **kwargs):
@@ -130,6 +152,9 @@ class NovoPaciente(LoginRequiredMixin, CreateView):
     def cadastrar(self, form, cobranca):
         self.object = form.save(commit=False)
         cadastrar_paciente(self.object, **cobranca.condicao())
+        form.salvar_contatos_de_emergencia(self.object)
+        if self.convite() is not None:
+            convites.aceitar(self.convite(), self.object)
         messages.success(self.request, f"Paciente {self.object.nome} cadastrado.")
         return redirect(self.get_success_url())
 
@@ -151,9 +176,14 @@ class EditarPaciente(LoginRequiredMixin, UpdateView):
         auditoria.registrar(auditoria.Acao.VER, self.object)  # o formulário mostra o cadastro inteiro
         return resposta
 
+    def get_context_data(self, **kwargs):
+        return {**super().get_context_data(**kwargs), "generos": GENEROS_SUGERIDOS}
+
     def form_valid(self, form):
+        resposta = super().form_valid(form)
+        form.salvar_contatos_de_emergencia(self.object)
         messages.success(self.request, "Cadastro atualizado.")
-        return super().form_valid(form)
+        return resposta
 
     def get_success_url(self):
         return reverse_lazy("pacientes:detalhe", args=[self.object.pk])

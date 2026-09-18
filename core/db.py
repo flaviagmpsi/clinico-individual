@@ -20,7 +20,7 @@ de segurança justamente no cenário em que não fazia nada.)
 
 from django.db import connection
 
-from core.rls import PAPEL_APLICACAO, PAPEL_WEB, VARIAVEL_SESSAO
+from core.rls import PAPEL_APLICACAO, PAPEL_WEB, VARIAVEL_CONVITE, VARIAVEL_SESSAO
 
 
 class ForaDeTransacao(RuntimeError):
@@ -79,6 +79,17 @@ def aplicar_escopo(psicologo_id: int) -> None:
             "SELECT set_config(%s, %s, true)",
             [VARIAVEL_SESSAO, str(psicologo_id)],
         )
+
+
+def aplicar_convite(token_hash: str) -> None:
+    """Diz ao banco qual convite de cadastro a requisição anônima apresentou (ADR-081).
+
+    Sob `hamilton_web`, a tabela de convites só devolve a linha deste hash — e só deixa respondê-la uma vez.
+    `is_local => true`, como no escopo: a variável morre com a transação e não vaza pelo pool (I-01).
+    """
+    _exigir_transacao("Apresentar um convite de cadastro")
+    with connection.cursor() as cursor:
+        cursor.execute("SELECT set_config(%s, %s, true)", [VARIAVEL_CONVITE, token_hash])
 
 
 def limpar_escopo() -> None:

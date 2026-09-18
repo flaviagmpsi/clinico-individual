@@ -21,6 +21,9 @@ Três armadilhas que tornam RLS inútil se ignoradas, e por isso estão tratadas
 """
 
 VARIAVEL_SESSAO = "hamilton.psicologo_id"
+# O hash do convite de cadastro que a requisição anônima apresentou (ADR-081). Mesma mecânica da variável de
+# sessão: vale só dentro da transação, e sem ela a policy do convite não devolve linha nenhuma.
+VARIAVEL_CONVITE = "hamilton.convite_hash"
 
 PAPEL_APLICACAO = "hamilton_app"
 PAPEL_WEB = "hamilton_web"

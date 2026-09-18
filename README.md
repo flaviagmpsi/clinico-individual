@@ -105,8 +105,8 @@ próprio cadastro em "Meu perfil". Nenhuma view filtra por psicólogo — quem c
 
 ### O que existe de tela
 
-Criar conta e quiz de cadastro · login · painel (agenda de hoje) · pacientes com busca, ficha, cadastro,
-edição e exclusão · agenda com filtros, frequência, cadastro de sessão, remarcação e desfecho · grade de
+Criar conta e quiz de cadastro · login · painel (agenda de hoje) · pacientes com busca, ficha, cadastro
+(à mão ou por **link que o paciente preenche**), edição e exclusão · agenda com filtros, frequência, cadastro de sessão, remarcação e desfecho · grade de
 horários · financeiro do mês com registro de pagamento · prontuários (os registros de sessão) · documentos psicológicos (modelos, rascunho, emissão e impressão) e o
 prontuário geral do paciente, na forma da Res. CFP 001/2009, montado com os registros de sessão · PDF e DOCX de
 documentos e do prontuário geral · meu perfil.
@@ -121,7 +121,7 @@ DATABASE_URL="postgresql://hamilton_owner:ownerpass@127.0.0.1:5432/hamilton_dev"
   python manage.py test --parallel 4
 ```
 
-O runner precisa criar o banco de teste, então roda com o papel dono. São **454 testes**, e nenhum
+O runner precisa criar o banco de teste, então roda com o papel dono. São **483 testes**, e nenhum
 fica pulado. Contra um PostgreSQL local levam cerca de **1 minuto e 40 segundos com `--parallel 4`**.
 
 ⚠️ **Rode em paralelo.** Em série a mesma suíte leva ~11 minutos, e não é por teste lento: medida app a app,

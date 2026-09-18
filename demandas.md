@@ -163,6 +163,11 @@ em atendimento de casal. Ver **P-70**, resolvida em parte.
 | P-07 | Valor acordado e modalidade de cobrança pertencem ao **caso**, não ao paciente | 🗄️ | ✅ | 🟢 | ADR-002, ADR-026 |
 | P-08 | Acesso direto, do cadastro, aos prontuários já realizados e à contagem de sessões | 🎨 | ✅ | 🟠 | escopo, ADR-064 |
 | P-09 | Paciente nascido antes de 2018 pode não ter CPF: avisar, não bloquear | 🎨 | ✅ | 🟢 | ADR-040 |
+| P-10 | **Link de cadastro**: o psicólogo gera um link de uso único (7 dias), o paciente preenche os próprios dados numa tela pública, e a resposta espera a revisão — só vira paciente quando o psicólogo salva | 🎨⚙️🗄️🔒 | ✅ | 🟢 | ADR-081 |
+| P-11 | Revisão do cadastro enviado pelo paciente dentro do "Novo paciente", já preenchido; ao salvar entram contatos de emergência, responsável legal e responsável financeiro, e a resposta é apagada do convite | 🎨⚙️ | ✅ | 🟢 | ADR-081 |
+| P-12 | Cadastro ampliado: nome social, documento estrangeiro, estado civil, gênero, raça/cor, profissão, país e até dois **contatos de emergência** — iguais nas duas portas | 🎨🗄️ | ✅ | 🟢 | ADR-081 |
+| P-13 | Tela pública com aviso de privacidade e aceite (LGPD); criança ou adolescente pede o responsável; campo sensível é opcional | 🎨🔒 | ✅ | 🟢 | ADR-081 |
+| P-14 | CPF repetido vira erro no campo, e não erro de servidor | ⚙️ | ✅ | 🟢 | ADR-081 |
 
 ---
 

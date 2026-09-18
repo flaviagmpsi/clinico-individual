@@ -5,7 +5,11 @@
 {% block conteudo %}
 <div class="d-flex align-items-center mb-3">
   <h1 class="h5 mb-0">Pacientes <span class="text-muted fw-normal">({{ page_obj.paginator.count|default:pacientes|length }})</span></h1>
-  <a href="{% url 'pacientes:novo' %}" class="btn btn-primary btn-sm ms-auto">
+  {% comment %}ADR-081: duas portas para o mesmo cadastro — o psicólogo escreve, ou o paciente preenche pelo link.{% endcomment %}
+  <a href="{% url 'pacientes:convites' %}" class="btn btn-outline-primary btn-sm ms-auto position-relative">
+    <i class="bi bi-link-45deg"></i> Link de cadastro
+    {% if cadastros_para_revisar %}<span class="badge text-bg-warning ms-1" title="Cadastros respondidos esperando a sua revisão">{{ cadastros_para_revisar }}</span>{% endif %}</a>
+  <a href="{% url 'pacientes:novo' %}" class="btn btn-primary btn-sm ms-2">
     <i class="bi bi-plus-lg"></i> Novo paciente</a>
 </div>
 
