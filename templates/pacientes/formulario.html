@@ -88,7 +88,8 @@ dele — nada vira paciente antes deste "Salvar".{% endcomment %}
         <div class="col-md-2">{% include "components/_campo.html" with campo=form.complemento %}</div>
         <div class="col-md-4">{% include "components/_campo.html" with campo=form.bairro %}</div>
         <div class="col-md-5">{% include "components/_campo.html" with campo=form.cidade %}</div>
-        <div class="col-md-3">{% include "components/_campo.html" with campo=form.uf %}</div>
+        <div class="col-md-3" data-so-no-brasil>{% include "components/_campo.html" with campo=form.uf %}</div>
+        <div class="col-md-3" data-so-fora-do-brasil>{% include "components/_campo.html" with campo=form.estado_exterior %}</div>
       </div>
     </div>
   </div>
@@ -129,4 +130,5 @@ dele — nada vira paciente antes deste "Salvar".{% endcomment %}
   <button type="submit" class="btn btn-primary">Salvar</button>
   <a href="{% url 'pacientes:lista' %}" class="btn btn-link text-muted">Cancelar</a>
 </form>
+{% include "components/_endereco_por_pais.html" %}
 {% endblock %}

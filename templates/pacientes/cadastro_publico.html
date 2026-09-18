@@ -104,19 +104,22 @@ regra de verdade está no formulário, no servidor.
     </div>
 
     <div class="card mb-3">
-      <div class="card-header bg-white py-2 fw-semibold">Endereço <span class="text-muted fw-normal small">— opcional</span></div>
+      <div class="card-header bg-white py-2 fw-semibold">Endereço</div>
       <div class="card-body">
         <div class="row g-3">
           <div class="col-md-4">{% include "components/_campo.html" with campo=form.pais %}</div>
-          <div class="col-md-4">{% include "components/_campo.html" with campo=form.cep %}</div>
+          <div class="col-md-4" data-exigido-so-no-brasil>{% include "components/_campo.html" with campo=form.cep %}</div>
           <div class="col-md-4">{% include "components/_campo.html" with campo=form.numero %}</div>
           <div class="col-md-8">{% include "components/_campo.html" with campo=form.logradouro %}</div>
-          <div class="col-md-4">{% include "components/_campo.html" with campo=form.bairro %}</div>
+          <div class="col-md-4" data-exigido-so-no-brasil>{% include "components/_campo.html" with campo=form.bairro %}</div>
           <div class="col-md-5">{% include "components/_campo.html" with campo=form.cidade %}</div>
-          <div class="col-md-3">{% include "components/_campo.html" with campo=form.uf %}</div>
+          <div class="col-md-3" data-so-no-brasil>{% include "components/_campo.html" with campo=form.uf %}</div>
+          <div class="col-md-3" data-so-fora-do-brasil>{% include "components/_campo.html" with campo=form.estado_exterior %}</div>
           <div class="col-md-4">{% include "components/_campo.html" with campo=form.complemento %}</div>
         </div>
-        <div class="form-text small mt-2">Digite o CEP e o endereço é preenchido sozinho.</div>
+        <div class="form-text small mt-2" data-so-no-brasil>Digite o CEP e o endereço é preenchido sozinho.</div>
+        <div class="form-text small mt-2" data-so-fora-do-brasil>Endereço fora do Brasil: escreva tudo à mão, do jeito
+          que se usa no seu país. Os telefones vão com o código do país, só números.</div>
       </div>
     </div>
 
@@ -201,4 +204,5 @@ regra de verdade está no formulário, no servidor.
   });
 })();
 </script>
+{% include "components/_endereco_por_pais.html" %}
 {% endblock %}

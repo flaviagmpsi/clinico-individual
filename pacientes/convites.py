@@ -26,7 +26,7 @@ VALIDADE = timedelta(days=7)
 CAMPOS_DO_PACIENTE = (
     "nome", "nome_social", "raca_cor", "cpf", "documento_estrangeiro", "data_nascimento", "estado_civil",
     "telefone", "email", "pais", "cep", "logradouro", "numero", "complemento", "bairro", "cidade", "uf",
-    "genero", "profissao", "medicamento",
+    "estado_exterior", "genero", "profissao", "medicamento",
 )
 
 

@@ -18,6 +18,7 @@ from django.db import models
 
 from core.auditoria import Auditado
 from core.calendario import MAIOR_DIA_UTIL, TipoDia, data_no_mes, descrever_dia
+from core.enderecos import codigo_postal_de_fora, no_brasil, telefone_de_qualquer_pais
 from core.models import TenantOwnedModel
 
 # Formato exato, e não só "dígitos": `^\d*$` aceitava CPF "1". Todos admitem vazio porque os
@@ -80,10 +81,11 @@ class Paciente(Auditado, TenantOwnedModel):
     cpf = models.CharField("CPF", max_length=11, blank=True, validators=[cpf_valido])
     data_nascimento = models.DateField("Data de nascimento", null=True, blank=True)
 
-    telefone = models.CharField("Telefone", max_length=20, blank=True, validators=[telefone_valido])
+    # Telefone e CEP são validados em `clean()`, e não no campo: o formato depende do **país** (ADR-082).
+    telefone = models.CharField("Telefone", max_length=20, blank=True)
     email = models.EmailField("E-mail", blank=True)
 
-    cep = models.CharField("CEP", max_length=8, blank=True, validators=[cep_valido])
+    cep = models.CharField("CEP", max_length=12, blank=True)
     logradouro = models.CharField("Logradouro", max_length=255, blank=True)
     numero = models.CharField("Número", max_length=20, blank=True)
     complemento = models.CharField("Complemento", max_length=100, blank=True)
@@ -91,6 +93,9 @@ class Paciente(Auditado, TenantOwnedModel):
     cidade = models.CharField("Cidade", max_length=100, blank=True)
     uf = models.CharField("UF", max_length=2, choices=UF.choices, blank=True)
     pais = models.CharField("País", max_length=60, blank=True, default="Brasil")
+    # A UF é lista fechada dos estados brasileiros. Quem mora fora escreve o estado ou a província à mão (ADR-082).
+    estado_exterior = models.CharField("Estado ou província", max_length=60, blank=True,
+                                       help_text="Só para endereço fora do Brasil.")
 
     # Texto livre, e não um catálogo de medicamentos: o psicólogo não prescreve, ele **registra
     # o que o paciente relata usar**. Estruturar isso sugeriria uma precisão clínica que o dado
@@ -122,10 +127,36 @@ class Paciente(Auditado, TenantOwnedModel):
         return self.nome
 
     @property
+    def mora_no_brasil(self) -> bool:
+        return no_brasil(self.pais)
+
+    def clean(self):
+        """O formato de telefone e de CEP é o do país (ADR-082).
+
+        No Brasil valem as regras de sempre: DDD mais número, CEP de oito números. Fora dele, nada disso existe —
+        e exigir seria impedir o cadastro de quem mora fora, que é justamente quem o atendimento online alcança.
+        """
+        super().clean()
+        erros = {}
+        regras = ([("telefone", telefone_valido), ("cep", cep_valido)] if self.mora_no_brasil
+                  else [("telefone", telefone_de_qualquer_pais), ("cep", codigo_postal_de_fora)])
+        for campo, validar in regras:
+            try:
+                validar(getattr(self, campo) or "")
+            except ValidationError as erro:
+                erros[campo] = erro.messages
+        if erros:
+            raise ValidationError(erros)
+        if self.mora_no_brasil:
+            self.estado_exterior = ""
+        else:
+            self.uf = ""
+
+    @property
     def endereco(self) -> str:
         """Endereço em uma linha, pulando o que estiver vazio."""
         rua = " ".join(p for p in [self.logradouro, self.numero] if p)
-        partes = [rua, self.complemento, self.bairro, self.cidade, self.uf]
+        partes = [rua, self.complemento, self.bairro, self.cidade, self.uf or self.estado_exterior]
         return " · ".join(p for p in partes if p)
 
     @property
@@ -356,7 +387,7 @@ class ResponsavelLegal(Auditado, TenantOwnedModel):
     nome = models.CharField("Nome completo", max_length=255)
     parentesco = models.CharField("Parentesco", max_length=60, blank=True, help_text="Ex.: mãe, avô, tutora.")
     cpf = models.CharField("CPF", max_length=11, blank=True, validators=[cpf_valido])
-    telefone = models.CharField("Telefone", max_length=20, blank=True, validators=[telefone_valido])
+    telefone = models.CharField("Telefone", max_length=20, blank=True, validators=[telefone_de_qualquer_pais])
     email = models.EmailField("E-mail", blank=True)
     guarda = models.CharField("Guarda", max_length=15, choices=Guarda.choices, default=Guarda.NAO_INFORMADA)
     detem_guarda = models.BooleanField(
@@ -390,7 +421,7 @@ class ContatoDeEmergencia(Auditado, TenantOwnedModel):
     paciente = models.ForeignKey(Paciente, on_delete=models.CASCADE, related_name="contatos_de_emergencia")
     nome = models.CharField("Nome", max_length=255)
     parentesco = models.CharField("Parentesco", max_length=60, blank=True, help_text="Ex.: mãe, irmão, amiga.")
-    telefone = models.CharField("Telefone", max_length=20, validators=[telefone_valido])
+    telefone = models.CharField("Telefone", max_length=20, validators=[telefone_de_qualquer_pais])
 
     class Meta:
         verbose_name = "Contato de emergência"

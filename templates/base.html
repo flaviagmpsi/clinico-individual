@@ -144,6 +144,8 @@ Se a busca falhar, o endereço continua digitável à mão; nada trava.
     const formulario = campo.form;
     if (!formulario) return;
     campo.addEventListener('blur', async () => {
+      // Desligada na hora para endereço fora do Brasil (ADR-082): lá se escreve tudo à mão.
+      if (!campo.dataset.buscaCep) return;
       const cep = digitos(campo.value);
       if (cep.length !== 8) return;
       try {

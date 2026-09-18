@@ -168,6 +168,7 @@ em atendimento de casal. Ver **P-70**, resolvida em parte.
 | P-12 | Cadastro ampliado: nome social, documento estrangeiro, estado civil, gênero, raça/cor, profissão, país e até dois **contatos de emergência** — iguais nas duas portas | 🎨🗄️ | ✅ | 🟢 | ADR-081 |
 | P-13 | Tela pública com aviso de privacidade e aceite (LGPD); criança ou adolescente pede o responsável; campo sensível é opcional | 🎨🔒 | ✅ | 🟢 | ADR-081 |
 | P-14 | CPF repetido vira erro no campo, e não erro de servidor | ⚙️ | ✅ | 🟢 | ADR-081 |
+| P-15 | Endereço **obrigatório** no link de cadastro; para quem mora **fora do Brasil**, tudo escrito à mão — código postal livre, telefone com código do país, estado ou província em texto, sem máscara nem busca de CEP | 🎨⚙️🗄️ | ✅ | 🟢 | ADR-082 |
 
 ---
 

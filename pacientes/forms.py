@@ -9,9 +9,10 @@ from django import forms
 from django.core.exceptions import ValidationError
 
 from core.calendario import MAIOR_DIA_UTIL, TipoDia, descrever_dia
+from core.enderecos import no_brasil, telefone_de_qualquer_pais
 from core.formularios import LimpaMascara
 from pacientes import servicos
-from pacientes.models import Caso, CondicaoCobranca, Paciente, ResponsavelLegal, telefone_valido
+from pacientes.models import Caso, CondicaoCobranca, Paciente, ResponsavelLegal
 
 _TEXTO = {"class": "form-control"}
 _NUM = {"class": "form-control", "inputmode": "numeric"}
@@ -196,20 +197,25 @@ class PacienteForm(LimpaMascara, forms.ModelForm):
 
     CAMPOS_NUMERICOS = ("cpf", "telefone", "cep", "emergencia1_telefone", "emergencia2_telefone")
 
+    def campos_numericos(self):
+        # O código postal de fora do Brasil pode ter letra: não se tira nada dele (ADR-082).
+        aqui = no_brasil(self.data.get(self.add_prefix("pais"), ""))
+        return tuple(c for c in self.CAMPOS_NUMERICOS if c != "cep" or aqui)
+
     emergencia1_nome = _campo_de_emergencia("Nome")
     emergencia1_parentesco = _campo_de_emergencia("Parentesco", placeholder="mãe, irmão, amiga")
     emergencia1_telefone = forms.CharField(label="Telefone", required=False, max_length=20,
-                                           validators=[telefone_valido], widget=forms.TextInput(attrs=_TELEFONE))
+                                           validators=[telefone_de_qualquer_pais], widget=forms.TextInput(attrs=_TELEFONE))
     emergencia2_nome = _campo_de_emergencia("Nome")
     emergencia2_parentesco = _campo_de_emergencia("Parentesco", placeholder="mãe, irmão, amiga")
     emergencia2_telefone = forms.CharField(label="Telefone", required=False, max_length=20,
-                                           validators=[telefone_valido], widget=forms.TextInput(attrs=_TELEFONE))
+                                           validators=[telefone_de_qualquer_pais], widget=forms.TextInput(attrs=_TELEFONE))
 
     class Meta:
         model = Paciente
         fields = ["nome", "nome_social", "cpf", "documento_estrangeiro", "data_nascimento", "telefone", "email",
                   "estado_civil", "genero", "raca_cor", "profissao",
-                  "pais", "cep", "logradouro", "numero", "complemento", "bairro", "cidade", "uf",
+                  "pais", "cep", "logradouro", "numero", "complemento", "bairro", "cidade", "uf", "estado_exterior",
                   "medicamento", "modalidade", "data_primeira_sessao", "observacoes"]
         widgets = {
             "nome": forms.TextInput(attrs={**_TEXTO, "autofocus": True}),
@@ -220,6 +226,7 @@ class PacienteForm(LimpaMascara, forms.ModelForm):
             "raca_cor": forms.Select(attrs=_SELECT),
             "profissao": forms.TextInput(attrs=_TEXTO),
             "pais": forms.TextInput(attrs=_TEXTO),
+            "estado_exterior": forms.TextInput(attrs=_TEXTO),
             "cpf": forms.TextInput(attrs=_CPF),
             "data_nascimento": forms.DateInput(attrs=_DATA),
             "telefone": forms.TextInput(attrs=_TELEFONE),

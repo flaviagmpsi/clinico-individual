@@ -1,0 +1,48 @@
+{% comment %}
+ADR-082: endereço fora do Brasil se escreve à mão. Quando o país não é Brasil, esta peça desliga o que é brasileiro
+na tela — a máscara e a busca do CEP, a máscara de telefone com DDD, a lista de estados — e mostra o campo livre de
+estado ou província. É só conforto: a regra de verdade está no servidor (formulários e `Paciente.clean`).
+
+Espera um campo `pais` no formulário, e marcações `data-so-no-brasil` / `data-so-fora-do-brasil` nos blocos.
+Roda no `DOMContentLoaded`, depois do script de máscaras do `base.html`, para não lhe tirar os campos antes da hora.
+{% endcomment %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  document.querySelectorAll('form').forEach(function (formulario) {
+    const pais = formulario.elements['pais'];
+    if (!pais) return;
+    const originais = new Map();
+    formulario.querySelectorAll('input[data-mascara="cep"], input[data-mascara="telefone"]').forEach(function (campo) {
+      originais.set(campo, { mascara: campo.dataset.mascara, busca: campo.dataset.buscaCep, dica: campo.placeholder });
+    });
+    const rotuloDoCep = formulario.querySelector('label[for="' + (formulario.elements['cep'] || {}).id + '"]');
+    // Só o nó de texto do rótulo: trocar o HTML inteiro recriaria a estrela de obrigatório.
+    const noDoCep = rotuloDoCep ? rotuloDoCep.childNodes[0] : null;
+    const textoDoCep = noDoCep ? noDoCep.textContent : '';
+
+    function alternar() {
+      const aqui = ['', 'brasil', 'brazil', 'br'].includes(pais.value.trim().toLowerCase());
+      formulario.querySelectorAll('[data-so-no-brasil]').forEach((el) => el.classList.toggle('d-none', !aqui));
+      formulario.querySelectorAll('[data-so-fora-do-brasil]').forEach((el) => el.classList.toggle('d-none', aqui));
+      formulario.querySelectorAll('[data-exigido-so-no-brasil] label .text-danger')
+        .forEach((estrela) => estrela.classList.toggle('d-none', !aqui));
+      originais.forEach(function (original, campo) {
+        if (aqui) {
+          campo.dataset.mascara = original.mascara;
+          if (original.busca) campo.dataset.buscaCep = original.busca;
+          campo.placeholder = original.dica;
+          campo.setAttribute('inputmode', 'numeric');
+        } else {
+          delete campo.dataset.mascara;
+          delete campo.dataset.buscaCep;
+          campo.placeholder = '';
+          campo.removeAttribute('inputmode');
+        }
+      });
+      if (noDoCep) noDoCep.textContent = aqui ? textoDoCep : textoDoCep.replace('CEP', 'Código postal');
+    }
+    pais.addEventListener('input', alternar);
+    alternar();
+  });
+});
+</script>

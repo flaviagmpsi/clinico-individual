@@ -5,13 +5,15 @@ psicólogo revisar. As validações de formato são as mesmas do cadastro feito 
 pública não pode ser mais frouxo do que o que entra pela de dentro.
 
 Princípio da LGPD que guia a tela: **pedir o mínimo**. Obrigatório é só o que o psicólogo precisa para atender com
-segurança — nome, nascimento, um telefone, um contato de emergência. Raça/cor, gênero e medicamento são dado
-sensível, e por isso sempre opcionais.
+segurança — nome, nascimento, um telefone, um contato de emergência — e o **endereço**, que o usuário definiu como
+obrigatório (Rodada 49): é o que vai no recibo e no contrato. Raça/cor, gênero e medicamento são dado sensível, e
+por isso sempre opcionais.
 """
 
 from django import forms
 from django.utils import timezone
 
+from core.enderecos import codigo_postal_de_fora, no_brasil, telefone_de_qualquer_pais
 from core.formularios import LimpaMascara
 from pacientes import convites
 from pacientes.models import Paciente, cep_valido, cpf_valido, telefone_valido
@@ -41,13 +43,20 @@ def _cpf(rotulo="CPF"):
 
 
 def _telefone(rotulo="Telefone", *, obrigatorio=False):
-    return forms.CharField(label=rotulo, required=obrigatorio, max_length=20, validators=[telefone_valido],
-                           widget=forms.TextInput(attrs=_TELEFONE))
+    # Sem validador no campo: o formato do telefone depende do país, e é conferido no `clean()` (ADR-082).
+    return forms.CharField(label=rotulo, required=obrigatorio, max_length=20, widget=forms.TextInput(attrs=_TELEFONE))
+
+
+TELEFONES = ("telefone", "resp_telefone", "emergencia1_telefone", "emergencia2_telefone")
 
 
 class CadastroPeloPacienteForm(LimpaMascara, forms.Form):
     CAMPOS_NUMERICOS = ("cpf", "telefone", "cep", "resp_cpf", "resp_telefone", "pagador_cpf",
                         "emergencia1_telefone", "emergencia2_telefone")
+
+    def campos_numericos(self):
+        # O código postal de fora do Brasil pode ter letra: não se tira nada dele (ADR-082).
+        return tuple(c for c in self.CAMPOS_NUMERICOS if c != "cep" or self._mora_no_brasil())
 
     # --- Sobre você ---
     menor = forms.BooleanField(label="Este cadastro é de criança ou adolescente", required=False,
@@ -97,7 +106,7 @@ class CadastroPeloPacienteForm(LimpaMascara, forms.Form):
 
     # --- Endereço ---
     pais = _texto("País", tamanho=60)
-    cep = forms.CharField(label="CEP", required=False, max_length=9, widget=forms.TextInput(attrs=_CEP))
+    cep = forms.CharField(label="CEP", required=False, max_length=12, widget=forms.TextInput(attrs=_CEP))
     logradouro = _texto("Rua", dica="Rua, avenida ou estrada")
     numero = _texto("Número", tamanho=20)
     complemento = _texto("Complemento", tamanho=100, dica="Apto, bloco, referência")
@@ -105,6 +114,8 @@ class CadastroPeloPacienteForm(LimpaMascara, forms.Form):
     cidade = _texto("Cidade", tamanho=100)
     uf = forms.ChoiceField(label="Estado", required=False, choices=_VAZIO + list(Paciente.UF.choices),
                            widget=forms.Select(attrs=_SELECT))
+    # Fora do Brasil não há lista: o estado ou a província se escreve à mão (ADR-082).
+    estado_exterior = _texto("Estado ou província", tamanho=60)
 
     # --- Perfil e saúde ---
     genero = _texto("Gênero", tamanho=60, list="generos-sugeridos")
@@ -118,9 +129,19 @@ class CadastroPeloPacienteForm(LimpaMascara, forms.Form):
         label="Li o aviso de privacidade e concordo em enviar estes dados", widget=forms.CheckboxInput(attrs=_CHECK),
         error_messages={"required": "Para enviar o cadastro, é preciso concordar com o aviso de privacidade."})
 
+    # Endereço é obrigatório (decisão do usuário, Rodada 49). CEP, bairro e estado só para quem mora no Brasil: o
+    # endereço de fora não tem UF nem CEP de oito números, e o cadastro não pode travar por isso.
+    ENDERECO_SEMPRE = ("pais", "logradouro", "numero", "cidade")
+    ENDERECO_NO_BRASIL = ("cep", "bairro", "uf")
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields["pais"].initial = "Brasil"
+        for campo in self.ENDERECO_SEMPRE + (self.ENDERECO_NO_BRASIL if self._mora_no_brasil() else ()):
+            self.fields[campo].required = True
+
+    def _mora_no_brasil(self) -> bool:
+        return no_brasil(self.data.get(self.add_prefix("pais"), "") if self.is_bound else "")
 
     def clean_data_nascimento(self):
         nascimento = self.cleaned_data["data_nascimento"]
@@ -152,12 +173,20 @@ class CadastroPeloPacienteForm(LimpaMascara, forms.Form):
             dados["cpf"] = ""
         else:
             dados["documento_estrangeiro"] = ""
-        # O CEP brasileiro tem formato; o de fora, não — e não é por isso que o cadastro deve travar.
-        if dados.get("cep") and (dados.get("pais") or "Brasil").strip().lower() in ("brasil", "brazil"):
-            try:
-                cep_valido(dados["cep"])
-            except forms.ValidationError as erro:
-                self.add_error("cep", erro)
+        # Formato é coisa do país (ADR-082): no Brasil, DDD + número e CEP de oito números; fora, o que o país usar.
+        aqui = self._mora_no_brasil()
+        regras = [(campo, telefone_valido if aqui else telefone_de_qualquer_pais) for campo in TELEFONES]
+        regras.append(("cep", cep_valido if aqui else codigo_postal_de_fora))
+        for campo, validar in regras:
+            if dados.get(campo) and campo not in self.errors:
+                try:
+                    validar(dados[campo])
+                except forms.ValidationError as erro:
+                    self.add_error(campo, erro)
+        if aqui:
+            dados["estado_exterior"] = ""
+        else:
+            dados["uf"] = ""
         if dados.get("pagador_outro") and not dados.get("pagador_nome"):
             self.add_error("pagador_nome", "Informe o nome de quem paga.")
         if dados.get("emergencia2_nome") and not dados.get("emergencia2_telefone"):

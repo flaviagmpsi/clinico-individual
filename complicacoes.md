@@ -2609,8 +2609,9 @@ menor pedaço possível.
     apaga convite, e continua sem grant em `pacientes_paciente`.
   - A resposta sai com `Referrer-Policy: no-referrer` (o token está na URL, e a página carrega CDN e ViaCEP),
     `Cache-Control: no-store` e `noindex`. Link inexistente dá 404; vencido, 410; usado, uma página que não diz nada.
-- **LGPD na tela pública:** pedir o mínimo. Obrigatórios são nome, nascimento, um telefone e um contato de
-  emergência; raça/cor, gênero e medicamento são sempre opcionais, e os dois primeiros ficam atrás de "Adicionar…".
+- **LGPD na tela pública:** pedir o mínimo. Obrigatórios são nome, nascimento, um telefone, um contato de
+  emergência e o **endereço** (decisão do usuário, Rodada 49 — é o que vai no recibo e no contrato; para quem mora
+  fora do Brasil, CEP, bairro e estado ficam livres); raça/cor, gênero e medicamento são sempre opcionais, e os dois primeiros ficam atrás de "Adicionar…".
   Antes do envio há um **aviso de privacidade** — quem recebe, para quê, sigilo, como pedir correção ou exclusão —
   e um aceite obrigatório, cuja data fica registrada na resposta. Em cadastro de criança ou adolescente quem preenche
   e aceita é o responsável (LGPD, Art. 14), e nome e telefone dele passam a ser obrigatórios; o telefone da criança
@@ -2624,6 +2625,35 @@ menor pedaço possível.
 - **Fora desta rodada, de propósito:** link para paciente **já cadastrado** atualizar os próprios dados (P-86);
   aviso ao psicólogo quando a resposta chega — hoje é um contador no botão "Link de cadastro" da lista de pacientes;
   limite de tentativas por IP, desnecessário com token de 256 bits e sem nada a enumerar.
+
+## ADR-082 — Endereço é obrigatório no link; fora do Brasil, tudo se escreve à mão
+
+**Contexto.** Rodada 49, duas correções do usuário sobre a ADR-081. Primeira: "o endereço é obrigatório sim" — a
+tela pública o tratava como opcional. Segunda: "se por acaso a pessoa for de outro país, todos os outros campos de
+preenchimento não podem ter opção de lista automática, a pessoa vai ter que escrever tudo à mão". O atendimento
+online alcança brasileiro morando fora e estrangeiro; o cadastro, até aqui, só sabia o formato brasileiro — CEP de
+oito números, telefone com DDD, estado escolhido numa lista de UF. Quem mora fora **não conseguia se cadastrar**.
+
+**Decisões de arquitetura:**
+- **Endereço obrigatório na tela do paciente**: país, rua, número e cidade, sempre; CEP, bairro e estado, para quem
+  mora no Brasil. No cadastro feito pelo psicólogo continua opcional (ADR-012): ele nem sempre tem o endereço à mão,
+  e é para isso que o link existe.
+- **O formato é do país.** `core.enderecos.no_brasil(pais)` decide — país em branco conta como Brasil, que é o que
+  todo cadastro antigo tem. A validação de telefone e CEP saiu do campo e foi para `Paciente.clean()`:
+  - **no Brasil**, as regras de sempre: DDD + número (10 ou 11), CEP de oito números, UF da lista;
+  - **fora**, nada brasileiro: código postal é texto de até 12 letras e números (o britânico tem letra e espaço),
+    telefone vai de 6 a 15 números com o código do país (o teto do E.164), e o estado ou província é **texto
+    livre** num campo próprio, `estado_exterior`. O `clean()` zera a UF de quem mora fora, e o estado de fora de
+    quem mora aqui — os dois nunca convivem.
+  - Responsável legal e contato de emergência aceitam telefone de qualquer país **sempre**: a mãe pode morar fora
+    mesmo quando o paciente mora aqui.
+- **Na tela, nada automático para quem é de fora.** Uma peça só (`components/_endereco_por_pais.html`), usada nas
+  duas portas do cadastro: trocou o país, somem a máscara e a busca do CEP (o `base.html` agora pergunta na hora se a
+  busca está ligada), a máscara de telefone e a lista de estados; aparece o campo livre de estado ou província, e o
+  rótulo vira "Código postal". É conforto de tela — a regra está no servidor, e o `LimpaMascara` aprendeu a não
+  arrancar as letras do código postal de fora (`campos_numericos()` passou a poder depender do que chegou).
+- **País continua texto livre**, com "Brasil" de padrão. Lista de países seria mais uma lista automática, que é o
+  que o usuário pediu para não ter.
 
 ## Impeditivos
 

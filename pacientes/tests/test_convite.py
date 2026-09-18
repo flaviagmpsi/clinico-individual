@@ -3,6 +3,7 @@
 - `Servicos` — só o hash é guardado; resposta única; validade; aceitar cria o que veio junto e esvazia o convite.
 - `ContatosDeEmergencia` — o serviço só regrava o que mudou.
 - `NoBanco` — a fresta de `hamilton_web`: uma linha, uma resposta, e nenhuma tabela clínica.
+- `ForaDoBrasil` — endereço escrito à mão: sem formato de CEP, sem DDD, sem lista de UF (ADR-082).
 - `TelaPublica` — sem login; menor pede responsável; os becos do link; cabeçalhos que protegem o token.
 - `TelasDoPsicologo` — gerar, ver o link uma vez, revisar, cadastrar, cancelar; e o isolamento entre psicólogos.
 """
@@ -38,7 +39,8 @@ FORMULARIO = {
     "cpf": "111.444.777-35", "data_nascimento": "1990-05-20", "estado_civil": "SOLTEIRO",
     "telefone": "(31) 98888-7777", "email": "helena@exemplo.com",
     "emergencia1_nome": "Rosa Prado", "emergencia1_parentesco": "mãe", "emergencia1_telefone": "(31) 97777-6666",
-    "pais": "Brasil", "cep": "30140-071", "cidade": "Belo Horizonte", "uf": "MG",
+    "pais": "Brasil", "cep": "30140-071", "logradouro": "Rua da Bahia", "numero": "1200", "bairro": "Lourdes",
+    "cidade": "Belo Horizonte", "uf": "MG",
     "genero": "Mulher cisgênero", "profissao": "Engenheira", "medicamento": "Nenhum", "consentimento": "on",
 }
 
@@ -166,6 +168,45 @@ class ContatosDeEmergencia(TestCase):
         self.assertEqual(trilha.filter(acao="CRIAR").count(), 3)
 
 
+class ForaDoBrasil(TestCase):
+    """ADR-082: o formato de telefone e de CEP é o do país; fora do Brasil, o estado se escreve à mão."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.ana = criar_psicologo("ana.exterior@exemplo.com", "11111111111", "878787")
+
+    def test_no_brasil_valem_as_regras_de_sempre(self):
+        with contexto.como(self.ana.pk):
+            for campo, valor in [("telefone", "442079460958123"), ("cep", "SW1A 1AA"), ("telefone", "123")]:
+                with self.subTest(campo=campo, valor=valor), self.assertRaises(ValidationError) as erro:
+                    cadastrar_paciente(Paciente(nome="Daqui", **{campo: valor}))
+                self.assertIn(campo, erro.exception.message_dict)
+
+    def test_fora_do_brasil_aceita_o_formato_do_pais_e_guarda_o_estado_em_texto(self):
+        with contexto.como(self.ana.pk):
+            paciente = Paciente(nome="Emma Clarke", pais="Reino Unido", telefone="442079460958", cep="SW1A 1AA",
+                                logradouro="Downing Street", numero="10", cidade="Londres",
+                                estado_exterior="Inglaterra", uf="MG")
+            cadastrar_paciente(paciente)
+        paciente.refresh_from_db()
+        self.assertEqual((paciente.cep, paciente.uf, paciente.estado_exterior), ("SW1A 1AA", "", "Inglaterra"))
+        self.assertIn("Inglaterra", paciente.endereco)
+
+    def test_pais_em_branco_conta_como_brasil_e_limpa_o_estado_de_fora(self):
+        with contexto.como(self.ana.pk):
+            paciente = Paciente(nome="Sem País", pais="", uf="MG", estado_exterior="Sobrou")
+            cadastrar_paciente(paciente)
+            with self.assertRaises(ValidationError):
+                cadastrar_paciente(Paciente(nome="Outro", pais="", cep="SW1A 1AA"))
+        self.assertEqual((paciente.uf, paciente.estado_exterior), ("MG", ""))
+
+    def test_absurdo_continua_recusado_la_fora(self):
+        with contexto.como(self.ana.pk):
+            for campo, valor in [("telefone", "12345"), ("telefone", "1234567890123456"), ("cep", "codigo longo demais")]:
+                with self.subTest(campo=campo, valor=valor), self.assertRaises(ValidationError):
+                    cadastrar_paciente(Paciente(nome="De Fora", pais="Portugal", **{campo: valor}))
+
+
 class NoBanco(TransactionTestCase):
     """A fresta de `hamilton_web` na tabela de convites — e só nela."""
 
@@ -255,7 +296,8 @@ class TelaPublica(BaseTelas):
 
     def test_exige_o_minimo_e_o_consentimento(self):
         resposta = self.client.post(self.link(), {"nome": "Helena Prado"})
-        for campo in ["data_nascimento", "telefone", "emergencia1_nome", "emergencia1_telefone", "consentimento"]:
+        for campo in ["data_nascimento", "telefone", "emergencia1_nome", "emergencia1_telefone", "consentimento",
+                      "cep", "logradouro", "numero", "bairro", "cidade", "uf"]:
             with self.subTest(campo=campo):
                 self.assertIn(campo, resposta.context["form"].errors)
         self.convite.refresh_from_db()
@@ -276,6 +318,38 @@ class TelaPublica(BaseTelas):
     def test_adulto_marcado_como_crianca_e_recusado(self):
         erros = self.client.post(self.link(), {**FORMULARIO, "menor": "on"}).context["form"].errors
         self.assertIn("menor", erros)
+
+    def test_endereco_e_obrigatorio_mas_fora_do_brasil_nao_pede_cep_bairro_nem_estado(self):
+        sem_rua = {**FORMULARIO, "logradouro": "", "uf": ""}
+        self.assertEqual(set(self.client.post(self.link(), sem_rua).context["form"].errors), {"logradouro", "uf"})
+        de_fora = {**FORMULARIO, "pais": "Portugal", "cep": "", "bairro": "", "uf": "", "cidade": "Lisboa"}
+        self.assertContains(self.client.post(self.link(), de_fora), "Cadastro enviado")
+
+    def test_de_fora_do_brasil_escreve_tudo_a_mao_e_o_cadastro_chega_inteiro_ao_psicologo(self):
+        de_fora = {**FORMULARIO, "documento_tipo": "ESTRANGEIRO", "documento_estrangeiro": "GB123456",
+                   "pais": "Reino Unido", "telefone": "+44 20 7946 0958", "emergencia1_telefone": "+44 20 7946 0000",
+                   "cep": "SW1A 1AA", "logradouro": "Downing Street", "numero": "10", "bairro": "",
+                   "cidade": "Londres", "uf": "MG", "estado_exterior": "Inglaterra"}
+        self.assertContains(self.client.post(self.link(), de_fora), "Cadastro enviado")
+        self.convite.refresh_from_db()
+        respostas = self.convite.respostas
+        self.assertEqual((respostas["cep"], respostas["telefone"], respostas["uf"], respostas["estado_exterior"]),
+                         ("SW1A 1AA", "442079460958", "", "Inglaterra"))  # o CEP de fora guarda as letras
+
+        self.assertTrue(self.client.login(username=self.ana.email, password=SENHA))
+        revisar = reverse("pacientes:novo") + f"?convite={self.convite.pk}"
+        iniciais = self.client.get(revisar).context["form"].initial
+        self.client.post(revisar, dict(iniciais))
+        emma = Paciente.objetos_todos.get(nome="Helena Prado")
+        self.assertEqual((emma.pais, emma.cep, emma.telefone, emma.estado_exterior, emma.uf),
+                         ("Reino Unido", "SW1A 1AA", "442079460958", "Inglaterra", ""))
+        with contexto.como(self.ana.pk):
+            self.assertEqual(emma.contatos_de_emergencia.get().telefone, "442079460000")
+
+    def test_no_brasil_telefone_e_cep_seguem_o_formato_brasileiro(self):
+        erros = self.client.post(self.link(), {**FORMULARIO, "telefone": "+44 20 7946 0958 123",
+                                               "cep": "SW1A 1AA"}).context["form"].errors
+        self.assertEqual(set(erros), {"telefone", "cep"})
 
     def test_estrangeiro_informa_documento_e_nao_cpf(self):
         self.client.post(self.link(), {**FORMULARIO, "documento_tipo": "ESTRANGEIRO",

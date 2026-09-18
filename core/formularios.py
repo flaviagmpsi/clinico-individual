@@ -35,12 +35,16 @@ class LimpaMascara:
     CAMPOS_NUMERICOS: tuple[str, ...] = ()
     CAMPOS_DECIMAIS: tuple[str, ...] = ()
 
+    def campos_numericos(self) -> tuple[str, ...]:
+        """Quem precisa decidir pelo que chegou — o CEP de fora do Brasil tem letra — sobrescreve isto."""
+        return self.CAMPOS_NUMERICOS
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         if not self.is_bound:
             return
         dados = self.data.copy()
-        for campo, limpar in [(c, apenas_digitos) for c in self.CAMPOS_NUMERICOS] + \
+        for campo, limpar in [(c, apenas_digitos) for c in self.campos_numericos()] + \
                              [(c, decimal_brasileiro) for c in self.CAMPOS_DECIMAIS]:
             chave = self.add_prefix(campo)
             if chave in dados:
