@@ -20,6 +20,25 @@ e leva à fonte — a resolução, que é ato oficial, e o manual do CFP, que é
   <span class="text-nowrap">Base: {{ versao_da_norma }}.</span>
 </p>
 
+{% comment %}ADR-080: o prontuário geral é documento — o que se entrega ao paciente ou a quem solicitar. Os
+registros de sessão ficam na aba Prontuários, e é deles que sai a evolução.{% endcomment %}
+<div class="rotulo mt-3 mb-2">Prontuário do paciente</div>
+<div class="row g-3">
+  <div class="col-md-6 col-xl-4">
+    <div class="card h-100">
+      <div class="card-body py-3 d-flex flex-column">
+        <div class="fw-semibold">Prontuário psicológico</div>
+        <div class="text-muted small mb-2">Res. CFP nº 001/2009, Art. 2º</div>
+        <div class="small flex-grow-1">O prontuário geral: identificação, avaliação da demanda e objetivos, evolução
+          e encerramento. A evolução é montada com os registros de sessão que você escreve na aba Prontuários. É o
+          documento que se entrega ao paciente ou a quem o solicitar.</div>
+        <a href="{% url 'documentos:escolher_prontuario' %}{% if paciente %}?paciente={{ paciente.pk }}{% endif %}"
+           class="btn btn-sm btn-outline-primary mt-3 align-self-start">Abrir prontuário</a>
+      </div>
+    </div>
+  </div>
+</div>
+
 {% for titulo, lista in grupos %}
   <div class="rotulo mt-3 mb-2">{{ titulo }}</div>
   <div class="row g-3">

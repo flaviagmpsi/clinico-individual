@@ -241,11 +241,33 @@ PSICOLOGOS = [
                 solicitante="a própria pessoa atendida",
                 finalidade="apresentação ao médico psiquiatra que a acompanha")),
         ],
+        "demandas": {
+            "Marcos Vieira": "Procurou atendimento por dificuldades de sono associadas a sobrecarga no trabalho. "
+                             "Objetivos combinados: identificar os fatores que mantêm a insônia e construir uma rotina "
+                             "de sono compatível com a jornada.",
+            "Gustavo Rocha": "Procurou atendimento por dificuldade de organizar a rotina após mudança de emprego. "
+                             "Objetivos combinados: mapear as situações de sobrecarga e construir estratégias de manejo.",
+        },
         "prontuarios": [
             dict(paciente="Marcos Vieira", sessao=0, confirmar=True,
                  texto="Registro fictício de demonstração. Sessão centrada nas dificuldades de sono relatadas na "
                        "semana; exploradas estratégias de higiene do sono. Paciente participativo. Combinado retomar "
                        "o tema na próxima sessão."),
+            # Vários registros do mesmo paciente: é o que o prontuário geral, em Documentos, reúne na evolução (ADR-080).
+            dict(paciente="Gustavo Rocha", sessao=0, confirmar=True,
+                 texto="Registro fictício de demonstração. Entrevista inicial: levantamento da queixa de sobrecarga após "
+                       "mudança de emprego e da rotina semanal. Apresentado o contrato de trabalho e combinada a "
+                       "frequência semanal."),
+            dict(paciente="Gustavo Rocha", sessao=1, confirmar=True,
+                 texto="Registro fictício de demonstração. Retomado o registro de situações de sobrecarga feito na "
+                       "semana. Identificadas duas situações recorrentes ligadas a prazos. Utilizada entrevista "
+                       "semiestruturada."),
+            dict(paciente="Gustavo Rocha", sessao=2, confirmar=True,
+                 texto="Registro fictício de demonstração. Trabalhadas estratégias de organização de prioridades. "
+                       "Paciente relata melhora na qualidade do descanso. Combinado acompanhar a aplicação das "
+                       "estratégias até o próximo encontro."),
+            dict(paciente="Gustavo Rocha", sessao=3, confirmar=False,
+                 texto="Rascunho fictício de demonstração — ainda não confirmado, por isso não entra no prontuário geral."),
         ],
     },
     {
@@ -307,6 +329,7 @@ class Command(BaseCommand):
             desfechos = dados.pop("desfechos", {})
             pagamentos = dados.pop("pagamentos", [])
             registros_de_prontuario = dados.pop("prontuarios", [])
+            demandas_de_demonstracao = dados.pop("demandas", {})
             documentos_de_demonstracao = dados.pop("documentos", [])
             psicologo = Psicologo.objects.create_user(
                 password=SENHA, telefone="31988887777", crp_regiao="04",
@@ -361,15 +384,12 @@ class Command(BaseCommand):
                 for registro in registros_de_prontuario:
                     campos_do_registro = dict(registro)
                     _prontuario_de_demonstracao(casos[campos_do_registro.pop("paciente")], **campos_do_registro)
-                # A folha do prontuário (ADR-079): o primeiro paciente com registro ganha a avaliação da demanda.
-                if registros_de_prontuario:
-                    da_folha = por_nome[registros_de_prontuario[0]["paciente"]]
+                # O prontuário geral (ADR-079, ADR-080): quem tem registro de sessão ganha a avaliação da demanda.
+                for nome_do_paciente, demanda in demandas_de_demonstracao.items():
+                    da_folha = por_nome[nome_do_paciente]
                     prontuarios.salvar_folha(
-                        da_folha, encerramento="", evolucoes={},
-                        demanda=prontuarios.sugestao_de_demanda(da_folha) + " Texto fictício de demonstração. "
-                                "Procurou atendimento por dificuldades de sono associadas a sobrecarga no trabalho. "
-                                "Objetivos combinados: identificar os fatores que mantêm a insônia e construir uma "
-                                "rotina de sono compatível com a jornada.")
+                        da_folha, encerramento="",
+                        demanda=f"{prontuarios.sugestao_de_demanda(da_folha)} Texto fictício de demonstração. {demanda}")
                 for item in documentos_de_demonstracao:
                     # Como na tela: o sistema sugere identificação e assinatura; o resto é de quem escreve.
                     paciente = por_nome[item["paciente"]]

@@ -83,8 +83,8 @@ Dez apps. A fronteira é **quem é dono do dado**, nunca em que tela ele aparece
 | `pacientes` | `Paciente`, `Caso`, `ResponsavelLegal`, `Pagador` |
 | `agenda` | `HorarioDisponivel`, `Recorrencia`; integração Google Agenda **depois** (ADR-051) |
 | `atendimentos` | `Consulta`, `Desfecho` |
-| `prontuarios` | `Relato`, `Prontuario`, versões, `FichaDoProntuario` (demanda e encerramento, só-acréscimo — ADR-079), folha por paciente, exportação |
-| `documentos` | `Documento` (contrato, anexo de avaliação, cópia emitida), IA de documentos |
+| `prontuarios` | `Relato`, `Prontuario`, versões, `FichaDoProntuario` (demanda e encerramento, só-acréscimo — ADR-079), exportação. **A aba é só dos registros de sessão** (ADR-080) |
+| `documentos` | `Documento` (contrato, anexo de avaliação, cópia emitida), IA de documentos, e a tela do **prontuário geral** do paciente, montado com os registros de sessão (ADR-080) |
 | `core.exportacao` | Folha composta → PDF (`reportlab`) e DOCX (`python-docx`). Não conhece o domínio: quem compõe a folha é o app de origem (ADR-078) |
 | `financeiro` | `ContaReceber`, `Pagamento`, `Despesa`, `TipoDespesa` |
 | `assinaturas` | Ciclo de vida da conta, Asaas, exportação e descarte |
@@ -94,7 +94,8 @@ Dez apps. A fronteira é **quem é dono do dado**, nunca em que tela ele aparece
 1. `core` não depende de ninguém; todos dependem dele.
 2. `indicadores` depende de todos; **ninguém depende de `indicadores`**.
 3. `assinaturas` **não toca dado clínico** — sabe se a conta está ativa, não o que há dentro.
-4. `prontuarios` depende de `atendimentos`; nunca o contrário.
+4. `prontuarios` depende de `atendimentos`; nunca o contrário. `documentos` **lê** `prontuarios` para montar o
+   prontuário geral (ADR-080); `prontuarios` nunca importa `documentos`.
 5. Sem dependência circular entre apps de domínio. Se dois precisam conversar nos dois sentidos,
    a conversa sobe para uma camada de serviço.
 

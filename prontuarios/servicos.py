@@ -131,7 +131,7 @@ def descartar_rascunho(consulta: Consulta, paciente: Paciente) -> None:
 
 
 
-# --- A folha do prontuário: as quatro partes da Res. CFP nº 001/2009 numa página só (ADR-079) ---------------------
+# --- O prontuário geral: as quatro partes da Res. CFP nº 001/2009 (ADR-079, ADR-080) ---------------------
 
 @dataclass
 class FolhaDoProntuario:
@@ -214,31 +214,19 @@ def folha_do_prontuario(paciente: Paciente) -> FolhaDoProntuario:
 
 
 @transaction.atomic
-def salvar_folha(paciente: Paciente, *, demanda: str, encerramento: str, evolucoes: dict) -> int:
-    """Grava o que mudou na folha e devolve quantas partes mudaram.
+def salvar_folha(paciente: Paciente, *, demanda: str, encerramento: str) -> bool:
+    """Grava a avaliação da demanda e o encerramento, se mudaram. Devolve se gravou.
 
-    `evolucoes` é `{pk da consulta: texto}`. Cada texto que mudou é **confirmado** como versão nova da sessão
-    (ADR-064, ADR-075) — a folha não tem rascunho: o que se salva nela é o prontuário. Texto apagado é ignorado,
-    porque registro feito não se apaga; texto igual ao que já vale não gera versão.
+    A **evolução não se escreve aqui** (ADR-080): ela é o conjunto dos registros de sessão, escritos na aba
+    Prontuários. O prontuário geral só os reúne — assim o psicólogo nunca tem dúvida de qual dos dois está fazendo.
     """
-    mudancas = 0
     demanda, encerramento = demanda.strip(), encerramento.strip()
     ficha = ficha_de(paciente)
     atual = (ficha.demanda, ficha.encerramento) if ficha else ("", "")
-    if (demanda, encerramento) != atual and (demanda or encerramento):
-        FichaDoProntuario.objects.create(paciente=paciente, demanda=demanda, encerramento=encerramento)
-        mudancas += 1
-    por_consulta = {registro.consulta.pk: registro for registro in registros(paciente=paciente)}
-    for consulta_pk, texto in evolucoes.items():
-        registro = por_consulta.get(consulta_pk)
-        texto = (texto or "").strip()
-        if registro is None or not texto:
-            continue
-        if registro.rascunho is None and registro.vigente is not None and registro.vigente.texto.strip() == texto:
-            continue
-        confirmar(registro.consulta, paciente, texto=texto)
-        mudancas += 1
-    return mudancas
+    if (demanda, encerramento) == atual or not (demanda or encerramento):
+        return False
+    FichaDoProntuario.objects.create(paciente=paciente, demanda=demanda, encerramento=encerramento)
+    return True
 
 
 def folha_para_arquivo(paciente: Paciente, psicologo, hoje: date | None = None) -> dict:

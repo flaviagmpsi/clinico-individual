@@ -15,6 +15,7 @@ campos de texto longo. À esquerda continua a orientação do CFP para a modalid
 
 <ul class="nav nav-pills flex-wrap gap-1 small mb-3">
   <li class="nav-item"><a class="nav-link py-1 px-2" href="{% url 'documentos:aba' %}"><i class="bi bi-grid"></i> Todos</a></li>
+  <li class="nav-item"><a class="nav-link py-1 px-2" href="{% url 'documentos:escolher_prontuario' %}{% if paciente %}?paciente={{ paciente.pk }}{% endif %}">Prontuário psicológico</a></li>
   {% for titulo, lista in grupos %}{% for m in lista %}
     <li class="nav-item">
       <a class="nav-link py-1 px-2{% if m.codigo == modelo.codigo %} active{% endif %}"

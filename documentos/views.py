@@ -21,6 +21,9 @@ from documentos import modelos, servicos
 from documentos.forms import DocumentoForm
 from documentos.models import Documento
 from pacientes.models import Paciente
+from prontuarios import orientacoes as orientacoes_do_prontuario
+from prontuarios import servicos as prontuarios
+from prontuarios.forms import FolhaDoProntuarioForm
 
 
 def _paciente_do_pedido(valor: str | None) -> Paciente | None:
@@ -207,3 +210,97 @@ class Duplicar(_Acao):
         novo = servicos.duplicar(self.documento())
         messages.success(request, "Rascunho criado a partir do documento. O original continua guardado como está.")
         return redirect("documentos:editar", pk=novo.pk)
+
+
+# --- O prontuário geral do paciente (ADR-079, ADR-080) -------------------------------------------------------------
+#
+# Fica nesta aba porque é **documento**: o que se entrega ao paciente ou a quem solicitar. Os registros de sessão
+# continuam na aba Prontuários, e é de lá que vem a evolução. `documentos` lê `prontuarios`; o contrário não existe.
+
+def _contexto_do_prontuario() -> dict:
+    return dict(
+        grupos=_grupos(), orientacoes=orientacoes_do_prontuario.ORIENTACOES, resumo=orientacoes_do_prontuario.RESUMO,
+        antes=orientacoes_do_prontuario.ANTES, titulo_da_folha=orientacoes_do_prontuario.TITULO,
+        versao_da_norma=orientacoes_do_prontuario.VERSAO_DA_NORMA,
+        resolucao=orientacoes_do_prontuario.RESOLUCAO_01_2009, manual=orientacoes_do_prontuario.MANUAL_CFP,
+        pacientes=Paciente.objects.order_by("nome"))
+
+
+class EscolherProntuario(LoginRequiredMixin, TemplateView):
+    """A sub-aba sem paciente: a orientação do CFP e o seletor. Com `?paciente=`, leva direto à folha."""
+
+    template_name = "documentos/prontuario.html"
+
+    def get(self, request, *args, **kwargs):
+        paciente = _paciente_do_pedido(request.GET.get("paciente"))
+        if paciente is not None:
+            return redirect("documentos:prontuario", pk=paciente.pk)
+        return super().get(request, *args, **kwargs)
+
+    def get_context_data(self, **kwargs):
+        return {**super().get_context_data(**kwargs), **_contexto_do_prontuario(), "paciente": None}
+
+
+class ProntuarioGeral(LoginRequiredMixin, FormView):
+    """As quatro partes da Res. CFP nº 001/2009 numa folha. Demanda e encerramento se escrevem aqui; a evolução
+    é montada com os registros de sessão confirmados, e só se altera na aba Prontuários."""
+
+    form_class = FolhaDoProntuarioForm
+    template_name = "documentos/prontuario.html"
+
+    def paciente(self) -> Paciente:
+        if not hasattr(self, "_paciente"):
+            self._paciente = get_object_or_404(Paciente.objects.prefetch_related("responsaveis"), pk=self.kwargs["pk"])
+        return self._paciente
+
+    def folha(self):
+        if not hasattr(self, "_folha"):
+            self._folha = prontuarios.folha_do_prontuario(self.paciente())
+        return self._folha
+
+    def get(self, request, *args, **kwargs):
+        resposta = super().get(request, *args, **kwargs)
+        auditoria.registrar(auditoria.Acao.VER, self.folha().ficha or self.paciente())
+        return resposta
+
+    def get_initial(self):
+        return {"demanda": self.folha().demanda, "encerramento": self.folha().encerramento}
+
+    def get_context_data(self, **kwargs):
+        contexto = super().get_context_data(**kwargs)
+        contexto.update(_contexto_do_prontuario(), paciente=self.paciente(), folha=self.folha())
+        return contexto
+
+    def form_valid(self, form):
+        paciente = self.paciente()
+        try:
+            gravou = prontuarios.salvar_folha(paciente, demanda=form.cleaned_data["demanda"],
+                                              encerramento=form.cleaned_data["encerramento"])
+        except ValidationError as erro:
+            form.add_error(None, erro.messages[0])
+            return self.form_invalid(form)
+        # Salvar e baixar: o arquivo sai com o que está na folha agora (ADR-078).
+        if self.request.POST.get("acao") in exportacao.GERADORES:
+            return redirect("documentos:baixar_prontuario", pk=paciente.pk, formato=self.request.POST["acao"])
+        messages.success(self.request, "Prontuário salvo." if gravou else "Nada mudou no prontuário.")
+        return redirect("documentos:prontuario", pk=paciente.pk)
+
+
+class BaixarProntuario(LoginRequiredMixin, View):
+    """O prontuário geral em PDF ou DOCX (ADR-078) — a cópia a que a pessoa atendida tem direito.
+
+    Exportar entra na trilha de auditoria (ADR-057): é quando o dado mais sensível do produto deixa o sistema.
+    """
+
+    def get(self, request, *args, **kwargs):
+        gerador = exportacao.GERADORES.get(self.kwargs["formato"])
+        if gerador is None:
+            raise Http404("Formato desconhecido.")
+        paciente = get_object_or_404(Paciente.objects.prefetch_related("responsaveis"), pk=self.kwargs["pk"])
+        gerar, tipo = gerador
+        folha = {**prontuarios.folha_para_arquivo(paciente, request.user), "timbre": exportacao.timbre_de(request.user)}
+        auditoria.registrar(auditoria.Acao.EXPORTAR, prontuarios.ficha_de(paciente) or paciente)
+        nome = slugify(f"prontuario {paciente.nome}") or "prontuario"
+        resposta = HttpResponse(gerar(folha), content_type=tipo)
+        resposta["Content-Disposition"] = f'attachment; filename="{nome}.{self.kwargs["formato"]}"'
+        return resposta

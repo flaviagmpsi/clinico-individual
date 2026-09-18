@@ -1,35 +1,32 @@
 {% extends "base.html" %}
-{% block titulo %}Prontuário · {{ paciente.nome }}{% endblock %}
-{% block secao %}Prontuários{% endblock %}
+{% block titulo %}Prontuário psicológico{% if paciente %} · {{ paciente.nome }}{% endif %}{% endblock %}
+{% block secao %}Documentos{% endblock %}
 
 {% block conteudo %}
 {% comment %}
-ADR-079: o prontuário no mesmo desenho da aba de documentos (ADR-076, ADR-077). À esquerda, o que o CFP espera do
-prontuário e por quê. À direita, a folha como ela sai no papel, com as quatro partes da Res. CFP nº 001/2009 — e
-cada espaço dela é um campo. A identificação vem do cadastro; a demanda e o encerramento chegam com o que é
-administrativo já escrito; a evolução tem uma entrada por sessão realizada.
+ADR-079 e ADR-080: o **prontuário geral** do paciente é documento — o que se entrega a ele ou a quem solicitar — e
+por isso mora nesta aba, no mesmo desenho dos outros modelos (ADR-076, ADR-077). Os **registros de sessão** moram na
+aba Prontuários. Aqui se escrevem só a avaliação da demanda e o encerramento; a evolução é montada com os registros
+de sessão confirmados e **não se edita nesta tela** — é o que impede a dúvida sobre qual dos dois se está fazendo.
 {% endcomment %}
 {% include "documentos/_folha_estilo.html" %}
 {% include "_folha_preenchivel_estilo.html" %}
 <style>
-  .folha .sessao { margin-bottom: 14px; }
+  .folha .sessao { margin-bottom: 12px; text-align: justify; white-space: pre-wrap; }
   .folha .sessao .quando { font-weight: 700; }
-  .folha .sessao .quando small { font-family: system-ui, sans-serif; font-weight: 400; font-size: 8.5pt; color: #6c757d; }
-  .folha .sessao .quando small a { color: inherit; }
-  .folha .do-cadastro { font-family: system-ui, sans-serif; font-size: 8.5pt; color: #6c757d; margin: 6px 0 0; }
+  .folha .sessao.sem-registro { font-family: system-ui, sans-serif; font-size: 9pt; color: #8a6d00; background: #fff6d6;
+                                border-radius: 4px; padding: 4px 8px; text-align: left; white-space: normal; }
+  .folha .nota { font-family: system-ui, sans-serif; font-size: 8.5pt; color: #6c757d; margin: 6px 0 0; }
   .folha .sugerido { font-family: system-ui, sans-serif; font-size: 8.5pt; color: #8a6d00; margin: 0 0 2px; }
 </style>
 
-<div class="d-flex align-items-center flex-wrap gap-2 mb-3">
-  <h1 class="h5 mb-0">Prontuário <span class="text-muted fw-normal">· {{ paciente.nome }}</span></h1>
-  <form method="get" action="{% url 'prontuarios:abrir' %}" class="ms-auto d-flex gap-2 align-items-center small">
-    <label for="outro-paciente" class="text-muted mb-0">Paciente</label>
-    <select name="paciente" id="outro-paciente" class="form-select form-select-sm" style="max-width:260px" onchange="this.form.submit()">
-      {% for p in pacientes %}<option value="{{ p.pk }}"{% if p.pk == paciente.pk %} selected{% endif %}>{{ p.nome }}</option>{% endfor %}
-    </select>
-    <a href="{% url 'pacientes:detalhe' paciente.pk %}" class="btn btn-sm btn-outline-secondary text-nowrap">Ficha do paciente</a>
-  </form>
-</div>
+<ul class="nav nav-pills flex-wrap gap-1 small mb-3">
+  <li class="nav-item"><a class="nav-link py-1 px-2" href="{% url 'documentos:aba' %}"><i class="bi bi-grid"></i> Todos</a></li>
+  <li class="nav-item"><a class="nav-link py-1 px-2 active" href="{% url 'documentos:escolher_prontuario' %}">Prontuário psicológico</a></li>
+  {% for titulo, lista in grupos %}{% for m in lista %}
+    <li class="nav-item"><a class="nav-link py-1 px-2" href="{% url 'documentos:modelo' m.codigo %}">{{ m.nome }}</a></li>
+  {% endfor %}{% endfor %}
+</ul>
 
 <div class="row g-3">
   <div class="col-xl-4 col-lg-5">
@@ -40,7 +37,12 @@ administrativo já escrito; a evolução tem uma entrada por sessão realizada.
       </div>
       <div class="card-body small">
         <p>{{ resumo }}</p>
-        <div class="alert alert-warning py-2 mb-3"><strong>Antes de escrever:</strong> {{ antes }}</div>
+        <div class="alert alert-info py-2 mb-3">
+          <strong>Este é o prontuário geral</strong> — o documento que reúne o atendimento e pode ser entregue ao
+          paciente ou a quem o solicitar. O registro de cada sessão você escreve na aba
+          <a href="{% url 'prontuarios:lista' %}">Prontuários</a>; ele entra aqui sozinho, na evolução.
+        </div>
+        <div class="alert alert-warning py-2 mb-3"><strong>Antes de entregar:</strong> {{ antes }}</div>
 
         <div class="rotulo mb-2">Como o CFP espera o prontuário — e por quê</div>
         {% for o in orientacoes %}
@@ -61,6 +63,29 @@ administrativo já escrito; a evolução tem uma entrada por sessão realizada.
   </div>
 
   <div class="col-xl-8 col-lg-7">
+    {% comment %}Aqui o paciente é obrigatório: prontuário é sempre de alguém. Trocar o paciente troca a folha.{% endcomment %}
+    <form method="get" action="{% url 'documentos:escolher_prontuario' %}" class="card mb-3">
+      <div class="card-body py-2 small d-flex align-items-center flex-wrap gap-2">
+        <label for="id_paciente" class="mb-0 fw-semibold">Paciente</label>
+        <select name="paciente" id="id_paciente" class="form-select form-select-sm" style="max-width:320px" onchange="this.form.submit()">
+          {% if not paciente %}<option value="">Escolha o paciente…</option>{% endif %}
+          {% for p in pacientes %}
+            <option value="{{ p.pk }}"{% if paciente and paciente.pk == p.pk %} selected{% endif %}>{{ p.nome }}</option>
+          {% endfor %}
+        </select>
+        <span class="text-muted">
+          {% if paciente %}A identificação e a evolução vêm do que já está no sistema.
+          {% else %}O prontuário é montado com o cadastro e os registros de sessão do paciente escolhido.{% endif %}
+        </span>
+      </div>
+    </form>
+
+    {% if not paciente %}
+      <div class="card"><div class="card-body text-muted small text-center py-5">
+        {% if pacientes %}Escolha um paciente acima para abrir o prontuário dele.
+        {% else %}Cadastre um paciente para montar o prontuário dele.{% endif %}
+      </div></div>
+    {% else %}
     <form method="post" novalidate data-folha>
       {% csrf_token %}
       {% if form.non_field_errors %}
@@ -69,8 +94,8 @@ administrativo já escrito; a evolução tem uma entrada por sessão realizada.
 
       <div class="faixa-de-ajuda" id="faixa-de-ajuda">
         <span class="nome"><i class="bi bi-lightbulb"></i> Preencha dentro do prontuário.</span>
-        <span class="texto">Clique num espaço da folha: aqui aparece o que o CFP espera naquela parte. A
-          identificação vem do cadastro do paciente.</span>
+        <span class="texto">Aqui se escrevem a avaliação da demanda e o encerramento. A identificação vem do cadastro
+          e a evolução, dos registros de sessão — clique num espaço para ver o que o CFP espera ali.</span>
       </div>
 
       <div class="mesa">
@@ -93,7 +118,7 @@ administrativo já escrito; a evolução tem uma entrada por sessão realizada.
               <div class="linha-id"><span>Responsável legal:</span> {{ responsavel.nome }}{% if responsavel.parentesco %} ({{ responsavel.parentesco }}){% endif %}</div>
             {% endfor %}
             <div class="linha-id"><span>Psicóloga(o) responsável:</span> {{ user.nome_completo }} — CRP {{ user.crp }}</div>
-            <p class="do-cadastro">Vem do cadastro. Para corrigir, <a href="{% url 'pacientes:editar' paciente.pk %}">edite a ficha do paciente</a>.</p>
+            <p class="nota">Vem do cadastro. Para corrigir, <a href="{% url 'pacientes:editar' paciente.pk %}">edite a ficha do paciente</a>.</p>
           </div>
 
           <div class="bloco">
@@ -105,19 +130,21 @@ administrativo já escrito; a evolução tem uma entrada por sessão realizada.
 
           <div class="bloco">
             <h2>Evolução do trabalho e procedimentos adotados</h2>
-            {% for registro, campo in form.sessoes %}
-              <div class="sessao">
-                <div class="quando">{{ registro.consulta.inicio|date:"d/m/Y" }}, {{ registro.consulta.inicio|date:"H:i" }}
-                  <small>· {{ registro.consulta.get_modalidade_display|lower }}{% if not registro.consulta.caso.individual %} · {{ registro.consulta.caso }}{% endif %}
-                    {% if registro.situacao == "rascunho" or registro.situacao == "em edição" %} · rascunho ainda não confirmado{% endif %}
-                    {% if registro.confirmadas|length > 1 %} · <a href="{{ registro.url }}">histórico de edições</a>{% endif %}</small>
+            {% for registro in folha.evolucao %}
+              {% if registro.vigente %}
+                <div class="sessao"><span class="quando">{{ registro.consulta.inicio|date:"d/m/Y" }}, {{ registro.consulta.inicio|date:"H:i" }}</span> — {{ registro.vigente.texto }}</div>
+              {% else %}
+                <div class="sessao sem-registro">
+                  {{ registro.consulta.inicio|date:"d/m/Y" }}, {{ registro.consulta.inicio|date:"H:i" }} — sessão
+                  {% if registro.rascunho %}com registro ainda em rascunho{% else %}sem registro{% endif %}; não entra no prontuário.
+                  <a href="{{ registro.url }}">Escrever o registro desta sessão</a>
                 </div>
-                {{ campo }}
-              </div>
+              {% endif %}
             {% empty %}
-              <div class="dica">Nenhuma sessão realizada ainda. Cada sessão marcada como realizada na agenda abre aqui um espaço datado para a evolução.</div>
+              <div class="nota">Nenhuma sessão realizada ainda.</div>
             {% endfor %}
-            {% if form.sessoes %}<div class="dica">{{ ajuda_evolucao }}</div>{% endif %}
+            <p class="nota">Montada com os registros de sessão confirmados, do mais antigo para o mais recente. Para
+              escrever ou editar um deles, vá aos <a href="{% url 'prontuarios:lista' %}?paciente={{ paciente.pk }}">registros de sessão deste paciente</a>.</p>
           </div>
 
           <div class="bloco">
@@ -143,12 +170,13 @@ administrativo já escrito; a evolução tem uma entrada por sessão realizada.
         </div>
         <span class="text-muted small ms-auto" style="max-width:420px">
           Cada edição guarda a redação anterior. O arquivo leva só o que está salvo{% if folha.sem_registro %} —
-          {{ folha.sem_registro }} sess{{ folha.sem_registro|pluralize:"ão,ões" }} ainda sem registro{% endif %}.
+          {{ folha.sem_registro }} sess{{ folha.sem_registro|pluralize:"ão,ões" }} ainda sem registro confirmado{% endif %}.
         </span>
       </div>
     </form>
+    {% endif %}
   </div>
 </div>
 
-{% include "_folha_preenchivel_js.html" %}
+{% if paciente %}{% include "_folha_preenchivel_js.html" %}{% endif %}
 {% endblock %}

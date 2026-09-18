@@ -2488,6 +2488,8 @@ pdf e docs": PDF para entregar, DOCX para quem precisa ajustar no Word ou mandar
 
 ## ADR-079 — O prontuário na forma da Res. CFP nº 001/2009, preenchido dentro da folha (fecha a P-80)
 
+> ⚠️ **Refinada pela ADR-080:** a folha mora na aba **Documentos**, e a evolução é só leitura — vem dos registros de sessão.
+
 **Contexto.** Rodada 46. O prontuário era um texto livre por sessão — só a *evolução*. A Res. CFP nº 001/2009,
 Art. 2º, pede quatro partes, e o Manual de 2025 avisa que plataforma sem essa estrutura "necessita realizar
 adequações" numa fiscalização (P-80). O usuário pediu, para a aba de prontuários, "a mesma coisa" da aba de
@@ -2525,6 +2527,34 @@ documentos: explicação das orientações, coisas pré-preenchidas e a visualiz
   a P-84.
 - O estilo e o script da folha preenchível saíram de `documentos/modelo.html` para `templates/_folha_preenchivel_*`,
   usados pelas duas abas.
+
+## ADR-080 — Registro de sessão em Prontuários; prontuário geral em Documentos (refina a ADR-079)
+
+**Contexto.** Rodada 47. A ADR-079 pôs a folha do prontuário na aba Prontuários e deixava editar a evolução por ela.
+O usuário testou e corrigiu: existem **dois prontuários** na cabeça do psicólogo — o do dia a dia, sessão a sessão,
+e o **geral**, "que pode ser enviado pro paciente ou pra quem solicitar". Juntos na mesma aba, e com dois lugares
+para escrever a mesma evolução, confundem sobre qual deles se está fazendo.
+
+**Decisões de arquitetura:**
+- **Aba Prontuários = registros de sessão**, e só. Ganhou um filtro por paciente; perdeu o cartão e o botão da
+  folha. Um parágrafo diz o que ela é e aponta para o prontuário geral.
+- **Aba Documentos = prontuário geral**, como primeiro cartão ("Prontuário do paciente") e como sub-aba ao lado das
+  modalidades da Res. 06/2019, em `/documentos/prontuario/<paciente>/`. Aqui o paciente é obrigatório: sem ele, a
+  tela mostra a orientação do CFP e o seletor.
+- **A evolução é montada, não escrita.** O prontuário geral reúne **todos** os registros de sessão confirmados do
+  paciente, do mais antigo para o mais recente, com a redação que vale. Nesta tela ela é **somente leitura**:
+  sessão sem registro confirmado aparece como aviso, com link para escrever o registro na aba Prontuários, e não
+  entra no arquivo. Uma verdade só, um lugar só para escrevê-la. Descartado manter a edição pelos dois lados, que
+  era justamente a confusão.
+- No prontuário geral **se escrevem** só a avaliação da demanda e o encerramento (`FichaDoProntuario`, que não
+  muda: só-acréscimo, gatilho e RLS). `salvar_folha` deixou de receber evoluções.
+- **Dependência entre apps:** as telas saíram de `prontuarios` e foram para `documentos`, que passa a **ler**
+  `prontuarios` (serviços, orientações e o formulário da ficha). O contrário não existe — `prontuarios` não importa
+  `documentos` —, então não há ciclo (regra 5). A proibição da ADR-034 continua valendo e é outra coisa: a **IA de
+  declaração** não recebe conteúdo de prontuário.
+- **Continua "vivo", sem emitir.** O prontuário geral é sempre o estado atual; cada PDF ou DOCX baixado entra na
+  trilha como exportação (ADR-078). Se a entrega de uma cópia deve ficar registrada com data, finalidade e
+  destinatário, como pede o inciso VI para documentos entregues, é a P-85.
 
 ## Impeditivos
 

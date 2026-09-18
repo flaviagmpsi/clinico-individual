@@ -115,8 +115,7 @@ class EscritaPelaTela(BaseTelasProntuario):
 
     def test_ficha_e_painel_levam_ao_prontuario(self):
         self.entrar(self.ana)
-        # A ficha leva à folha completa do prontuário (ADR-079); a lista por paciente continua existindo.
         self.assertContains(self.client.get(reverse("pacientes:detalhe", args=[self.marcos.pk])),
-                            reverse("prontuarios:paciente", args=[self.marcos.pk]))
+                            f"{reverse('prontuarios:lista')}?paciente={self.marcos.pk}")
         self.assertContains(self.client.get(reverse("painel")), "Prontuários para escrever")
         self.assertContains(self.client.get(reverse("prontuarios:lista"), {"paciente": self.marcos.pk}), "Não escrito")

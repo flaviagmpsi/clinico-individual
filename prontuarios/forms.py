@@ -1,8 +1,8 @@
 """Formulários do prontuário.
 
 - `ProntuarioForm`: a tela de uma sessão — um campo de texto livre (ADR-064). Editar não pede motivo (ADR-075).
-- `FolhaDoProntuarioForm`: o prontuário inteiro do paciente, preenchido dentro da folha (ADR-077, ADR-079). Os
-  campos levam a explicação do que o CFP espera ali, que a tela mostra quando o campo recebe o foco.
+- `FolhaDoProntuarioForm`: a demanda e o encerramento do prontuário geral, preenchidos dentro da folha
+  (ADR-077, ADR-079). Quem mostra a folha é o app `documentos` (ADR-080).
 """
 
 from django import forms
@@ -21,7 +21,7 @@ def _na_folha(rotulo: str, ajuda: str, dica: str) -> forms.Textarea:
 
 
 class FolhaDoProntuarioForm(forms.Form):
-    """Demanda, encerramento e um campo de evolução por sessão realizada — `evolucao_<pk da consulta>`."""
+    """As duas partes do prontuário geral que se escrevem nele. A evolução vem dos registros de sessão (ADR-080)."""
 
     demanda = forms.CharField(
         label="Avaliação da demanda e objetivos do trabalho", required=False, help_text=orientacoes.AJUDA_DEMANDA,
@@ -31,23 +31,3 @@ class FolhaDoProntuarioForm(forms.Form):
         label="Encaminhamento ou encerramento", required=False, help_text=orientacoes.AJUDA_ENCERRAMENTO,
         widget=_na_folha("Encaminhamento ou encerramento", orientacoes.AJUDA_ENCERRAMENTO,
                          "Em branco enquanto o atendimento segue"))
-
-    def __init__(self, *args, evolucao=(), **kwargs):
-        super().__init__(*args, **kwargs)
-        self._evolucao = list(evolucao)
-        for registro in self._evolucao:
-            self.fields[self._nome(registro)] = forms.CharField(
-                label="Evolução", required=False,
-                widget=_na_folha("Evolução do trabalho", orientacoes.AJUDA_EVOLUCAO,
-                                 "Síntese da sessão e procedimentos adotados"))
-
-    @staticmethod
-    def _nome(registro) -> str:
-        return f"evolucao_{registro.consulta.pk}"
-
-    def sessoes(self) -> list:
-        """Pares (registro, campo), na ordem da folha."""
-        return [(registro, self[self._nome(registro)]) for registro in self._evolucao]
-
-    def evolucoes(self) -> dict:
-        return {registro.consulta.pk: self.cleaned_data.get(self._nome(registro), "") for registro in self._evolucao}

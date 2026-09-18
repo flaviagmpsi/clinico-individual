@@ -242,9 +242,10 @@ e a IA depois passa a preencher o mesmo rascunho. Avaliação do protótipo Exyo
 | R-05 | Versão congelada na confirmação, com trilha de auditoria — é meio de prova em processo disciplinar. Imutável no model **e no banco** (gatilho) | ⚙️🔒 | ✅ | 🟢 | ADR-005, ADR-064 |
 | R-15 | Prontuário escrito à mão, **texto livre**, um por participante de cada sessão realizada; pendente calculado | 🎨⚙️ | ✅ | 🟢 | ADR-064 |
 | R-16 | **Editar** prontuário confirmado cria nova versão, em silêncio — sem motivo e sem falar em versão na tela; as anteriores ficam no histórico | 🎨⚙️ | ✅ | 🟢 | ADR-064, ADR-075 |
-| R-17 | **Folha do prontuário por paciente**, na forma da Res. CFP 001/2009: identificação (do cadastro), avaliação da demanda e objetivos, evolução por sessão, encaminhamento ou encerramento — preenchida dentro da folha, com a orientação do CFP ao lado e o administrativo pré-preenchido | 🎨⚙️ | ✅ | 🟢 | ADR-079 |
+| R-17 | **Prontuário geral do paciente, na aba Documentos**, na forma da Res. CFP 001/2009: identificação (do cadastro), avaliação da demanda e objetivos, **evolução montada com todos os registros de sessão confirmados** (só leitura), encaminhamento ou encerramento — com a orientação do CFP ao lado e o administrativo pré-preenchido | 🎨⚙️ | ✅ | 🟢 | ADR-079, ADR-080 |
 | R-18 | `FichaDoProntuario` (demanda e encerramento) **só se acrescenta**: imutável no model e no banco (gatilho), RLS própria; paciente com ficha escrita não é apagado | 🗄️🔒 | ✅ | 🟢 | ADR-079 |
 | R-19 | Prontuário em **PDF e DOCX** — só o que está confirmado; exportação na trilha de auditoria | ⚙️🔒 | ✅ | 🟢 | ADR-078, ADR-079 |
+| R-20 | Aba **Prontuários só com os registros de sessão**, com filtro por paciente e aviso de onde fica o prontuário geral | 🎨 | ✅ | 🟢 | ADR-080 |
 | R-06 | Sessão de casal: **um relato gravado por participante**; `Relato` é 1:1 com `Prontuario` | 🎨⚙️ | ✅ | ⚪ | ADR-041 |
 | R-07 | Risco de migração da fala entre prontuários: **eliminado por construção** | 🔒 | ✅ | ⚪ | ADR-041 |
 | R-08 | Exportação de uma sessão ou do histórico completo, em PDF ou DOC | 🎨⚙️ | ✅ | ⚪ | escopo |
