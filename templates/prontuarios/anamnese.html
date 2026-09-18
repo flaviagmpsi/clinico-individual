@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block titulo %}Anamnese · {{ paciente.nome }}{% endblock %}
+{% block secao %}Pacientes{% endblock %}
+
+{% block conteudo %}
+{% comment %}
+ADR-085: a anamnese é um recurso opcional, numa sub-aba da ficha. Todos os campos são de texto livre e nenhum é
+obrigatório — o sistema oferece os temas, o psicólogo decide quais usa. Diferente do registro de sessão, ela se edita.
+{% endcomment %}
+<div class="d-flex align-items-center mb-3">
+  <div>
+    <h1 class="h5 mb-0">{{ paciente.nome }}</h1>
+    <div class="text-muted small">Anamnese{% if anamnese %} · atualizada em {{ anamnese.atualizado_em|date:"d/m/Y H:i" }} · {{ anamnese.preenchidos }} de 12 temas preenchidos{% endif %}</div>
+  </div>
+  <a href="{% url 'pacientes:detalhe' paciente.pk %}" class="btn btn-sm btn-outline-secondary ms-auto">Voltar à ficha</a>
+</div>
+
+{% include "pacientes/_abas.html" with aba="anamnese" %}
+<div class="card border-top-0 rounded-top-0">
+  <div class="card-body">
+    <p class="text-muted small" style="max-width:820px">
+      A anamnese é <strong>opcional</strong>: use se fizer parte do seu jeito de trabalhar. Preencha só os temas que
+      fizerem sentido e volte quando quiser — ela pode ser editada. É registro seu: <strong>não entra no prontuário
+      geral</strong> que se entrega ao paciente.
+    </p>
+
+    <form method="post" novalidate>
+      {% csrf_token %}
+      {% if form.non_field_errors %}<div class="alert alert-danger py-2 small">{{ form.non_field_errors }}</div>{% endif %}
+      <div class="row g-3">
+        {% for campo in form %}
+          <div class="col-lg-6">
+            <label class="form-label small fw-semibold mb-1" for="{{ campo.id_for_label }}">{{ campo.label }}</label>
+            {{ campo }}
+            <div class="form-text small">{{ campo.help_text }}</div>
+            {% for erro in campo.errors %}<div class="text-danger small">{{ erro }}</div>{% endfor %}
+          </div>
+        {% endfor %}
+      </div>
+      <div class="mt-3">
+        <button type="submit" class="btn btn-primary">Salvar anamnese</button>
+        <a href="{% url 'pacientes:detalhe' paciente.pk %}" class="btn btn-link text-muted">Cancelar</a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

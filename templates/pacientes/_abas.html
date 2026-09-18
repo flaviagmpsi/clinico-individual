@@ -1,0 +1,7 @@
+{% comment %}As sub-abas da ficha do paciente. `aba` diz qual está aberta.{% endcomment %}
+<ul class="nav nav-tabs">
+  <li class="nav-item"><a class="nav-link{% if aba == 'cadastro' %} active{% endif %}" href="{% url 'pacientes:detalhe' paciente.pk %}">Cadastro</a></li>
+  <li class="nav-item"><a class="nav-link{% if aba == 'anamnese' %} active{% endif %}" href="{% url 'prontuarios:anamnese' paciente.pk %}">Anamnese</a></li>
+  <li class="nav-item"><a class="nav-link" href="{% url 'prontuarios:lista' %}?paciente={{ paciente.pk }}">Prontuários</a></li>
+  <li class="nav-item"><a class="nav-link" href="{% url 'documentos:aba' %}?paciente={{ paciente.pk }}">Documentos</a></li>
+</ul>

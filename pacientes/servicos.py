@@ -130,6 +130,10 @@ def excluir_paciente(paciente: Paciente) -> None:
     if paciente.fichas_do_prontuario.exists():
         raise ValidationError(
             "Este paciente já tem prontuário escrito, que tem guarda obrigatória. Não pode ser apagado.")
+    # A anamnese (ADR-085) é registro clínico da entrevista inicial. Nome reverso, como acima.
+    if hasattr(paciente, "anamnese"):
+        raise ValidationError(
+            "Este paciente tem anamnese escrita, que é registro clínico. Não pode ser apagado.")
     for rascunho in paciente.documentos.all():
         rascunho.delete()
     for caso in casos:

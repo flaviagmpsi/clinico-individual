@@ -46,7 +46,7 @@ class MesFinanceiro(LoginRequiredMixin, TemplateView):
             .select_related("caso", "consulta").prefetch_related("caso__pacientes")
         )
         contexto.update(
-            inicio=inicio, hoje=hoje,
+            inicio=inicio, hoje=hoje, aba="receitas",
             anterior=servicos.mes_anterior(inicio), proximo=servicos.mes_seguinte(inicio),
             este=date(hoje.year, hoje.month, 1),
             cobrancas=cobrancas,

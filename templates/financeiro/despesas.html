@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+{% block titulo %}Despesas{% endblock %}
+{% block secao %}Financeiro{% endblock %}
+
+{% block conteudo %}
+{% comment %}
+ADR-083: as despesas da clínica no mês. A despesa mensal é cadastrada uma vez e aparece em todo mês; aqui só se
+marca "paguei". Em aberto depois do vencimento fica em amarelo — sem alerta repetindo a tabela (ADR-074).
+{% endcomment %}
+{% include "financeiro/_cabecalho.html" with titulo="Despesas" %}
+{% include "financeiro/_abas.html" %}
+
+<div class="row g-3 mb-3">
+  <div class="col-md-4"><div class="card h-100"><div class="card-body py-3">
+    <div class="rotulo">Despesas do mês</div><div class="h4 mb-0">R$ {{ total|floatformat:2 }}</div>
+  </div></div></div>
+  <div class="col-md-4"><div class="card h-100"><div class="card-body py-3">
+    <div class="rotulo">Pagas</div><div class="h4 mb-0">R$ {{ pago|floatformat:2 }}</div>
+  </div></div></div>
+  <div class="col-md-4"><div class="card h-100"><div class="card-body py-3">
+    <div class="rotulo">A pagar</div><div class="h4 mb-0">R$ {{ a_pagar|floatformat:2 }}</div>
+  </div></div></div>
+</div>
+
+<div class="card">
+  <div class="card-header bg-white py-2 d-flex align-items-center">
+    <span class="fw-semibold">Despesas de {{ inicio|date:"F"|lower }}</span>
+    <a href="{% url 'financeiro:despesa_nova' %}" class="btn btn-sm btn-primary ms-auto"><i class="bi bi-plus-lg"></i> Nova despesa</a>
+  </div>
+  {% if ocorrencias %}
+  <div class="table-responsive">
+    <table class="table table-sm align-middle mb-0 small">
+      <thead class="table-light"><tr><th>Despesa</th><th>Vence</th><th class="text-end">Valor</th><th>Situação</th><th></th></tr></thead>
+      <tbody>
+      {% for o in ocorrencias %}
+        <tr>
+          <td class="fw-medium">{{ o.despesa.descricao }}
+            {% if o.despesa.mensal %}<span class="badge text-bg-light border fw-normal ms-1" title="Aparece todo mês{% if o.despesa.fim %} até {{ o.despesa.fim|date:'m/Y' }}{% endif %}"><i class="bi bi-arrow-repeat"></i> todo mês{% if o.despesa.fim %} até {{ o.despesa.fim|date:"m/Y" }}{% endif %}</span>{% endif %}
+          </td>
+          <td class="text-muted">{{ o.vencimento|date:"d/m" }}</td>
+          <td class="text-end text-nowrap">R$ {{ o.valor|floatformat:2 }}</td>
+          <td>
+            {% if o.paga %}<span class="badge text-bg-success">Paga</span> <span class="text-muted">em {{ o.baixa.pago_em|date:"d/m" }}</span>
+            {% elif o.vencimento < hoje %}<span class="badge text-bg-warning">Em atraso</span>
+            {% else %}<span class="badge text-bg-light border">A pagar</span>{% endif %}
+          </td>
+          <td class="text-end text-nowrap">
+            {% if o.paga %}
+              <form method="post" action="{% url 'financeiro:despesa_desfazer' o.despesa.pk %}" class="d-inline">
+                {% csrf_token %}<input type="hidden" name="mes" value="{{ inicio|date:'Y-m' }}">
+                <button type="submit" class="btn btn-sm btn-link text-muted py-0">desfazer</button>
+              </form>
+            {% else %}
+              <form method="post" action="{% url 'financeiro:despesa_pagar' o.despesa.pk %}" class="d-inline">
+                {% csrf_token %}<input type="hidden" name="mes" value="{{ inicio|date:'Y-m' }}">
+                <button type="submit" class="btn btn-sm btn-outline-success py-0"><i class="bi bi-check2"></i> Marcar como paga</button>
+              </form>
+            {% endif %}
+            <div class="dropdown d-inline">
+              <button class="btn btn-sm btn-link text-muted py-0" data-bs-toggle="dropdown" aria-label="Mais ações"><i class="bi bi-three-dots"></i></button>
+              <ul class="dropdown-menu dropdown-menu-end small">
+                <li><a class="dropdown-item" href="{% url 'financeiro:despesa_editar' o.despesa.pk %}">Editar</a></li>
+                {% if o.despesa.mensal and not o.despesa.fim %}
+                <li><form method="post" action="{% url 'financeiro:despesa_encerrar' o.despesa.pk %}"
+                          onsubmit="return confirm('{{ o.despesa.descricao|escapejs }} deixa de aparecer depois de {{ inicio|date:"m/Y" }}. Continuar?')">
+                  {% csrf_token %}<input type="hidden" name="mes" value="{{ inicio|date:'Y-m' }}">
+                  <button type="submit" class="dropdown-item">Este é o último mês</button></form></li>
+                {% endif %}
+                <li><form method="post" action="{% url 'financeiro:despesa_excluir' o.despesa.pk %}"
+                          onsubmit="return confirm('Excluir {{ o.despesa.descricao|escapejs }}{% if o.despesa.mensal %} de todos os meses{% endif %}?')">
+                  {% csrf_token %}<input type="hidden" name="mes" value="{{ inicio|date:'Y-m' }}">
+                  <button type="submit" class="dropdown-item text-danger">Excluir</button></form></li>
+              </ul>
+            </div>
+          </td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+    <div class="card-body small text-muted">
+      Nenhuma despesa neste mês. Cadastre o que a clínica gasta — aluguel, internet, supervisão, anuidade do CRP —
+      e marque "repete todo mês" no que for fixo: ela passa a aparecer sozinha nos meses seguintes.
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

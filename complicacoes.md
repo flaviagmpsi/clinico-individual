@@ -288,6 +288,8 @@ O valor oficial é sempre o do Carnê-Leão Web.
 
 ## ADR-011 — Catálogo de despesas com marca de dedutibilidade
 
+> ⚠️ **Substituída pela ADR-083:** a despesa é texto livre, sem catálogo. O tipo volta como campo opcional se a saída fiscal entrar.
+
 **Status:** 🟡 Proposta — aguardando validação (Rodada 4)
 **Contexto:** A lista informada pelo usuário ("imposto, sala, anuidade, supervisão") mistura
 dedutível com não dedutível, e ele não tem a lista real. Levantamento feito nas fontes da
@@ -2654,6 +2656,112 @@ oito números, telefone com DDD, estado escolhido numa lista de UF. Quem mora fo
   arrancar as letras do código postal de fora (`campos_numericos()` passou a poder depender do que chegou).
 - **País continua texto livre**, com "Brasil" de padrão. Lista de países seria mais uma lista automática, que é o
   que o usuário pediu para não ter.
+
+## ADR-083 — Despesas da clínica em texto livre, e o fluxo de caixa do mês (substitui o catálogo da ADR-011)
+
+**Contexto.** Rodada 50. As três perguntas de despesas que estavam abertas foram respondidas pelo usuário de uma vez:
+"você mesmo digita qual é a despesa. ela pode ou não aparecer todo mês, vai ter a opção de colocar isso e a data de
+vencimento dessa despesa e o valor dela. aí quando você pagar você marca como pago". E pediu o fluxo de caixa dentro
+do financeiro, com sete números: receitas recebidas, a receber e total; despesas pagas, a pagar e total; resultado.
+
+**Decisões de arquitetura:**
+- **Sem catálogo.** A despesa é descrita por quem a tem. A ADR-011 propunha tipos com marca de dedutibilidade; a
+  saída fiscal está fora do MVP, e classificar o que ninguém vai usar é atrito. Se o Carnê-Leão entrar, o tipo
+  volta como campo **opcional** sobre a despesa que já existe — nada do que se grava hoje precisa mudar.
+- **Despesa mensal é uma linha só; a ocorrência é cálculo.** `Despesa(descricao, valor, vencimento, mensal, fim)`.
+  "Aluguel, todo dia 5" não vira doze registros: `financeiro.despesas.despesas_do_mes` calcula o que vence em cada
+  mês, como a sessão prevista e a cobrança. Dia 31 em mês curto cai no último dia.
+- **"Paguei" é a única coisa gravada por mês**: `BaixaDeDespesa(despesa, mes, pago_em, valor)`, uma por despesa por
+  mês. O **valor fica na baixa** — reajustar o aluguel muda os meses em aberto, e não o que já saiu do caixa.
+- Parar de pagar é **encerrar** ("este é o último mês"); excluir só serve a cadastro por engano, e é recusado se já
+  houver mês pago — baixa é histórico financeiro, `PROTECT` como o pagamento.
+- **Fluxo de caixa por competência**, como o resto do financeiro (ADR-062): a receita do mês é a das cobranças
+  dele, recebida ou não; a despesa, a que vence nele. Mês fechado não muda quando o atrasado paga depois — só passa
+  de "a receber" para "recebida". "A receber" inclui a **previsão** das sessões que a frequência ainda prevê
+  (ADR-061), e a tela diz quanto é previsão. O resultado aparece duas vezes, com nomes diferentes: o **do mês**
+  (tudo se cumprindo) e o **já realizado** (recebido menos pago).
+- O financeiro virou três abas sobre o mesmo mês: **Receitas** (a tela que já existia), **Despesas** e **Fluxo de
+  caixa**. Trocar de aba mantém o mês.
+- Fora desta rodada: despesa em atraso **não** entrou no bloco de pendências do painel (ADR-072) — é decisão do
+  usuário se conta do consultório é pendência clínica (P-88); comprovante anexo (N-06) segue adiado.
+
+## ADR-084 — Estatísticas numa aba própria; frequência e situação financeira na ficha; aniversariantes no painel
+
+**Contexto.** Rodada 50. O usuário pediu gráficos — resultado previsto do ano, horário mais usado, dia com mais
+sessões, presença ("26 de 26 sessões realizadas"), quantos semanais, quinzenais e avulsos — e disse estar em dúvida:
+"se as estatísticas vão dentro de uma aba de cada tema ou se eu crio uma aba à parte". Pediu também, na ficha do
+paciente, sessões presentes, ausentes e canceladas, e o status "em dia"; e um quadro de aniversariantes no painel.
+
+**Decisões de arquitetura:**
+- **Aba à parte, "Estatísticas"** — recomendação nossa diante da dúvida, fácil de desfazer. Razões: (1) o painel
+  responde "o que eu faço agora" e as abas de tema são de **trabalho**; estatística é de **leitura**, e misturar as
+  duas põe gráfico onde se quer botão (ADR-027 já dizia: gráfico na tela de análise, nunca no painel); (2) o
+  retrato da clínica cruza temas — presença é agenda, resultado é financeiro —, e só `indicadores` pode olhar
+  todos (regra 2); (3) um lugar só para procurar. O que é de **um** paciente fica na ficha dele.
+- **Resultado previsto do ano**: doze fluxos de caixa (ADR-083) num gráfico — barras empilhadas de receita
+  (recebida + a receber) e de despesa (paga + a pagar), e a linha do resultado. Cor cheia é o que aconteceu; cor
+  clara, o previsto. Os meses à frente saem das mensalidades, das sessões previstas e das despesas mensais.
+- **A conta da presença**, a mesma na aba e na ficha: presentes ÷ (presentes + faltas sem aviso + canceladas pelo
+  paciente). O que **o profissional** cancelou e o que foi **remarcado** ficam fora — não dizem nada sobre a
+  frequência do paciente, e a remarcada vira outra sessão, que aí conta. A tela mostra os cinco números e explica a
+  conta: percentual sem denominador à vista engana.
+- **Composição por frequência** é a foto de **hoje** (quem está em atendimento agora), e a tela diz isso; o resto é
+  do ano escolhido.
+- **Só dado administrativo** (I-10), e **nenhum nome de paciente vai para o JavaScript**: os gráficos recebem
+  números e rótulos; a tabela de presença por paciente é HTML do servidor. Chart.js vem de CDN; sem internet, os
+  números continuam na tela.
+- **Na ficha do paciente**: quadro de frequência (presentes, ausentes, canceladas, remarcadas e o percentual) e a
+  **situação financeira** — "Em dia" quando nada vencido está em aberto, a lista do que venceu quando há pendência,
+  "sem cobrança combinada" quando não há o que acompanhar. A ficha é do app `pacientes`, que não pode importar
+  agenda nem financeiro (regra 5): os números chegam por **template tag de `indicadores`**.
+- **Aniversariantes do mês** no painel, por último — é lembrança, não tarefa (ADR-072). Só pacientes em
+  atendimento; quem faz hoje vem destacado.
+
+## ADR-085 — Anamnese: sub-aba opcional na ficha do paciente
+
+**Contexto.** Rodada 50. "Quero que dentro do perfil de cada paciente também tenha um formulário de anamnese a ser
+preenchido pelo psicólogo, mas isso é opção [...] é um recurso do sistema pra caso o psicólogo queira fazer anamnese."
+
+**Decisões de arquitetura:**
+- **Opcional de verdade.** Sub-aba "Anamnese" na ficha; enquanto ninguém escreve, **nada é gravado** — salvar em
+  branco não cria registro. Nenhum campo é obrigatório e nada no sistema cobra a anamnese: não é pendência.
+- **Doze temas em texto livre**, cada um com uma linha de roteiro: queixa principal, história da queixa,
+  tratamentos anteriores, saúde geral, sono/alimentação/substâncias, história familiar, desenvolvimento e infância,
+  escolaridade e trabalho, relacionamentos e rede de apoio, rotina e lazer, expectativas, observações. Um formulário
+  só para adulto e criança: o tema "desenvolvimento" diz o que cabe em cada caso. Descartada a lista de opções
+  fechadas — anamnese é entrevista, e o sistema não decide o que importa nela.
+- **Edita-se**, ao contrário do registro de sessão (ADR-064): é roteiro de trabalho que se completa ao longo das
+  primeiras sessões. `Anamnese` (uma por paciente) é `Auditado` — a trilha guarda *que* temas mudaram, nunca o
+  conteúdo —, tem RLS e **protege o paciente contra exclusão** (ADR-048).
+- Mora no app `prontuarios`: é dado clínico, e depende de `pacientes`, nunca o contrário.
+- **Não entra no prontuário geral** que se entrega ao paciente (ADR-080), e a tela avisa. É o primeiro pedaço do
+  registro de uso do psicólogo de que fala a P-84.
+
+## ADR-086 — O financeiro lê em lote: uma carga por tela, e não uma consulta por cobrança
+
+**Contexto.** Rodada 50. O usuário pediu muito mais dado fictício, e a semente passou a gerar meses de história —
+cerca de 150 sessões, 100 pagamentos, 100 registros. Com isso o painel levou **43 segundos** e a aba de estatísticas,
+**98**: 222 e 552 consultas ao banco. Não era defeito da semente; era o que qualquer clínica encontraria depois de
+alguns meses de uso. O devido é cálculo (ADR-062), e o cálculo era feito cobrança a cobrança — cada uma perguntava ao
+banco pela condição vigente do caso e pelos pagamentos dela. A latência daqui até o Neon (~0,2 s por consulta) só
+tornou visível cedo um problema que em produção apareceria com volume.
+
+**Decisões de arquitetura:**
+- **`financeiro.servicos.carregar(de, ate)`** lê de uma vez casos (com pacientes, condições, desfechos e
+  frequências), consultas cobradas do período (com pagamentos) e pagamentos de mensalidade. `cobrancas_do_mes`,
+  `pagamentos_pendentes`, o fluxo do mês e o do ano calculam sobre essa `Carga`; quem pede doze meses carrega uma vez.
+  As despesas têm a carga delas (`carregar_despesas`).
+- **Os atalhos do caso aproveitam o que já veio**: `condicao_vigente`, `regra_aberta` e `desfecho_aberto` respondem
+  da memória quando a relação foi trazida com `prefetch_related`, e continuam consultando o banco quando não foi —
+  nenhuma chamada existente mudou de comportamento.
+- **A previsão por sessão** (ADR-061) virou uma função só, `previsto_por_mes`, usada pelo painel e pelo fluxo: uma
+  chamada a `sessoes_previstas` para o período inteiro, com a condição de cobrança saindo da carga.
+- **Resultado medido** na mesma base: painel de 222 para 44 consultas (43 s → 8 s); estatísticas de 552 para 26
+  (98 s → 5 s); fluxo de caixa de 58 para 19. O que resta é latência de rede do ambiente de desenvolvimento.
+- **Não virou cache nem tabela de totais.** Continua valendo a regra de que o devido é derivado: nada novo é
+  gravado, não há o que invalidar. Se um dia o volume pedir, o próximo passo é agregar no banco — não guardar saldo.
+- A semente fica como **teste de carga de bolso**: rodar `semear --limpar` e abrir o painel mostra, em segundos, se
+  alguma tela voltou a consultar o banco item a item.
 
 ## Impeditivos
 

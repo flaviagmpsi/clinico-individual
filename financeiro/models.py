@@ -68,3 +68,65 @@ class Pagamento(TenantOwnedModel):
             raise ValidationError("Falta remarcada não é cobrada e não recebe pagamento.")
         if self.mes_referencia and self.mes_referencia.day != 1:
             raise ValidationError({"mes_referencia": "O mês de referência é guardado pelo primeiro dia do mês."})
+
+
+class Despesa(TenantOwnedModel):
+    """O que o psicólogo gasta com a clínica — descrita por ele, em texto livre (ADR-083).
+
+    **Uma despesa mensal é uma linha só.** "Aluguel da sala, todo dia 5" não vira doze registros: as ocorrências de
+    cada mês são **calculadas** (`financeiro.despesas`), como a sessão prevista e a cobrança. Gravado é só o que o
+    psicólogo informa — a despesa, e a **baixa** de cada mês em que ele a pagou. Parar de pagar é pôr `fim`; mudar o
+    valor é encerrar a antiga e cadastrar a nova, para o mês já pago não mudar de preço sozinho.
+    """
+
+    descricao = models.CharField("Despesa", max_length=120)
+    valor = models.DecimalField("Valor", max_digits=10, decimal_places=2,
+                                validators=[MinValueValidator(Decimal("0.01"))])
+    # Na despesa de um mês só, é a data de vencimento. Na mensal, é o **primeiro** vencimento: o dia vale para
+    # todos os meses seguintes (em mês mais curto, o último dia).
+    vencimento = models.DateField("Vencimento")
+    mensal = models.BooleanField("Repete todo mês", default=False)
+    fim = models.DateField("Último mês", null=True, blank=True,
+                           help_text="Só para despesa mensal que acabou: o último mês em que ela aparece.")
+
+    class Meta:
+        verbose_name = "Despesa"
+        verbose_name_plural = "Despesas"
+        ordering = ["vencimento", "descricao"]
+
+    def __str__(self) -> str:
+        return f"{self.descricao} · R$ {self.valor}"
+
+    def clean(self):
+        super().clean()
+        if self.fim and not self.mensal:
+            raise ValidationError({"fim": "Só despesa mensal tem último mês."})
+        if self.fim and self.vencimento and self.fim < self.vencimento.replace(day=1):
+            raise ValidationError({"fim": "O último mês não pode ser anterior ao primeiro vencimento."})
+
+
+class BaixaDeDespesa(TenantOwnedModel):
+    """"Paguei": a despesa de um mês, marcada como paga. O valor fica aqui — é o que saiu do caixa naquele mês."""
+
+    # `PROTECT`: baixa é histórico financeiro, como o pagamento. Despesa com baixa se encerra, não se apaga.
+    despesa = models.ForeignKey(Despesa, on_delete=models.PROTECT, related_name="baixas")
+    mes = models.DateField("Mês", help_text="Primeiro dia do mês da ocorrência.")
+    pago_em = models.DateField("Pago em")
+    valor = models.DecimalField("Valor pago", max_digits=10, decimal_places=2,
+                                validators=[MinValueValidator(Decimal("0.01"))])
+
+    class Meta:
+        verbose_name = "Baixa de despesa"
+        verbose_name_plural = "Baixas de despesa"
+        constraints = [
+            models.UniqueConstraint(fields=["despesa", "mes"], name="uma_baixa_por_despesa_por_mes"),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.despesa.descricao} · {self.mes:%m/%Y} · pago em {self.pago_em:%d/%m/%Y}"
+
+    def clean(self):
+        super().clean()
+        exigir_mesmo_dono(self, despesa=self.despesa if self.despesa_id else None)
+        if self.mes and self.mes.day != 1:
+            raise ValidationError({"mes": "O mês é guardado pelo primeiro dia."})

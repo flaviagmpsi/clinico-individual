@@ -20,8 +20,9 @@ from django.utils import timezone
 
 from atendimentos.models import Consulta
 from atendimentos.servicos import sessoes_pendentes, sessoes_previstas, sessoes_remarcadas
-from financeiro.servicos import cobrancas_do_mes, pagamentos_pendentes, ultimo_dia
-from pacientes.models import CondicaoCobranca, Paciente
+from financeiro.despesas import previsto_por_mes
+from financeiro.servicos import carregar, cobrancas_do_mes, pagamentos_pendentes, ultimo_dia
+from pacientes.models import Paciente
 from pacientes.servicos import pacientes_ativos
 from prontuarios.servicos import prontuarios_pendentes
 
@@ -109,14 +110,12 @@ def montar_painel(agora: datetime | None = None) -> Painel:
     hoje = timezone.localdate(agora)
     inicio, fim = date(hoje.year, hoje.month, 1), ultimo_dia(hoje.year, hoje.month)
 
-    cobrancas = cobrancas_do_mes(hoje.year, hoje.month)
+    # Uma carga só para o mês (ADR-086): as cobranças e a previsão leem dela, e não do banco a cada item.
+    carga = carregar(inicio, fim)
+    cobrancas = cobrancas_do_mes(hoje.year, hoje.month, carga=carga)
     # Só as futuras: a que passou sem cadastro é pendência, não previsão (ADR-061).
     futuras = [sessao for sessao in sessoes_previstas(hoje, fim) if not sessao.pendente(agora)]
-    previsto_por_sessao = Decimal("0")
-    for sessao in futuras:
-        condicao = sessao.caso.condicao_vigente(sessao.data)
-        if condicao is not None and condicao.modalidade == CondicaoCobranca.Modalidade.POR_SESSAO:
-            previsto_por_sessao += condicao.valor
+    previsto_por_sessao = previsto_por_mes(hoje, fim, agora, carga).get(inicio, Decimal("0"))
 
     feitas = Consulta.objects.filter(
         estado=Consulta.Estado.REALIZADA,

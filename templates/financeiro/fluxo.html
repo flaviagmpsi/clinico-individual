@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block titulo %}Fluxo de caixa{% endblock %}
+{% block secao %}Financeiro{% endblock %}
+
+{% block conteudo %}
+{% comment %}
+ADR-083: receitas, despesas e o resultado do mês. Por competência, como o resto do financeiro: a receita do mês é a
+das cobranças dele, recebida ou não. "A receber" inclui previsão — a tela diz quanto (ADR-061).
+{% endcomment %}
+{% include "financeiro/_cabecalho.html" with titulo="Fluxo de caixa" %}
+{% include "financeiro/_abas.html" %}
+
+<div class="row g-3">
+  <div class="col-lg-6">
+    <div class="card h-100">
+      <div class="card-header bg-white py-2 fw-semibold text-success"><i class="bi bi-arrow-down-circle"></i> Receitas</div>
+      <div class="card-body py-2">
+        <table class="table table-sm table-borderless mb-0">
+          <tr><td>Receitas recebidas</td><td class="text-end text-nowrap">R$ {{ fluxo.receitas_recebidas|floatformat:2 }}</td></tr>
+          <tr><td>Receitas a receber
+              {% if fluxo.receitas_previstas %}<div class="small text-muted">inclui R$ {{ fluxo.receitas_previstas|floatformat:2 }} de sessões previstas, ainda não realizadas</div>{% endif %}</td>
+            <td class="text-end text-nowrap">R$ {{ fluxo.receitas_a_receber|floatformat:2 }}</td></tr>
+          <tr class="border-top fw-semibold"><td>Total de receitas</td><td class="text-end text-nowrap">R$ {{ fluxo.total_receitas|floatformat:2 }}</td></tr>
+        </table>
+      </div>
+      <div class="card-footer bg-white small"><a href="{% url 'financeiro:mes' %}?mes={{ inicio|date:'Y-m' }}" class="text-decoration-none">ver as cobranças do mês</a></div>
+    </div>
+  </div>
+  <div class="col-lg-6">
+    <div class="card h-100">
+      <div class="card-header bg-white py-2 fw-semibold text-danger"><i class="bi bi-arrow-up-circle"></i> Despesas</div>
+      <div class="card-body py-2">
+        <table class="table table-sm table-borderless mb-0">
+          <tr><td>Despesas pagas</td><td class="text-end text-nowrap">R$ {{ fluxo.despesas_pagas|floatformat:2 }}</td></tr>
+          <tr><td>Despesas a pagar</td><td class="text-end text-nowrap">R$ {{ fluxo.despesas_a_pagar|floatformat:2 }}</td></tr>
+          <tr class="border-top fw-semibold"><td>Total de despesas</td><td class="text-end text-nowrap">R$ {{ fluxo.total_despesas|floatformat:2 }}</td></tr>
+        </table>
+      </div>
+      <div class="card-footer bg-white small"><a href="{% url 'financeiro:despesas' %}?mes={{ inicio|date:'Y-m' }}" class="text-decoration-none">ver as despesas do mês</a></div>
+    </div>
+  </div>
+</div>
+
+<div class="card mt-3 {% if fluxo.resultado < 0 %}border-danger-subtle{% else %}border-success-subtle{% endif %}">
+  <div class="card-body d-flex flex-wrap align-items-center gap-4">
+    <div>
+      <div class="rotulo">Resultado do mês</div>
+      <div class="h3 mb-0 {% if fluxo.resultado < 0 %}text-danger{% else %}text-success{% endif %}">R$ {{ fluxo.resultado|floatformat:2 }}</div>
+      <div class="small text-muted">total de receitas menos total de despesas — se tudo se cumprir</div>
+    </div>
+    <div class="ms-lg-auto">
+      <div class="rotulo">Já realizado</div>
+      <div class="h5 mb-0">R$ {{ fluxo.resultado_realizado|floatformat:2 }}</div>
+      <div class="small text-muted">o que já recebeu menos o que já pagou</div>
+    </div>
+  </div>
+</div>
+{% endblock %}

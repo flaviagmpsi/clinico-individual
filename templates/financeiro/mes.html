@@ -12,6 +12,8 @@
   </div>
 </div>
 
+{% include "financeiro/_abas.html" %}
+
 <div class="row g-3 mb-3">
   <div class="col-md-4"><div class="card h-100"><div class="card-body py-3">
     <div class="rotulo">Devido no mês</div><div class="h4 mb-0">R$ {{ devido|floatformat:2 }}</div>

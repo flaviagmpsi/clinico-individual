@@ -94,7 +94,45 @@ def _encerrado_o_mes_inteiro(caso: Caso, inicio: date, fim: date) -> bool:
     return any(d.data < inicio and (d.retomado_em is None or d.retomado_em > fim) for d in caso.desfechos.all())
 
 
-def mensalidade(caso: Caso, ano: int, mes: int) -> Cobranca | None:
+@dataclass
+class Carga:
+    """Tudo o que o financeiro precisa de um período, lido de uma vez (ADR-086).
+
+    O devido é cálculo (ADR-062), e o cálculo percorre casos, condições, desfechos, consultas e pagamentos. Feito
+    cobrança a cobrança, cada uma ia ao banco: com alguns meses de uso, o painel passava de duzentas consultas.
+    Aqui são meia dúzia, qualquer que seja o tamanho do período.
+    """
+
+    casos: list
+    consultas: list
+    mensais: dict  # (caso_id, primeiro dia do mês) -> pagamentos daquela mensalidade
+
+    def caso(self, pk: int):
+        return next((caso for caso in self.casos if caso.pk == pk), None)
+
+
+def carregar(de: date, ate: date, *, caso: Caso | None = None) -> Carga:
+    casos = Caso.objects.prefetch_related("pacientes", "desfechos", "condicoes", "recorrencias")
+    casos = list(casos.filter(pk=caso.pk) if caso is not None else casos)
+    por_id = {item.pk: item for item in casos}
+    consultas = (
+        Consulta.objects.filter(cobrada=True, inicio__gte=_meia_noite(de),
+                                inicio__lt=_meia_noite(ate + timedelta(days=1)))
+        .prefetch_related("pagamentos")
+    )
+    consultas = list(consultas.filter(caso=caso) if caso is not None else consultas)
+    for consulta in consultas:
+        # O mesmo objeto de caso para todas as consultas dele: é nele que as condições já estão carregadas.
+        if consulta.caso_id in por_id:
+            consulta.caso = por_id[consulta.caso_id]
+    mensais: dict = {}
+    pagamentos = Pagamento.objects.filter(mes_referencia__gte=de.replace(day=1), mes_referencia__lte=ate)
+    for pagamento in (pagamentos.filter(caso=caso) if caso is not None else pagamentos):
+        mensais.setdefault((pagamento.caso_id, pagamento.mes_referencia), []).append(pagamento)
+    return Carga(casos=casos, consultas=consultas, mensais=mensais)
+
+
+def mensalidade(caso: Caso, ano: int, mes: int, *, carga: Carga | None = None) -> Cobranca | None:
     """A mensalidade de um mês, ou `None` se o caso não paga por mês nele.
 
     Vale a condição vigente **no fim do mês**: a primeira condição pode começar no meio dele (ADR-050), e a
@@ -106,9 +144,10 @@ def mensalidade(caso: Caso, ano: int, mes: int) -> Cobranca | None:
         return None
     if _encerrado_o_mes_inteiro(caso, inicio, fim):
         return None
-    return Cobranca(
-        caso=caso, tipo=MENSALIDADE, vencimento=condicao.vencimento_em(ano, mes), devido=condicao.valor,
-        pagamentos=list(Pagamento.objects.filter(caso=caso, mes_referencia=inicio)), mes=inicio)
+    pagamentos = (carga.mensais.get((caso.pk, inicio), []) if carga is not None
+                  else list(Pagamento.objects.filter(caso=caso, mes_referencia=inicio)))
+    return Cobranca(caso=caso, tipo=MENSALIDADE, vencimento=condicao.vencimento_em(ano, mes), devido=condicao.valor,
+                    pagamentos=pagamentos, mes=inicio)
 
 
 def sessao(consulta: Consulta) -> Cobranca | None:
@@ -131,42 +170,39 @@ def sessao(consulta: Consulta) -> Cobranca | None:
                     pagamentos=list(consulta.pagamentos.all()), consulta=consulta)
 
 
-def _consultas_cobradas(de: date, ate: date, caso: Caso | None = None):
-    consultas = (
-        Consulta.objects.filter(cobrada=True, inicio__gte=_meia_noite(de),
-                                inicio__lt=_meia_noite(ate + timedelta(days=1)))
-        .select_related("caso").prefetch_related("caso__pacientes", "pagamentos")
-    )
-    return consultas.filter(caso=caso) if caso is not None else consultas
+def _do_periodo(carga: Carga, de: date, ate: date) -> list:
+    return [consulta for consulta in carga.consultas if de <= timezone.localtime(consulta.inicio).date() <= ate]
 
 
-def _casos(caso: Caso | None):
-    return [caso] if caso is not None else list(Caso.objects.prefetch_related("pacientes", "desfechos"))
+def cobrancas_do_mes(ano: int, mes: int, *, caso: Caso | None = None, carga: Carga | None = None) -> list[Cobranca]:
+    """Mensalidades do mês e sessões cobradas no mês, de quem paga por sessão.
 
-
-def cobrancas_do_mes(ano: int, mes: int, *, caso: Caso | None = None) -> list[Cobranca]:
-    """Mensalidades do mês e sessões cobradas no mês, de quem paga por sessão."""
-    cobrancas = [c for c in (mensalidade(item, ano, mes) for item in _casos(caso)) if c]
-    consultas = _consultas_cobradas(date(ano, mes, 1), ultimo_dia(ano, mes), caso)
-    cobrancas += [c for c in (sessao(consulta) for consulta in consultas) if c]
+    Quem vai pedir vários meses — o fluxo do ano — traz a `carga` pronta e a reaproveita.
+    """
+    inicio, fim = date(ano, mes, 1), ultimo_dia(ano, mes)
+    carga = carga or carregar(inicio, fim, caso=caso)
+    cobrancas = [c for c in (mensalidade(item, ano, mes, carga=carga) for item in carga.casos) if c]
+    cobrancas += [c for c in (sessao(consulta) for consulta in _do_periodo(carga, inicio, fim)) if c]
     return sorted(cobrancas, key=lambda c: (c.vencimento, str(c.caso)))
 
 
 def pagamentos_pendentes(hoje: date | None = None, *, caso: Caso | None = None) -> list[Cobranca]:
     """Tudo o que venceu e não foi quitado, de qualquer mês — o que o lembrete mostra."""
     hoje = hoje or timezone.localdate()
+    carga = carregar(_DESDE_SEMPRE, hoje, caso=caso)
     pendentes = []
-    for item in _casos(caso):
-        primeira = item.condicoes.filter(modalidade=CondicaoCobranca.Modalidade.MENSAL).order_by("vigente_desde").first()
-        if primeira is None:
+    for item in carga.casos:
+        mensais = [c for c in item.condicoes.all() if c.modalidade == CondicaoCobranca.Modalidade.MENSAL]
+        if not mensais:
             continue
-        mes = date(primeira.vigente_desde.year, primeira.vigente_desde.month, 1)
+        primeira = min(condicao.vigente_desde for condicao in mensais)
+        mes = date(primeira.year, primeira.month, 1)
         while mes <= hoje:
-            cobranca = mensalidade(item, mes.year, mes.month)
+            cobranca = mensalidade(item, mes.year, mes.month, carga=carga)
             if cobranca and cobranca.pendente(hoje):
                 pendentes.append(cobranca)
             mes = mes_seguinte(mes)
-    for consulta in _consultas_cobradas(_DESDE_SEMPRE, hoje, caso):
+    for consulta in carga.consultas:
         cobranca = sessao(consulta)
         if cobranca and cobranca.pendente(hoje):
             pendentes.append(cobranca)

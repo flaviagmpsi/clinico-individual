@@ -15,7 +15,8 @@ from atendimentos.models import Consulta
 from core import auditoria
 from pacientes.models import Paciente
 from prontuarios import servicos
-from prontuarios.forms import ProntuarioForm
+from prontuarios.forms import AnamneseForm, ProntuarioForm
+from prontuarios.models import Anamnese
 
 
 class ListaProntuarios(LoginRequiredMixin, TemplateView):
@@ -97,3 +98,42 @@ class DescartarRascunho(LoginRequiredMixin, _ComAlvo, View):
         else:
             messages.success(request, "Rascunho descartado.")
         return redirect("prontuarios:escrever", consulta_pk=consulta.pk, paciente_pk=paciente.pk)
+
+
+class AnamneseDoPaciente(LoginRequiredMixin, FormView):
+    """A sub-aba de anamnese na ficha do paciente (ADR-085). Opcional: enquanto ninguém escreve, nada é gravado."""
+
+    form_class = AnamneseForm
+    template_name = "prontuarios/anamnese.html"
+
+    def paciente(self) -> Paciente:
+        if not hasattr(self, "_paciente"):
+            self._paciente = get_object_or_404(Paciente, pk=self.kwargs["pk"])
+        return self._paciente
+
+    def anamnese(self) -> Anamnese | None:
+        if not hasattr(self, "_anamnese"):
+            self._anamnese = Anamnese.objects.filter(paciente=self.paciente()).first()
+        return self._anamnese
+
+    def get(self, request, *args, **kwargs):
+        resposta = super().get(request, *args, **kwargs)
+        if self.anamnese() is not None:
+            auditoria.registrar(auditoria.Acao.VER, self.anamnese())
+        return resposta
+
+    def get_form_kwargs(self):
+        return {**super().get_form_kwargs(), "instance": self.anamnese() or Anamnese(paciente=self.paciente())}
+
+    def get_context_data(self, **kwargs):
+        return {**super().get_context_data(**kwargs), "paciente": self.paciente(), "anamnese": self.anamnese()}
+
+    def form_valid(self, form):
+        # Formulário em branco numa anamnese que ainda não existe não cria registro vazio.
+        if self.anamnese() is None and not form.tem_conteudo():
+            messages.info(self.request, "Nada escrito ainda — a anamnese continua em branco.")
+        else:
+            form.save()
+            messages.success(self.request, "Anamnese salva.")
+        return redirect("prontuarios:anamnese", pk=self.paciente().pk)
+

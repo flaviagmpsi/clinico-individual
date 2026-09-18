@@ -19,6 +19,7 @@ atendimento de casal cujos participantes têm também seus casos individuais.
 duas contas de porta aberta.
 """
 
+import random
 from datetime import date, datetime, time, timedelta
 from decimal import Decimal
 
@@ -42,6 +43,10 @@ from prontuarios.models import FichaDoProntuario, Prontuario, VersaoProntuario
 from pacientes import convites as convites_de_cadastro
 from pacientes.models import Caso, CondicaoCobranca, Paciente, ResponsavelLegal
 from pacientes.servicos import cadastrar_paciente, criar_caso_coletivo
+from financeiro import despesas as despesas_da_clinica
+from financeiro import servicos as financeiro
+from financeiro.models import BaixaDeDespesa, Despesa
+from prontuarios.models import Anamnese
 
 SENHA = "hamilton123"
 
@@ -55,7 +60,43 @@ _QUINZENAL = Recorrencia.Frequencia.QUINZENAL
 EMAILS_DA_SEMENTE_ANTIGA = ["ana@demo.com", "bruno@demo.com"]
 
 
-def _frequencia_de_demonstracao(caso, *, semanas_atras: int = 0, cadastradas=(), **regra) -> None:
+_FORMAS = ["PIX", "PIX", "PIX", "CARTAO", "TRANSFERENCIA", "DINHEIRO"]
+
+# Textos genéricos e fictícios para os registros de sessão do histórico. Nada aqui descreve pessoa real.
+_REGISTROS_FICTICIOS = [
+    "Registro fictício de demonstração. Retomados os combinados da sessão anterior. Trabalhada a identificação de "
+    "pensamentos automáticos ligados à queixa; utilizado registro de pensamentos. Combinada tarefa para a semana.",
+    "Registro fictício de demonstração. Paciente relata semana mais estável. Exploradas situações de maior "
+    "desconforto e as estratégias que funcionaram. Utilizada entrevista clínica. Mantido o plano de trabalho.",
+    "Registro fictício de demonstração. Sessão dedicada à psicoeducação sobre ansiedade e ao treino de respiração "
+    "diafragmática. Paciente participativo. Combinada prática diária até o próximo encontro.",
+    "Registro fictício de demonstração. Revisada a tarefa da semana, realizada parcialmente. Identificados os "
+    "obstáculos e ajustado o tamanho da tarefa. Trabalhada resolução de problemas.",
+    "Registro fictício de demonstração. Tema central: relações no trabalho. Utilizado ensaio comportamental de uma "
+    "conversa difícil. Paciente avalia o exercício como útil. Combinado aplicar e relatar na próxima sessão.",
+    "Registro fictício de demonstração. Paciente chega mobilizado por acontecimento familiar da semana. Sessão de "
+    "acolhimento e organização do relato. Procedimento: escuta clínica. Retomada do plano adiada para a próxima sessão.",
+    "Registro fictício de demonstração. Avaliados os avanços em relação aos objetivos combinados. Paciente percebe "
+    "melhora no sono e na organização da rotina. Reforçadas as estratégias em uso.",
+    "Registro fictício de demonstração. Trabalhada a exposição gradual a situação evitada, com hierarquia construída "
+    "em sessão. Combinado o primeiro passo para a semana.",
+]
+
+
+def _situacoes_da_historia(nome: str, quantas: int, assiduidade: float) -> list[str]:
+    """As sessões antigas do histórico: quase todas presentes, com faltas e cancelamentos conforme a assiduidade.
+
+    Sorteio com semente no nome: a mesma semente produz sempre a mesma clínica.
+    """
+    sorteio = random.Random(nome)
+    ausencia = 1 - assiduidade
+    return sorteio.choices(
+        ["REALIZADA", "FALTOU", "CANCELADA_CLIENTE", "CANCELADA_PROFISSIONAL"],
+        weights=[assiduidade, ausencia * 0.45, ausencia * 0.40, ausencia * 0.15], k=quantas)
+
+
+def _frequencia_de_demonstracao(caso, *, semanas_atras: int = 0, cadastradas=(), historia: int = 0,
+                                assiduidade: float = 0.9, **regra) -> None:
     """Frequência que começou semanas atrás, com as primeiras sessões cadastradas e o resto pendente.
 
     Grava a regra direto, e não por `definir_frequencia`: o serviço só aceita frequência de hoje em diante, e uma
@@ -66,10 +107,18 @@ def _frequencia_de_demonstracao(caso, *, semanas_atras: int = 0, cadastradas=(),
         definir_frequencia(caso, **regra)
         return
     hoje = timezone.localdate()
+    # `historia` são semanas a mais, para trás: meses de sessões já cadastradas, que dão corpo às estatísticas, ao
+    # financeiro do ano e ao prontuário geral (Rodada 50). As semanas recentes continuam escritas à mão, abaixo.
     recorrencia = Recorrencia.objects.create(
-        caso=caso, inicio=hoje - timedelta(weeks=semanas_atras), duracao=caso.psicologo.duracao_sessao, **regra)
+        caso=caso, inicio=hoje - timedelta(weeks=semanas_atras + historia), duracao=caso.psicologo.duracao_sessao,
+        **regra)
     passadas = [s for s in sessoes_previstas(recorrencia.inicio, hoje, caso=caso)
                 if s.regra.pk == recorrencia.pk and s.pendente()]
+    corte = hoje - timedelta(weeks=semanas_atras)
+    antigas = [s for s in passadas if s.data < corte]
+    passadas = [s for s in passadas if s.data >= corte]
+    for sessao, estado in zip(antigas, _situacoes_da_historia(str(caso), len(antigas), assiduidade)):
+        cadastrar_prevista(recorrencia, sessao.data, estado=estado)
     for sessao, estado in zip(passadas, cadastradas):
         # A remarcada da semente já diz para quando foi (ADR-068): amanhã, no mesmo horário — um dia que a
         # frequência dela não prevê, senão o calendário mostraria dois cartões no mesmo lugar.
@@ -114,10 +163,133 @@ def _apagar_conta_de_demonstracao(psicologo) -> int:
     dono = {"psicologo": psicologo}
     total = 0
     # `Documento` primeiro: ele protege o paciente (ADR-076), e a cascata do psicólogo esbarraria nele.
-    for modelo in (Documento, FichaDoProntuario, VersaoProntuario, Prontuario, Pagamento, Consulta, Desfecho,
+    for modelo in (Documento, Anamnese, FichaDoProntuario, VersaoProntuario, Prontuario, BaixaDeDespesa, Despesa,
+                   Pagamento, Consulta, Desfecho,
                    Recorrencia, Caso):
         total += modelo.objetos_todos.filter(**dono).delete()[0]
     return total + psicologo.delete()[0]
+
+def _pagar_o_passado(casos: dict, *, devedores=()) -> int:
+    """Quita o que é antigo: sessões cobradas de mais de doze dias e mensalidades de meses anteriores.
+
+    O que é recente fica como a parte escrita à mão deixou — é dali que saem as pendências do painel. Quem está em
+    `devedores` deixa duas cobranças antigas em aberto, para a ficha mostrar "pendência" e não só "em dia".
+    """
+    hoje = timezone.localdate()
+    limite = hoje - timedelta(days=12)
+    sorteio = random.Random("pagamentos")
+    pagos = 0
+    for nome, caso in casos.items():
+        pular = 2 if nome in devedores else 0
+        for consulta in caso.consultas.filter(cobrada=True).order_by("-inicio"):
+            dia = timezone.localtime(consulta.inicio).date()
+            cobranca = financeiro.sessao(consulta)
+            if cobranca is None or cobranca.quitada or dia > limite:
+                continue
+            if pular:
+                pular -= 1
+                continue
+            financeiro.registrar_pagamento_sessao(consulta, data=dia, forma=sorteio.choice(_FORMAS))
+            pagos += 1
+        primeira = caso.condicoes.filter(modalidade=_MENSAL).order_by("vigente_desde").first()
+        if primeira is None:
+            continue
+        mes = primeira.vigente_desde.replace(day=1)
+        while mes < hoje.replace(day=1):
+            cobranca = financeiro.mensalidade(caso, mes.year, mes.month)
+            if cobranca is not None and not cobranca.quitada:
+                financeiro.registrar_pagamento_mensalidade(
+                    caso, ano=mes.year, mes=mes.month, valor=cobranca.devido,
+                    data=min(cobranca.vencimento, hoje), forma=sorteio.choice(_FORMAS))
+                pagos += 1
+            mes = financeiro.mes_seguinte(mes)
+    return pagos
+
+
+def _escrever_o_passado(casos: dict) -> int:
+    """Registro de sessão confirmado para toda sessão realizada há mais de dez dias que ainda não tem um."""
+    limite = timezone.now() - timedelta(days=10)
+    escritos = 0
+    for caso in casos.values():
+        paciente = caso.pacientes.first()
+        realizadas = caso.consultas.filter(estado="REALIZADA", inicio__lt=limite).order_by("inicio")
+        for posicao, consulta in enumerate(realizadas):
+            if Prontuario.objects.filter(consulta=consulta, paciente=paciente).exists():
+                continue
+            prontuarios.confirmar(consulta, paciente,
+                                  texto=_REGISTROS_FICTICIOS[(posicao + caso.pk) % len(_REGISTROS_FICTICIOS)])
+            escritos += 1
+    return escritos
+
+
+# Despesas da clínica (ADR-083). As mensais começam em janeiro: o gráfico do ano mostra os meses em que a clínica
+# ainda não tinha receita para cobri-las.
+_DESPESAS_MENSAIS = [
+    ("Aluguel da sala", "1200.00", 5), ("Plataforma de videochamada", "89.90", 8),
+    ("Internet e telefone", "129.90", 10), ("Contador", "250.00", 15), ("Supervisão clínica", "400.00", 20),
+]
+_DESPESAS_AVULSAS = [  # (descrição, valor, mês, dia)
+    ("Anuidade do CRP", "620.91", 3, 31), ("Curso de atualização em TCC", "890.00", 6, 12),
+    ("Material de escritório", "176.40", 8, 22), ("Testes psicológicos (reposição)", "540.00", 5, 18),
+]
+
+
+def _despesas_de_demonstracao() -> int:
+    """Tudo o que venceu até o mês passado está pago. Neste mês: parte paga, o contador em atraso, o resto a vencer."""
+    hoje = timezone.localdate()
+    este_mes = hoje.replace(day=1)
+    for descricao, valor, dia in _DESPESAS_MENSAIS:
+        Despesa.objects.create(descricao=descricao, valor=Decimal(valor), mensal=True,
+                               vencimento=date(hoje.year, 1, dia))
+    for descricao, valor, mes, dia in _DESPESAS_AVULSAS:
+        Despesa.objects.create(descricao=descricao, valor=Decimal(valor), vencimento=date(hoje.year, mes, dia))
+    # Uma despesa deste mês ainda por vencer, e uma mensal que já acabou.
+    Despesa.objects.create(descricao="Manutenção do ar-condicionado", valor=Decimal("320.00"),
+                           vencimento=despesas_da_clinica.ultimo_dia(hoje.year, hoje.month))
+    Despesa.objects.create(descricao="Estacionamento (contrato encerrado)", valor=Decimal("180.00"), mensal=True,
+                           vencimento=date(hoje.year, 1, 12), fim=date(hoje.year, 4, 30))
+    mes, baixas = date(hoje.year, 1, 1), 0
+    while mes <= este_mes:
+        for ocorrencia in despesas_da_clinica.despesas_do_mes(mes.year, mes.month):
+            em_atraso_de_proposito = mes == este_mes and ocorrencia.despesa.descricao == "Contador"
+            if ocorrencia.vencimento > hoje or em_atraso_de_proposito:
+                continue
+            despesas_da_clinica.pagar(ocorrencia.despesa, mes, pago_em=ocorrencia.vencimento)
+            baixas += 1
+        mes = financeiro.mes_seguinte(mes)
+    return baixas
+
+
+_ANAMNESES = {
+    "Marcos Vieira": dict(
+        queixa_principal="Texto fictício de demonstração. \"Não consigo desligar a cabeça na hora de dormir.\"",
+        historia_da_queixa="Dificuldade para iniciar o sono há cerca de oito meses, desde a promoção no trabalho. Piora "
+                           "aos domingos e em véspera de entrega. Já tentou chás e aplicativos de meditação.",
+        tratamentos_anteriores="Acompanhamento psiquiátrico em curso; sem psicoterapia anterior.",
+        saude_geral="Sem doenças crônicas relatadas. Em uso de sertralina 50mg, conforme relato.",
+        sono_alimentacao_substancias="Dorme em média cinco horas. Três a quatro cafés por dia, o último no fim da tarde. "
+                                     "Álcool socialmente.",
+        escolaridade_e_trabalho="Engenheiro, coordena equipe de oito pessoas há oito meses.",
+        relacionamentos="Casado, um filho de quatro anos. Conta com a esposa e com um irmão.",
+        expectativas="Voltar a dormir bem e não levar o trabalho para casa."),
+    "Gustavo Rocha": dict(
+        queixa_principal="Texto fictício de demonstração. \"Desde que mudei de emprego, não dou conta de nada.\"",
+        historia_da_queixa="Sobrecarga e desorganização da rotina há cerca de quatro meses, após mudança de emprego.",
+        historia_familiar="Mora sozinho. Pais em outra cidade, contato semanal por telefone.",
+        rotina_e_lazer="Trabalha em média dez horas por dia. Parou de correr, que era sua principal atividade de lazer.",
+        expectativas="Organizar a rotina e voltar a ter tempo para si."),
+}
+
+# Aniversariantes do mês (ADR-084): o painel só mostra quem faz aniversário no mês corrente, então a semente põe
+# três pacientes nele — um deles hoje. O ano de nascimento continua o do cadastro.
+_ANIVERSARIOS = {"Carolina Mendes": 0, "Helena Castro": -11, "Larissa Duarte": 8}
+
+
+def _aniversario_neste_mes(nascimento: date, deslocamento: int) -> date:
+    hoje = timezone.localdate()
+    ultimo = despesas_da_clinica.ultimo_dia(hoje.year, hoje.month).day
+    return date(nascimento.year, hoje.month, min(max(hoje.day + deslocamento, 1), ultimo))
+
 
 PSICOLOGOS = [
     {
@@ -191,27 +363,27 @@ PSICOLOGOS = [
         # passado, a agenda não teria nem consulta cadastrada nem pendência para mostrar (ADR-060). As situações
         # cobrem as cinco da ADR-065: presente, falta sem aviso, cancelamento dos dois lados e remarcada.
         "frequencias": {
-            "Marcos Vieira": dict(frequencia=_SEMANAL, dia_semana=1, hora=time(14), semanas_atras=5,
+            "Marcos Vieira": dict(historia=20, assiduidade=0.85, frequencia=_SEMANAL, dia_semana=1, hora=time(14), semanas_atras=5,
                                   cadastradas=["REALIZADA", "REALIZADA", "FALTOU", "CANCELADA_PROFISSIONAL"]),
-            "Juliana Alves": dict(frequencia=_QUINZENAL, dia_semana=3, hora=time(18), semanas_atras=6,
+            "Juliana Alves": dict(historia=2, frequencia=_QUINZENAL, dia_semana=3, hora=time(18), semanas_atras=6,
                                   cadastradas=["REALIZADA", "CANCELADA_CLIENTE"]),
             "Rafael Pinto": dict(frequencia=_SEMANAL, dia_semana=5, hora=time(9), semanas_atras=3,
                                  cadastradas=["REALIZADA", "REMARCADA"]),
-            "Carolina Mendes": dict(frequencia=_SEMANAL, dia_semana=0, hora=time(8), semanas_atras=4,
+            "Carolina Mendes": dict(historia=11, assiduidade=0.97, frequencia=_SEMANAL, dia_semana=0, hora=time(8), semanas_atras=4,
                                     cadastradas=["REALIZADA", "REALIZADA", "REALIZADA"]),
-            "Diego Ferreira": dict(frequencia=_QUINZENAL, dia_semana=0, hora=time(9), semanas_atras=6,
+            "Diego Ferreira": dict(historia=8, assiduidade=0.8, frequencia=_QUINZENAL, dia_semana=0, hora=time(9), semanas_atras=6,
                                    cadastradas=["REALIZADA", "CANCELADA_CLIENTE"]),
-            "Fernanda Lopes": dict(frequencia=_SEMANAL, dia_semana=1, hora=time(10), semanas_atras=3,
+            "Fernanda Lopes": dict(historia=12, assiduidade=0.7, frequencia=_SEMANAL, dia_semana=1, hora=time(10), semanas_atras=3,
                                    cadastradas=["REALIZADA", "FALTOU"]),
-            "Gustavo Rocha": dict(frequencia=_SEMANAL, dia_semana=2, hora=time(15), semanas_atras=5,
+            "Gustavo Rocha": dict(historia=10, assiduidade=0.95, frequencia=_SEMANAL, dia_semana=2, hora=time(15), semanas_atras=5,
                                   cadastradas=["REALIZADA", "REALIZADA", "REALIZADA", "REALIZADA"]),
-            "Helena Castro": dict(frequencia=_QUINZENAL, dia_semana=2, hora=time(16), semanas_atras=4,
+            "Helena Castro": dict(historia=10, assiduidade=0.85, frequencia=_QUINZENAL, dia_semana=2, hora=time(16), semanas_atras=4,
                                   cadastradas=["REALIZADA"]),
-            "Igor Santana": dict(frequencia=_SEMANAL, dia_semana=3, hora=time(9), semanas_atras=2,
+            "Igor Santana": dict(historia=4, frequencia=_SEMANAL, dia_semana=3, hora=time(9), semanas_atras=2,
                                  cadastradas=["REALIZADA"]),
-            "Larissa Duarte": dict(frequencia=_SEMANAL, dia_semana=4, hora=time(10), semanas_atras=3,
+            "Larissa Duarte": dict(historia=12, assiduidade=0.9, frequencia=_SEMANAL, dia_semana=4, hora=time(10), semanas_atras=3,
                                    cadastradas=["REALIZADA", "REALIZADA"]),
-            "Otávio Nunes": dict(frequencia=_SEMANAL, dia_semana=4, hora=time(11), semanas_atras=3,
+            "Otávio Nunes": dict(historia=12, assiduidade=0.78, frequencia=_SEMANAL, dia_semana=4, hora=time(11), semanas_atras=3,
                                  cadastradas=["REALIZADA", "REALIZADA"]),
         },
         # Beatriz desistiu antes de começar: exercita a aba "Encerrados" e o botão de retomar (ADR-055).
@@ -357,6 +529,9 @@ class Command(BaseCommand):
                     responsaveis = campos.pop("responsaveis", [])
                     pagador = campos.pop("pagador", None)
 
+                    if campos["nome"] in _ANIVERSARIOS and campos.get("data_nascimento"):
+                        campos["data_nascimento"] = _aniversario_neste_mes(
+                            campos["data_nascimento"], _ANIVERSARIOS[campos["nome"]])
                     paciente = Paciente(**campos)
                     caso = cadastrar_paciente(paciente, **cobranca)
                     for responsavel in responsaveis:
@@ -406,6 +581,17 @@ class Command(BaseCommand):
                         "pagador": {"nome": "Caio Martins", "cpf": ""},
                     })
                     convites_de_cadastro.gerar_convite("Rafael (primeiro contato pelo Instagram)")
+                # Rodada 50: o que dá corpo à demonstração. Só na conta da Ana — a do Bruno fica pequena, para o
+                # contraste do isolamento (ADR-001) continuar visível a olho nu.
+                if modelo["email"] == "ana@exemplo.com":
+                    individuais = {nome: caso for nome, caso in casos.items() if nome in por_nome}
+                    pagos = _pagar_o_passado(individuais, devedores=("Fernanda Lopes",))
+                    escritos = _escrever_o_passado(individuais)
+                    baixas = _despesas_de_demonstracao()
+                    for nome_do_paciente, campos_da_anamnese in _ANAMNESES.items():
+                        Anamnese.objects.create(paciente=por_nome[nome_do_paciente], **campos_da_anamnese)
+                    self.stdout.write(f"  história: {pagos} pagamentos, {escritos} registros de sessão, "
+                                      f"{baixas} despesas pagas, {len(_ANAMNESES)} anamneses")
                 for item in documentos_de_demonstracao:
                     # Como na tela: o sistema sugere identificação e assinatura; o resto é de quem escreve.
                     paciente = por_nome[item["paciente"]]

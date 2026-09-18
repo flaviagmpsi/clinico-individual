@@ -8,6 +8,7 @@
 from django import forms
 
 from prontuarios import orientacoes
+from prontuarios.models import Anamnese
 
 
 class ProntuarioForm(forms.Form):
@@ -31,3 +32,36 @@ class FolhaDoProntuarioForm(forms.Form):
         label="Encaminhamento ou encerramento", required=False, help_text=orientacoes.AJUDA_ENCERRAMENTO,
         widget=_na_folha("Encaminhamento ou encerramento", orientacoes.AJUDA_ENCERRAMENTO,
                          "Em branco enquanto o atendimento segue"))
+
+
+# O que se espera em cada tema — dito em uma linha, embaixo do campo. São sugestões de roteiro, não exigências.
+AJUDA_DA_ANAMNESE = {
+    "queixa_principal": "O que trouxe a pessoa, nas palavras dela.",
+    "historia_da_queixa": "Quando começou, como evoluiu, o que piora e o que alivia, o que já tentou.",
+    "tratamentos_anteriores": "Psicoterapia, acompanhamento psiquiátrico, internações — quando, com quem, como foi.",
+    "saude_geral": "Doenças, cirurgias, condições crônicas e medicamentos em uso, conforme o relato.",
+    "sono_alimentacao_substancias": "Padrão de sono e de alimentação; álcool, tabaco e outras substâncias.",
+    "historia_familiar": "Com quem mora, composição da família, clima das relações, histórico de saúde mental.",
+    "desenvolvimento": "Para criança e adolescente: gestação, parto, marcos do desenvolvimento, escola. "
+                       "Para adulto: o que for relevante da infância e da adolescência.",
+    "escolaridade_e_trabalho": "Formação, ocupação atual, satisfação e dificuldades no trabalho ou nos estudos.",
+    "relacionamentos": "Vida afetiva, amizades, com quem conta quando precisa.",
+    "rotina_e_lazer": "Como é um dia comum; o que faz por prazer; atividade física.",
+    "expectativas": "O que espera da terapia, e o que seria melhorar.",
+    "observacoes": "Impressões suas da entrevista. Lembre que isto é registro seu — não vai para o prontuário geral.",
+}
+
+
+class AnamneseForm(forms.ModelForm):
+    """Todos os campos opcionais e em texto livre (ADR-085)."""
+
+    class Meta:
+        model = Anamnese
+        fields = list(Anamnese.CAMPOS_DE_TEXTO)
+        widgets = {campo: forms.Textarea(attrs={"class": "form-control", "rows": 3})
+                   for campo in Anamnese.CAMPOS_DE_TEXTO}
+        help_texts = AJUDA_DA_ANAMNESE
+
+    def tem_conteudo(self) -> bool:
+        return any((self.cleaned_data.get(campo) or "").strip() for campo in Anamnese.CAMPOS_DE_TEXTO)
+

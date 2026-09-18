@@ -151,4 +151,26 @@ Primeiro o dia; depois as pendências, num bloco; por fim o resumo do mês.
     <div class="small text-muted"><a href="{% url 'pacientes:lista' %}" class="text-decoration-none">ver pacientes</a></div>
   </div></div></div>
 </div>
+
+{% comment %}ADR-084: aniversariantes do mês, entre os pacientes em atendimento. Fica por último: não é tarefa, é
+lembrança — e o painel é primeiro do que precisa ser feito (ADR-072).{% endcomment %}
+<div class="card mt-3">
+  <div class="card-header bg-white py-2 d-flex align-items-center">
+    <span class="fw-semibold"><i class="bi bi-cake2"></i> Aniversariantes de {{ hoje|date:"F"|lower }}</span>
+    {% if aniversariantes %}<span class="badge text-bg-light border ms-2">{{ aniversariantes|length }}</span>{% endif %}
+  </div>
+  {% if aniversariantes %}
+    <div class="card-body py-2 small d-flex flex-wrap gap-2">
+      {% for a in aniversariantes %}
+        <a href="{% url 'pacientes:detalhe' a.paciente.pk %}"
+           class="text-decoration-none border rounded px-2 py-1 {% if a.hoje %}border-success bg-success-subtle{% elif a.passou %}text-muted{% endif %}">
+          <span class="fw-semibold">dia {{ a.dia }}</span> · {{ a.paciente.nome_social|default:a.paciente.nome }}
+          <span class="text-muted">· {% if a.hoje %}faz {{ a.idade }} hoje 🎉{% elif a.passou %}fez {{ a.idade }}{% else %}faz {{ a.idade }}{% endif %}</span>
+        </a>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="card-body py-3 small text-muted">Nenhum paciente em atendimento faz aniversário neste mês.</div>
+  {% endif %}
+</div>
 {% endblock %}

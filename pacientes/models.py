@@ -238,7 +238,20 @@ class Caso(TenantOwnedModel):
         from datetime import date
 
         em = em or date.today()
+        carregadas = self._ja_carregado("condicoes")
+        if carregadas is not None:
+            validas = [condicao for condicao in carregadas if condicao.vigente_desde <= em]
+            return max(validas, key=lambda condicao: condicao.vigente_desde, default=None)
         return self.condicoes.filter(vigente_desde__lte=em).order_by("-vigente_desde").first()
+
+    def _ja_carregado(self, relacao: str):
+        """A lista de uma relação reversa, se alguém já a trouxe com `prefetch_related`; senão, `None` (ADR-086).
+
+        As telas de financeiro e de indicadores percorrem centenas de cobranças, e cada uma pergunta pela condição
+        vigente do caso. Com a relação carregada de uma vez, a resposta sai da memória — sem isso, era uma consulta
+        ao banco por cobrança. Quem não carregou continua funcionando igual, pela consulta.
+        """
+        return getattr(self, "_prefetched_objects_cache", {}).get(relacao)
 
     def proxima_condicao(self):
         """A troca já agendada e ainda não em vigor, se houver — para a ficha avisar o que vem."""
@@ -252,6 +265,10 @@ class Caso(TenantOwnedModel):
         Usa o nome reverso `recorrencias` em vez de importar `agenda`: `agenda` depende deste app, e o
         caminho contrário criaria um ciclo (regra 5 de dependência).
         """
+        carregadas = self._ja_carregado("recorrencias")
+        if carregadas is not None:
+            return max((regra for regra in carregadas if regra.fim is None), key=lambda regra: regra.inicio,
+                       default=None)
         return self.recorrencias.filter(fim__isnull=True).order_by("-inicio").first()
 
     def desfecho_aberto(self):
@@ -259,6 +276,9 @@ class Caso(TenantOwnedModel):
 
         `None` enquanto o atendimento está em curso. Nome reverso `desfechos`, pelo mesmo motivo de `regra_aberta`.
         """
+        carregados = self._ja_carregado("desfechos")
+        if carregados is not None:
+            return next((desfecho for desfecho in carregados if desfecho.retomado_em is None), None)
         return self.desfechos.filter(retomado_em__isnull=True).first()
 
     def desfechos_anteriores(self):

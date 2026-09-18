@@ -169,6 +169,7 @@ em atendimento de casal. Ver **P-70**, resolvida em parte.
 | P-13 | Tela pública com aviso de privacidade e aceite (LGPD); criança ou adolescente pede o responsável; campo sensível é opcional | 🎨🔒 | ✅ | 🟢 | ADR-081 |
 | P-14 | CPF repetido vira erro no campo, e não erro de servidor | ⚙️ | ✅ | 🟢 | ADR-081 |
 | P-15 | Endereço **obrigatório** no link de cadastro; para quem mora **fora do Brasil**, tudo escrito à mão — código postal livre, telefone com código do país, estado ou província em texto, sem máscara nem busca de CEP | 🎨⚙️🗄️ | ✅ | 🟢 | ADR-082 |
+| P-16 | Ficha com **frequência do paciente** (presentes, ausentes, canceladas, remarcadas, percentual) e **situação financeira** (em dia, pendências, sem cobrança combinada) | 🎨⚙️ | ✅ | 🟢 | ADR-084 |
 
 ---
 
@@ -252,6 +253,7 @@ e a IA depois passa a preencher o mesmo rascunho. Avaliação do protótipo Exyo
 | R-18 | `FichaDoProntuario` (demanda e encerramento) **só se acrescenta**: imutável no model e no banco (gatilho), RLS própria; paciente com ficha escrita não é apagado | 🗄️🔒 | ✅ | 🟢 | ADR-079 |
 | R-19 | Prontuário em **PDF e DOCX** — só o que está confirmado; exportação na trilha de auditoria | ⚙️🔒 | ✅ | 🟢 | ADR-078, ADR-079 |
 | R-20 | Aba **Prontuários só com os registros de sessão**, com filtro por paciente e aviso de onde fica o prontuário geral | 🎨 | ✅ | 🟢 | ADR-080 |
+| R-21 | **Anamnese**: sub-aba opcional na ficha, doze temas em texto livre, editável, auditada, com RLS; não entra no prontuário geral | 🎨⚙️🗄️🔒 | ✅ | 🟢 | ADR-085 |
 | R-06 | Sessão de casal: **um relato gravado por participante**; `Relato` é 1:1 com `Prontuario` | 🎨⚙️ | ✅ | ⚪ | ADR-041 |
 | R-07 | Risco de migração da fala entre prontuários: **eliminado por construção** | 🔒 | ✅ | ⚪ | ADR-041 |
 | R-08 | Exportação de uma sessão ou do histórico completo, em PDF ou DOC | 🎨⚙️ | ✅ | ⚪ | escopo |
@@ -303,10 +305,10 @@ e a IA depois passa a preencher o mesmo rascunho. Avaliação do protótipo Exyo
 | N-04a | Pagou menos, o restante fica **pendente**; pagou a mais, é só mais um registro | ⚙️ | ✅ | 🟢 | ADR-062 |
 | N-04b | **Forma de pagamento obrigatória**: Pix, cartão, dinheiro ou transferência | 🎨🗄️ | ✅ | 🟢 | ADR-063 |
 | N-04c | Listagem com busca, filtro por mês e ordenação, portadas do original | 🎨 | ✅ | ⚪ | ADR-035 |
-| N-05 | Despesas com **catálogo de tipos** e marca de dedutibilidade | 🎨🗄️ | ✅ | ⚪ | ADR-011 |
+| N-05 | **Despesas da clínica em texto livre**: descrição, valor, vencimento, "repete todo mês" e último mês; marcar como paga, desfazer, encerrar | 🎨⚙️🗄️ | ✅ | 🟢 | ADR-083 (substitui ADR-011) |
 | N-06 | Anexo de comprovante na despesa, **opcional** | 🎨⚙️ | ✅ | ⚪ | ADR-040 |
 | N-12 | ~~Pagamento sem cobrança vira crédito do caso~~ — pagamento a mais é só mais um registro | — | ❌ | — | ADR-062 |
-| N-07 | **Faturamento líquido** = receita − despesas. Independe de regime | ⚙️ | ✅ | ⚪ | ADR-013 |
+| N-07 | **Fluxo de caixa do mês**: receitas recebidas, a receber e total; despesas pagas, a pagar e total; resultado do mês e já realizado | 🎨⚙️ | ✅ | 🟢 | ADR-013, ADR-083 |
 | N-08 | Lembrete de pagamento pendente: aparece no vencimento e continua até o pagamento cobrir; **pago antes do vencimento, não aparece** | 🎨⚙️ | ✅ | 🟢 | ADR-017, ADR-063 |
 | N-09 | Lembrete fiscal ciente do regime: PF → Receita Saúde; PJ → nota fiscal | 🎨 | ✅ | ⚪ | ADR-030 |
 | N-10 | Carnê-leão (CSV do Receita Saúde) e NFS-e por API | — | ⏸️ | ⚪ | ADR-013 |
@@ -364,8 +366,10 @@ dias sem sessão, sessões no mês e o financeiro do mês. A tela de análise (I
 | I-08 | Horas trabalhadas × horas disponíveis (trabalhar = só horário de atendimento) | ⚙️ | ✅ | ⚪ | ADR-027, ADR-029 |
 | I-09 | Sessões realizadas por mês | ⚙️ | ✅ | ⚪ | ADR-027 |
 | I-10 | A análise usa **apenas dado administrativo**. Nunca conteúdo de prontuário | 🔒 | ✅ | ⚪ | ADR-027 |
-| I-11 | **Gráfico de status de presença** — na tela de análise, nunca no painel (ADR-027) | 🎨 | ✅ | ⚪ | ADR-027 |
-| I-12 | **Gráfico de resultado previsto no ano**: receitas × despesas | 🎨⚙️ | 🟡 | ⚪ | depende de despesas (N-05) |
+| I-11 | **Presença**: percentual, os cinco números e a conta explicada — na aba Estatísticas e na ficha de cada paciente | 🎨⚙️ | ✅ | 🟢 | ADR-027, ADR-084 |
+| I-12 | **Gráfico de resultado previsto no ano**: receitas × despesas, realizado e previsto, com a linha do resultado | 🎨⚙️ | ✅ | 🟢 | ADR-083, ADR-084 |
+| I-13 | **Aba Estatísticas**: horário mais usado, dia com mais sessões, atendimentos semanais × quinzenais × avulsos, presença por paciente | 🎨⚙️ | ✅ | 🟢 | ADR-084 |
+| I-14 | **Aniversariantes do mês** no painel, só de quem está em atendimento | 🎨 | ✅ | 🟢 | ADR-084 |
 
 ---
 

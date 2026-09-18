@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block titulo %}{% if object %}Editar{% else %}Nova{% endif %} despesa{% endblock %}
+{% block secao %}Financeiro{% endblock %}
+
+{% block conteudo %}
+<div style="max-width:620px">
+  <div class="d-flex align-items-center mb-3">
+    <h1 class="h5 mb-0">{% if object %}Editar despesa{% else %}Nova despesa{% endif %}</h1>
+    <a href="{% url 'financeiro:despesas' %}" class="btn btn-sm btn-outline-secondary ms-auto">Cancelar</a>
+  </div>
+
+  <form method="post" novalidate>
+    {% csrf_token %}
+    {% if form.non_field_errors %}<div class="alert alert-danger py-2 small">{{ form.non_field_errors }}</div>{% endif %}
+    <div class="card mb-3">
+      <div class="card-body">
+        <div class="row g-3">
+          <div class="col-12">{% include "components/_campo.html" with campo=form.descricao %}</div>
+          <div class="col-md-5">{% include "components/_campo.html" with campo=form.valor %}</div>
+          <div class="col-md-7">{% include "components/_campo.html" with campo=form.vencimento %}</div>
+          <div class="col-12">
+            <div class="form-check">
+              {{ form.mensal }}
+              <label class="form-check-label" for="{{ form.mensal.id_for_label }}">{{ form.mensal.label }}</label>
+              <div class="form-text small">{{ form.mensal.help_text }}</div>
+            </div>
+          </div>
+          {% comment %}ADR-074: o último mês só faz sentido para quem marcou que a despesa repete.{% endcomment %}
+          <div class="col-md-7" data-so-mensal>{% include "components/_campo.html" with campo=form.fim %}</div>
+        </div>
+        {% if object and object.baixas.exists %}
+          <div class="form-text small mt-3">Os meses já marcados como pagos guardam o valor que foi pago: mudar o valor
+            aqui muda só os meses em aberto. Para um aumento a partir de certo mês, encerre esta e cadastre a nova.</div>
+        {% endif %}
+      </div>
+    </div>
+    <button type="submit" class="btn btn-primary">Salvar</button>
+    <a href="{% url 'financeiro:despesas' %}" class="btn btn-link text-muted">Cancelar</a>
+  </form>
+</div>
+
+<script>
+(function () {
+  const mensal = document.querySelector('[name="mensal"]');
+  const bloco = document.querySelector('[data-so-mensal]');
+  const alternar = () => bloco.classList.toggle('d-none', !mensal.checked);
+  mensal.addEventListener('change', alternar);
+  alternar();
+})();
+</script>
+{% endblock %}
