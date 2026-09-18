@@ -154,7 +154,7 @@ class CadastrarAvulsa(LoginRequiredMixin, FormView):
         try:
             consulta = servicos.cadastrar_avulsa(
                 dados["caso"], estado=dados["estado"], inicio=form.inicio(), duracao=dados["duracao"],
-                modalidade=dados["modalidade"] or None, cobrada=dados["cobrar"],
+                modalidade=dados["modalidade"] or None, cobrada=dados["cobrar"], valor=dados["valor"],
                 remarcada_para=form.remarcada_para())
         except ValidationError as erro:
             form.add_error(None, erro.messages[0])
@@ -205,7 +205,7 @@ class CadastrarRemarcada(LoginRequiredMixin, FormView):
         try:
             consulta = servicos.cadastrar_avulsa(
                 dados["caso"], estado=dados["estado"], inicio=form.inicio(), duracao=dados["duracao"],
-                modalidade=dados["modalidade"] or None, cobrada=dados["cobrar"],
+                modalidade=dados["modalidade"] or None, cobrada=dados["cobrar"], valor=dados["valor"],
                 remarcada_para=form.remarcada_para())
         except ValidationError as erro:
             form.add_error(None, erro.messages[0])
@@ -256,7 +256,7 @@ class CadastrarPrevista(LoginRequiredMixin, FormView):
         try:
             consulta = servicos.cadastrar_prevista(
                 prevista.regra, prevista.data, estado=dados["estado"], hora=dados["hora"], duracao=dados["duracao"],
-                modalidade=dados["modalidade"] or None, cobrada=dados["cobrar"],
+                modalidade=dados["modalidade"] or None, cobrada=dados["cobrar"], valor=dados["valor"],
                 remarcada_para=form.remarcada_para())
         except ValidationError as erro:
             form.add_error(None, erro.messages[0])
@@ -281,7 +281,8 @@ class EditarConsulta(LoginRequiredMixin, _ComConsulta, FormView):
 
     def get_initial(self):
         consulta = self.consulta()
-        inicial = {"estado": consulta.estado, "cobrar": consulta.cobrada, "modalidade": consulta.modalidade}
+        inicial = {"estado": consulta.estado, "cobrar": consulta.cobrada, "modalidade": consulta.modalidade,
+                   "valor": consulta.valor}
         if consulta.remarcada_para:
             local = timezone.localtime(consulta.remarcada_para)
             inicial.update(nova_data=local.date(), nova_hora=local.time())
@@ -297,7 +298,7 @@ class EditarConsulta(LoginRequiredMixin, _ComConsulta, FormView):
         dados = form.cleaned_data
         try:
             servicos.alterar_situacao(consulta, dados["estado"], cobrada=dados["cobrar"],
-                                      modalidade=dados["modalidade"] or None,
+                                      modalidade=dados["modalidade"] or None, valor=dados["valor"],
                                       remarcada_para=form.remarcada_para())
         except ValidationError as erro:
             form.add_error(None, erro.messages[0])

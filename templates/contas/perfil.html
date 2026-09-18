@@ -39,6 +39,29 @@
     </div>
   </div>
 
+  <div class="card mb-3">
+    <div class="card-header bg-white py-2 fw-semibold">
+      Como você atende
+      <span class="text-muted fw-normal small">— o padrão que cada paciente herda</span>
+    </div>
+    <div class="card-body">
+      <div class="row g-3">
+        <div class="col-md-6">{% include "components/_campo.html" with campo=form.abordagem %}</div>
+        <div class="col-md-6">{% include "components/_campo.html" with campo=form.abordagem_outra %}</div>
+      </div>
+      <div class="mt-3 d-flex gap-4">
+        <div class="form-check">
+          {{ form.atende_presencial }}
+          <label class="form-check-label" for="{{ form.atende_presencial.id_for_label }}">Presencialmente</label>
+        </div>
+        <div class="form-check">
+          {{ form.atende_online }}
+          <label class="form-check-label" for="{{ form.atende_online.id_for_label }}">Online</label>
+        </div>
+      </div>
+    </div>
+  </div>
+
   {% comment %}
   O regime não é papelada: é o que decide os recursos fiscais que o sistema vai oferecer — recibo de pessoa
   física e carnê-leão de um lado, nota e contabilidade da empresa do outro (ADR-008, ADR-013). Por isso a tela

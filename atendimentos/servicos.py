@@ -17,6 +17,7 @@ E o fim do atendimento: o **desfecho** encerra a frequência, e **retomar** reab
 
 from dataclasses import dataclass
 from datetime import date, datetime, time, timedelta
+from decimal import Decimal
 
 from django.core.exceptions import ValidationError
 from django.db import transaction
@@ -303,6 +304,11 @@ def _remarcacao(estado: str, remarcada_para: datetime | None) -> datetime | None
     return remarcada_para if estado == Consulta.Estado.REMARCADA else None
 
 
+def _valor_da_sessao(estado: str, cobrada: bool | None, valor: Decimal | None) -> Decimal | None:
+    """O valor **desta** sessão (ADR-070). Sessão que não entra na cobrança não tem valor nenhum."""
+    return valor if _cobranca(estado, cobrada) else None
+
+
 def modalidade_do_caso(caso: Caso) -> str:
     """O padrão do paciente (ADR-065). No casal, o do primeiro participante."""
     participante = caso.pacientes.first()
@@ -327,6 +333,7 @@ def cadastrar_prevista(
     duracao: int | None = None,
     modalidade: str | None = None,
     cobrada: bool | None = None,
+    valor: Decimal | None = None,
     remarcada_para: datetime | None = None,
     agora: datetime | None = None,
 ) -> Consulta:
@@ -342,6 +349,7 @@ def cadastrar_prevista(
                         inicio=momento(data, hora or regra.hora), duracao=duracao or regra.duracao,
                         cobrada=_cobranca(estado, cobrada),
                         modalidade=modalidade or modalidade_do_caso(regra.caso),
+                        valor=_valor_da_sessao(estado, cobrada, valor),
                         remarcada_para=_remarcacao(estado, remarcada_para))
     return _cadastrar(consulta, agora)
 
@@ -355,6 +363,7 @@ def cadastrar_avulsa(
     duracao: int | None = None,
     modalidade: str | None = None,
     cobrada: bool | None = None,
+    valor: Decimal | None = None,
     remarcada_para: datetime | None = None,
     agora: datetime | None = None,
 ) -> Consulta:
@@ -367,13 +376,15 @@ def cadastrar_avulsa(
     consulta = Consulta(caso=caso, estado=estado, inicio=inicio,
                         duracao=duracao or _psicologo().duracao_sessao,
                         cobrada=_cobranca(estado, cobrada), modalidade=modalidade or modalidade_do_caso(caso),
+                        valor=_valor_da_sessao(estado, cobrada, valor),
                         remarcada_para=_remarcacao(estado, remarcada_para))
     return _cadastrar(consulta, agora)
 
 
 @transaction.atomic
 def alterar_situacao(consulta: Consulta, estado: str, *, cobrada: bool | None = None,
-                    modalidade: str | None = None, remarcada_para: datetime | None = None) -> Consulta:
+                    modalidade: str | None = None, valor: Decimal | None = None,
+                    remarcada_para: datetime | None = None) -> Consulta:
     """Corrige o que foi cadastrado. A data não muda: para isso, exclui-se o cadastro e cadastra-se de novo."""
     cobra = _cobranca(estado, cobrada)
     if estado != Consulta.Estado.REALIZADA:
@@ -382,6 +393,7 @@ def alterar_situacao(consulta: Consulta, estado: str, *, cobrada: bool | None = 
         _recusar_se_tem_pagamento(consulta, "deixar de cobrá-la")
     consulta.estado = estado
     consulta.cobrada = cobra
+    consulta.valor = valor if cobra else None
     consulta.remarcada_para = _remarcacao(estado, remarcada_para or consulta.remarcada_para)
     if modalidade:
         consulta.modalidade = modalidade

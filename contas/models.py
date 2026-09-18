@@ -10,6 +10,7 @@ identificador do tenant.
 from django.contrib.auth.models import AbstractUser, UserManager as DjangoUserManager
 from django.core.validators import MaxValueValidator, MinValueValidator, RegexValidator
 from django.db import models
+from django.utils import timezone
 
 from core.calendario import TipoDia
 from core.enderecos import UF, cep_valido, telefone_opcional
@@ -29,8 +30,15 @@ class PsicologoManager(DjangoUserManager):
         return usuario
 
     def create_user(self, email=None, password=None, **extra_fields):
+        """Conta criada por **código** — semente, teste, shell — já nasce com o cadastro concluído.
+
+        Só o quiz (ADR-071) cria conta incompleta, porque é ele quem coleta o que falta, passo a passo. Quem
+        chama daqui está informando tudo de uma vez, e trancar essa conta no quiz seria travar a semente e os
+        testes num fluxo de tela que eles não estão exercitando.
+        """
         extra_fields.setdefault("is_staff", False)
         extra_fields.setdefault("is_superuser", False)
+        extra_fields.setdefault("quiz_concluido_em", timezone.now())
         return self._create_user(email, password, **extra_fields)
 
     def create_superuser(self, email=None, password=None, **extra_fields):
@@ -55,6 +63,21 @@ class Psicologo(ValidaAoSalvar, AbstractUser):
     class Regime(models.TextChoices):
         PF = "PF", "Pessoa física"
         PJ = "PJ", "Pessoa jurídica"
+
+    class Abordagem(models.TextChoices):
+        """As linhas mais comuns na clínica brasileira, com "outra" para o resto — o campo é do psicólogo,
+        não uma taxonomia oficial, e nenhuma lista fechada daria conta (ADR-071)."""
+
+        PSICANALISE = "PSICANALISE", "Psicanálise"
+        TCC = "TCC", "Terapia cognitivo-comportamental"
+        ANALITICA = "ANALITICA", "Psicologia analítica (junguiana)"
+        GESTALT = "GESTALT", "Gestalt-terapia"
+        HUMANISTA = "HUMANISTA", "Abordagem centrada na pessoa / humanista"
+        FENOMENOLOGICA = "FENOMENOLOGICA", "Fenomenológico-existencial"
+        COMPORTAMENTAL = "COMPORTAMENTAL", "Análise do comportamento"
+        SISTEMICA = "SISTEMICA", "Sistêmica / familiar"
+        PSICODRAMA = "PSICODRAMA", "Psicodrama"
+        OUTRA = "OUTRA", "Outra"
 
     class SituacaoRegistro(models.TextChoices):
         # ADR-044: a verificação no cadastro do CFP ficou adiada, mas **reversível**. Os
@@ -89,6 +112,16 @@ class Psicologo(ValidaAoSalvar, AbstractUser):
     cnpj = models.CharField("CNPJ", max_length=14, blank=True, validators=[cnpj_valido])
     razao_social = models.CharField("Razão social", max_length=255, blank=True)
     crp_empresa = models.CharField("CRP da empresa", max_length=20, blank=True)
+
+    # --- Como atende (C-10, ADR-071) -------------------------------------------------------------
+    abordagem = models.CharField("Abordagem", max_length=20, choices=Abordagem.choices, blank=True)
+    abordagem_outra = models.CharField("Qual abordagem", max_length=120, blank=True)
+    atende_online = models.BooleanField("Atende online", default=False)
+    atende_presencial = models.BooleanField("Atende presencialmente", default=True)
+
+    # Quando o quiz de cadastro foi concluído. Vazio: a conta existe, mas o sistema ainda não sabe o
+    # bastante para propor nada — e manda o psicólogo terminar o cadastro antes de qualquer tela.
+    quiz_concluido_em = models.DateTimeField("Cadastro concluído em", null=True, blank=True)
 
     # --- Clínica ou consultório (C-11) -----------------------------------------------------------
     # Onde o psicólogo atende. Hoje serve à identificação do profissional na tela; é também o endereço
@@ -135,6 +168,21 @@ class Psicologo(ValidaAoSalvar, AbstractUser):
 
     def __str__(self) -> str:
         return f"{self.nome_completo} (CRP {self.crp})"
+
+    @property
+    def cadastro_completo(self) -> bool:
+        return self.quiz_concluido_em is not None
+
+    @property
+    def abordagem_descrita(self) -> str:
+        if self.abordagem == self.Abordagem.OUTRA:
+            return self.abordagem_outra or "Outra"
+        return self.get_abordagem_display() if self.abordagem else ""
+
+    @property
+    def atendimento_descrito(self) -> str:
+        formas = [nome for nome, sim in [("online", self.atende_online), ("presencial", self.atende_presencial)] if sim]
+        return " e ".join(formas)
 
     @property
     def crp(self) -> str:

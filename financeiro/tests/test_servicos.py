@@ -2,7 +2,8 @@
 
 - `Mensalidade` — vence no dia fixo ou no dia útil; é cheia; não existe com o mês inteiro encerrado.
 - `Lembrete` — pendente só a partir do vencimento; pago antes, nunca aparece; pagou menos, fica o resto.
-- `PorSessao` — cada sessão cobrada gera a sua pendência; falta remarcada não; quitar uma não quita outra.
+- `PorSessao` — cada sessão cobrada gera a sua pendência; remarcada não; quitar uma não quita outra.
+- `ValorDestaSessao` — ADR-070: a extra do mensalista e a de quem não tem valor combinado, cobradas à parte.
 - `Registro` — forma obrigatória, sem data futura, referência coerente com a modalidade.
 - `ConsultaComPagamento` — não é excluída nem vira falta remarcada.
 - `Isolamento` — ADR-001.
@@ -159,6 +160,56 @@ class PorSessao(BaseFinanceiro):
             with self.assertRaises(ValidationError):
                 servicos.registrar_pagamento_sessao(consulta, data=setembro(3), forma=PIX)
         self.assertEqual(tipos, [servicos.MENSALIDADE])
+
+
+class ValorDestaSessao(BaseFinanceiro):
+    """ADR-070: o valor digitado na sessão manda — é o que cobra a extra e a de quem não combinou preço."""
+
+    def test_sessao_extra_do_mensalista_cobra_a_parte(self):
+        with contexto.como(self.ana.pk):
+            consulta = self.sessao(self.caso_juliana, 3)
+            servicos_agenda_valor = agenda.alterar_situacao(consulta, REALIZADA, valor=Decimal("150"))
+            cobrancas = servicos.cobrancas_do_mes(2026, 9, caso=self.caso_juliana)
+        self.assertEqual(servicos_agenda_valor.valor, Decimal("150"))
+        self.assertEqual([(c.tipo, c.devido) for c in cobrancas],
+                         [(servicos.SESSAO, Decimal("150")), (servicos.MENSALIDADE, Decimal("700"))])
+
+    def test_a_extra_sem_valor_continua_dentro_da_mensalidade(self):
+        with contexto.como(self.ana.pk):
+            self.sessao(self.caso_juliana, 4)
+            tipos = [c.tipo for c in servicos.cobrancas_do_mes(2026, 9, caso=self.caso_juliana)]
+        self.assertEqual(tipos, [servicos.MENSALIDADE])
+
+    def test_paciente_sem_valor_combinado_cobra_pelo_valor_da_sessao(self):
+        with contexto.como(self.ana.pk):
+            caso = cadastrar_paciente(Paciente(nome="Sem Valor"))
+            consulta = agenda.cadastrar_avulsa(
+                caso, estado=REALIZADA, valor=Decimal("180"),
+                inicio=timezone.make_aware(datetime.combine(setembro(3), time(15))))
+            [cobranca] = servicos.cobrancas_do_mes(2026, 9, caso=caso)
+            pagamento = servicos.registrar_pagamento_sessao(consulta, data=setembro(3), forma=PIX)
+        self.assertEqual((cobranca.devido, pagamento.valor), (Decimal("180"), Decimal("180")))
+
+    def test_pagar_a_sessao_extra_do_mensalista(self):
+        with contexto.como(self.ana.pk):
+            consulta = self.sessao(self.caso_juliana, 5)
+            agenda.alterar_situacao(consulta, REALIZADA, valor=Decimal("150"))
+            servicos.registrar_pagamento_sessao(consulta, data=setembro(5), forma=PIX)
+            pendentes = [c.tipo for c in self.pendentes(30, self.caso_juliana)]
+        self.assertEqual(pendentes, [servicos.MENSALIDADE])  # a extra foi paga; a mensalidade continua
+
+    def test_sessao_que_nao_cobra_nao_tem_valor(self):
+        with contexto.como(self.ana.pk):
+            consulta = agenda.cadastrar_avulsa(
+                self.caso_marcos, estado=REMARCADA, valor=Decimal("200"),
+                inicio=timezone.make_aware(datetime.combine(setembro(6), time(15))))
+            self.assertIsNone(consulta.valor)
+
+            cobrada = self.sessao(self.caso_marcos, 7)
+            agenda.alterar_situacao(cobrada, REALIZADA, valor=Decimal("300"))
+            agenda.alterar_situacao(cobrada, REMARCADA)
+            cobrada.refresh_from_db()
+        self.assertIsNone(cobrada.valor)
 
 
 class Registro(BaseFinanceiro):

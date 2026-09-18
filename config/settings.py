@@ -46,6 +46,8 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     # Depois da autenticação, porque deriva o escopo do usuário autenticado.
     "core.middleware.EscopoDoPsicologoMiddleware",
+    # Depois do escopo: o quiz de cadastro grava no próprio psicólogo, e a view precisa do papel certo.
+    "contas.middleware.CadastroCompletoMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]

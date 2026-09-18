@@ -8,6 +8,7 @@ from django.utils import timezone
 from agenda.models import Recorrencia
 from atendimentos.models import DURACAO_MAXIMA, Consulta, Desfecho
 from atendimentos.servicos import AVULSO
+from core.formularios import LimpaMascara
 from pacientes.models import Caso, Paciente
 
 _TEXTO = {"class": "form-control"}
@@ -29,6 +30,15 @@ def _campo_cobrar() -> forms.BooleanField:
         help_text="Só tem efeito quando o cliente cancelou — nas outras situações a cobrança vem da situação.")
 
 
+def _campo_valor() -> forms.DecimalField:
+    return forms.DecimalField(
+        label="Valor desta sessão", required=False, min_value=0, max_digits=10, decimal_places=2,
+        widget=forms.TextInput(attrs={"class": "form-control", "inputmode": "numeric",
+                                      "data-mascara": "valor", "placeholder": "0,00"}),
+        help_text="Vazio: vale o combinado com o paciente. Preencha para cobrar esta sessão à parte — a extra "
+                  "de quem paga mensalidade, ou a de quem ainda não tem valor combinado (ADR-070).")
+
+
 def _campo_modalidade() -> forms.ChoiceField:
     return forms.ChoiceField(
         label="Modalidade", choices=Paciente.Modalidade.choices, required=False,
@@ -36,7 +46,9 @@ def _campo_modalidade() -> forms.ChoiceField:
         help_text="Vem do padrão do paciente; mude se esta sessão foi diferente.")
 
 
-class _Remarcacao(forms.Form):
+class _Remarcacao(LimpaMascara, forms.Form):
+    CAMPOS_DECIMAIS = ("valor",)
+
     """Para quando a sessão foi remarcada (ADR-068).
 
     Os dois campos são opcionais no dado — remarcação sem data combinada existe —, mas andam juntos: dia sem
@@ -81,8 +93,9 @@ class CadastroPrevistaForm(_Remarcacao, _HoraEDuracao):
     estado = _campo_situacao()
     cobrar = _campo_cobrar()
     modalidade = _campo_modalidade()
+    valor = _campo_valor()
 
-    field_order = ["estado", "cobrar", "modalidade", "hora", "duracao", "nova_data", "nova_hora"]
+    field_order = ["estado", "cobrar", "modalidade", "hora", "duracao", "valor", "nova_data", "nova_hora"]
 
 
 class CadastroAvulsaForm(_Remarcacao, _HoraEDuracao):
@@ -93,9 +106,10 @@ class CadastroAvulsaForm(_Remarcacao, _HoraEDuracao):
     estado = _campo_situacao()
     cobrar = _campo_cobrar()
     modalidade = _campo_modalidade()
+    valor = _campo_valor()
     data = forms.DateField(label="Data", widget=forms.DateInput(attrs={**_TEXTO, "type": "date"}, format="%Y-%m-%d"))
 
-    field_order = ["caso", "estado", "cobrar", "modalidade", "data", "hora", "duracao",
+    field_order = ["caso", "estado", "cobrar", "modalidade", "data", "hora", "duracao", "valor",
                    "nova_data", "nova_hora"]
 
     def __init__(self, *args, duracao_padrao: int, **kwargs):
@@ -115,8 +129,9 @@ class SituacaoForm(_Remarcacao):
     estado = _campo_situacao()
     cobrar = _campo_cobrar()
     modalidade = _campo_modalidade()
+    valor = _campo_valor()
 
-    field_order = ["estado", "cobrar", "modalidade", "nova_data", "nova_hora"]
+    field_order = ["estado", "cobrar", "modalidade", "valor", "nova_data", "nova_hora"]
 
 
 class FrequenciaForm(forms.Form):

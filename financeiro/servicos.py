@@ -112,14 +112,22 @@ def mensalidade(caso: Caso, ano: int, mes: int) -> Cobranca | None:
 
 
 def sessao(consulta: Consulta) -> Cobranca | None:
-    """O pagamento pendente de uma sessão cobrada, para quem paga por sessão. Vence no dia dela (ADR-063)."""
+    """O pagamento pendente de uma sessão cobrada. Vence no dia dela (ADR-063).
+
+    O valor sai de um de dois lugares: o **desta** sessão, quando o psicólogo o digitou (ADR-070) — é a sessão
+    extra de quem paga mensalidade, ou a de quem ainda não tem valor combinado —, ou a condição por sessão
+    vigente na data. Quem paga mensalidade e não digitou valor não gera cobrança de sessão: já está na mensalidade.
+    """
     if not consulta.cobrada:
         return None
     dia = timezone.localtime(consulta.inicio).date()
-    condicao = consulta.caso.condicao_vigente(dia)
-    if condicao is None or condicao.modalidade != CondicaoCobranca.Modalidade.POR_SESSAO:
-        return None
-    return Cobranca(caso=consulta.caso, tipo=SESSAO, vencimento=dia, devido=condicao.valor,
+    devido = consulta.valor
+    if devido is None:
+        condicao = consulta.caso.condicao_vigente(dia)
+        if condicao is None or condicao.modalidade != CondicaoCobranca.Modalidade.POR_SESSAO:
+            return None
+        devido = condicao.valor
+    return Cobranca(caso=consulta.caso, tipo=SESSAO, vencimento=dia, devido=devido,
                     pagamentos=list(consulta.pagamentos.all()), consulta=consulta)
 
 

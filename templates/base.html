@@ -37,6 +37,7 @@ importa é a tela existir e não mentir, não o CSS ser autoral.
     .barra .separador { width: 24px; height: 1px; background: #dee2e6; margin: 6px 0; }
     .barra .espaco { flex: 1; }
     .conteudo { margin-left: var(--barra); padding: 1.25rem 1.5rem 3rem; }
+    .conteudo.sem-barra { margin-left: 0; max-width: 720px; margin-inline: auto; }
     .card { border-color: #e4e7ea; }
     .table > :not(caption) > * > * { padding: .5rem .6rem; }
     .rotulo { font-size: .72rem; text-transform: uppercase; letter-spacing: .04em; color: #8a9299; }
@@ -59,9 +60,10 @@ importa é a tela existir e não mentir, não o CSS ser autoral.
   </div>
 </header>
 
-{% if user.is_authenticated %}{% include "components/_barra.html" %}{% endif %}
+{% comment %}O quiz de cadastro esconde a barra: enquanto ele não termina não há para onde ir (ADR-071).{% endcomment %}
+{% if user.is_authenticated and not esconder_barra %}{% include "components/_barra.html" %}{% endif %}
 
-<main class="conteudo">
+<main class="conteudo{% if esconder_barra %} sem-barra{% endif %}">
   {% if messages %}
     {% for m in messages %}
       <div class="alert alert-{{ m.tags|default:'info' }} alert-dismissible fade show py-2" role="alert">

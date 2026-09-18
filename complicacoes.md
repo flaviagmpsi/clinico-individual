@@ -2275,6 +2275,48 @@ remarcada guarda esse destino; a data nova aparece na agenda como **sessão a ca
 - A semana continua na Agenda, a um clique. O painel responde "o que eu faço agora"; a agenda, "como está a
   minha semana".
 
+## ADR-070 — O valor desta sessão (revisa a ADR-063)
+
+**Status:** ✅ Aceita — Rodada 43.
+
+**Decisão do usuário:** a sessão extra de quem paga mensalidade **não** cobra por padrão, mas a tela oferece
+cobrá-la à parte, com o valor digitado na hora. Vale também para quem atende de forma **infrequente**, marcando
+sessão de tempos em tempos.
+
+**Decisões de arquitetura:**
+- A consulta ganha um `valor` **opcional**. Vazio é o caso normal: vale a condição de cobrança do paciente —
+  mensalidade ou valor por sessão. Preenchido, ele manda, e a sessão vira uma cobrança própria.
+- Isso resolve dois buracos com um campo só: a **sessão extra do mensalista** (antes não gerava nada) e a
+  sessão de quem ainda **não tem valor combinado** (ADR-012, antes idem).
+- Quem paga **por sessão** e marca de forma aleatória já estava resolvido: a consulta avulsa gera a cobrança
+  pelo valor vigente. O campo só entra quando esta sessão foge do combinado.
+- Sessão que não entra na cobrança não tem valor: o model recusa, e corrigir a situação para uma que não cobra
+  apaga o valor junto — dinheiro sem sessão correspondente é o erro que a ADR-063 já evitava do outro lado.
+
+## ADR-071 — Quiz de cadastro: a conta nasce completa (fecha a P-77)
+
+**Status:** ✅ Aceita — Rodada 43.
+
+**Decisão do usuário:** quiz **completo** na criação da conta, e as mesmas informações ficam no perfil do
+psicólogo: nome completo, telefone, endereço da clínica, CPF e/ou CNPJ, se atende como PF ou PJ, **abordagem**,
+**se atende online e/ou presencial**, e CRP.
+
+**Decisões de arquitetura:**
+- **Quatro passos.** O primeiro cria a conta e já loga: e-mail, senha, nome, CPF, telefone e CRP — não é
+  escolha de produto, é o que `Psicologo` exige desde a ADR-044, e a validação roda em toda gravação (P-69).
+  Os outros três são regime, abordagem e formas de atendimento, e clínica.
+- **Cada passo grava o que coletou.** Quem larga no meio volta de onde parou, em vez de recomeçar — e o
+  sistema já tem o que foi respondido até ali.
+- `quiz_concluido_em` marca o fim. Enquanto estiver vazio, `CadastroCompletoMiddleware` leva qualquer tela de
+  volta ao quiz: sem regime e sem forma de atendimento, metade do que o sistema propõe sai errado. Passam só o
+  próprio quiz, o login e a saída — senão a conta recém-criada ficaria presa sem conseguir nem sair.
+- **Endereço só é obrigatório para quem atende presencialmente.** Exigir consultório de quem só atende online
+  seria inventar uma exigência que a profissão não faz.
+- **Abordagem é lista com "outra"** e campo livre ao lado: é o campo do psicólogo, não uma taxonomia oficial,
+  e nenhuma lista fechada daria conta.
+- A assinatura (ADR-038) continua no passo 7: hoje a conta se cria e entra. Quando houver cobrança, ela entra
+  **entre** o passo 1 e o painel, sem mexer no quiz.
+
 ## Impeditivos
 
 | # | Impeditivo | Situação |

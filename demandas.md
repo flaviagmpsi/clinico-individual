@@ -20,7 +20,7 @@ correu 27 rodadas antes da primeira linha de código, de propósito.
 
 ## ⚡ Onde o código está hoje
 
-**Passos 0 a 3 concluídos: fundação, cadastro, agenda, financeiro básico, painel e prontuário escrito à mão.** Rodando, com 338 testes verdes contra PostgreSQL real.
+**Passos 0 a 3 concluídos: fundação, cadastro, agenda, financeiro básico, painel e prontuário escrito à mão.** Rodando, com 357 testes verdes contra PostgreSQL real.
 
 | App | Situação | O que existe |
 |---|---|---|
@@ -126,7 +126,7 @@ que só fazem sentido quando houver saída fiscal.
 | C-07 | Validação de **formato** do CRP. **Sem** consulta ao cadastro do CFP | ⚙️ | ✅ | 🟢 | ADR-044 |
 | C-08 | Campos vazios para `situacao_registro` e `verificado_em`, prontos caso a verificação volte | 🗄️ | ✅ | 🟢 | ADR-044 |
 | C-09 | CRP da empresa (PJ): campo **opcional** | 🎨🗄️ | ✅ | 🟢 | ADR-044 |
-| C-10 | **Quiz de cadastro**: as informações do psicólogo e da clínica coletadas em passos, na criação da conta | 🎨⚙️ | 🟡 | ⚪ | P-77 — o perfil já guarda os campos (ADR-067) |
+| C-10 | **Quiz de cadastro** em quatro passos: conta, regime, abordagem e formas de atendimento, clínica. Tranca o sistema até terminar | 🎨⚙️🗄️ | ✅ | 🟢 | ADR-071 |
 | C-11 | **Dados da clínica no perfil**: nome, telefone e endereço, com regime PF/PJ, CNPJ e razão social | 🎨🗄️ | ✅ | 🟢 | ADR-067 |
 | C-03 | Padrões do psicólogo: duração da sessão (50 min), vencimento da mensalidade, cobro falta (sim/não) | 🎨🗄️ | ✅ | 🟢 | ADR-025 |
 | C-04 | Toda tela de cadastro mostra **de onde veio** o valor herdado do perfil | 🎨 | ✅ | 🟢 | ADR-025 |
@@ -187,6 +187,7 @@ em atendimento de casal. Ver **P-70**, resolvida em parte.
 | A-17 | **Filtro de período** na agenda, com filtro por situação junto | 🎨⚙️ | ✅ | 🟢 | ADR-065 |
 | A-18 | **Percentual de online × presencial** entre as sessões da agenda | 🎨⚙️ | ✅ | 🟢 | ADR-065 |
 | A-19 | **Remarcada diz para quando**: a data nova entra na agenda esperando cadastro | 🎨⚙️🗄️ | ✅ | 🟢 | ADR-068 |
+| A-20 | **Valor desta sessão**: cobrar à parte a extra do mensalista e a sessão de quem não tem valor combinado | 🎨⚙️🗄️ | ✅ | 🟢 | ADR-070 |
 
 ### Integração com Google Agenda — depois da agenda própria (ADR-051)
 

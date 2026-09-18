@@ -41,12 +41,12 @@
     </div>
 
     {% comment %}
-    Sem "criar conta" aqui: o cadastro do psicólogo depende do CRP e do ciclo de assinatura
-    (ADR-044, ADR-038), que são o passo 7. E não existe acesso de paciente, em hipótese
-    nenhuma — ADR-039.
+    O cadastro cria a conta do **psicólogo** e segue para o quiz (C-10, ADR-071). A assinatura entra depois
+    (ADR-038), no passo 7. Acesso de paciente não existe, em hipótese nenhuma — ADR-039.
     {% endcomment %}
     <p class="text-center text-muted small mt-3 mb-0">
-      Acesso exclusivo do psicólogo assinante.
+      Ainda não tem conta? <a href="{% url 'contas:criar_conta' %}" class="text-decoration-none">Criar conta</a>.
+      <br>Acesso exclusivo do psicólogo.
     </p>
   </div>
 </body>

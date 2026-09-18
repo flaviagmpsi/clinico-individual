@@ -42,6 +42,11 @@
         <div class="col-md-4">{% include "components/_campo.html" with campo=form.hora %}</div>
         <div class="col-md-4">{% include "components/_campo.html" with campo=form.duracao %}</div>
       </div>
+      {% comment %}ADR-070: o valor desta sessão, quando ela não segue o combinado do paciente.{% endcomment %}
+      <div class="row g-3 mt-1">
+        <div class="col-md-4">{% include "components/_campo.html" with campo=form.valor %}</div>
+      </div>
+
       {% comment %}ADR-068: a remarcada diz para quando foi. A sessão nova não é gravada agora — ela entra na
       agenda esperando o cadastro, no dia em que acontecer.{% endcomment %}
       <div class="row g-3 mt-1 border-top pt-3">

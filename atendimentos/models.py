@@ -66,6 +66,12 @@ class Consulta(TenantOwnedModel):
     modalidade = models.CharField("Modalidade", max_length=10, choices=Paciente.Modalidade.choices,
                                   default=Paciente.Modalidade.PRESENCIAL)
 
+    # ADR-070: o valor **desta** sessão, quando ela não segue o combinado do paciente — a sessão extra de quem
+    # paga mensalidade, ou a de quem ainda não tem valor combinado (ADR-012). Vazio: vale a condição vigente.
+    valor = models.DecimalField("Valor desta sessão", max_digits=10, decimal_places=2, null=True, blank=True,
+                                validators=[MinValueValidator(0)],
+                                help_text="Vazio: vale o valor combinado com o paciente.")
+
     # ADR-068: a sessão remarcada diz **para quando** foi. O destino não é uma consulta — a sessão nova só
     # vira registro quando acontecer (ADR-060) —, é a sessão que a agenda passa a esperar naquele horário.
     remarcada_para = models.DateTimeField("Remarcada para", null=True, blank=True)
@@ -114,6 +120,8 @@ class Consulta(TenantOwnedModel):
             raise ValidationError("A frequência pertence a outro atendimento.")
         if self.recorrencia_id and self.data_prevista and not self.recorrencia.ocorre_em(self.data_prevista):
             raise ValidationError("Esta data não é uma sessão prevista pela frequência.")
+        if self.valor is not None and not self.cobrada:
+            raise ValidationError("Sessão que não entra na cobrança não tem valor.")
         if self.remarcada_para:
             if self.estado != self.Estado.REMARCADA:
                 raise ValidationError("Só sessão remarcada tem data nova.")

@@ -115,7 +115,7 @@ def _apagar_conta_de_demonstracao(psicologo) -> int:
 PSICOLOGOS = [
     {
         "email": "ana@exemplo.com", "nome_completo": "Ana Ribeiro", "cpf": "11111111111",
-        "crp_numero": "111111",
+        "crp_numero": "111111", "abordagem": "TCC",
         "pacientes": [
             dict(nome="Marcos Vieira", cpf="52998224725", data_nascimento=date(1988, 4, 12),
                  telefone="31988112233", email="marcos@exemplo.com", cep="30140071",
@@ -181,7 +181,7 @@ PSICOLOGOS = [
     },
     {
         "email": "bruno@exemplo.com", "nome_completo": "Bruno Carvalho", "cpf": "22222222222",
-        "crp_numero": "222222",
+        "crp_numero": "222222", "abordagem": "PSICANALISE",
         "pacientes": [
             dict(nome="Camila Duarte", cpf="03119999708", data_nascimento=date(1990, 9, 3),
                  telefone="21988776655", cidade="Rio de Janeiro", uf="RJ",
@@ -242,7 +242,13 @@ class Command(BaseCommand):
                 password=SENHA, telefone="31988887777", crp_regiao="04",
                 # `is_staff`/`is_superuser` só para o `/admin/` continuar servindo de conferência
                 # do passo 0. Nada no produto olha para essas flags.
-                is_staff=True, is_superuser=True, **dados,
+                is_staff=True, is_superuser=True,
+                # Contas de demonstração entram direto: o quiz de cadastro (ADR-071) já está respondido.
+                quiz_concluido_em=timezone.now(), atende_online=True, atende_presencial=True,
+                nome_clinica=f"Consultório de {modelo['nome_completo'].split()[0]}",
+                telefone_clinica="3133334444", cep="30140071", logradouro="Rua da Bahia", numero="1200",
+                bairro="Lourdes", cidade="Belo Horizonte", uf="MG",
+                **dados,
             )
             with contexto.como(psicologo.pk):
                 por_nome = {}
