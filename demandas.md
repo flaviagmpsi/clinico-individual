@@ -370,6 +370,7 @@ dias sem sessão, sessões no mês e o financeiro do mês. A tela de análise (I
 | I-12 | **Gráfico de resultado previsto no ano**: receitas × despesas, realizado e previsto, com a linha do resultado | 🎨⚙️ | ✅ | 🟢 | ADR-083, ADR-084 |
 | I-13 | **Aba Estatísticas**: horário mais usado, dia com mais sessões, atendimentos semanais × quinzenais × avulsos, presença por paciente | 🎨⚙️ | ✅ | 🟢 | ADR-084 |
 | I-14 | **Aniversariantes do mês** no painel, só de quem está em atendimento | 🎨 | ✅ | 🟢 | ADR-084 |
+| I-15 | **Navegação**: barra com nomes ao passar o mouse e faixa no celular; caminho clicável no topo; sub-abas do paciente presentes em todas as telas dele | 🎨 | ✅ | 🟢 | ADR-088 |
 
 ---
 

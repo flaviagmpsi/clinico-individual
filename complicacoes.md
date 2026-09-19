@@ -2781,6 +2781,33 @@ do ano em algum botão em cima?" — e, sobre o que mostrar, "quero a opção qu
   atendimento, e quem não teve sessão vem por último como "sem sessão no mês". Quem está encerrado não entra. No
   modo ano entra só quem teve sessão — o ano de quem começou em dezembro não é zero.
 
+## ADR-088 — Navegação: a barra diz o nome, o topo diz o caminho, e as sub-abas acompanham o paciente
+
+**Contexto.** Rodada 52. "Vamos deixar o modo de usar do sistema mais agradável": o usuário pediu o nome das abas ao
+passar o mouse, e que entrar, sair e voltar — a uma aba ou a uma sub-aba — fosse fácil e lógico. Levantado o que
+existia: barra só de ícones com tooltip; o nome da seção no topo sem link; a ficha do paciente com sub-abas que
+levavam a telas de outras seções e lá **sumiam**, então voltar de "Documentos do Marcos" para "Anamnese do Marcos"
+exigia passar pela lista de pacientes; e, no celular, a barra simplesmente não existia.
+
+**Decisões de arquitetura:**
+- **A barra abre ao passar o mouse** (ou ao receber foco pelo teclado) e mostra o nome ao lado de cada ícone; fecha
+  ao sair. Abre por cima do conteúdo, que não se mexe — nada pula na tela. A aba da seção corrente fica marcada, e
+  clicar nela é o "sair": volta à raiz da seção. No celular a barra vira uma faixa horizontal abaixo do topo, com
+  rolagem, em vez de sumir.
+- **O topo mostra o caminho**: a seção, como link para a raiz dela (`core.templatetags.navegacao.raiz_da_secao`,
+  resolvido pelo nome do app — coisa de navegação, sem importar domínio), e depois o nome da página, que cada
+  template declara em `{% block pagina %}`. É o "voltar um nível" que sempre está no mesmo lugar.
+- **As sub-abas do paciente acompanham o paciente.** A mesma barra — Cadastro · Anamnese · Registros de sessão ·
+  Prontuário geral · Documentos — aparece na ficha, na anamnese, nos registros de sessão dele, no prontuário geral
+  e nos documentos dele. De qualquer uma se vai a qualquer outra, sem passar pela lista. É só navegação: os
+  registros continuam na seção Prontuários e o prontuário geral, em Documentos (P-90 segue aberta); as sub-abas
+  levam até lá com o paciente já escolhido.
+- **Nomes que dizem o que a tela contém**: na ficha, a sub-aba chama-se "Registros de sessão", e o prontuário geral,
+  "Prontuário geral". O nome da seção na barra lateral ("Prontuários") não mudou — é decisão do usuário (P-90).
+- Botões "Voltar" e "Cancelar" foram conferidos: cada um leva ao lugar de onde se veio (a ficha, a agenda na
+  semana da sessão, a lista); o "Ficha" avulso da lista de registros saiu, porque a sub-aba Cadastro faz isso.
+- Fora desta rodada: lembrar a última sub-aba aberta por paciente (exige estado por navegador) e atalhos de teclado.
+
 ## Impeditivos
 
 | # | Impeditivo | Situação |

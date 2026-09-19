@@ -4,7 +4,7 @@
 
 {% block conteudo %}
 <div class="d-flex align-items-center flex-wrap gap-2 mb-2">
-  <h1 class="h5 mb-0">Documentos psicológicos</h1>
+  <h1 class="h5 mb-0">Documentos psicológicos{% if paciente %} <span class="text-muted fw-normal">· {{ paciente.nome }}</span>{% endif %}</h1>
   <span class="text-muted small">modelos no formato que o CFP pede, prontos para preencher</span>
 </div>
 
@@ -38,6 +38,8 @@ registros de sessão ficam na aba Prontuários, e é deles que sai a evolução.
     </div>
   </div>
 </div>
+
+{% if paciente %}{% include "pacientes/_abas.html" with aba="documentos" %}<div class="mb-3"></div>{% endif %}
 
 {% for titulo, lista in grupos %}
   <div class="rotulo mt-3 mb-2">{{ titulo }}</div>

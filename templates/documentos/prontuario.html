@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% block titulo %}Prontuário psicológico{% if paciente %} · {{ paciente.nome }}{% endif %}{% endblock %}
 {% block secao %}Documentos{% endblock %}
+{% block pagina %}<span class="separa">›</span>Prontuário psicológico{% if paciente %} · {{ paciente.nome }}{% endif %}{% endblock %}
 
 {% block conteudo %}
 {% comment %}
@@ -20,8 +21,9 @@ de sessão confirmados e **não se edita nesta tela** — é o que impede a dúv
   .folha .sugerido { font-family: system-ui, sans-serif; font-size: 8.5pt; color: #8a6d00; margin: 0 0 2px; }
 </style>
 
+{% if paciente %}{% include "pacientes/_abas.html" with aba="prontuario" %}<div class="mb-3"></div>{% endif %}
 <ul class="nav nav-pills flex-wrap gap-1 small mb-3">
-  <li class="nav-item"><a class="nav-link py-1 px-2" href="{% url 'documentos:aba' %}"><i class="bi bi-grid"></i> Todos</a></li>
+  <li class="nav-item"><a class="nav-link py-1 px-2" href="{% url 'documentos:aba' %}{% if paciente %}?paciente={{ paciente.pk }}{% endif %}"><i class="bi bi-grid"></i> Todos</a></li>
   <li class="nav-item"><a class="nav-link py-1 px-2 active" href="{% url 'documentos:escolher_prontuario' %}">Prontuário psicológico</a></li>
   {% for titulo, lista in grupos %}{% for m in lista %}
     <li class="nav-item"><a class="nav-link py-1 px-2" href="{% url 'documentos:modelo' m.codigo %}">{{ m.nome }}</a></li>

@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% block titulo %}{% if object %}Editar{% else %}Novo{% endif %} paciente{% endblock %}
 {% block secao %}Pacientes{% endblock %}
+{% block pagina %}<span class="separa">›</span>{% if object %}{{ object.nome }}{% else %}Novo paciente{% endif %}{% endblock %}
 
 {% comment %}
 Campos agrupados por assunto, e não na ordem do model: quem cadastra tem o nome e o telefone à

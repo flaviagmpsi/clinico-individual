@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% block titulo %}{% if object %}Editar{% else %}Nova{% endif %} despesa{% endblock %}
 {% block secao %}Financeiro{% endblock %}
+{% block pagina %}<span class="separa">›</span>{% if object %}Editar despesa{% else %}Nova despesa{% endif %}{% endblock %}
 
 {% block conteudo %}
 <div style="max-width:620px">

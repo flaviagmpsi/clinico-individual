@@ -1,44 +1,46 @@
 {% comment %}
-Navegação. Os módulos que ainda não existem aparecem **apagados**, com o passo que os constrói
-no tooltip — em vez de sumirem ou de levarem a uma tela vazia. É a ADR-012 aplicada à navegação:
-mostrar a forma do produto e declarar o que ainda não está pronto vale mais que esconder.
+Navegação (ADR-088). Ícones fechados; ao passar o mouse a barra abre e mostra o nome de cada aba ao lado do ícone.
+A aba ativa é a da seção em que se está — clicar nela volta à raiz da seção. No celular a barra vira uma faixa
+horizontal logo abaixo do topo, em vez de sumir.
+
+Os módulos que ainda não existem aparecem **apagados**, com o passo que os constrói no tooltip (ADR-012).
 {% endcomment %}
-<nav class="barra">
+<nav class="barra" aria-label="Seções">
   <a href="{% url 'painel' %}" title="Painel"
      class="{% if request.resolver_match.url_name == 'painel' %}ativo{% endif %}">
-    <i class="bi bi-speedometer2"></i></a>
+    <i class="bi bi-speedometer2"></i><span class="nome">Painel</span></a>
   <a href="{% url 'pacientes:lista' %}" title="Pacientes"
      class="{% if request.resolver_match.app_name == 'pacientes' %}ativo{% endif %}">
-    <i class="bi bi-people"></i></a>
+    <i class="bi bi-people"></i><span class="nome">Pacientes</span></a>
 
   <div class="separador"></div>
 
   <a href="{% url 'atendimentos:agenda' %}" title="Agenda"
      class="{% if request.resolver_match.app_name == 'atendimentos' %}ativo{% endif %}">
-    <i class="bi bi-calendar-week"></i></a>
+    <i class="bi bi-calendar-week"></i><span class="nome">Agenda</span></a>
   <a href="{% url 'agenda:horarios' %}" title="Horários"
      class="{% if request.resolver_match.app_name == 'agenda' %}ativo{% endif %}">
-    <i class="bi bi-clock"></i></a>
+    <i class="bi bi-clock"></i><span class="nome">Horários</span></a>
   <a href="{% url 'prontuarios:lista' %}" title="Prontuários"
      class="{% if request.resolver_match.app_name == 'prontuarios' %}ativo{% endif %}">
-    <i class="bi bi-journal-medical"></i></a>
+    <i class="bi bi-journal-medical"></i><span class="nome">Prontuários</span></a>
   <a href="{% url 'financeiro:mes' %}" title="Financeiro"
      class="{% if request.resolver_match.app_name == 'financeiro' %}ativo{% endif %}">
-    <i class="bi bi-cash-stack"></i></a>
+    <i class="bi bi-cash-stack"></i><span class="nome">Financeiro</span></a>
   <a href="{% url 'estatisticas' %}" title="Estatísticas"
      class="{% if request.resolver_match.url_name == 'estatisticas' %}ativo{% endif %}">
-    <i class="bi bi-bar-chart-line"></i></a>
+    <i class="bi bi-bar-chart-line"></i><span class="nome">Estatísticas</span></a>
   <a href="{% url 'documentos:aba' %}" title="Documentos"
      class="{% if request.resolver_match.app_name == 'documentos' %}ativo{% endif %}">
-    <i class="bi bi-file-earmark-text"></i></a>
+    <i class="bi bi-file-earmark-text"></i><span class="nome">Documentos</span></a>
 
   <div class="espaco"></div>
 
   <a href="{% url 'contas:perfil' %}" title="Meu perfil"
      class="{% if request.resolver_match.url_name == 'perfil' %}ativo{% endif %}">
-    <i class="bi bi-person-gear"></i></a>
+    <i class="bi bi-person-gear"></i><span class="nome">Meu perfil</span></a>
   <form action="{% url 'contas:sair' %}" method="post" class="m-0">
     {% csrf_token %}
-    <button type="submit" title="Sair"><i class="bi bi-box-arrow-right"></i></button>
+    <button type="submit" title="Sair"><i class="bi bi-box-arrow-right"></i><span class="nome">Sair</span></button>
   </form>
 </nav>

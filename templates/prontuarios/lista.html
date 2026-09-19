@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% block titulo %}Prontuários{% endblock %}
 {% block secao %}Prontuários{% endblock %}
+{% block pagina %}<span class="separa">›</span>{% if paciente %}{{ paciente.nome }}{% else %}Para escrever{% endif %}{% endblock %}
 
 {% block conteudo %}
 <div class="d-flex align-items-center mb-3">
@@ -12,10 +13,11 @@
       <option value="">Pendentes de todos os pacientes</option>
       {% for p in pacientes %}<option value="{{ p.pk }}"{% if paciente and paciente.pk == p.pk %} selected{% endif %}>{{ p.nome }}</option>{% endfor %}
     </select>
-    {% if paciente %}<a href="{% url 'pacientes:detalhe' paciente.pk %}" class="btn btn-sm btn-outline-secondary text-nowrap">Ficha</a>{% endif %}
   </form>
 </div>
 
+
+{% if paciente %}{% include "pacientes/_abas.html" with aba="registros" %}<div class="mb-3"></div>{% endif %}
 
 {% comment %}ADR-064: toda sessão realizada pede um prontuário confirmado por participante.{% endcomment %}
 <p class="text-muted small mb-3" style="max-width:760px">

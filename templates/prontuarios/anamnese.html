@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% block titulo %}Anamnese · {{ paciente.nome }}{% endblock %}
 {% block secao %}Pacientes{% endblock %}
+{% block pagina %}<span class="separa">›</span>{{ paciente.nome }} · Anamnese{% endblock %}
 
 {% block conteudo %}
 {% comment %}

@@ -25,23 +25,44 @@ importa é a tela existir e não mentir, não o CSS ser autoral.
 
     .topo { position: fixed; top: 0; left: 0; right: 0; height: var(--topo); z-index: 1030;
             background: #fff; border-bottom: 1px solid #dee2e6; }
+    /* ADR-088: a barra fica só com ícones e abre com os nomes ao passar o mouse (ou ao receber foco pelo teclado).
+       Ela abre por cima do conteúdo, que não se mexe. */
     .barra { position: fixed; top: var(--topo); left: 0; width: var(--barra);
              height: calc(100vh - var(--topo)); background: #fff; border-right: 1px solid #dee2e6;
-             display: flex; flex-direction: column; align-items: center; padding: 8px 0; gap: 2px; z-index: 1020; }
-    .barra a, .barra button { display: flex; align-items: center; justify-content: center;
-             width: 40px; height: 40px; border-radius: 10px; color: #6c757d; font-size: 1.15rem;
+             display: flex; flex-direction: column; padding: 8px 10px; gap: 2px; z-index: 1020;
+             overflow: hidden; transition: width .15s ease, box-shadow .15s ease; }
+    .barra:hover, .barra:focus-within { width: 208px; box-shadow: 4px 0 16px rgba(0,0,0,.08); }
+    .barra a, .barra button { display: flex; align-items: center; gap: 12px; width: 100%; height: 40px;
+             padding: 0 0 0 9px; border-radius: 10px; color: #6c757d; font-size: 1.15rem; white-space: nowrap;
              text-decoration: none; border: 0; background: transparent; }
+    .barra .nome { font-size: .88rem; opacity: 0; transition: opacity .1s ease; }
+    .barra:hover .nome, .barra:focus-within .nome { opacity: 1; }
     .barra a:hover, .barra button:hover { background: #eef2f1; color: var(--tinta); }
     .barra a.ativo { background: var(--tinta); color: #fff; }
     .barra .adiado { opacity: .35; cursor: not-allowed; }
-    .barra .separador { width: 24px; height: 1px; background: #dee2e6; margin: 6px 0; }
+    .barra .separador { height: 1px; background: #dee2e6; margin: 6px 8px; }
     .barra .espaco { flex: 1; }
+    .barra form { margin: 0; }
     .conteudo { margin-left: var(--barra); padding: 1.25rem 1.5rem 3rem; }
     .conteudo.sem-barra { margin-left: 0; max-width: 720px; margin-inline: auto; }
+    /* O caminho no topo: seção › página. A seção é link para a raiz dela. */
+    .caminho a { color: #6c757d; text-decoration: none; }
+    .caminho a:hover { color: var(--tinta); text-decoration: underline; }
+    .caminho .separa { color: #adb5bd; margin: 0 .35rem; }
     .card { border-color: #e4e7ea; }
     .table > :not(caption) > * > * { padding: .5rem .6rem; }
     .rotulo { font-size: .72rem; text-transform: uppercase; letter-spacing: .04em; color: #8a9299; }
-    @media (max-width: 768px) { .conteudo { margin-left: 0; padding: 1rem; } .barra { display: none; } }
+    /* No celular a barra vira uma faixa horizontal, rolável, logo abaixo do topo — em vez de sumir. */
+    @media (max-width: 768px) {
+      .conteudo { margin-left: 0; padding: 1rem; }
+      body { padding-top: calc(var(--topo) + 48px); }
+      .barra, .barra:hover, .barra:focus-within { width: 100%; height: 48px; flex-direction: row; align-items: center;
+             padding: 4px 8px; overflow-x: auto; box-shadow: none; border-right: 0; border-bottom: 1px solid #dee2e6; }
+      .barra a, .barra button { width: auto; height: 40px; padding: 0 10px; }
+      .barra .nome { display: none; }
+      .barra .separador { width: 1px; height: 24px; margin: 0 4px; }
+      .barra .espaco { display: none; }
+    }
   </style>
 </head>
 <body>
@@ -50,7 +71,12 @@ importa é a tela existir e não mentir, não o CSS ser autoral.
   <a href="{% url 'painel' %}" class="fw-semibold text-decoration-none me-3" style="color: var(--tinta)">
     <i class="bi bi-clipboard2-pulse"></i> Hamilton
   </a>
-  <span class="text-muted small d-none d-md-inline">{% block secao %}{% endblock %}</span>
+  {% comment %}ADR-088: o caminho. A seção leva à raiz dela; a página, quando o template a nomeia, vem depois.{% endcomment %}
+  {% load navegacao %}{% raiz_da_secao request as raiz %}
+  <span class="caminho small d-none d-md-inline">
+    {% if raiz %}<a href="{{ raiz }}">{% endif %}{% block secao %}{% endblock %}{% if raiz %}</a>{% endif %}
+    {% block pagina %}{% endblock %}
+  </span>
   <div class="ms-auto d-flex align-items-center gap-2">
     {% if user.is_authenticated %}
       <a href="{% url 'contas:perfil' %}" class="text-decoration-none small text-muted">
