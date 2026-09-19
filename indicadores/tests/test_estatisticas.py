@@ -98,6 +98,18 @@ class RetratoDaClinica(BaseEstatisticas):
         por_paciente = [(str(caso), p.percentual, p.presentes, p.esperadas) for caso, p in self.montar().por_paciente]
         self.assertEqual(por_paciente, [("Marcos", 67, 2, 3), ("Júlia", 100, 1, 1)])
 
+    def test_no_mes_quem_esta_em_atendimento_sem_sessao_aparece_por_ultimo(self):
+        """ADR-087: "sem sessão no mês" é informação real da clínica; o Pedro, encerrado, não entra."""
+        with contexto.como(self.ana.pk):
+            setembro = estatisticas.montar(2026, 9)
+            agosto = estatisticas.montar(2026, 8)
+        self.assertEqual(setembro.mes, 9)
+        self.assertEqual([(str(caso), p.percentual) for caso, p in setembro.por_paciente],
+                         [("Marcos", 67), ("Júlia", 100)])
+        self.assertEqual([(str(caso), p.total) for caso, p in agosto.por_paciente], [("Júlia", 0), ("Marcos", 0)])
+        self.assertEqual((agosto.presenca.total, agosto.horario_mais_usado), (0, None))
+        self.assertEqual(len(agosto.fluxos), 12)  # o dinheiro é sempre do ano
+
     def test_ano_sem_sessao_nao_quebra(self):
         e = self.montar(2024)
         self.assertEqual((e.presenca.total, e.horario_mais_usado, e.dia_mais_cheio, e.por_paciente), (0, None, None, []))
@@ -152,8 +164,10 @@ class Telas(TransactionTestCase):
     def test_estatisticas_exige_login_e_mostra_so_a_propria_clinica(self):
         self.assertEqual(self.client.get(reverse("estatisticas")).status_code, 302)
         self.entrar(self.ana)
-        resposta = self.client.get(reverse("estatisticas"), {"ano": "2026"})
-        self.assertContains(resposta, "Resultado previsto do ano")
+        resposta = self.client.get(reverse("estatisticas"), {"periodo": "ano", "ano": "2026"})
+        self.assertContains(resposta, "Resultado previsto de 2026")
+        self.assertContains(resposta, "Receitas de 2026")
+        self.assertIsNone(resposta.context["mes"])
         self.assertContains(resposta, "1 de 2 sessões realizadas")
         self.assertContains(resposta, "14h")
         self.assertNotContains(resposta, "20h")
@@ -162,9 +176,16 @@ class Telas(TransactionTestCase):
         self.assertEqual(len(resposta.context["grafico"]["resultado"]), 12)
         self.assertContains(self.client.get(reverse("painel")), reverse("estatisticas"))  # a barra lateral leva até lá
 
-    def test_ano_invalido_cai_no_ano_corrente(self):
+    def test_abre_no_mes_corrente_e_lixo_cai_no_padrao(self):
+        """ADR-087: o padrão é o mês; o ano é opção no topo."""
         self.entrar(self.ana)
-        self.assertEqual(self.client.get(reverse("estatisticas"), {"ano": "abc"}).context["ano"], timezone.localdate().year)
+        hoje = timezone.localdate()
+        resposta = self.client.get(reverse("estatisticas"))
+        self.assertEqual((resposta.context["ano"], resposta.context["mes"]), (hoje.year, hoje.month))
+        self.assertNotContains(resposta, "Receitas de")  # os cartões de dinheiro são do modo ano
+        self.assertContains(resposta, "fluxo de caixa")
+        self.assertEqual(self.client.get(reverse("estatisticas"), {"mes": "abc"}).context["mes"], hoje.month)
+        self.assertIsNone(self.client.get(reverse("estatisticas"), {"periodo": "ano", "ano": "abc"}).context["mes"])
 
     def test_painel_mostra_os_aniversariantes_do_mes(self):
         self.entrar(self.ana)

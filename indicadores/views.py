@@ -7,8 +7,11 @@ Mora em `indicadores`, que depende de todos os apps e de quem ninguém depende (
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.views.generic import TemplateView
 
+from datetime import date
+
 from django.utils import timezone
 
+from financeiro import servicos as servicos_financeiros
 from indicadores import estatisticas
 from indicadores.servicos import montar_painel
 
@@ -42,14 +45,27 @@ class Estatisticas(LoginRequiredMixin, TemplateView):
     def get_context_data(self, **kwargs):
         contexto = super().get_context_data(**kwargs)
         hoje = timezone.localdate()
-        pedido = self.request.GET.get("ano", "")
-        ano = int(pedido) if pedido.isdigit() and 2000 <= int(pedido) <= 2100 else hoje.year
-        dados = estatisticas.montar(ano)
+        # `?periodo=ano&ano=2026` ou `?mes=2026-09` (o padrão é o mês corrente — ADR-087). Lixo cai no padrão.
+        ano, mes = hoje.year, hoje.month
+        if self.request.GET.get("periodo") == "ano":
+            pedido = self.request.GET.get("ano", "")
+            ano, mes = (int(pedido) if pedido.isdigit() and 2000 <= int(pedido) <= 2100 else hoje.year), None
+        else:
+            try:
+                ano, mes = (int(parte) for parte in self.request.GET.get("mes", "").split("-"))
+                date(ano, mes, 1)
+            except ValueError:
+                ano, mes = hoje.year, hoje.month
+        dados = estatisticas.montar(ano, mes)
+        inicio = date(ano, mes or 1, 1)
         contexto.update(
-            ano=ano, este_ano=hoje.year, e=dados,
+            ano=ano, mes=mes, inicio=inicio, este_ano=hoje.year, e=dados, hoje=hoje,
+            anterior=servicos_financeiros.mes_anterior(inicio), proximo=servicos_financeiros.mes_seguinte(inicio),
+            este=date(hoje.year, hoje.month, 1),
             # O que os gráficos leem. Só números e rótulos — nenhum nome de paciente vai para o JavaScript.
             grafico={
                 "meses": estatisticas.MESES,
+                "mes_em_foco": mes,
                 "receitas_recebidas": [float(f.receitas_recebidas) for f in dados.fluxos],
                 "receitas_a_receber": [float(f.receitas_a_receber) for f in dados.fluxos],
                 "despesas_pagas": [float(f.despesas_pagas) for f in dados.fluxos],

@@ -2763,6 +2763,24 @@ tornou visível cedo um problema que em produção apareceria com volume.
 - A semente fica como **teste de carga de bolso**: rodar `semear --limpar` e abrir o painel mostra, em segundos, se
   alguma tela voltou a consultar o banco item a item.
 
+## ADR-087 — Estatísticas abrem no mês; o ano é uma opção no topo (refina a ADR-084)
+
+**Contexto.** Rodada 51. O usuário: "não seria melhor aparecer de cara a estatística do mês e ter a opção de ver a
+do ano em algum botão em cima?" — e, sobre o que mostrar, "quero a opção que mostra as informações reais da clínica".
+
+**Decisões de arquitetura:**
+- **O mês é o padrão.** É a pergunta do dia a dia; o ano é a pergunta de quem parou para planejar. Um seletor
+  "Mês · Ano" no topo, com setas para andar no período escolhido.
+- **O retrato dos atendimentos segue o período** (presença, horário, dia, presença por paciente). A composição por
+  frequência não segue: é a foto de hoje, e a tela continua dizendo isso.
+- **O gráfico de dinheiro é sempre do ano** — doze barras e uma linha não cabem num mês — e continua na tela no modo
+  mês, embaixo, com o mês escolhido em cor cheia e os outros esmaecidos. Os três cartões de dinheiro (receitas,
+  despesas, resultado) só aparecem no modo ano: no mês esse número é o do fluxo de caixa, e um link leva até ele.
+  Nada é repetido entre as duas abas (ADR-072).
+- **"Informação real", não lista limpa:** no modo mês, a presença por paciente lista **todos** os pacientes em
+  atendimento, e quem não teve sessão vem por último como "sem sessão no mês". Quem está encerrado não entra. No
+  modo ano entra só quem teve sessão — o ano de quem começou em dezembro não é zero.
+
 ## Impeditivos
 
 | # | Impeditivo | Situação |

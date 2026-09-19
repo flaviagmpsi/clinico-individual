@@ -7,13 +7,14 @@ frequência, valor. Nunca conteúdo de prontuário (I-10).
 
 from collections import Counter
 from dataclasses import dataclass
-from datetime import date, datetime, time
+from datetime import date, datetime, time, timedelta
 from decimal import Decimal
 
 from django.utils import timezone
 
 from atendimentos.models import Consulta
 from financeiro.despesas import Fluxo, fluxo_do_ano
+from financeiro.servicos import ultimo_dia
 from pacientes.models import Caso
 from pacientes.servicos import pacientes_ativos
 
@@ -89,6 +90,7 @@ class Composicao:
 @dataclass
 class Estatisticas:
     ano: int
+    mes: int | None  # `None` é o ano inteiro; um mês é o retrato daquele mês (ADR-087)
     fluxos: list[Fluxo]
     presenca: Presenca
     por_paciente: list  # (caso, Presenca), da menor presença para a maior
@@ -134,10 +136,13 @@ def _composicao() -> Composicao:
     return composicao
 
 
-def montar(ano: int, agora: datetime | None = None) -> Estatisticas:
+def montar(ano: int, mes: int | None = None, agora: datetime | None = None) -> Estatisticas:
+    """O retrato de um mês (padrão da tela) ou do ano inteiro. O gráfico de dinheiro é sempre do ano (ADR-087)."""
     agora = agora or timezone.now()
-    inicio = timezone.make_aware(datetime.combine(date(ano, 1, 1), time.min))
-    fim = timezone.make_aware(datetime.combine(date(ano + 1, 1, 1), time.min))
+    primeiro = date(ano, mes, 1) if mes else date(ano, 1, 1)
+    depois = ultimo_dia(ano, mes) if mes else date(ano, 12, 31)
+    inicio = timezone.make_aware(datetime.combine(primeiro, time.min))
+    fim = timezone.make_aware(datetime.combine(depois, time.min)) + timedelta(days=1)
     do_ano = Consulta.objects.filter(inicio__gte=inicio, inicio__lt=fim)
 
     horas, dias = Counter(), Counter()
@@ -149,11 +154,18 @@ def montar(ano: int, agora: datetime | None = None) -> Estatisticas:
     por_caso: dict = {}
     for consulta in do_ano.select_related("caso").prefetch_related("caso__pacientes"):
         por_caso.setdefault(consulta.caso, Presenca()).somar(consulta.estado)
-    por_paciente = sorted(((caso, p) for caso, p in por_caso.items() if p.esperadas),
-                          key=lambda par: (par[1].percentual, -par[1].esperadas, str(par[0])))
+    # No mês, quem está em atendimento e não teve sessão também aparece — "sem sessão no mês" é informação real da
+    # clínica, não linha vazia. No ano, entra só quem teve sessão: o ano de quem começou em dezembro não é zero.
+    if mes:
+        for caso in Caso.objects.prefetch_related("pacientes", "desfechos"):
+            if caso.desfecho_aberto() is None:
+                por_caso.setdefault(caso, Presenca())
+    por_paciente = sorted(
+        ((caso, p) for caso, p in por_caso.items() if p.esperadas or (mes and not p.total)),
+        key=lambda par: (par[1].percentual is None, par[1].percentual or 0, -par[1].esperadas, str(par[0])))
 
     return Estatisticas(
-        ano=ano, fluxos=fluxo_do_ano(ano, agora), presenca=presenca_de(do_ano), por_paciente=por_paciente,
+        ano=ano, mes=mes, fluxos=fluxo_do_ano(ano, agora), presenca=presenca_de(do_ano), por_paciente=por_paciente,
         horarios=[(f"{hora:02d}h", horas[hora]) for hora in sorted(horas)],
         dias=[(_DIAS[dia], dias[dia]) for dia in range(7) if dia < 5 or dias[dia]],
         composicao=_composicao(),
