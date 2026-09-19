@@ -32,7 +32,7 @@ recebem números e rótulos, nunca nome de paciente.
 
 <div class="d-flex flex-column">
 
-{# ===== O ano em dinheiro: primeiro no modo ano, por último no modo mês ===== #}
+{# ===== O ano em dinheiro: sempre depois do retrato, nos dois modos ===== #}
 <div class="order-2">
   <div class="rotulo mb-2">Resultado previsto de {{ ano }}{% if mes %} <span class="text-muted fw-normal text-lowercase">— {{ inicio|date:"F" }} em destaque</span>{% endif %}</div>
   {% if not mes %}
