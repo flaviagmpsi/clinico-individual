@@ -6,8 +6,8 @@
 {% comment %}
 ADR-084 e ADR-087: as estatísticas da clínica, numa aba só, abrindo no **mês** — a pergunta do dia a dia — com o ano
 como opção no topo. Dois blocos: o **retrato dos atendimentos** do período (horário, dia, presença, tipo de
-frequência) e o **ano em dinheiro** (resultado previsto, mês a mês). No modo mês o retrato vem primeiro e o gráfico
-do ano fica embaixo, com o mês destacado; no modo ano a ordem inverte. Só dado administrativo (I-10); os gráficos
+frequência) e o **ano em dinheiro** (resultado previsto, mês a mês). A ordem é a mesma nos dois modos: o retrato
+primeiro, o dinheiro depois; no modo mês o gráfico do ano destaca o mês. Só dado administrativo (I-10); os gráficos
 recebem números e rótulos, nunca nome de paciente.
 {% endcomment %}
 <div class="d-flex align-items-center flex-wrap gap-2 mb-3">
@@ -33,7 +33,7 @@ recebem números e rótulos, nunca nome de paciente.
 <div class="d-flex flex-column">
 
 {# ===== O ano em dinheiro: primeiro no modo ano, por último no modo mês ===== #}
-<div class="{% if mes %}order-2{% else %}order-1{% endif %}">
+<div class="order-2">
   <div class="rotulo mb-2">Resultado previsto de {{ ano }}{% if mes %} <span class="text-muted fw-normal text-lowercase">— {{ inicio|date:"F" }} em destaque</span>{% endif %}</div>
   {% if not mes %}
   <div class="row g-3 mb-3">
@@ -66,7 +66,7 @@ recebem números e rótulos, nunca nome de paciente.
 </div>
 
 {# ===== O retrato dos atendimentos do período ===== #}
-<div class="{% if mes %}order-1{% else %}order-2{% endif %}">
+<div class="order-1">
   <div class="rotulo mb-2">Como a clínica funcionou em {% if mes %}{{ inicio|date:"F"|lower }} de {% endif %}{{ ano }}</div>
   <div class="row g-3 mb-3">
     <div class="col-md-3 col-6"><div class="card h-100"><div class="card-body py-3">

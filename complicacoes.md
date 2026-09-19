@@ -2773,8 +2773,9 @@ do ano em algum botão em cima?" — e, sobre o que mostrar, "quero a opção qu
   "Mês · Ano" no topo, com setas para andar no período escolhido.
 - **O retrato dos atendimentos segue o período** (presença, horário, dia, presença por paciente). A composição por
   frequência não segue: é a foto de hoje, e a tela continua dizendo isso.
-- **O gráfico de dinheiro é sempre do ano** — doze barras e uma linha não cabem num mês — e continua na tela no modo
-  mês, embaixo, com o mês escolhido em cor cheia e os outros esmaecidos. Os três cartões de dinheiro (receitas,
+- **O gráfico de dinheiro é sempre do ano** — doze barras e uma linha não cabem num mês — e fica embaixo do retrato
+  nos dois modos (mesma ordem sempre, correção do usuário na Rodada 52); no modo mês, o mês escolhido vem em cor
+  cheia e os outros esmaecidos. Os três cartões de dinheiro (receitas,
   despesas, resultado) só aparecem no modo ano: no mês esse número é o do fluxo de caixa, e um link leva até ele.
   Nada é repetido entre as duas abas (ADR-072).
 - **"Informação real", não lista limpa:** no modo mês, a presença por paciente lista **todos** os pacientes em
