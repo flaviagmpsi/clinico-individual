@@ -146,6 +146,8 @@ modificadora, nem o gesto de selecionar texto.
   }
 
   document.querySelectorAll('[data-mascara]').forEach((campo) => {
+    // O limite de tamanho é da máscara. Um `maxlength` herdado do banco conta o número sem pontos e cortaria a digitação.
+    campo.removeAttribute('maxlength');
     aplicar(campo);
     campo.addEventListener('input', () => aplicar(campo));
   });

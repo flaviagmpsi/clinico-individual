@@ -39,6 +39,24 @@ class Limpeza(SimpleTestCase):
         """O `max_length=11` do CPF roda antes de qualquer `clean_`: a limpeza precisa vir antes dele."""
         self.assertTrue(FormularioDeTeste(data={"cpf": "529.982.247-25"}).is_valid())
 
+    def test_o_campo_mascarado_nao_sai_com_limite_de_digitacao(self):
+        """`maxlength="11"` no CPF cortava a digitação em "000.000.000": com a máscara ele tem 14 caracteres."""
+        formulario = FormularioDeTeste()
+        for campo in ["cpf", "telefone", "cep"]:
+            with self.subTest(campo=campo):
+                self.assertNotIn("maxlength", str(formulario[campo]))
+
+    def test_os_formularios_de_verdade_tambem_nao(self):
+        from contas.forms import IdentificacaoForm, PerfilForm, RegimeForm
+        from pacientes.forms import PacienteForm
+
+        for classe, campos in [(IdentificacaoForm, ["cpf", "telefone"]), (RegimeForm, ["cnpj"]),
+                               (PerfilForm, ["cpf", "cnpj", "cep", "telefone"]), (PacienteForm, ["cpf", "cep"])]:
+            formulario = classe()
+            for campo in campos:
+                with self.subTest(formulario=classe.__name__, campo=campo):
+                    self.assertNotIn("maxlength", str(formulario[campo]))
+
     def test_valor_da_cobranca_com_virgula(self):
         formulario = CondicaoCobrancaForm(data={"valor": "1.200,00", "modalidade": "POR_SESSAO"})
         self.assertTrue(formulario.is_valid(), formulario.errors)

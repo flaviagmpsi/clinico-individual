@@ -44,6 +44,12 @@ class LimpaMascara:
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        # O `max_length` do model vira `maxlength` no campo — e conta o número **puro**. Com a máscara, o CPF tem 14
+        # caracteres e o limite é 11: o navegador cortava a digitação em "000.000.000" e chegavam 9 números. Quem
+        # limita o tamanho do campo mascarado é a própria máscara.
+        for campo in (*self.campos_numericos(), *self.CAMPOS_DECIMAIS):
+            if campo in self.fields:
+                self.fields[campo].widget.attrs.pop("maxlength", None)
         if not self.is_bound:
             return
         dados = self.data.copy()
