@@ -68,3 +68,21 @@ class Navegacao(TransactionTestCase):
         # Sem paciente, a lista de registros e a aba de documentos não mostram as sub-abas de ninguém.
         self.assertNotContains(self.client.get(reverse("prontuarios:lista")), '<ul class="nav nav-tabs">')
         self.assertNotContains(self.client.get(reverse("documentos:aba")), '<ul class="nav nav-tabs">')
+
+    def test_interacao_e_global_e_a_pagina_nao_depende_dela(self):
+        """ADR-091: os três refinamentos moram no tema e no base — toda tela os herda, e nenhum esconde conteúdo."""
+        resposta = self.client.get(reverse("pacientes:lista"))
+        html = resposta.content.decode()
+        for trecho in ["@keyframes entrar", "prefers-reduced-motion: reduce", "--tinta-fundo-leve", "linha-clicavel",
+                       ".card:has(.stretched-link)"]:
+            with self.subTest(trecho=trecho):
+                self.assertIn(trecho, html)
+        # A entrada é animação CSS com `backwards`: o estado normal do conteúdo é visível, com ou sem JavaScript.
+        self.assertIn("animation: entrar var(--t-entrada) backwards", html)
+        # A linha do paciente continua tendo um link de verdade: o clique na linha é conforto, não requisito.
+        self.assertContains(resposta, f'<a href="{reverse("pacientes:detalhe", args=[self.marcos.pk])}"')
+
+    def test_os_cards_de_documentos_sao_de_navegacao(self):
+        resposta = self.client.get(reverse("documentos:aba"))
+        self.assertGreaterEqual(resposta.content.decode().count("stretched-link\">Abrir"), 9)
+

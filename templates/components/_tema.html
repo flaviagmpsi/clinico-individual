@@ -27,9 +27,12 @@ Princípios da direção:
     --tinta: #1558f0;            /* o acento: link, ação principal, item em foco. O nome vem da versão anterior. */
     --tinta-escura: #0d43c4; --tinta-clara: #4d86ff; --tinta-fundo: #dce8ff; --tinta-brilho: rgba(21, 88, 240, .38);
     --ok: #0b8a63; --ok-fundo: #cdf1e1; --ok-brilho: rgba(11, 138, 99, .35);
-    --atencao: #c46a00; --atencao-fundo: #ffe6ad; --erro: #d6281c; --erro-fundo: #ffd9d4; --erro-brilho: rgba(214, 40, 28, .35);
+    --atencao: #a05200; --atencao-fundo: #ffe6ad;  /* #a05200: o âmbar mais vivo que ainda passa em AA sobre branco, sobre o hover de linha e sobre o próprio fundo */ --erro: #d6281c; --erro-fundo: #ffd9d4; --erro-brilho: rgba(214, 40, 28, .35);
     --marinho: #0b1526; --marinho-2: #12203a; --marinho-3: #1c3160; --marinho-linha: #25375a;
     --rapido: 120ms ease;
+    /* ADR-091. Tudo derivado de tokens que já existiam: nenhum valor de cor novo solto. */
+    --tinta-fundo-leve: color-mix(in srgb, var(--tinta) 7%, var(--superficie));  /* o fundo do hover de linha */
+    --t-linha: 130ms ease-out; --t-cartao: 180ms ease-out; --t-entrada: 220ms ease-out;
     /* --- letra --- */
     --f-texto: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
     --f-mono: "IBM Plex Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
@@ -44,7 +47,7 @@ Princípios da direção:
     --bs-primary: #1558f0; --bs-primary-rgb: 21, 88, 240; --bs-link-color: #1558f0; --bs-link-color-rgb: 21, 88, 240;
     --bs-link-hover-color: #0d43c4; --bs-link-hover-color-rgb: 13, 67, 196;
     --bs-success: #0b8a63; --bs-success-rgb: 11, 138, 99; --bs-danger: #d6281c; --bs-danger-rgb: 214, 40, 28;
-    --bs-warning: #c46a00; --bs-warning-rgb: 196, 106, 0;
+    --bs-warning: #a05200; --bs-warning-rgb: 160, 82, 0;
     --bs-focus-ring-color: rgba(21, 88, 240, .35);
   }
 
@@ -112,6 +115,22 @@ Princípios da direção:
   .card-body { padding: 12px; }
   .card-footer { background: var(--superficie-2) !important; border-top: 1px solid var(--linha); padding: 6px 12px; }
 
+  /* ---------- card de navegação (ADR-091) ----------
+     É todo card cujo link cobre o card inteiro (`.stretched-link`, do Bootstrap): não há classe nova para lembrar.
+     No hover e no foco pelo teclado: borda mais forte e saturada — nítida, 2 px, sem halo —, texto um degrau mais
+     nítido, e o card cresce 2% sem empurrar os vizinhos (é `transform`, não tamanho). No clique, recua. */
+  .card:has(.stretched-link) { position: relative; cursor: pointer; transition: transform var(--t-cartao), border-color var(--t-cartao), box-shadow var(--t-cartao); }
+  .card:has(.stretched-link) .text-muted, .card:has(.stretched-link) .fw-semibold { transition: color var(--t-cartao); }
+  .card:has(.stretched-link):hover, .card:has(.stretched-link:focus-visible)
+         { transform: scale(1.02); z-index: 2; border-color: var(--tinta); box-shadow: 0 0 0 1px var(--tinta); }
+  .card:has(.stretched-link):hover .fw-semibold, .card:has(.stretched-link:focus-visible) .fw-semibold { color: var(--tinta-escura); font-weight: 700 !important; }
+  .card:has(.stretched-link):hover .text-muted, .card:has(.stretched-link:focus-visible) .text-muted { color: var(--texto) !important; }
+  .card:has(.stretched-link:active) { transform: scale(.99); box-shadow: 0 0 0 1px var(--tinta-escura); border-color: var(--tinta-escura); }
+  /* Dentro dele, o botão não tem brilho nem sobe: quem responde é o card. Ele só se enche da cor de ação. */
+  .card:has(.stretched-link) .btn, .card:has(.stretched-link) .btn:hover { transform: none; box-shadow: none !important; }
+  .card:has(.stretched-link):hover .btn-outline-primary, .card:has(.stretched-link:focus-visible) .btn-outline-primary { background: var(--tinta); color: #fff; }
+  .card .stretched-link:focus-visible { outline: none; box-shadow: none !important; }
+
   /* ---------- botões (ADR-090): alvo maior, e resposta a cada gesto — acende ao passar, afunda ao clicar ---------- */
   .btn { border-radius: 4px; font-size: .84375rem; font-weight: 600; --bs-btn-padding-y: .5rem; --bs-btn-padding-x: 1.05rem;
          min-height: 36px; display: inline-flex; align-items: center; justify-content: center; gap: .4rem;
@@ -145,7 +164,6 @@ Princípios da direção:
          { outline: 2px solid var(--tinta); outline-offset: 1px; box-shadow: 0 0 0 4px rgba(21, 88, 240, .18) !important; }
   /* Link de ação: sublinha e acende ao passar, em vez de só mudar de tom. */
   a { transition: color var(--rapido), background-color var(--rapido); }
-  @media (prefers-reduced-motion: reduce) { .btn, a, .barra a, .cartao, .list-group-item, tr { transition: none !important; transform: none !important; } }
 
   /* ---------- etiqueta de situação: contorno, mono, sem bloco de cor ---------- */
   .badge { font-family: var(--f-mono); font-weight: 500; font-size: .65rem; text-transform: uppercase; letter-spacing: .05em;
@@ -159,28 +177,47 @@ Princípios da direção:
 
   /* ---------- tabela e lista ---------- */
   .table { --bs-table-bg: transparent; font-size: .78125rem; margin-bottom: 0; }
-  .table > :not(caption) > * > * { padding: 6px 12px; border-bottom-color: var(--linha-fina); }
+  /* `box-shadow: none`: o Bootstrap pinta o hover de `.table-hover` com uma sombra interna cinza por baixo da célula.
+     Quem pinta o hover aqui é o tema (ADR-091), com a cor da paleta. */
+  .table { --bs-table-hover-bg: transparent; --bs-table-hover-color: inherit; }
+  .table > :not(caption) > * > * { padding: 6px 12px; border-bottom-color: var(--linha-fina); box-shadow: none; }
   .table > thead > tr > *, .table-light > tr > * { background: var(--superficie-2) !important; color: var(--suave); font-size: .6875rem;
            font-weight: 600; text-transform: uppercase; letter-spacing: .06em; border-bottom: 1px solid var(--linha) !important; }
-  .table-hover > tbody > tr:hover > * { background: var(--tinta-fundo); }
   .table tbody tr:last-child > * { border-bottom: 0; }
   .list-group-item { border-color: var(--linha-fina); padding: 0 12px; min-height: 34px; background: transparent; }
-  .list-group-item { transition: background-color var(--rapido); }
-  .list-group-item:hover { background: var(--superficie-2); }
   .list-group-item .hora { color: var(--suave); font-size: .78125rem; }
   /* A próxima sessão do dia: a única linha que se destaca sem precisar de etiqueta. */
-  .list-group-item.proxima, .list-group-item.proxima:hover { background: var(--tinta-fundo); box-shadow: inset 4px 0 0 var(--tinta); }
+  .list-group-item.proxima { background: var(--tinta-fundo); box-shadow: inset 4px 0 0 var(--tinta); }
   .list-group-item.proxima .hora { color: var(--tinta); font-weight: 600; }
   .list-group-item.feita .nome, .list-group-item.feita .hora { color: var(--suave); }
-  .list-unstyled > li { border-top: 1px solid var(--linha-fina); min-height: 28px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .list-unstyled > li { border-top: 1px solid var(--linha-fina); min-height: 28px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+                        margin: 0 -6px; padding: 0 6px; }
   .list-unstyled > li:first-child { border-top: 0; }
-  .list-unstyled > li { transition: background-color var(--rapido); margin: 0 -6px; padding: 0 6px; border-radius: 3px; }
-  .list-unstyled > li:hover { background: var(--tinta-fundo); }
-  .table > tbody > tr { transition: background-color var(--rapido); }
-  .table > tbody > tr:hover > * { background: var(--tinta-fundo); }
   /* Em lista, o nome é tinta e só a ação é azul: uma coluna inteira de links azuis não destaca nada. */
   .list-unstyled > li > a, .list-group-item .nome, td > a.text-decoration-none { color: var(--texto); }
-  .list-unstyled > li > a:hover, td > a.text-decoration-none:hover { color: var(--tinta); text-decoration: underline !important; }
+
+  /* ---------- linha que leva a algum lugar (ADR-091) ----------
+     Vale para toda linha de tabela, item de lista e item de grupo que tenha um link — a de paciente entre elas.
+     A LINHA INTEIRA reage: fundo bem claro da cor principal (cor cheia cansa numa lista longa) e a cor cheia só num
+     detalhe, o filete à esquerda. O mesmo no foco pelo teclado. `.linha-clicavel` é posta pelo script do base.html
+     para o navegador sem `:has()`; sem script nenhum, o link continua funcionando e a página continua legível. */
+  .table > tbody > tr > *, .list-group-item, .list-unstyled > li { transition: background-color var(--t-linha), box-shadow var(--t-linha); }
+  .table > tbody > tr:hover > * { background: var(--tinta-fundo-leve); }
+  .table > tbody > tr:has(a[href]:not(.btn):not(.dropdown-item)), .list-group-item:has(a[href]:not(.btn)),
+  .list-unstyled > li:has(a[href]), .linha-clicavel { cursor: pointer; }
+  .table > tbody > tr:has(a[href]:not(.btn):not(.dropdown-item)):hover > *, .table > tbody > tr:has(a:focus-visible) > *,
+  .table > tbody > tr.linha-clicavel:hover > * { background: var(--tinta-fundo-leve); }
+  .table > tbody > tr:has(a[href]:not(.btn):not(.dropdown-item)):hover > :first-child, .table > tbody > tr:has(a:focus-visible) > :first-child,
+  .table > tbody > tr.linha-clicavel:hover > :first-child { box-shadow: inset 3px 0 0 var(--tinta); }
+  .list-group-item:has(a[href]:not(.btn)):hover, .list-group-item:has(a:focus-visible), .list-group-item.linha-clicavel:hover,
+  .list-unstyled > li:has(a[href]):hover, .list-unstyled > li:has(a:focus-visible), .list-unstyled > li.linha-clicavel:hover
+         { background: var(--tinta-fundo-leve); box-shadow: inset 3px 0 0 var(--tinta); }
+  /* O estado próprio da linha não some no hover: a próxima sessão mantém o fundo e o filete mais largo dela. */
+  .list-group-item.proxima:hover, .list-group-item.proxima:has(a:focus-visible) { background: var(--tinta-fundo); box-shadow: inset 4px 0 0 var(--tinta); }
+  /* No foco pelo teclado quem acende é a linha; o link de dentro não precisa de um segundo anel. */
+  tr:has(a:focus-visible), .list-group-item:has(a:focus-visible), .list-unstyled > li:has(a:focus-visible) { outline: 2px solid var(--tinta); outline-offset: -2px; }
+  tr a:focus-visible, .list-group-item a:focus-visible, .list-unstyled > li a:focus-visible { outline: none; box-shadow: none !important; }
+  td > a.text-decoration-none:hover, .list-unstyled > li > a:hover { text-decoration: underline !important; }
 
   /* ---------- abas ---------- */
   .nav-pills { gap: 2px; }
@@ -226,6 +263,27 @@ Princípios da direção:
   .border-danger-subtle { border-color: #f3cbc7 !important; } .bg-success-subtle { background: var(--ok-fundo) !important; }
   .rounded, .rounded-top-0 { border-radius: var(--raio) !important; }
   hr { border-color: var(--linha); opacity: 1; }
+
+  /* ---------- entrada da página (ADR-091) ----------
+     A navegação recarrega a página inteira, então a entrada é animação CSS no conteúdo novo: opacidade e `transform`,
+     nada que cause reflow. `backwards` e não `both`: o estado inicial só vale durante o atraso, e terminado o
+     movimento o `transform` some — elemento `sticky` e menu suspenso voltam a se comportar como sempre. Sem
+     JavaScript nenhum: se a animação não rodar, o conteúdo já está visível, porque visível é o estado normal.
+     A moldura (topo e barra lateral) não anima — é a mesma em toda página, e animá-la faria o sistema piscar.
+     Três regiões, 40 ms entre elas: o cabeçalho da página, o primeiro bloco, e o resto junto. Nunca item a item. */
+  @keyframes entrar { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+  .conteudo > * { animation: entrar var(--t-entrada) backwards; }
+  .conteudo > :nth-child(2) { animation-delay: 40ms; }
+  .conteudo > :nth-child(n+3) { animation-delay: 80ms; }
+
+  /* Quem pede menos movimento não tem escala, slide nem transição — só a mudança de cor, instantânea. */
+  @media (prefers-reduced-motion: reduce) {
+    .conteudo > * { animation: none !important; }
+    .btn, a, .card, .card *, .cartao, .nav-link, .barra, .barra *, .list-group-item, .list-unstyled > li, .table > tbody > tr > *, .form-control, .form-select
+         { transition: none !important; }
+    .btn, .btn:hover, .btn:active, .card:has(.stretched-link), .card:has(.stretched-link):hover, .card:has(.stretched-link:focus-visible),
+    .card:has(.stretched-link:active), .cartao, .cartao:hover, .cartao:active { transform: none !important; }
+  }
 
   /* No celular a barra vira uma faixa horizontal, rolável, logo abaixo do topo — em vez de sumir. */
   @media (max-width: 768px) {

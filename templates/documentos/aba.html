@@ -33,7 +33,7 @@ registros de sessão ficam na aba Prontuários, e é deles que sai a evolução.
           e encerramento. A evolução é montada com os registros de sessão que você escreve na aba Prontuários. É o
           documento que se entrega ao paciente ou a quem o solicitar.</div>
         <a href="{% url 'documentos:escolher_prontuario' %}{% if paciente %}?paciente={{ paciente.pk }}{% endif %}"
-           class="btn btn-sm btn-outline-primary mt-3 align-self-start">Abrir prontuário</a>
+           class="btn btn-sm btn-outline-primary mt-3 align-self-start stretched-link">Abrir prontuário</a>
       </div>
     </div>
   </div>
@@ -52,7 +52,7 @@ registros de sessão ficam na aba Prontuários, e é deles que sai a evolução.
             <div class="text-muted small mb-2">{{ m.norma }}</div>
             <div class="small flex-grow-1">{{ m.resumo }}</div>
             <a href="{% url 'documentos:modelo' m.codigo %}{% if paciente %}?paciente={{ paciente.pk }}{% endif %}"
-               class="btn btn-sm btn-outline-primary mt-3 align-self-start">Abrir modelo</a>
+               class="btn btn-sm btn-outline-primary mt-3 align-self-start stretched-link">Abrir modelo</a>
           </div>
         </div>
       </div>

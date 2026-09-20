@@ -2863,6 +2863,45 @@ brilhar mais [...] tá muito sem graça". A direção continua; o que muda é a 
   separa é borda e espaço —, **mas brilho é resposta a gesto e marca a ação principal**.
 - Continua tudo em `components/_tema.html`: foram trocadas variáveis e regras de componente, e nenhuma tela.
 
+## ADR-091 — Três refinamentos de interação, todos globais: card de navegação, entrada de página, linha inteira
+
+**Contexto.** Rodada 55. O usuário pediu três refinamentos "aplicados de forma global (nos componentes ou classes
+compartilhadas), nunca tela por tela", com requisitos de tempo, acessibilidade e robustez, e pediu que o resultado
+fosse conferido com Playwright antes de ser mostrado.
+
+**O caminho da transição de página, e por quê.** Verificado antes de implementar: a navegação **recarrega a página
+inteira** — Django renderiza no servidor, não há htmx, Turbo nem troca de conteúdo por JavaScript (o único `fetch` é o
+do ViaCEP). Logo não há "saída" a animar: a página antiga simplesmente some. Escolhida **animação CSS de entrada** no
+conteúdo novo. A View Transitions API entre documentos foi descartada: só existe em Chromium e Safari recentes, faria
+um crossfade da página inteira — moldura incluída — e, somada à entrada, animaria duas vezes.
+
+**Decisões de arquitetura:**
+- **Entrada:** `.conteudo > *` sobe 10 px e vai de opacidade 0 a 1 em **220 ms, ease-out**, só `opacity` e
+  `transform`. Três regiões, **40 ms** entre elas — cabeçalho da página, primeiro bloco, e o resto junto; nunca item a
+  item. `animation-fill-mode: backwards`, e não `both`: terminado o movimento o `transform` some, e `sticky` e menus
+  voltam ao normal. **Sem JavaScript**: o estado normal do conteúdo é visível, então se a animação não rodar a página
+  está lá. **A moldura não anima**: topo e barra são os mesmos em toda página, e animá-los faria o sistema piscar.
+- **Card de navegação** é todo card cujo link cobre o card inteiro (`.stretched-link`) — `.card:has(.stretched-link)`,
+  sem classe nova para lembrar. No hover e no `:focus-visible`: borda de 2 px na cor de ação, nítida (1 px de borda +
+  1 px de `box-shadow` sólido, **sem desfoque**, nada de halo); título um degrau mais pesado e texto de apoio um
+  degrau mais contrastado; `scale(1.02)` por `transform`, que não empurra vizinho; **180 ms ease-out**; no `:active`
+  recua a `.99`. Dentro dele o botão perde o brilho e só se enche da cor: quem responde é o card.
+- **Linha que leva a algum lugar** — a de paciente entre elas — é toda linha de tabela, item de lista ou de grupo que
+  tenha um link (`:has(a[href])`). A linha inteira ganha o fundo `--tinta-fundo-leve` (7% da cor principal sobre a
+  superfície, por `color-mix` dos tokens existentes — cor cheia cansa numa lista longa) e a cor cheia aparece num
+  detalhe só, o **filete de 3 px à esquerda**. **130 ms ease-out**, cursor `pointer`, o mesmo no foco pelo teclado
+  (o anel vai para a linha). Um script de 15 linhas no `base.html` torna a área toda clicável; sem ele o link
+  continua funcionando. Não intercepta link, botão, campo, menu, tecla modificadora nem seleção de texto.
+- **Estado próprio não some:** a próxima sessão do painel mantém o fundo e o filete mais largo dela no hover;
+  etiquetas de situação têm fundo próprio e não são tocadas.
+- **Contraste medido sobre o fundo do hover** (WCAG AA pede 4,5:1): nome 16,5 · texto de apoio 6,5 · azul de ação
+  5,1 · verde 6,1 · vermelho 4,5. O **âmbar reprovava** (3,5 — e 3,8 já sobre branco, defeito da ADR-090): o token
+  `--atencao` foi de `#c46a00` para `#a05200`, que passa nos três fundos em que aparece.
+- **Achado:** o Bootstrap pinta o hover de `.table-hover` com uma sombra interna cinza por baixo da célula, que
+  brigava com o fundo do tema. Neutralizado no tema, uma vez.
+- **`prefers-reduced-motion`:** sem animação de entrada, sem escala e sem transição — fica só a troca de cor,
+  instantânea. Conferido por Playwright: animação `none`, escala 1,000, transição 0 s.
+
 ## Impeditivos
 
 | # | Impeditivo | Situação |

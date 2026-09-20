@@ -56,6 +56,30 @@ pode formatar à vontade sem mudar o que é gravado.
 A consulta de CEP sai do navegador do psicólogo e leva **só o CEP** — nenhum dado do paciente vai ao ViaCEP.
 Se a busca falhar, o endereço continua digitável à mão; nada trava.
 {% endcomment %}
+{% comment %}
+ADR-091: clicar em qualquer ponto de uma linha que tem um link leva aonde o link leva. É conforto: sem este script o
+link da linha continua funcionando. Não intercepta clique em link, botão, campo ou menu, nem clique com tecla
+modificadora, nem o gesto de selecionar texto.
+{% endcomment %}
+<script>
+(function () {
+  const LINHAS = 'tbody tr, .list-group-item, .list-unstyled > li';
+  const ALVO = 'a[data-principal], a[href]:not(.btn):not(.dropdown-item)';
+  document.querySelectorAll(LINHAS).forEach(function (linha) {
+    if (!linha.hasAttribute('data-sem-clique') && linha.querySelector(ALVO)) linha.classList.add('linha-clicavel');
+  });
+  document.addEventListener('click', function (evento) {
+    if (evento.defaultPrevented || evento.button !== 0 || evento.metaKey || evento.ctrlKey || evento.shiftKey || evento.altKey) return;
+    if (evento.target.closest('a, button, input, select, textarea, label, form, .dropdown')) return;
+    if (String(window.getSelection())) return;
+    const linha = evento.target.closest(LINHAS);
+    if (!linha || linha.hasAttribute('data-sem-clique')) return;
+    const alvo = linha.querySelector(ALVO);
+    if (alvo) alvo.click();
+  });
+})();
+</script>
+
 <script>
 (function () {
   const digitos = (valor) => (valor || '').replace(/\D/g, '');
