@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block titulo %}Assinar{% endblock %}
+{% block secao %}Assinatura{% endblock %}
+{% block pagina %}<span class="separa">›</span>Pagamento{% endblock %}
+
+{% block conteudo %}
+{% comment %}
+ADR-094 e ADR-036. Aqui só se escolhe o **meio**. Dado de cartão nunca é digitado no Hamilton: com o Asaas ligado
+(S-01), o botão leva à página de pagamento do Asaas, e a assinatura é ativada pelo aviso de pagamento confirmado.
+{% endcomment %}
+<div style="max-width:520px; margin-inline:auto">
+  <div class="text-center mb-4">
+    <h1 class="h5 mb-1">Assinar o Hamilton</h1>
+    <div class="text-muted small">{% if valor_mensal %}<span class="valor">R$ {{ valor_mensal }}</span> por mês · {% endif %}cobrança automática, cancela quando quiser</div>
+  </div>
+
+  <form method="post">
+    {% csrf_token %}
+    <div class="card">
+      <div class="card-body">
+        <div class="form-label small mb-2">Como você quer pagar <span class="text-danger">*</span></div>
+        {% for valor, rotulo in meios %}
+        <div class="form-check mb-2">
+          <input class="form-check-input" type="radio" name="meio" id="meio_{{ valor }}" value="{{ valor }}" required{% if forloop.first %} checked{% endif %}>
+          <label class="form-check-label" for="meio_{{ valor }}">{{ rotulo }}
+            <span class="d-block form-text small mt-0">{% if valor == "CARTAO" %}Cobrado todo mês no cartão.{% else %}Você autoriza uma vez no app do banco, e o PIX sai sozinho todo mês.{% endif %}</span>
+          </label>
+        </div>
+        {% endfor %}
+        <div class="form-text small mt-3"><i class="bi bi-shield-lock"></i>
+          Os dados do cartão são digitados na página segura do Asaas, nosso processador de pagamentos. O Hamilton nunca vê nem guarda o número do seu cartão.</div>
+      </div>
+    </div>
+
+    {% if simulado %}
+      <div class="alert alert-warning small py-2 mt-3 mb-0">
+        <strong>Ambiente de teste.</strong> A cobrança de verdade ainda não está ligada. O botão abaixo simula o
+        retorno "pagamento confirmado" e ativa a assinatura sem cobrar nada.
+      </div>
+      <button type="submit" class="btn btn-primary mt-3 w-100">Simular pagamento confirmado</button>
+    {% else %}
+      <div class="alert alert-light border small py-2 mt-3 mb-0">A cobrança da assinatura ainda não está disponível.</div>
+    {% endif %}
+  </form>
+
+  <p class="text-center small mt-3 mb-0"><a href="{% url 'assinaturas:plano' %}" class="text-decoration-none">Voltar</a></p>
+</div>
+{% endblock %}

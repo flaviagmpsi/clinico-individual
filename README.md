@@ -122,7 +122,7 @@ DATABASE_URL="postgresql://hamilton_owner:ownerpass@127.0.0.1:5432/hamilton_dev"
   python manage.py test --parallel 4
 ```
 
-O runner precisa criar o banco de teste, então roda com o papel dono. São **533 testes**, e nenhum
+O runner precisa criar o banco de teste, então roda com o papel dono. São **562 testes**, e nenhum
 fica pulado. Contra um PostgreSQL local levam cerca de **1 minuto e 40 segundos com `--parallel 4`**.
 
 ⚠️ **Rode em paralelo.** Em série a mesma suíte leva ~11 minutos, e não é por teste lento: medida app a app,

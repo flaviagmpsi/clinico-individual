@@ -4,7 +4,7 @@
 
 {% block conteudo %}
 <div class="d-flex align-items-center mb-3">
-  <h1 class="h5 mb-0">Pacientes <span class="text-muted fw-normal">({{ page_obj.paginator.count|default:pacientes|length }})</span></h1>
+  <h1 class="h5 mb-0">Pacientes <span class="text-muted fw-normal">({% if page_obj %}{{ page_obj.paginator.count }}{% else %}{{ pacientes|length }}{% endif %})</span></h1>
   {% comment %}ADR-081: duas portas para o mesmo cadastro — o psicólogo escreve, ou o paciente preenche pelo link.{% endcomment %}
   <a href="{% url 'pacientes:convites' %}" class="btn btn-outline-primary btn-sm ms-auto position-relative">
     <i class="bi bi-link-45deg"></i> Link de cadastro

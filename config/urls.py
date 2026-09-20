@@ -13,6 +13,7 @@ urlpatterns = [
     # propósito — o endereço que o paciente vê não diz nada sobre a estrutura do sistema.
     path("cadastro/<str:token>/", CadastroPeloPaciente.as_view(), name="cadastro_pelo_paciente"),
     path("conta/", include("contas.urls")),
+    path("assinatura/", include("assinaturas.urls")),
     path("agenda/", include("atendimentos.urls")),
     path("horarios/", include("agenda.urls")),
     path("financeiro/", include("financeiro.urls")),

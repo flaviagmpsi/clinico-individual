@@ -212,6 +212,9 @@ Princípios da direção:
   .list-group-item:has(a[href]:not(.btn)):hover, .list-group-item:has(a:focus-visible), .list-group-item.linha-clicavel:hover,
   .list-unstyled > li:has(a[href]):hover, .list-unstyled > li:has(a:focus-visible), .list-unstyled > li.linha-clicavel:hover
          { background: var(--tinta-fundo-leve); box-shadow: inset 3px 0 0 var(--tinta); }
+  /* Aviso do teste grátis (ADR-094): uma faixa discreta no alto do conteúdo, com o filete âmbar de "pede atenção". */
+  .aviso-de-teste { background: var(--superficie); border: 1px solid var(--linha); border-left: 3px solid var(--atencao);
+                    padding: .45rem .75rem; }
   /* Estado de linha de tabela (ADR-092): o filete âmbar de quem pede ação fica no hover e no foco; o que já foi
      resolvido recua para o tom de apoio. */
   .table > tbody > tr.estado-atencao > :first-child, .table > tbody > tr.estado-atencao:hover > :first-child,

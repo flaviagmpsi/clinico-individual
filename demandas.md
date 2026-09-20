@@ -32,7 +32,7 @@ correu 27 rodadas antes da primeira linha de código, de propósito.
 | `prontuarios` | 🟠 parcial | Texto livre com rascunho, confirmação e correção em versão nova; versão confirmada imutável até no banco; pendentes no painel. IA na etapa final (ADR-058) |
 | `indicadores` | 🟠 parcial | Painel com a agenda de hoje, o que ficou para trás e o resumo do mês. Falta a tela de análise |
 | `documentos` | 🟠 parcial | Modelos de documento psicológico em branco, rascunho → emitido, cópia congelada |
-| `assinaturas` | ⚪ | **Nem o app existe.** Nenhum `startapp` foi rodado |
+| `assinaturas` | 🟠 parcial | Escolha entre assinar e testar 7 dias, prazo do teste calculado, sistema trancado no fim do teste, pagamento **simulado** fora de produção (ADR-094). Faltam o Asaas de verdade (S-01) e a máquina de estados da ADR-038 |
 
 **O passo 2 está fechado. Do passo 3, a trilha de auditoria (F-05) está no ar** — cadastro e
 responsável legal já entram nela. **A construção segue do mais simples ao mais complexo, com a IA
@@ -127,7 +127,7 @@ que só fazem sentido quando houver saída fiscal.
 | C-07 | Validação de **formato** do CRP. **Sem** consulta ao cadastro do CFP | ⚙️ | ✅ | 🟢 | ADR-044 |
 | C-08 | Campos vazios para `situacao_registro` e `verificado_em`, prontos caso a verificação volte | 🗄️ | ✅ | 🟢 | ADR-044 |
 | C-09 | CRP da empresa (PJ): campo **opcional** | 🎨🗄️ | ✅ | 🟢 | ADR-044 |
-| C-10 | **Quiz de cadastro** em quatro passos: conta, regime, abordagem e formas de atendimento, clínica. Tranca o sistema até terminar | 🎨⚙️🗄️ | ✅ | 🟢 | ADR-071 |
+| C-10 | **Cadastro em três tempos**: conta só com login e CRP → assinar ou testar → **quiz de quatro perguntas** (quem é você; PF ou PJ; abordagens escritas à mão, outras áreas e formas de atendimento; endereço do presencial). Tranca o sistema até terminar | 🎨⚙️🗄️ | ✅ | 🟢 | ADR-094, ADR-071 |
 | C-11 | **Dados da clínica no perfil**: nome, telefone e endereço, com regime PF/PJ, CNPJ e razão social | 🎨🗄️ | ✅ | 🟢 | ADR-067 |
 | C-03 | Padrões do psicólogo: duração da sessão (50 min), vencimento da mensalidade, cobro falta (sim/não) | 🎨🗄️ | ✅ | 🟢 | ADR-025 |
 | C-04 | Toda tela de cadastro mostra **de onde veio** o valor herdado do perfil | 🎨 | ✅ | 🟢 | ADR-025 |
@@ -328,7 +328,9 @@ e a IA depois passa a preencher o mesmo rascunho. Avaliação do protótipo Exyo
 | S-01b | Webhook do Asaas como mecanismo de sincronização; sem consulta em laço | ⚙️ | ✅ | ⚪ | §3.5 |
 | S-02 | No cancelamento, **exportação automática** do pacote completo, avisos repetidos e descarte após carência | ⚙️🔒 | 🟡 | ⚪ | ADR-007, P-20 |
 | S-03 | `assinaturas` **não toca dado clínico**: sabe se a conta está ativa, não o que há dentro | ⚙️🔒 | ✅ | ⚪ | §3.2 |
-| S-04 | **Sem teste gratuito.** Paga antes de usar | 🎨⚙️ | ✅ | ⚪ | ADR-036 |
+| S-04 | **Teste grátis de 7 dias**, sem dado de pagamento, um por conta; ou assinar de uma vez. Prazo à vista em toda tela; no fim, o sistema tranca e o dado fica | 🎨⚙️🗄️ | ✅ | 🟢 | ADR-094 |
+| S-04a | Tela de pagamento só pergunta o **meio**; cartão é digitado na página do Asaas, nunca no Hamilton. Hoje o retorno é **simulado**, só com `DEBUG` | 🎨⚙️ | ✅ | 🟠 | ADR-094 |
+| S-04b | Destino do dado de quem testou e não assinou | ⚙️🔒 | 🔴 | ⚪ | P-91 |
 | S-05 | E-mail de cancelamento leva **link autenticado**, nunca prontuário anexado | ⚙️🔒 | ✅ | ⚪ | ADR-037 |
 | S-06 | Máquina de estados da conta: `ATIVA` → `TOLERANCIA` (7d) → `SOMENTE_LEITURA` (30d) → `ARQUIVADA` (60d) → `DESCARTADA` | ⚙️🔒 | ✅ | ⚪ | ADR-038 |
 | S-07 | Em `SOMENTE_LEITURA` ele navega e baixa o que quiser; não cria nada | 🎨⚙️ | ✅ | ⚪ | ADR-038 |

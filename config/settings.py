@@ -29,6 +29,7 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "core",
     "contas",
+    "assinaturas",
     "pacientes",
     "agenda",
     "atendimentos",
@@ -47,6 +48,8 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     # Depois da autenticação, porque deriva o escopo do usuário autenticado.
     "core.middleware.EscopoDoPsicologoMiddleware",
+    # Depois do escopo (lê a assinatura do psicólogo) e antes do quiz: escolher entre assinar e testar vem primeiro.
+    "assinaturas.middleware.AssinaturaMiddleware",
     # Depois do escopo: o quiz de cadastro grava no próprio psicólogo, e a view precisa do papel certo.
     "contas.middleware.CadastroCompletoMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
@@ -107,6 +110,13 @@ STORAGES = {
 }
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+# --- Assinatura (ADR-094) -----------------------------------------------------------------------
+# Enquanto a integração com o Asaas não existe (S-01), o pagamento é simulado. Nasce de `DEBUG` de propósito:
+# não há `.env` que ligue em produção um botão que ativa a assinatura sem cobrar.
+ASSINATURA_SIMULADA = DEBUG
+# O preço é decisão de negócio ainda em aberto (P-91). Vazio, a tela não inventa valor nenhum.
+ASSINATURA_VALOR_MENSAL = os.getenv("ASSINATURA_VALOR_MENSAL") or None
 
 LOGIN_URL = "contas:entrar"
 LOGIN_REDIRECT_URL = "painel"

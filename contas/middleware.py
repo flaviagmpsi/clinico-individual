@@ -22,6 +22,7 @@ class CadastroCompletoMiddleware:
         if usuario is not None and usuario.is_authenticated and not usuario.cadastro_completo:
             rota = resolve(request.path_info)
             nome = f"{rota.namespace}:{rota.url_name}" if rota.namespace else rota.url_name
-            if nome not in LIBERADAS:
+            # As telas da assinatura passam: a escolha entre assinar e testar vem **antes** do quiz (ADR-094).
+            if nome not in LIBERADAS and rota.namespace != "assinaturas":
                 return redirect(reverse("contas:quiz", args=[1]))
         return self.get_response(request)

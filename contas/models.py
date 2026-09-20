@@ -64,21 +64,6 @@ class Psicologo(ValidaAoSalvar, AbstractUser):
         PF = "PF", "Pessoa física"
         PJ = "PJ", "Pessoa jurídica"
 
-    class Abordagem(models.TextChoices):
-        """As linhas mais comuns na clínica brasileira, com "outra" para o resto — o campo é do psicólogo,
-        não uma taxonomia oficial, e nenhuma lista fechada daria conta (ADR-071)."""
-
-        PSICANALISE = "PSICANALISE", "Psicanálise"
-        TCC = "TCC", "Terapia cognitivo-comportamental"
-        ANALITICA = "ANALITICA", "Psicologia analítica (junguiana)"
-        GESTALT = "GESTALT", "Gestalt-terapia"
-        HUMANISTA = "HUMANISTA", "Abordagem centrada na pessoa / humanista"
-        FENOMENOLOGICA = "FENOMENOLOGICA", "Fenomenológico-existencial"
-        COMPORTAMENTAL = "COMPORTAMENTAL", "Análise do comportamento"
-        SISTEMICA = "SISTEMICA", "Sistêmica / familiar"
-        PSICODRAMA = "PSICODRAMA", "Psicodrama"
-        OUTRA = "OUTRA", "Outra"
-
     class SituacaoRegistro(models.TextChoices):
         # ADR-044: a verificação no cadastro do CFP ficou adiada, mas **reversível**. Os
         # campos existem vazios para que retomá-la não exija migration com o sistema em
@@ -91,9 +76,13 @@ class Psicologo(ValidaAoSalvar, AbstractUser):
     username = None  # substituído pelo e-mail
     email = models.EmailField("E-mail", unique=True)
 
-    nome_completo = models.CharField("Nome completo", max_length=255)
-    cpf = models.CharField("CPF", max_length=11, unique=True, validators=[cpf_valido])
-    telefone = models.CharField("Telefone", max_length=20, validators=[telefone_valido])
+    # ADR-094: a conta nasce só com e-mail, senha e CRP; nome, CPF e telefone chegam no quiz. Por isso o banco os
+    # aceita vazios — e quem os torna obrigatórios é o quiz e o perfil, que são as duas telas que os gravam. O
+    # sistema só abre depois do quiz (`CadastroCompletoMiddleware`), então nenhum documento sai sem eles.
+    # CPF vazio é `NULL`, e não "": a coluna é única, e duas contas a meio caminho colidiriam em "".
+    nome_completo = models.CharField("Nome completo", max_length=255, blank=True)
+    cpf = models.CharField("CPF", max_length=11, unique=True, null=True, blank=True, validators=[cpf_valido])
+    telefone = models.CharField("Telefone", max_length=20, blank=True, validators=[telefone_valido])
 
     # CRP em duas partes, e não em texto livre: a região é filtro e agrupamento em
     # relatório, e um campo único obrigaria a fatiar string em toda consulta (ADR-044).
@@ -114,8 +103,11 @@ class Psicologo(ValidaAoSalvar, AbstractUser):
     crp_empresa = models.CharField("CRP da empresa", max_length=20, blank=True)
 
     # --- Como atende (C-10, ADR-071) -------------------------------------------------------------
-    abordagem = models.CharField("Abordagem", max_length=20, choices=Abordagem.choices, blank=True)
-    abordagem_outra = models.CharField("Qual abordagem", max_length=120, blank=True)
+    # ADR-094: o psicólogo **escreve** as suas abordagens, quantas forem. A lista fechada da ADR-071 saiu: é o
+    # campo dele, não uma taxonomia oficial. `outras_areas` é o que ele faz além da clínica — avaliação
+    # neuropsicológica, orientação profissional, supervisão.
+    abordagens = models.JSONField("Abordagens", default=list, blank=True)
+    outras_areas = models.JSONField("Outras áreas de atuação", default=list, blank=True)
     atende_online = models.BooleanField("Atende online", default=False)
     atende_presencial = models.BooleanField("Atende presencialmente", default=True)
 
@@ -167,7 +159,7 @@ class Psicologo(ValidaAoSalvar, AbstractUser):
         ]
 
     def __str__(self) -> str:
-        return f"{self.nome_completo} (CRP {self.crp})"
+        return f"{self.nome_completo or self.email} (CRP {self.crp})"
 
     @property
     def cadastro_completo(self) -> bool:
@@ -175,9 +167,12 @@ class Psicologo(ValidaAoSalvar, AbstractUser):
 
     @property
     def abordagem_descrita(self) -> str:
-        if self.abordagem == self.Abordagem.OUTRA:
-            return self.abordagem_outra or "Outra"
-        return self.get_abordagem_display() if self.abordagem else ""
+        return ", ".join(self.abordagens or [])
+
+    @property
+    def emite_nota_fiscal(self) -> bool:
+        """Só a pessoa jurídica emite nota de serviço — é o regime que abre a integração de nota (ADR-094)."""
+        return self.regime == self.Regime.PJ
 
     @property
     def atendimento_descrito(self) -> str:

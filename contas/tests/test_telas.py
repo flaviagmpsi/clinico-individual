@@ -67,10 +67,23 @@ class Perfil(BaseConta):
         self.client.post(reverse("contas:perfil"), {
             "nome_completo": "Ana Ribeiro Souza", "email": self.ana.email, "cpf": "11111111111",
             "telefone": "31999990000", "crp_regiao": "04", "crp_numero": "303030",
-            "regime": "PF", "cnpj": "", "crp_empresa": "",
+            "atende_presencial": "on", "regime": "PF", "cnpj": "", "crp_empresa": "",
             "duracao_sessao": "50", "tipo_vencimento_mensalidade": "DIA_FIXO", "dia_vencimento_mensalidade": "10"})
         self.ana.refresh_from_db()
         self.assertEqual(self.ana.nome_completo, "Ana Ribeiro Souza")
+
+    def test_cpf_de_outra_conta_vira_mensagem_no_campo_e_nao_erro(self):
+        # Sob o escopo da Ana, o RLS esconde o Bruno: o formulário não tem como saber. Quem recusa é o banco.
+        self.client.login(username=self.ana.email, password=SENHA)
+        resposta = self.client.post(reverse("contas:perfil"), {
+            "nome_completo": "Ana Ribeiro", "email": self.ana.email, "cpf": "22222222222",
+            "telefone": "31999990000", "crp_regiao": "04", "crp_numero": "303030",
+            "atende_presencial": "on", "regime": "PF", "cnpj": "", "crp_empresa": "",
+            "duracao_sessao": "50", "tipo_vencimento_mensalidade": "DIA_FIXO", "dia_vencimento_mensalidade": "10"})
+        self.assertContains(resposta, "Já existe uma conta com este CPF")
+        self.assertNotContains(resposta, "Perfil atualizado")
+        self.ana.refresh_from_db()
+        self.assertEqual(self.ana.cpf, "11111111111")
 
     def test_pessoa_juridica_sem_cnpj_e_recusada(self):
         """ADR-067: o regime decide os recursos fiscais adiante. PJ sem CNPJ deixaria a escolha no ar."""
@@ -78,7 +91,7 @@ class Perfil(BaseConta):
         resposta = self.client.post(reverse("contas:perfil"), {
             "nome_completo": "Ana", "email": self.ana.email, "cpf": "11111111111",
             "telefone": "31999990000", "crp_regiao": "04", "crp_numero": "303030",
-            "regime": "PJ", "cnpj": "", "crp_empresa": "",
+            "atende_presencial": "on", "regime": "PJ", "cnpj": "", "crp_empresa": "",
             "duracao_sessao": "50", "tipo_vencimento_mensalidade": "DIA_FIXO", "dia_vencimento_mensalidade": "10"})
         self.assertContains(resposta, "precisa do CNPJ")
 
@@ -88,7 +101,7 @@ class Perfil(BaseConta):
         self.client.post(reverse("contas:perfil"), {
             "nome_completo": "Ana", "email": self.ana.email, "cpf": "111.111.111-11",
             "telefone": "(31) 99999-0000", "crp_regiao": "04", "crp_numero": "303030",
-            "regime": "PJ", "cnpj": "11.222.333/0001-81", "razao_social": "Ana Ribeiro Psicologia Ltda",
+            "atende_presencial": "on", "regime": "PJ", "cnpj": "11.222.333/0001-81", "razao_social": "Ana Ribeiro Psicologia Ltda",
             "crp_empresa": "", "nome_clinica": "Consultório da Ana", "telefone_clinica": "(31) 3333-4444",
             "cep": "30140-071", "logradouro": "Rua da Bahia", "numero": "1200", "complemento": "sala 5",
             "bairro": "Lourdes", "cidade": "Belo Horizonte", "uf": "MG",
@@ -104,6 +117,6 @@ class Perfil(BaseConta):
         resposta = self.client.post(reverse("contas:perfil"), {
             "nome_completo": "Ana", "email": self.ana.email, "cpf": "11111111111",
             "telefone": "31999990000", "crp_regiao": "04", "crp_numero": "303030",
-            "regime": "PF", "cnpj": "11222333000181", "crp_empresa": "",
+            "atende_presencial": "on", "regime": "PF", "cnpj": "11222333000181", "crp_empresa": "",
             "duracao_sessao": "50", "tipo_vencimento_mensalidade": "DIA_FIXO", "dia_vencimento_mensalidade": "10"})
         self.assertContains(resposta, "não tem CNPJ")

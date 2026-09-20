@@ -102,7 +102,7 @@ Dez apps. A fronteira é **quem é dono do dado**, nunca em que tela ele aparece
 | `documentos` | `Documento` (contrato, anexo de avaliação, cópia emitida), IA de documentos, e a tela do **prontuário geral** do paciente, montado com os registros de sessão (ADR-080) |
 | `core.exportacao` | Folha composta → PDF (`reportlab`) e DOCX (`python-docx`). Não conhece o domínio: quem compõe a folha é o app de origem (ADR-078) |
 | `financeiro` | `Pagamento`; `Despesa` em texto livre + `BaixaDeDespesa` (a ocorrência mensal é cálculo — ADR-083); fluxo de caixa por competência |
-| `assinaturas` | Ciclo de vida da conta, Asaas, exportação e descarte |
+| `assinaturas` | Ciclo de vida da conta, Asaas, exportação e descarte. No ar: assinar ou testar 7 dias, com pagamento simulado fora de produção (ADR-094). Depende só de `core` e `contas` |
 | `indicadores` | Painel, aba Estatísticas e as template tags que levam frequência e situação financeira à ficha do paciente (ADR-084). **Só leitura** |
 
 ### Regras de dependência

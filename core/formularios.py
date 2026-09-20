@@ -10,6 +10,9 @@ formulário ainda pode mexer no que chegou do navegador.
 
 import re
 
+from django import forms
+from django.core.exceptions import ValidationError
+
 _NAO_DIGITO = re.compile(r"\D")
 
 
@@ -50,3 +53,43 @@ class LimpaMascara:
             if chave in dados:
                 dados[chave] = limpar(dados[chave])
         self.data = dados
+
+
+class _VariasCaixas(forms.Widget):
+    """Várias caixas de texto com o mesmo nome. O desenho é de `components/_lista_de_textos.html`."""
+
+    def value_from_datadict(self, data, files, name):
+        return data.getlist(name) if hasattr(data, "getlist") else data.get(name) or []
+
+    def format_value(self, value):
+        return list(value or [])
+
+
+class ListaDeTextos(forms.Field):
+    """Uma lista curta de textos **escritos à mão**, um por caixa — sem lista pronta para escolher.
+
+    Guarda numa coluna JSON. Tira espaço sobrando, caixa vazia e repetição (sem olhar maiúscula), e mantém a
+    ordem em que a pessoa escreveu. Renderize com `components/_lista_de_textos.html`.
+    """
+
+    widget = _VariasCaixas
+
+    def __init__(self, *, maximo=8, tamanho=120, **kwargs):
+        self.maximo, self.tamanho = maximo, tamanho
+        super().__init__(**kwargs)
+
+    def to_python(self, value):
+        vistos, itens = set(), []
+        for bruto in value or []:
+            texto = " ".join(str(bruto).split())
+            if texto and texto.casefold() not in vistos:
+                vistos.add(texto.casefold())
+                itens.append(texto)
+        return itens
+
+    def validate(self, value):
+        super().validate(value)
+        if len(value) > self.maximo:
+            raise ValidationError(f"No máximo {self.maximo} itens.")
+        if any(len(item) > self.tamanho for item in value):
+            raise ValidationError(f"Cada item tem no máximo {self.tamanho} letras.")

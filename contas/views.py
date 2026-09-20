@@ -4,6 +4,7 @@ from django.contrib import messages
 from django.contrib.auth import login
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.views import LoginView, LogoutView
+from django.db import IntegrityError, transaction
 from django.http import Http404
 from django.shortcuts import redirect
 from django.urls import reverse, reverse_lazy
@@ -11,7 +12,8 @@ from django.utils import timezone
 from django.utils.decorators import method_decorator
 from django.views.generic import CreateView, UpdateView
 
-from contas.forms import ClinicaForm, ComoAtendeForm, CriarContaForm, LoginForm, PerfilForm, RegimeForm
+from contas.forms import (ClinicaForm, ComoAtendeForm, CriarContaForm, IdentificacaoForm, LoginForm, PerfilForm,
+                          RegimeForm)
 from core.escopo import dispensa_escopo
 
 
@@ -32,7 +34,29 @@ class Sair(LogoutView):
     next_page = reverse_lazy("contas:entrar")
 
 
-class Perfil(LoginRequiredMixin, UpdateView):
+class GravaSemRepetir:
+    """CPF ou e-mail que já é de outra conta vira mensagem no campo, e não erro 500.
+
+    O formulário não tem como conferir antes: sob o escopo do psicólogo, o RLS esconde as outras contas (ADR-046) —
+    que é exatamente o que se quer dele. Então quem sabe é a coluna única, e aqui a recusa do banco é traduzida. O
+    `atomic` é o ponto de retorno: sem ele, a transação da requisição ficaria inutilizada depois do erro.
+    """
+
+    REPETIDOS = {"cpf": "Já existe uma conta com este CPF.", "email": "Já existe uma conta com este e-mail."}
+
+    def form_valid(self, form):
+        try:
+            with transaction.atomic():
+                return super().form_valid(form)
+        except IntegrityError as erro:
+            for campo, mensagem in self.REPETIDOS.items():
+                if campo in str(erro) and campo in form.fields:
+                    form.add_error(campo, mensagem)
+                    return self.form_invalid(form)
+            raise
+
+
+class Perfil(GravaSemRepetir, LoginRequiredMixin, UpdateView):
     """O psicólogo edita a si mesmo — e só a si mesmo.
 
     Não há `get_object` filtrando por dono: `request.user` **é** o tenant (ADR-001), e a policy
@@ -47,22 +71,28 @@ class Perfil(LoginRequiredMixin, UpdateView):
         return self.request.user
 
     def form_valid(self, form):
-        messages.success(self.request, "Perfil atualizado.")
-        return super().form_valid(form)
+        resposta = super().form_valid(form)
+        if resposta.status_code == 302:  # gravou; CPF ou e-mail repetido volta para a tela com o erro no campo
+            messages.success(self.request, "Perfil atualizado.")
+        return resposta
 
 
 # O quiz de cadastro (C-10, ADR-071). Cada passo grava o que coletou: quem larga no meio volta de onde parou,
 # e não recomeça. O último marca `quiz_concluido_em`, que é o que libera o resto do sistema.
+# ADR-094: a conta nasce só com login e CRP, então o quiz ganhou a pergunta "quem é você" — e a do endereço só
+# aparece para quem atende presencialmente.
 PASSOS = [
-    (RegimeForm, "Como você atende, para a nota e o imposto"),
-    (ComoAtendeForm, "Sua abordagem e as formas de atendimento"),
-    (ClinicaForm, "Onde você atende"),
+    (IdentificacaoForm, "Quem é você"),
+    (RegimeForm, "Pessoa física ou jurídica"),
+    (ComoAtendeForm, "Sua abordagem e como você atende"),
+    (ClinicaForm, "Onde você atende presencialmente"),
 ]
 
 
 @method_decorator(dispensa_escopo, name="dispatch")
 class CriarConta(CreateView):
-    """Passo 1: a conta passa a existir e o psicólogo já entra logado.
+    """A porta de entrada (ADR-094): login e CRP. A conta passa a existir, o psicólogo já entra logado e vai
+    escolher entre assinar e testar grátis; o quiz vem depois, já dentro do sistema.
 
     `dispensa_escopo` porque aqui ainda não há psicólogo autenticado de quem derivar o escopo — a criação
     roda sob o papel da web, como o login (ADR-046).
@@ -70,7 +100,6 @@ class CriarConta(CreateView):
 
     form_class = CriarContaForm
     template_name = "contas/criar_conta.html"
-    extra_context = {"total": len(PASSOS) + 1}
 
     def dispatch(self, request, *args, **kwargs):
         if request.user.is_authenticated:
@@ -80,15 +109,14 @@ class CriarConta(CreateView):
     def form_valid(self, form):
         resposta = super().form_valid(form)
         login(self.request, self.object)
-        messages.success(self.request, "Conta criada. Faltam três passos rápidos.")
         return resposta
 
     def get_success_url(self):
-        return reverse("contas:quiz", args=[1])
+        return reverse("assinaturas:plano")
 
 
-class QuizDeCadastro(LoginRequiredMixin, UpdateView):
-    """Passos 2 a 4: o que o sistema precisa saber para propor as coisas certas."""
+class QuizDeCadastro(GravaSemRepetir, LoginRequiredMixin, UpdateView):
+    """O que o sistema precisa saber para propor as coisas certas — perguntado na primeira entrada (ADR-094)."""
 
     template_name = "contas/quiz.html"
 
@@ -99,6 +127,23 @@ class QuizDeCadastro(LoginRequiredMixin, UpdateView):
             raise Http404("Passo inexistente.")
         return numero
 
+    def dispatch(self, request, *args, **kwargs):
+        # Ninguém conclui o quiz pulando pergunta pela barra de endereço: sem nome e CPF, o documento sairia em
+        # branco; sem abordagem e forma de atendimento, o sistema não sabe o que propor.
+        if request.user.is_authenticated:
+            pendente = self.primeira_pendente(request.user)
+            if pendente is not None and self.passo > pendente:
+                return redirect("contas:quiz", passo=pendente)
+        return super().dispatch(request, *args, **kwargs)
+
+    @staticmethod
+    def primeira_pendente(psicologo) -> int | None:
+        if not (psicologo.nome_completo and psicologo.cpf and psicologo.telefone):
+            return 1
+        if not psicologo.abordagens:
+            return 3
+        return None
+
     def get_form_class(self):
         return PASSOS[self.passo - 1][0]
 
@@ -107,19 +152,23 @@ class QuizDeCadastro(LoginRequiredMixin, UpdateView):
 
     def get_context_data(self, **kwargs):
         contexto = super().get_context_data(**kwargs)
-        contexto.update(passo=self.passo, total=len(PASSOS) + 1, titulo=PASSOS[self.passo - 1][1],
+        contexto.update(passo=self.passo, total=len(PASSOS), titulo=PASSOS[self.passo - 1][1],
                         ultimo=self.passo == len(PASSOS), esconder_barra=True)
         return contexto
 
+    def terminou(self) -> bool:
+        """A última pergunta é o endereço do presencial — quem atende só online termina uma antes."""
+        return self.passo == len(PASSOS) or (self.passo == len(PASSOS) - 1 and not self.object.atende_presencial)
+
     def form_valid(self, form):
         resposta = super().form_valid(form)
-        if self.passo == len(PASSOS):
+        if resposta.status_code == 302 and self.terminou():
             self.object.quiz_concluido_em = timezone.now()
             self.object.save()
             messages.success(self.request, "Cadastro concluído. Bem-vindo ao Hamilton.")
         return resposta
 
     def get_success_url(self):
-        if self.passo == len(PASSOS):
+        if self.terminou():
             return reverse("painel")
         return reverse("contas:quiz", args=[self.passo + 1])

@@ -26,7 +26,7 @@ class PadroesDoPerfil(TransactionTestCase):
         dados = {
             "nome_completo": "Ana Padrões", "email": self.ana.email, "cpf": "11111111111",
             "telefone": "31988887777", "crp_regiao": "04", "crp_numero": "818181",
-            "regime": "PF", "cnpj": "", "crp_empresa": "",
+            "atende_presencial": "on", "regime": "PF", "cnpj": "", "crp_empresa": "",
             "duracao_sessao": "50", "tipo_vencimento_mensalidade": "DIA_FIXO", "dia_vencimento_mensalidade": "10",
         }
         dados.update(mudancas)

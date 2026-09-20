@@ -1,0 +1,45 @@
+{% comment %}
+Lista de textos escritos à mão (`core.formularios.ListaDeTextos`): uma caixa por item e um botão que abre outra.
+Sem JavaScript continua funcionando — sempre há uma caixa vazia a mais para escrever.
+Uso: {% include "components/_lista_de_textos.html" with campo=form.abordagens exemplo="Psicanálise" mais="outra abordagem" %}
+{% endcomment %}
+<div data-lista-de-textos data-maximo="{{ campo.field.maximo }}">
+  <label class="form-label small mb-1" for="{{ campo.id_for_label }}_0">
+    {{ campo.label }}{% if campo.field.required %} <span class="text-danger">*</span>{% endif %}
+  </label>
+  <div data-caixas class="d-flex flex-column gap-2">
+    {% for item in campo.value %}
+      <input type="text" name="{{ campo.html_name }}" value="{{ item }}" class="form-control"
+             maxlength="{{ campo.field.tamanho }}" autocomplete="off"{% if forloop.first %} id="{{ campo.id_for_label }}_0"{% endif %}>
+    {% endfor %}
+    <input type="text" name="{{ campo.html_name }}" class="form-control" maxlength="{{ campo.field.tamanho }}"
+           autocomplete="off" placeholder="{{ exemplo }}"{% if not campo.value %} id="{{ campo.id_for_label }}_0"{% endif %}>
+  </div>
+  <button type="button" class="btn btn-sm btn-link px-0 text-decoration-none" data-mais hidden>
+    <i class="bi bi-plus-lg"></i> Adicionar {{ mais|default:"outro" }}
+  </button>
+  {% if campo.help_text %}<div class="form-text small">{{ campo.help_text }}</div>{% endif %}
+  {% for erro in campo.errors %}<div class="text-danger small">{{ erro }}</div>{% endfor %}
+</div>
+<script>
+  // Um script só por página, por mais listas que ela tenha.
+  if (!window.listaDeTextosLigada) {
+    window.listaDeTextosLigada = true;
+    document.addEventListener("DOMContentLoaded", () => {
+      document.querySelectorAll("[data-lista-de-textos]").forEach((lista) => {
+        const caixas = lista.querySelector("[data-caixas]"), mais = lista.querySelector("[data-mais]");
+        const maximo = Number(lista.dataset.maximo) || 8;
+        mais.hidden = false;
+        mais.addEventListener("click", () => {
+          const todas = caixas.querySelectorAll("input");
+          const vazia = [...todas].find((c) => !c.value.trim());
+          if (vazia) { vazia.focus(); return; }
+          if (todas.length >= maximo) return;
+          const nova = todas[todas.length - 1].cloneNode();
+          nova.value = ""; nova.removeAttribute("id"); nova.placeholder = "";
+          caixas.appendChild(nova); nova.focus();
+        });
+      });
+    });
+  }
+</script>

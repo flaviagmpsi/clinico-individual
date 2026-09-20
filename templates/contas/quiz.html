@@ -6,12 +6,13 @@
 <div style="max-width:620px; margin-inline:auto">
   <div class="mb-3">
     <div class="d-flex align-items-center gap-2 mb-1">
-      <span class="rotulo">Passo {{ passo|add:1 }} de {{ total }}</span>
+      <span class="rotulo">Pergunta {{ passo }} de {{ total }}</span>
       <div class="progress flex-grow-1" style="height:6px" role="progressbar">
-        <div class="progress-bar bg-primary" style="width: {% widthratio passo|add:1 total 100 %}%"></div>
+        <div class="progress-bar bg-primary" style="width: {% widthratio passo total 100 %}%"></div>
       </div>
     </div>
     <h1 class="h5 mb-0">{{ titulo }}</h1>
+    {% if passo == 1 %}<div class="text-muted small mt-1">Suas respostas ajustam o sistema a você. Tudo pode ser mudado depois, no seu perfil.</div>{% endif %}
   </div>
 
   <form method="post" novalidate>
@@ -27,23 +28,51 @@
         o endereço é uma malha. São três desenhos diferentes para três perguntas diferentes.
         {% endcomment %}
         {% if passo == 1 %}
-          <div class="mb-3">{% include "components/_campo.html" with campo=form.regime %}</div>
           <div class="row g-3">
+            <div class="col-12">{% include "components/_campo.html" with campo=form.nome_completo %}</div>
+            <div class="col-md-6">{% include "components/_campo.html" with campo=form.cpf %}</div>
+            <div class="col-md-6">{% include "components/_campo.html" with campo=form.telefone %}</div>
+          </div>
+          <div class="form-text small mt-2">O nome completo sai, com o CRP, em todo documento que você emitir.</div>
+
+        {% elif passo == 2 %}
+          {% comment %}Os botões são desenhados à mão: o `RadioSelect` do Django embrulha tudo numa lista que o tema não
+          veste. O CNPJ só aparece para pessoa jurídica — e, sem JavaScript, aparece sempre.{% endcomment %}
+          <div class="mb-3">
+            <div class="form-label small mb-1">Você atende como <span class="text-danger">*</span></div>
+            {% for opcao in form.regime %}
+            <div class="form-check">
+              {{ opcao.tag }}
+              <label class="form-check-label" for="{{ opcao.id_for_label }}">{{ opcao.choice_label }}</label>
+            </div>
+            {% endfor %}
+            {% for erro in form.regime.errors %}<div class="text-danger small">{{ erro }}</div>{% endfor %}
+          </div>
+          <div class="row g-3" data-so-pj>
             <div class="col-md-6">{% include "components/_campo.html" with campo=form.cnpj %}</div>
             <div class="col-md-6">{% include "components/_campo.html" with campo=form.razao_social %}</div>
           </div>
           <div class="alert alert-light border mt-3 py-2 small mb-0">
             <strong>Pessoa física:</strong> recibo em seu nome e apuração pelo carnê-leão.
-            <strong>Pessoa jurídica:</strong> cobrança e documentos no nome da empresa.
-            Dá para mudar depois, no seu perfil.
+            <strong>Pessoa jurídica:</strong> cobrança e documentos no nome da empresa, e acesso à emissão de
+            nota fiscal de serviço — por isso o CNPJ. Dá para mudar depois, no seu perfil.
           </div>
+          <script>
+            document.addEventListener("DOMContentLoaded", () => {
+              const so_pj = document.querySelector("[data-so-pj]"), opcoes = document.querySelectorAll('input[name="regime"]');
+              const ajustar = () => {
+                so_pj.hidden = !document.querySelector('input[name="regime"][value="PJ"]').checked;
+                // Pessoa física não tem CNPJ: o que ficou digitado some junto com o campo, para não ser recusado escondido.
+                if (so_pj.hidden) so_pj.querySelectorAll("input").forEach((c) => { c.value = ""; });
+              };
+              opcoes.forEach((o) => o.addEventListener("change", ajustar)); ajustar();
+            });
+          </script>
 
-        {% elif passo == 2 %}
-          <div class="row g-3">
-            <div class="col-md-7">{% include "components/_campo.html" with campo=form.abordagem %}</div>
-            <div class="col-md-5">{% include "components/_campo.html" with campo=form.abordagem_outra %}</div>
-          </div>
-          <div class="mt-3">
+        {% elif passo == 3 %}
+          <div class="mb-3">{% include "components/_lista_de_textos.html" with campo=form.abordagens exemplo="Ex.: Psicanálise" mais="outra abordagem" %}</div>
+          <div class="mb-3">{% include "components/_lista_de_textos.html" with campo=form.outras_areas exemplo="Ex.: Avaliação neuropsicológica" mais="outra área" %}</div>
+          <div>
             <div class="form-label small mb-1">Como você atende <span class="text-danger">*</span></div>
             <div class="form-check">
               {{ form.atende_presencial }}
@@ -54,7 +83,7 @@
               <label class="form-check-label" for="{{ form.atende_online.id_for_label }}">Online</label>
             </div>
             {% for erro in form.atende_presencial.errors %}<div class="text-danger small">{{ erro }}</div>{% endfor %}
-            <div class="form-text small">Vale para os dois: é o padrão que cada paciente vai herdar (ADR-065).</div>
+            <div class="form-text small">Pode marcar os dois. Quem atende presencialmente informa o endereço na próxima pergunta.</div>
           </div>
 
         {% else %}
@@ -69,10 +98,7 @@
             <div class="col-md-3">{% include "components/_campo.html" with campo=form.cidade %}</div>
             <div class="col-md-1">{% include "components/_campo.html" with campo=form.uf %}</div>
           </div>
-          <div class="form-text small mt-2">
-            O CEP preenche o endereço sozinho.
-            {% if not user.atende_presencial %}Como você atende só online, isto aqui é opcional.{% endif %}
-          </div>
+          <div class="form-text small mt-2">O endereço do atendimento presencial. O CEP preenche o resto sozinho.</div>
         {% endif %}
       </div>
     </div>

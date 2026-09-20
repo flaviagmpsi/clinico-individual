@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% block titulo %}Assinatura{% endblock %}
+{% block secao %}Assinatura{% endblock %}
+
+{% block conteudo %}
+{% comment %}
+ADR-094. Uma tela, quatro momentos: escolher como começar, teste em andamento, teste encerrado e assinatura ativa.
+O preço só aparece quando está definido (`ASSINATURA_VALOR_MENSAL`): a tela não inventa valor.
+{% endcomment %}
+<div style="max-width:760px; margin-inline:auto">
+
+{% if not assinatura %}
+  <div class="text-center mb-4">
+    <h1 class="h5 mb-1">Como você quer começar?</h1>
+    <div class="text-muted small">Conta criada. Depois desta escolha vêm algumas perguntas rápidas para o sistema se ajustar a você.</div>
+  </div>
+  <div class="row g-3">
+    <div class="col-md-6">
+      <div class="card h-100">
+        <div class="card-body d-flex flex-column">
+          <div class="rotulo mb-1">Sem compromisso</div>
+          <h2 class="h6">Testar grátis por {{ dias_de_teste }} dias</h2>
+          <ul class="small text-muted ps-3 mb-3">
+            <li>O sistema inteiro liberado.</li>
+            <li>Não pede cartão nem dado de pagamento.</li>
+            <li>No fim do teste você decide se assina.</li>
+          </ul>
+          <form method="post" class="mt-auto">
+            {% csrf_token %}
+            <button type="submit" name="acao" value="teste" class="btn btn-outline-primary w-100">Começar o teste grátis</button>
+          </form>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-6">
+      <div class="card h-100">
+        <div class="card-body d-flex flex-column">
+          <div class="rotulo mb-1">Já decidi</div>
+          <h2 class="h6">Assinar agora</h2>
+          <ul class="small text-muted ps-3 mb-3">
+            <li>{% if valor_mensal %}<span class="valor">R$ {{ valor_mensal }}</span> por mês.{% else %}Cobrança mensal.{% endif %}</li>
+            <li>Cartão de crédito ou PIX Automático: cobra sozinho, sem boleto para lembrar.</li>
+            <li>Cancela quando quiser, e leva todos os seus registros.</li>
+          </ul>
+          <form method="post" class="mt-auto">
+            {% csrf_token %}
+            <button type="submit" name="acao" value="assinar" class="btn btn-primary w-100">Assinar agora</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+{% elif assinatura.estado == "ATIVA" %}
+  <h1 class="h5 mb-3">Assinatura</h1>
+  <div class="card">
+    <div class="card-body">
+      <span class="badge text-bg-success mb-2">Ativa</span>
+      <div class="small">Desde <span class="valor">{{ assinatura.ativa_desde|date:"d/m/Y" }}</span> · {{ assinatura.get_meio_display }}{% if valor_mensal %} · <span class="valor">R$ {{ valor_mensal }}</span> por mês{% endif %}</div>
+    </div>
+  </div>
+
+{% elif assinatura.em_teste %}
+  <h1 class="h5 mb-3">Assinatura</h1>
+  <div class="card">
+    <div class="card-body">
+      <span class="badge text-bg-light border mb-2">Teste grátis</span>
+      <div class="mb-3">
+        {% with dias=assinatura.dias_de_teste_restantes %}
+        {% if dias == 1 %}Seu teste termina <strong>hoje ou amanhã</strong>{% else %}Faltam <strong>{{ dias }} dias</strong> de teste{% endif %}{% endwith %}
+        — vai até <span class="valor">{{ assinatura.teste_termina_em|date:"d/m/Y \à\s H:i" }}</span>.
+      </div>
+      <a href="{% url 'assinaturas:pagamento' %}" class="btn btn-primary">Assinar agora</a>
+      <div class="form-text small mt-2">Assinando antes do fim você não perde nada do que já cadastrou.</div>
+    </div>
+  </div>
+
+{% else %}
+  <div class="text-center mb-4">
+    <h1 class="h5 mb-1">Seu teste grátis terminou</h1>
+    <div class="text-muted small">Foi até {{ assinatura.teste_termina_em|date:"d/m/Y" }}. Tudo o que você cadastrou continua guardado: assine para voltar de onde parou.</div>
+  </div>
+  <div class="card">
+    <div class="card-body text-center">
+      {% if valor_mensal %}<div class="mb-2"><span class="valor">R$ {{ valor_mensal }}</span> por mês</div>{% endif %}
+      <a href="{% url 'assinaturas:pagamento' %}" class="btn btn-primary">Assinar agora</a>
+      <div class="form-text small mt-2">Cartão de crédito ou PIX Automático.</div>
+    </div>
+  </div>
+{% endif %}
+
+</div>
+{% endblock %}

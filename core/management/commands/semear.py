@@ -29,6 +29,8 @@ from django.db import transaction
 from django.utils import timezone
 
 from agenda.models import HorarioDisponivel, Recorrencia
+from assinaturas import servicos as assinaturas
+from assinaturas.models import Assinatura
 from atendimentos.models import Consulta, Desfecho
 from atendimentos.servicos import (
     cadastrar_avulsa, cadastrar_prevista, definir_frequencia, registrar_desfecho, sessoes_previstas,
@@ -165,7 +167,7 @@ def _apagar_conta_de_demonstracao(psicologo) -> int:
     dono = {"psicologo": psicologo}
     total = 0
     # `Documento` primeiro: ele protege o paciente (ADR-076), e a cascata do psicólogo esbarraria nele.
-    for modelo in (Documento, Anamnese, FichaDoProntuario, VersaoProntuario, Prontuario, BaixaDeDespesa, Despesa,
+    for modelo in (Assinatura, Documento, Anamnese, FichaDoProntuario, VersaoProntuario, Prontuario, BaixaDeDespesa, Despesa,
                    Pagamento, Consulta, Desfecho,
                    Recorrencia, Caso):
         total += modelo.objetos_todos.filter(**dono).delete()[0]
@@ -342,7 +344,8 @@ def _dia_de_exemplo(casos: dict, agora=None) -> tuple[int, int]:
 PSICOLOGOS = [
     {
         "email": "ana@exemplo.com", "nome_completo": "Ana Ribeiro", "cpf": "11111111111",
-        "crp_numero": "111111", "abordagem": "TCC",
+        "crp_numero": "111111", "abordagens": ["Terapia cognitivo-comportamental", "Terapia do esquema"],
+        "outras_areas": ["Avaliação neuropsicológica"], "assinatura": "ATIVA",
         "pacientes": [
             dict(nome="Marcos Vieira", cpf="52998224725", data_nascimento=date(1988, 4, 12),
                  telefone="31988112233", email="marcos@exemplo.com", cep="30140071",
@@ -493,7 +496,9 @@ PSICOLOGOS = [
     },
     {
         "email": "bruno@exemplo.com", "nome_completo": "Bruno Carvalho", "cpf": "22222222222",
-        "crp_numero": "222222", "abordagem": "PSICANALISE",
+        "crp_numero": "222222", "abordagens": ["Psicanálise"],
+        # Bruno está no meio do teste grátis (ADR-094): é por ele que se vê o aviso de prazo no alto das telas.
+        "assinatura": "TESTE",
         "pacientes": [
             dict(nome="Camila Duarte", cpf="03119999708", data_nascimento=date(1990, 9, 3),
                  telefone="21988776655", cidade="Rio de Janeiro", uf="RJ",
@@ -552,6 +557,7 @@ class Command(BaseCommand):
             registros_de_prontuario = dados.pop("prontuarios", [])
             demandas_de_demonstracao = dados.pop("demandas", {})
             documentos_de_demonstracao = dados.pop("documentos", [])
+            assinatura = dados.pop("assinatura")
             psicologo = Psicologo.objects.create_user(
                 password=SENHA, telefone="31988887777", crp_regiao="04",
                 # `is_staff`/`is_superuser` só para o `/admin/` continuar servindo de conferência
@@ -565,6 +571,11 @@ class Command(BaseCommand):
                 **dados,
             )
             with contexto.como(psicologo.pk):
+                if assinatura == "ATIVA":
+                    assinaturas.ativar(Assinatura.Meio.CARTAO, id_no_gateway="demonstracao",
+                                       agora=timezone.now() - timedelta(days=200))
+                else:  # no terceiro dia do teste: faltam cinco
+                    assinaturas.comecar_teste(agora=timezone.now() - timedelta(days=2))
                 por_nome = {}
                 casos = {}  # por nome do paciente, ou pela descrição do casal
                 for item in pacientes:

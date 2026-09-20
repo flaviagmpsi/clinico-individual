@@ -1205,6 +1205,9 @@ automático, o que é pior do que campo vazio.
 
 ## ADR-036 — Assinatura: cartão e PIX Automático, sem teste gratuito
 
+> ⚠️ **Revogada em parte pela ADR-094:** passou a existir teste grátis de 7 dias, sem dado de pagamento. Os meios
+> aceitos (cartão e PIX Automático, sem boleto) continuam valendo.
+
 **Status:** ✅ Aceita — Rodada 20
 
 **Meios aceitos: cartão de crédito e PIX Automático.** Ambos cobram sozinhos. Boleto fica de
@@ -2300,6 +2303,9 @@ sessão de tempos em tempos.
 
 ## ADR-071 — Quiz de cadastro: a conta nasce completa (fecha a P-77)
 
+> ⚠️ **Refeita pela ADR-094:** a conta nasce só com login e CRP, o quiz vem depois da escolha do plano, ganhou a
+> pergunta "quem é você" e a abordagem passou a ser escrita à mão. O mecanismo daqui continua o mesmo.
+
 **Status:** ✅ Aceita — Rodada 43.
 
 **Decisão do usuário:** quiz **completo** na criação da conta, e as mesmas informações ficam no perfil do
@@ -2946,6 +2952,60 @@ lá no financeiro, pago ou não."
 - **Sem valor combinado, a tela avisa** que a sessão não gera cobrança e manda combinar o valor na ficha. Descartado
   manter o campo como remendo para esse caso: o valor combinado tem um lugar só, a condição de cobrança do paciente.
 - Na tela de corrigir uma sessão já cadastrada vale a mesma regra: o campo só aparece se ela for avulsa de verdade.
+
+## ADR-094 — Cadastro do psicólogo: conta curta, assinar ou testar 7 dias, e o quiz já dentro (revoga parte da ADR-036, refaz a ADR-071)
+
+**Status:** ✅ Aceita — Rodada 58.
+
+**Decisão do usuário:** o psicólogo cria a conta "com informações de login e CRP logo no início"; em seguida, "se
+quiser assinar de uma vez, com informações de pagamento; se não, com possibilidade de **teste grátis de 7 dias**".
+Ao entrar na plataforma, "surge um quiz para ele responder e personalizar a experiência": PF ou PJ ("pra ele ter
+acesso à API de nota fiscal caso seja PJ"), a abordagem — "ele vai escrever à mão", podendo ter **mais de uma** —,
+outra área em que atue ("avaliação neuropsicológica, por exemplo"), nome completo, CPF, CNPJ se tiver, telefone,
+se atende presencial e/ou online e, atendendo presencial, o endereço.
+
+**O que isto revoga.** A ADR-036 dizia "sem teste gratuito", e o ganho dela era não existir conta abandonada com
+prontuário dentro. Com o teste, esse problema **volta** — ver P-91. Os meios de pagamento da ADR-036 (cartão e PIX
+Automático, sem boleto) continuam valendo. Da ADR-071 ficam o mecanismo (cada pergunta grava o que coletou,
+`quiz_concluido_em`, o sistema trancado até o fim); mudam a ordem, as perguntas e a abordagem.
+
+**Decisões de arquitetura:**
+- **Três tempos, nesta ordem:** criar conta (e-mail, senha, CRP) → escolher entre assinar e testar → quiz. O CRP
+  continua na porta porque é condição de entrada (ADR-044). Nome, CPF e telefone saíram para o quiz: pedir documento
+  antes de a pessoa ver o produto era o maior atrito do cadastro.
+- **Nome, CPF e telefone são vazios no banco até o quiz** — e obrigatórios nas duas telas que os gravam (quiz e
+  perfil). CPF vazio é `NULL`, não `""`: a coluna é única, e duas contas a meio caminho colidiriam. Como o sistema só
+  abre depois do quiz, nenhum documento sai sem eles. Ninguém conclui o quiz pulando pergunta pela barra de endereço.
+- **CPF repetido é recusado pelo banco, e a tela traduz** (`contas.views.GravaSemRepetir`). O formulário não tem
+  como conferir antes: dentro do sistema o RLS esconde as outras contas (ADR-046), e a consulta responderia sempre
+  "não existe". Foi o teste que mostrou — a primeira versão conferia no formulário e dava erro 500.
+- **Abordagem escrita à mão, quantas forem** (`abordagens`, lista em JSON), e **outras áreas de atuação**
+  (`outras_areas`). A lista fechada da ADR-071 saiu; a resposta antiga foi levada para a lista nova na migração. O
+  campo compartilhado é `core.formularios.ListaDeTextos` + `components/_lista_de_textos.html`: uma caixa por item,
+  sem lista pronta, funciona sem JavaScript.
+- **O endereço só é perguntado a quem atende presencialmente.** Quem atende só online termina uma pergunta antes.
+  Nenhuma forma de atendimento vem marcada: o "presencial" que o banco tem por padrão não é resposta de ninguém.
+- **PJ é a chave da nota fiscal** (`Psicologo.emite_nota_fiscal`). A integração de NFS-e ainda não existe; quando
+  existir, é por essa propriedade que ela se abre. PJ sem CNPJ e PF com CNPJ continuam recusados (ADR-067).
+- **Novo app `assinaturas`**, que não toca dado clínico (S-03) e depende só de `core` e `contas`. `Assinatura` é uma
+  por psicólogo, com RLS. Estados no ar: `TESTE` e `ATIVA`; os demais da ADR-038 entram com a cobrança de verdade.
+- **O fim do teste é calculado**, não gravado por tarefa agendada: passado o prazo, a conta já está com o teste
+  encerrado, sem depender de nada ter rodado. O teste é **um por conta** — e conta é um CRP, que é único.
+- **Teste encerrado tranca tudo, menos a tela da assinatura e a saída. O dado fica onde está.** O que acontece com
+  ele depois é a P-91; até lá, nada é apagado.
+- **`AssinaturaMiddleware`** vem depois do escopo e antes do quiz. Conta sem assinatura e com o quiz respondido
+  passa: é a conta criada por código (semente, teste), que `create_user` já entrega completa pela mesma razão. A tela
+  de criar conta nunca produz uma conta assim.
+- **Dado de cartão nunca é digitado no Hamilton.** Fato levantado: o Asaas tem checkout hospedado para assinatura
+  recorrente (`POST /v3/checkouts`, `chargeTypes: RECURRENT`, cartão e PIX, com `successUrl`/`cancelUrl`) e PIX
+  Automático com cobrança recorrente. A tela de pagamento só pergunta o **meio**; com o Asaas ligado (S-01), o botão
+  leva à página deles e quem ativa a assinatura é o webhook de pagamento confirmado.
+- **Hoje o pagamento é simulado**, e só fora de produção: `ASSINATURA_SIMULADA` nasce de `DEBUG`, então não há `.env`
+  que ligue no ar um botão que ativa a assinatura sem cobrar. Com a simulação desligada, o `POST` responde 404.
+- **O preço não é inventado.** `ASSINATURA_VALOR_MENSAL` vazio: a tela diz "cobrança mensal" e mais nada (P-92).
+- Durante o teste, o prazo fica à vista no alto de toda tela, com o link para assinar.
+- ⚠️ Pendência técnica para a S-01b: o webhook do Asaas atualiza a assinatura **sem** psicólogo autenticado. Isso
+  pede uma policy endereçada ao papel da web, como a do convite de cadastro (ADR-081) — não o afrouxamento do RLS.
 
 ## Impeditivos
 

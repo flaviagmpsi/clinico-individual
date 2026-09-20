@@ -3,10 +3,11 @@
 {% block secao %}Criar conta{% endblock %}
 
 {% block conteudo %}
-<div style="max-width:560px; margin-inline:auto">
+{% comment %}ADR-094: a porta de entrada pede só o login e o CRP. Nome, CPF e o resto vêm no quiz, já dentro do sistema.{% endcomment %}
+<div style="max-width:520px; margin-inline:auto">
   <div class="text-center mb-4">
     <h1 class="h5 mb-1">Criar sua conta</h1>
-    <div class="text-muted small">Passo 1 de {{ total|default:4 }} · depois são três perguntas rápidas</div>
+    <div class="text-muted small">Só o seu login e o seu CRP. Em seguida você escolhe entre assinar ou testar grátis por 7 dias.</div>
   </div>
 
   <form method="post" novalidate>
@@ -17,15 +18,13 @@
     <div class="card">
       <div class="card-body">
         <div class="row g-3">
-          <div class="col-12">{% include "components/_campo.html" with campo=form.nome_completo %}</div>
-          <div class="col-md-7">{% include "components/_campo.html" with campo=form.email %}</div>
-          <div class="col-md-5">{% include "components/_campo.html" with campo=form.telefone %}</div>
-          <div class="col-md-5">{% include "components/_campo.html" with campo=form.cpf %}</div>
-          <div class="col-md-3">{% include "components/_campo.html" with campo=form.crp_regiao %}</div>
-          <div class="col-md-4">{% include "components/_campo.html" with campo=form.crp_numero %}</div>
+          <div class="col-12">{% include "components/_campo.html" with campo=form.email %}</div>
           <div class="col-md-6">{% include "components/_campo.html" with campo=form.password1 %}</div>
           <div class="col-md-6">{% include "components/_campo.html" with campo=form.password2 %}</div>
+          <div class="col-4">{% include "components/_campo.html" with campo=form.crp_regiao %}</div>
+          <div class="col-8">{% include "components/_campo.html" with campo=form.crp_numero %}</div>
         </div>
+        <div class="form-text small mt-2">O CRP vai impresso em todo documento que o sistema gerar, por isso é pedido já aqui.</div>
       </div>
     </div>
     <button type="submit" class="btn btn-primary mt-3 w-100">Criar conta e continuar</button>

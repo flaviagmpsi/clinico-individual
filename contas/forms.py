@@ -11,7 +11,7 @@ from django.contrib.auth.forms import AuthenticationForm, BaseUserCreationForm
 
 from contas.models import Psicologo
 from core.calendario import MAIOR_DIA_UTIL, TipoDia
-from core.formularios import LimpaMascara
+from core.formularios import LimpaMascara, ListaDeTextos
 
 
 class LoginForm(AuthenticationForm):
@@ -26,13 +26,32 @@ class LoginForm(AuthenticationForm):
     )
 
 
-class PerfilForm(LimpaMascara, forms.ModelForm):
+_AJUDA_ABORDAGENS = "Escreva como você se apresenta. Pode ser mais de uma."
+_AJUDA_AREAS = "O que você faz além da clínica — avaliação neuropsicológica, orientação profissional, supervisão."
+
+
+class _QuemEVoce:
+    """Nome, CPF e telefone são vazios no banco até o quiz (ADR-094) — e obrigatórios em toda tela que os grava."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for campo in ("nome_completo", "cpf", "telefone"):
+            self.fields[campo].required = True
+
+    # CPF repetido **não** se confere aqui: dentro do sistema o RLS esconde as outras contas (ADR-046), e a consulta
+    # responderia sempre "não existe". Quem recusa é a coluna única; a view traduz a recusa (`GravaSemRepetir`).
+
+
+class PerfilForm(_QuemEVoce, LimpaMascara, forms.ModelForm):
     CAMPOS_NUMERICOS = ("cpf", "telefone", "cnpj", "telefone_clinica", "cep")
+
+    abordagens = ListaDeTextos(label="Abordagens", required=False, help_text=_AJUDA_ABORDAGENS)
+    outras_areas = ListaDeTextos(label="Outras áreas de atuação", required=False, help_text=_AJUDA_AREAS)
 
     class Meta:
         model = Psicologo
         fields = ["nome_completo", "email", "cpf", "telefone",
-                  "crp_regiao", "crp_numero", "abordagem", "abordagem_outra",
+                  "crp_regiao", "crp_numero", "abordagens", "outras_areas",
                   "atende_online", "atende_presencial",
                   "regime", "cnpj", "razao_social", "crp_empresa",
                   "nome_clinica", "telefone_clinica", "cep", "logradouro", "numero", "complemento",
@@ -49,8 +68,6 @@ class PerfilForm(LimpaMascara, forms.ModelForm):
                                                  "inputmode": "numeric"}),
             "crp_numero": forms.TextInput(attrs={"class": "form-control", "placeholder": "123456",
                                                  "inputmode": "numeric"}),
-            "abordagem": forms.Select(attrs={"class": "form-select"}),
-            "abordagem_outra": forms.TextInput(attrs={"class": "form-control", "placeholder": "Qual?"}),
             "atende_online": forms.CheckboxInput(attrs={"class": "form-check-input"}),
             "atende_presencial": forms.CheckboxInput(attrs={"class": "form-check-input"}),
             "regime": forms.Select(attrs={"class": "form-select"}),
@@ -88,8 +105,8 @@ class PerfilForm(LimpaMascara, forms.ModelForm):
         # lado, nota e contabilidade da empresa do outro. PJ sem CNPJ deixaria essa escolha no ar.
         if dados.get("regime") == Psicologo.Regime.PJ and not dados.get("cnpj"):
             self.add_error("cnpj", "Regime pessoa jurídica precisa do CNPJ.")
-        if dados.get("abordagem") == Psicologo.Abordagem.OUTRA and not dados.get("abordagem_outra"):
-            self.add_error("abordagem_outra", "Diga qual é a abordagem.")
+        if not dados.get("atende_online") and not dados.get("atende_presencial"):
+            self.add_error("atende_presencial", "Marque pelo menos uma forma de atendimento.")
         dia = dados.get("dia_vencimento_mensalidade")
         if dados.get("tipo_vencimento_mensalidade") == TipoDia.DIA_UTIL and dia and dia > MAIOR_DIA_UTIL:
             self.add_error("dia_vencimento_mensalidade", f"Nenhum mês tem mais que {MAIOR_DIA_UTIL} dias úteis.")
@@ -102,26 +119,20 @@ _ESCOLHA = {"class": "form-select"}
 _MARCA = {"class": "form-check-input"}
 
 
-class CriarContaForm(LimpaMascara, BaseUserCreationForm):
-    """Passo 1 do quiz (C-10): o mínimo para a conta **existir** — e o model exige tudo isto.
+class CriarContaForm(BaseUserCreationForm):
+    """A porta de entrada (ADR-094): o **login** e o **CRP**, e mais nada.
 
-    Não é uma escolha de produto pedir CPF e CRP já na criação: `Psicologo` os tem como obrigatórios desde a
-    ADR-044, e uma conta sem eles não passaria pela validação que roda em toda gravação (P-69).
+    O CRP fica aqui porque é condição de entrada (ADR-044): sem registro não há conta. Nome, CPF e telefone
+    saíram para o quiz — pedir documento antes de a pessoa ver o produto era o maior atrito do cadastro.
     """
-
-    CAMPOS_NUMERICOS = ("cpf", "telefone")
 
     class Meta(BaseUserCreationForm.Meta):
         model = Psicologo
-        fields = ["nome_completo", "email", "cpf", "telefone", "crp_regiao", "crp_numero"]
+        fields = ["email", "crp_regiao", "crp_numero"]
         field_classes = {}
         widgets = {
-            "nome_completo": forms.TextInput(attrs={**_CONTROLE, "autofocus": True}),
-            "email": forms.EmailInput(attrs={**_CONTROLE, "placeholder": "voce@exemplo.com"}),
-            "cpf": forms.TextInput(attrs={**_NUMERO, "data-mascara": "cpf", "placeholder": "000.000.000-00"}),
-            "telefone": forms.TextInput(attrs={**_NUMERO, "data-mascara": "telefone",
-                                               "placeholder": "(31) 98888-7777"}),
-            "crp_regiao": forms.TextInput(attrs={**_NUMERO, "placeholder": "04"}),
+            "email": forms.EmailInput(attrs={**_CONTROLE, "placeholder": "voce@exemplo.com", "autofocus": True}),
+            "crp_regiao": forms.TextInput(attrs={**_NUMERO, "placeholder": "04", "maxlength": 2}),
             "crp_numero": forms.TextInput(attrs={**_NUMERO, "placeholder": "123456"}),
         }
 
@@ -129,6 +140,30 @@ class CriarContaForm(LimpaMascara, BaseUserCreationForm):
         super().__init__(*args, **kwargs)
         for campo in ["password1", "password2"]:
             self.fields[campo].widget.attrs.update({"class": "form-control"})
+
+    def clean(self):
+        dados = super().clean()
+        # A unicidade do CRP é uma restrição de duas colunas; dita aqui, vira mensagem no campo em vez de erro solto.
+        regiao, numero = dados.get("crp_regiao"), dados.get("crp_numero")
+        if regiao and numero and Psicologo.objects.filter(crp_regiao=regiao, crp_numero=numero).exists():
+            self.add_error("crp_numero", "Já existe uma conta com este CRP. Se for a sua, entre com o seu e-mail.")
+        return dados
+
+
+class IdentificacaoForm(_QuemEVoce, LimpaMascara, forms.ModelForm):
+    """Passo 1 do quiz: quem é o psicólogo — o que vai impresso em todo documento (ADR-044)."""
+
+    CAMPOS_NUMERICOS = ("cpf", "telefone")
+
+    class Meta:
+        model = Psicologo
+        fields = ["nome_completo", "cpf", "telefone"]
+        widgets = {
+            "nome_completo": forms.TextInput(attrs={**_CONTROLE, "autofocus": True}),
+            "cpf": forms.TextInput(attrs={**_NUMERO, "data-mascara": "cpf", "placeholder": "000.000.000-00"}),
+            "telefone": forms.TextInput(attrs={**_NUMERO, "data-mascara": "telefone",
+                                               "placeholder": "(31) 98888-7777"}),
+        }
 
 
 class RegimeForm(LimpaMascara, forms.ModelForm):
@@ -156,27 +191,27 @@ class RegimeForm(LimpaMascara, forms.ModelForm):
 
 
 class ComoAtendeForm(forms.ModelForm):
-    """Passo 3: abordagem e formas de atendimento (ADR-071)."""
+    """Passo 3: abordagens, outras áreas e formas de atendimento (ADR-094)."""
+
+    abordagens = ListaDeTextos(label="Qual é a sua abordagem?", help_text=_AJUDA_ABORDAGENS)
+    outras_areas = ListaDeTextos(label="Atua em alguma outra área?", required=False, help_text=_AJUDA_AREAS)
 
     class Meta:
         model = Psicologo
-        fields = ["abordagem", "abordagem_outra", "atende_online", "atende_presencial"]
+        fields = ["abordagens", "outras_areas", "atende_online", "atende_presencial"]
         widgets = {
-            "abordagem": forms.Select(attrs=_ESCOLHA),
-            "abordagem_outra": forms.TextInput(attrs={**_CONTROLE, "placeholder": "Qual?"}),
             "atende_online": forms.CheckboxInput(attrs=_MARCA),
             "atende_presencial": forms.CheckboxInput(attrs=_MARCA),
         }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields["abordagem"].required = True
-        self.fields["abordagem"].choices = [("", "Escolha")] + list(Psicologo.Abordagem.choices)
+        # Na primeira vez, nada vem marcado: o "presencial" que o banco tem por padrão não é resposta de ninguém.
+        if not self.instance.abordagens:
+            self.initial.update(atende_online=False, atende_presencial=False)
 
     def clean(self):
         dados = super().clean()
-        if dados.get("abordagem") == Psicologo.Abordagem.OUTRA and not dados.get("abordagem_outra"):
-            self.add_error("abordagem_outra", "Diga qual é a abordagem.")
         if not dados.get("atende_online") and not dados.get("atende_presencial"):
             self.add_error("atende_presencial", "Marque pelo menos uma forma de atendimento.")
         return dados

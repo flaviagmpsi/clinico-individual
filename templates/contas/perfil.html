@@ -3,7 +3,10 @@
 {% block secao %}Meu perfil{% endblock %}
 
 {% block conteudo %}
-<h1 class="h5 mb-3">Meu perfil</h1>
+<div class="d-flex align-items-center mb-3" style="max-width:760px">
+  <h1 class="h5 mb-0">Meu perfil</h1>
+  <a href="{% url 'assinaturas:plano' %}" class="ms-auto small text-decoration-none"><i class="bi bi-credit-card"></i> Assinatura</a>
+</div>
 
 <form method="post" novalidate style="max-width:760px">
   {% csrf_token %}
@@ -46,8 +49,8 @@
     </div>
     <div class="card-body">
       <div class="row g-3">
-        <div class="col-md-6">{% include "components/_campo.html" with campo=form.abordagem %}</div>
-        <div class="col-md-6">{% include "components/_campo.html" with campo=form.abordagem_outra %}</div>
+        <div class="col-md-6">{% include "components/_lista_de_textos.html" with campo=form.abordagens exemplo="Ex.: Psicanálise" mais="outra abordagem" %}</div>
+        <div class="col-md-6">{% include "components/_lista_de_textos.html" with campo=form.outras_areas exemplo="Ex.: Avaliação neuropsicológica" mais="outra área" %}</div>
       </div>
       <div class="mt-3 d-flex gap-4">
         <div class="form-check">
