@@ -2925,6 +2925,28 @@ cobrança, a de baixo por data de recebimento. É a regra da ADR-072 (cada coisa
 - A linha pendente é clicável por inteiro e leva a "registrar pagamento" (ADR-091); a paga não leva a lugar nenhum,
   e por isso não tem cursor de mão.
 
+## ADR-093 — O valor só se pergunta na sessão avulsa (refina a ADR-070 e a ADR-074)
+
+**Contexto.** Rodada 57. Pela ADR-074, o campo "valor desta sessão" sumia para quem paga mensalidade, mas continuava
+aparecendo na sessão da frequência de quem paga **por sessão**. O usuário corrigiu: "isso só deveria acontecer com
+sessões avulsas, pois sessões que já estão previamente combinadas já se sabe o valor, tanto em regime de mensalidade
+quanto em regime de pagamento sessão a sessão. Cadastrar a de sessão a sessão só gera uma nova pendência de cobrança
+na aba do financeiro. Quando cadastro sessão em regime de mensalidade não gera nova cobrança, pois já tem a cobrança
+lá no financeiro, pago ou não."
+
+**Decisões de arquitetura:**
+- **O campo de valor existe só na sessão avulsa** — a marcada fora da frequência, que é onde o valor pode ser outro
+  (a extra do mensalista, a de quem marca sem regularidade). É o que a ADR-070 quis desde o começo.
+- **Sessão que já estava combinada não pergunta nada:** a da frequência e a **data nova de uma remarcação**, que é a
+  mesma sessão em outro dia. O motor não muda — o devido já era cálculo (ADR-062, ADR-063): por sessão, a cobrança
+  nasce da condição vigente no dia; na mensalidade, a sessão não gera cobrança porque a do mês já existe.
+- **No lugar do campo, a tela diz o que vai acontecer no financeiro:** "Valor combinado: R$ 200,00 por sessão. Sendo
+  cobrada, ela entra no financeiro como pagamento pendente" ou "Mensalidade de R$ 700,00: esta sessão já está na
+  mensalidade do mês e não gera cobrança nova". É a pergunta que o psicólogo tem na cabeça ao cadastrar.
+- **Sem valor combinado, a tela avisa** que a sessão não gera cobrança e manda combinar o valor na ficha. Descartado
+  manter o campo como remendo para esse caso: o valor combinado tem um lugar só, a condição de cobrança do paciente.
+- Na tela de corrigir uma sessão já cadastrada vale a mesma regra: o campo só aparece se ela for avulsa de verdade.
+
 ## Impeditivos
 
 | # | Impeditivo | Situação |

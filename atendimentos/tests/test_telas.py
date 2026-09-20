@@ -409,7 +409,7 @@ class CobrancaEModalidadePelaTela(BaseTelasAgenda):
         self.assertEqual((consulta.cobrada, consulta.modalidade), (True, PRESENCIAL))
 
 class ValorSoOndeFazSentido(BaseTelasAgenda):
-    """ADR-074: o campo "valor desta sessão" só aparece na avulsa ou para quem paga por sessão."""
+    """ADR-093: o campo "valor desta sessão" só aparece na avulsa. Na que já estava combinada, a tela diz o que acontece."""
 
     def test_avulsa_sempre_mostra_o_valor(self):
         self.entrar(self.ana)
@@ -426,13 +426,37 @@ class ValorSoOndeFazSentido(BaseTelasAgenda):
         self.entrar(self.ana)
         resposta = self.client.get(self.prevista_de_ontem(regra))
         self.assertNotContains(resposta, "Valor desta sessão")
+        self.assertContains(resposta, "já está na mensalidade do mês e não gera cobrança nova")
         # E cadastrar sem o campo continua funcionando.
         resposta = self.client.post(self.prevista_de_ontem(regra), {"estado": REALIZADA, "hora": "09:00", "duracao": "50"})
         self.assertEqual(resposta.status_code, 302)
 
-    def test_sessao_da_frequencia_de_quem_paga_por_sessao_mostra(self):
+    def test_sessao_da_frequencia_de_quem_paga_por_sessao_nao_pergunta_e_diz_que_vira_cobranca(self):
+        with contexto.como(self.ana.pk):
+            from decimal import Decimal
+            por_sessao = cadastrar_paciente(Paciente(nome="Por Sessão Agenda"), valor=Decimal("200"),
+                                            vigente_desde=self.hoje - timedelta(days=60))
+            regra = frequencia_desde(por_sessao, self.hoje)
         self.entrar(self.ana)
-        self.assertContains(self.client.get(self.prevista_de_ontem(self.regra_joao)), "Valor desta sessão")
+        resposta = self.client.get(self.prevista_de_ontem(regra))
+        self.assertNotContains(resposta, "Valor desta sessão")
+        self.assertContains(resposta, "R$ 200,00 por sessão")
+        self.assertContains(resposta, "entra no financeiro como pagamento pendente")
+        # Cadastrada, a cobrança nasce sozinha, pelo valor combinado — sem ninguém digitar valor.
+        self.assertEqual(self.client.post(self.prevista_de_ontem(regra),
+                                          {"estado": REALIZADA, "hora": "09:00", "duracao": "50"}).status_code, 302)
+        with contexto.como(self.ana.pk):
+            from financeiro import servicos as financeiro
+            consulta = Consulta.objects.get(recorrencia=regra)
+            cobranca = financeiro.sessao(consulta)
+        self.assertIsNone(consulta.valor)
+        self.assertEqual(cobranca.devido, Decimal("200"))
+
+    def test_sem_valor_combinado_a_tela_avisa_que_nao_gera_cobranca(self):
+        self.entrar(self.ana)
+        resposta = self.client.get(self.prevista_de_ontem(self.regra_joao))
+        self.assertNotContains(resposta, "Valor desta sessão")
+        self.assertContains(resposta, "Ainda não há valor combinado")
 
 
 class RemarcacaoPelaTela(BaseTelasAgenda):

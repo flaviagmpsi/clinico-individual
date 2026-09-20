@@ -225,9 +225,14 @@ class CadastrarRemarcada(LoginRequiredMixin, FormView):
         return {"caso": origem.caso_id, "estado": Consulta.Estado.REALIZADA, "data": local.date(),
                 "hora": local.time(), "duracao": origem.duracao, "modalidade": origem.modalidade}
 
+    def get_form(self, form_class=None):
+        return _sem_valor(super().get_form(form_class))  # ADR-093: a remarcada já estava combinada
+
     def get_context_data(self, **kwargs):
         contexto = super().get_context_data(**kwargs)
-        contexto.update(titulo="Cadastrar sessão remarcada", origem=self.origem())
+        origem = self.origem()
+        contexto.update(titulo="Cadastrar sessão remarcada", origem=origem,
+                        cobranca_combinada=_cobranca_combinada(origem.caso, timezone.localtime(origem.remarcada_para).date()))
         return contexto
 
     def form_valid(self, form):
@@ -244,15 +249,32 @@ class CadastrarRemarcada(LoginRequiredMixin, FormView):
         return redirect(_semana_de(timezone.localtime(consulta.inicio).date()))
 
 
-def _paga_mensalidade(caso: Caso, dia: date) -> bool:
-    condicao = caso.condicao_vigente(dia)
-    return condicao is not None and condicao.modalidade == CondicaoCobranca.Modalidade.MENSAL
-
-
 def _sem_valor(form):
     """Tira o campo de valor do formulário (ADR-074). `cleaned_data.get("valor")` continua funcionando."""
     form.fields.pop("valor", None)
     return form
+
+
+def _cobranca_combinada(caso: Caso, dia: date) -> str:
+    """O que a tela diz no lugar do campo de valor, na sessão que já estava combinada (ADR-093).
+
+    Sessão da frequência — ou a remarcação de uma — tem valor conhecido: o da condição de cobrança. A tela não
+    pergunta; **diz o que vai acontecer no financeiro**, que é o que o psicólogo quer saber ao cadastrar.
+    """
+    condicao = caso.condicao_vigente(dia)
+    if condicao is None:
+        return ("Ainda não há valor combinado com este paciente, então esta sessão não gera cobrança. "
+                "Combine o valor na ficha dele para o financeiro acompanhar.")
+    valor = f"R$ {condicao.valor:.2f}".replace(".", ",")
+    if condicao.modalidade == CondicaoCobranca.Modalidade.MENSAL:
+        return f"Mensalidade de {valor}: esta sessão já está na mensalidade do mês e não gera cobrança nova."
+    return f"Valor combinado: {valor} por sessão. Sendo cobrada, ela entra no financeiro como pagamento pendente."
+
+
+def _nasceu_de_remarcacao(consulta: Consulta) -> bool:
+    """A sessão avulsa que é a data nova de uma remarcada (ADR-068): já estava combinada, só mudou de dia."""
+    return Consulta.objects.filter(caso=consulta.caso_id, estado=Consulta.Estado.REMARCADA,
+                                   remarcada_para=consulta.inicio).exists()
 
 
 class CadastrarPrevista(LoginRequiredMixin, FormView):
@@ -287,13 +309,14 @@ class CadastrarPrevista(LoginRequiredMixin, FormView):
                 "modalidade": servicos.modalidade_do_caso(regra.caso)}
 
     def get_form(self, form_class=None):
-        form = super().get_form(form_class)
-        prevista = self.prevista()
-        return _sem_valor(form) if _paga_mensalidade(prevista.caso, prevista.data) else form
+        # ADR-093: sessão da frequência tem valor conhecido, por mensalidade ou por sessão. O campo é só da avulsa.
+        return _sem_valor(super().get_form(form_class))
 
     def get_context_data(self, **kwargs):
         contexto = super().get_context_data(**kwargs)
-        contexto.update(titulo="Cadastrar sessão", prevista=self.prevista())
+        prevista = self.prevista()
+        contexto.update(titulo="Cadastrar sessão", prevista=prevista,
+                        cobranca_combinada=_cobranca_combinada(prevista.caso, prevista.data))
         return contexto
 
     def form_valid(self, form):
@@ -336,14 +359,21 @@ class EditarConsulta(LoginRequiredMixin, _ComConsulta, FormView):
 
     def get_form(self, form_class=None):
         form = super().get_form(form_class)
-        consulta = self.consulta()
-        if not consulta.avulsa and _paga_mensalidade(consulta.caso, timezone.localtime(consulta.inicio).date()):
-            return _sem_valor(form)
-        return form
+        return _sem_valor(form) if self.combinada() else form
+
+    def combinada(self) -> bool:
+        """Sessão da frequência, ou a data nova de uma remarcação: o valor já era conhecido (ADR-093)."""
+        if not hasattr(self, "_combinada"):
+            consulta = self.consulta()
+            self._combinada = not consulta.avulsa or _nasceu_de_remarcacao(consulta)
+        return self._combinada
 
     def get_context_data(self, **kwargs):
         contexto = super().get_context_data(**kwargs)
-        contexto["consulta"] = self.consulta()
+        consulta = self.consulta()
+        contexto["consulta"] = consulta
+        if self.combinada():
+            contexto["cobranca_combinada"] = _cobranca_combinada(consulta.caso, timezone.localtime(consulta.inicio).date())
         return contexto
 
     def form_valid(self, form):

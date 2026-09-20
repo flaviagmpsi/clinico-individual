@@ -45,12 +45,14 @@
       <div class="row g-3 mt-1">
         <div class="col-md-4">{% include "components/_campo.html" with campo=form.modalidade %}</div>
       </div>
-      {% comment %}ADR-070 e ADR-074: o valor desta sessão só aparece na avulsa ou para quem paga por sessão —
-      a view tira o campo quando o paciente paga mensalidade.{% endcomment %}
+      {% comment %}ADR-093: o valor só se pergunta na sessão avulsa. Na que já estava combinada — da frequência, ou
+      a data nova de uma remarcação — o valor é conhecido, e a tela diz o que vai acontecer no financeiro.{% endcomment %}
       {% if form.valor %}
       <div class="row g-3 mt-1">
         <div class="col-md-4">{% include "components/_campo.html" with campo=form.valor %}</div>
       </div>
+      {% elif cobranca_combinada %}
+      <div class="form-text mt-3"><i class="bi bi-cash-stack"></i> {{ cobranca_combinada }}</div>
       {% endif %}
 
       {% comment %}ADR-068: a remarcada diz para quando foi. A sessão nova não é gravada agora — ela entra na

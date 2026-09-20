@@ -197,6 +197,7 @@ em atendimento de casal. Ver **P-70**, resolvida em parte.
 | A-19 | **Remarcada diz para quando**: a data nova entra na agenda esperando cadastro | 🎨⚙️🗄️ | ✅ | 🟢 | ADR-068 |
 | A-20 | **Valor desta sessão**: cobrar à parte a extra do mensalista e a sessão de quem não tem valor combinado | 🎨⚙️🗄️ | ✅ | 🟢 | ADR-070 |
 | A-21 | **Agenda em formato de calendário**: colunas por dia, cartões por horário, horários livres da grade, visões de dia, semana e mês | 🎨⚙️ | ✅ | 🟢 | ADR-073 |
+| A-22 | **Valor só na avulsa**: a sessão já combinada (da frequência ou data nova de remarcação) não pergunta valor; a tela diz se ela vira pendência no financeiro (por sessão) ou se já está na mensalidade | 🎨⚙️ | ✅ | 🟢 | ADR-093 |
 
 ### Integração com Google Agenda — depois da agenda própria (ADR-051)
 
