@@ -9,27 +9,30 @@ ordem de horário, horários livres visíveis onde há grade cadastrada. Amarelo
 sessão cadastrada muda de cor (presente verde, falta vermelha, cancelada cinza riscada); livre é cinza.
 {% endcomment %}
 <style>
+  /* As cores dizem a situação, como o usuário definiu (ADR-073, ADR-074): amarelo esperada, verde realizada, azul
+     remarcada, cinza livre. Os tons são os do tema (ADR-089). */
   .calendario { display: grid; gap: 8px; }
-  .coluna .cabecalho { background: #6c757d; color: #fff; font-size: .72rem; letter-spacing: .04em;
-                       text-transform: uppercase; text-align: center; padding: 4px; border-radius: 4px 4px 0 0; }
-  .coluna .cabecalho.hoje { background: var(--tinta); }
-  .coluna .corpo { border: 1px solid #dee2e6; border-top: 0; min-height: 120px; padding: 6px;
-                   display: flex; flex-direction: column; gap: 6px; border-radius: 0 0 4px 4px; background: #fff; }
-  .cartao { display: block; padding: 4px 6px; border-radius: 3px; font-size: .78rem; font-weight: 600;
-            text-transform: uppercase; line-height: 1.2; text-decoration: none; color: #212529; border: 1px solid transparent; }
-  .cartao small { display: block; font-weight: 400; text-transform: none; font-size: .72rem; color: #495057; }
-  .cartao.livre { background: #eef0f2; color: #6c757d; border-color: #d3d7db; border-style: dashed; font-weight: 500; }
-  .cartao.esperada { background: #ffe98a; }
-  .cartao.pendente { background: #ffe98a; border-color: #e8890c; border-style: solid; }
-  .cartao.realizada { background: #c7ebc0; color: #1f5a16; }
-  .cartao.faltou { background: #f8c2c2; }
-  .cartao.cancelada { background: #e2e3e5; color: #6c757d; text-decoration: line-through; }
-  .cartao.remarcada { background: #cfe2ff; }
-  .cartao:hover { filter: brightness(.96); color: inherit; }
+  .coluna .cabecalho { background: var(--marinho-3); color: #dfe6f1; font-size: .6875rem; font-weight: 600; letter-spacing: .08em;
+                       text-transform: uppercase; text-align: center; padding: 5px 4px; border-radius: var(--raio) var(--raio) 0 0; }
+  .coluna .cabecalho.hoje { background: var(--tinta); color: #fff; }
+  .coluna .corpo { border: 1px solid var(--linha); border-top: 0; min-height: 120px; padding: 6px;
+                   display: flex; flex-direction: column; gap: 5px; border-radius: 0 0 var(--raio) var(--raio); background: var(--superficie); }
+  .cartao { display: block; padding: 4px 7px; border-radius: var(--raio); font-size: .75rem; font-weight: 600;
+            text-transform: uppercase; letter-spacing: .02em; line-height: 1.25; text-decoration: none; color: var(--texto);
+            border: 1px solid transparent; border-left-width: 3px; }
+  .cartao small { display: block; font-weight: 400; text-transform: none; letter-spacing: 0; font-size: .6875rem; color: var(--suave); }
+  .cartao.livre { background: var(--superficie-2); color: var(--suave); border-color: var(--linha); border-style: dashed; border-left-width: 1px; font-weight: 500; }
+  .cartao.esperada { background: #fff3c9; border-color: #ecd98f; border-left-color: #d9a400; }
+  .cartao.pendente { background: #fff3c9; border-color: #d9a400; border-left-color: var(--atencao); }
+  .cartao.realizada { background: var(--ok-fundo); border-color: #c4e2d9; border-left-color: var(--ok); color: #0c4f40; }
+  .cartao.faltou { background: var(--erro-fundo); border-color: #f3cbc7; border-left-color: var(--erro); }
+  .cartao.cancelada { background: var(--linha-fina); border-color: var(--linha); color: var(--suave); text-decoration: line-through; }
+  .cartao.remarcada { background: var(--tinta-fundo); border-color: #cfdcf7; border-left-color: var(--tinta); }
+  .cartao:hover { filter: brightness(.97); color: inherit; }
   .mes .coluna .corpo { min-height: 96px; padding: 4px; gap: 3px; }
-  .mes .cartao { font-size: .68rem; padding: 2px 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .mes .numero { font-size: .75rem; font-weight: 600; color: #6c757d; }
-  .mes .numero.hoje { color: var(--tinta); }
+  .mes .cartao { font-size: .6875rem; padding: 2px 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .mes .numero { font-family: var(--f-mono); font-size: .75rem; font-weight: 500; color: var(--suave); }
+  .mes .numero.hoje { color: var(--tinta); font-weight: 600; }
 </style>
 
 <div class="d-flex align-items-center flex-wrap gap-2 mb-2">

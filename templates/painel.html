@@ -33,9 +33,10 @@ Primeiro o dia; depois as pendências, num bloco; por fim o resumo do mês.
       {% if itens %}
         <div class="list-group list-group-flush">
           {% for item in itens %}
-            <div class="list-group-item d-flex align-items-center flex-wrap py-2 small">
-              <span class="text-muted me-2" style="min-width:52px">{{ item.inicio|date:"H:i" }}</span>
-              <span class="fw-medium">{{ item.caso }}</span>
+            {% comment %}ADR-089: a próxima sessão é a única linha que se destaca; a que já passou recua.{% endcomment %}
+            <div class="list-group-item d-flex align-items-center flex-wrap{% if item == proxima %} proxima{% elif item.cadastrada %} feita{% endif %}">
+              <span class="hora me-2" style="min-width:46px">{{ item.inicio|date:"H:i" }}</span>
+              <span class="nome fw-medium">{{ item.caso }}</span>
               <span class="text-muted ms-2" title="Modalidade">
                 {% if item.online %}<i class="bi bi-camera-video"></i> online{% else %}<i class="bi bi-person"></i> presencial{% endif %}
               </span>
@@ -90,9 +91,9 @@ Primeiro o dia; depois as pendências, num bloco; por fim o resumo do mês.
             </div>
             <ul class="list-unstyled mb-2">
             {% for s in sessoes_pendentes %}
-              <li class="py-1">
+              <li>
                 <a href="{% if s.origem %}{% url 'atendimentos:cadastrar_remarcada' s.origem.pk %}{% else %}{% url 'atendimentos:cadastrar_prevista' s.regra.pk s.data_iso %}{% endif %}"
-                   class="text-decoration-none">{{ s.inicio|date:"d/m H:i" }} · {{ s.caso }}</a>
+                   class="text-decoration-none"><span class="hora text-muted me-1">{{ s.inicio|date:"d/m H:i" }}</span> {{ s.caso }}</a>
                 {% if s.origem %}<span class="text-muted">· remarcada</span>{% endif %}
               </li>
             {% endfor %}
@@ -106,9 +107,9 @@ Primeiro o dia; depois as pendências, num bloco; por fim o resumo do mês.
             </div>
             <ul class="list-unstyled mb-2">
             {% for c in pagamentos_pendentes %}
-              <li class="py-1"><a href="{{ c.url_pagar }}" class="text-decoration-none">
-                {{ c.caso }} · {{ c.descricao }} · R$ {{ c.saldo|floatformat:2 }}</a>
-                <span class="text-muted">· venceu {{ c.vencimento|date:"d/m" }}</span></li>
+              <li><a href="{{ c.url_pagar }}" class="text-decoration-none fw-medium">{{ c.caso }}</a>
+                <span class="text-muted">{{ c.descricao|lower }} · venceu {{ c.vencimento|date:"d/m" }}</span>
+                <span class="valor ms-auto">R$ {{ c.saldo|floatformat:2 }}</span></li>
             {% endfor %}
             </ul>
           {% endif %}
@@ -120,8 +121,8 @@ Primeiro o dia; depois as pendências, num bloco; por fim o resumo do mês.
             </div>
             <ul class="list-unstyled mb-1">
             {% for r in prontuarios_pendentes %}
-              <li class="py-1"><a href="{{ r.url }}" class="text-decoration-none">
-                {{ r.consulta.inicio|date:"d/m H:i" }} · {{ r.paciente.nome }}</a></li>
+              <li><a href="{{ r.url }}" class="text-decoration-none"><span class="hora text-muted me-1">{{ r.consulta.inicio|date:"d/m H:i" }}</span>
+                {{ r.paciente.nome }}</a></li>
             {% endfor %}
             </ul>
           {% endif %}

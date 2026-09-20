@@ -2809,6 +2809,39 @@ exigia passar pela lista de pacientes; e, no celular, a barra simplesmente não 
   semana da sessão, a lista); o "Ficha" avulso da lista de registros saiu, porque a sub-aba Cadastro faz isso.
 - Fora desta rodada: lembrar a última sub-aba aberta por paciente (exige estado por navegador) e atalhos de teclado.
 
+## ADR-089 — O visual do sistema: direção "Prancheta", num tema único
+
+**Contexto.** Rodada 53. "O sistema está funcional, mas o visual está básico demais." O usuário pediu duas etapas antes
+de mudar qualquer coisa: um **diagnóstico** do frontend e uma **exploração de quatro direções** estéticas da tela mais
+usada (o painel), isolada do app (`../design-exploration/direcoes.html`, com screenshots). O diagnóstico: aparência
+inteira de fábrica do Bootstrap, três variáveis de CSS, estilo espalhado em oito blocos e 64 atributos `style`;
+hierarquia achatada (tudo é cartão de mesmo peso), tipografia sem voz, espaçamento uniforme, semáforo saturado de
+etiquetas, três estilos de abas. As direções — Consultório (quente, serifada, arejada), Prancheta (fria, técnica,
+densa), Noite (escura, hierarquia por luz) e Cartaz (alto contraste, letra grande) — usavam o **mesmo HTML**, para a
+diferença vir só de hierarquia, tipografia e espaçamento. **O usuário escolheu a Prancheta.**
+
+**Decisões de arquitetura:**
+- **Um tema, num lugar só:** `templates/components/_tema.html`, incluído pelo `base.html` e pelo login. A regra é
+  **variável primeiro, componente depois, tela nunca** — cor, fonte, raio e espaçamento saem de variáveis; os
+  componentes do Bootstrap são ajustados uma vez; template nenhum deve precisar de cor ou fonte própria. É peça de
+  template, e não arquivo estático, pelo mesmo motivo de `_folha_estilo`: sem build e sem `collectstatic` no caminho.
+- **A direção, em regras:** IBM Plex Sans no texto e **IBM Plex Mono em horas, datas e valores**; base de 13 px,
+  linhas de 28–34 px; marinho `#101a2b` na moldura, fundo `#eef1f5`, superfície branca, **um acento só** (cobalto
+  `#1f57c9`) para link, ação principal e foco; borda de 1 px, raio de 2 px, **nenhuma sombra** — a única é a da barra
+  lateral aberta, que flutua sobre o conteúdo.
+- **Hierarquia por peso e posição, não por caixa colorida.** A etiqueta de situação virou contorno em mono, sem bloco
+  de cor; só "atenção" tem fundo. Em lista, o nome é tinta e só a ação é azul. No painel, **a próxima sessão do dia**
+  é a única linha destacada, e a que já passou recua — coisa que a tela antiga não fazia.
+- **O que tem cor por significado continua tendo:** a agenda mantém amarelo (esperada), verde (realizada), azul
+  (remarcada) e cinza (livre), como o usuário definiu (ADR-073, ADR-074), agora em tons do tema e com filete à
+  esquerda. A **folha** de documentos e do prontuário continua serifada, de propósito: é papel, não é tela.
+- **Aplicação em duas etapas.** Esta rodada troca o tema global — moldura, cartões, botões, etiquetas, tabelas,
+  listas, abas, formulários, avisos — e ajusta painel, agenda e login. Fica para a próxima: tirar os `style` soltos
+  dos templates, unificar os três estilos de abas e o navegador de período numa peça só, agrupar milhar nos valores
+  em reais, e rever tela a tela o que ainda depende de classe utilitária de cor.
+- **Dependência nova:** Google Fonts (IBM Plex). A tela pública de cadastro já sai com `Referrer-Policy:
+  no-referrer` (ADR-081), então o token do link não vaza para lá. Sem internet, cai na fonte do sistema.
+
 ## Impeditivos
 
 | # | Impeditivo | Situação |

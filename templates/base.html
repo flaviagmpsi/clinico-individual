@@ -3,8 +3,8 @@ Layout base. Herda do Hamilton original a **estrutura** que a ADR-004 manda port
 ícones, header fixo, densidade alta — e nada da identidade visual da Allos: este produto não é
 dela, e o `claude.md` é explícito nisso.
 
-Bootstrap puro, via CDN. Sem build, sem pipeline de assets, sem framework de front. É MVP: o que
-importa é a tela existir e não mentir, não o CSS ser autoral.
+Bootstrap via CDN, sem build, sem pipeline de assets, sem framework de front. A aparência inteira mora em
+`components/_tema.html` (ADR-089): variáveis primeiro, componentes depois, tela nunca.
 {% endcomment %}
 <!DOCTYPE html>
 <html lang="pt-br">
@@ -14,63 +14,12 @@ importa é a tela existir e não mentir, não o CSS ser autoral.
   <title>{% block titulo %}Hamilton{% endblock %} · Hamilton</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
-  <style>
-    :root { --barra: 60px; --topo: 52px; --tinta: #1f6f68; }
-    body { background: #f6f7f9; font-size: .9rem; padding-top: var(--topo); }
-    .btn-primary, .bg-primary { background-color: var(--tinta) !important; border-color: var(--tinta) !important; }
-    .btn-outline-primary { color: var(--tinta); border-color: var(--tinta); }
-    .btn-outline-primary:hover { background-color: var(--tinta); border-color: var(--tinta); }
-    a { color: var(--tinta); }
-    .text-primary { color: var(--tinta) !important; }
-
-    .topo { position: fixed; top: 0; left: 0; right: 0; height: var(--topo); z-index: 1030;
-            background: #fff; border-bottom: 1px solid #dee2e6; }
-    /* ADR-088: a barra fica só com ícones e abre com os nomes ao passar o mouse (ou ao receber foco pelo teclado).
-       Ela abre por cima do conteúdo, que não se mexe. */
-    .barra { position: fixed; top: var(--topo); left: 0; width: var(--barra);
-             height: calc(100vh - var(--topo)); background: #fff; border-right: 1px solid #dee2e6;
-             display: flex; flex-direction: column; padding: 8px 10px; gap: 2px; z-index: 1020;
-             overflow: hidden; transition: width .15s ease, box-shadow .15s ease; }
-    .barra:hover, .barra:focus-within { width: 208px; box-shadow: 4px 0 16px rgba(0,0,0,.08); }
-    .barra a, .barra button { display: flex; align-items: center; gap: 12px; width: 100%; height: 40px;
-             padding: 0 0 0 9px; border-radius: 10px; color: #6c757d; font-size: 1.15rem; white-space: nowrap;
-             text-decoration: none; border: 0; background: transparent; }
-    .barra .nome { font-size: .88rem; opacity: 0; transition: opacity .1s ease; }
-    .barra:hover .nome, .barra:focus-within .nome { opacity: 1; }
-    .barra a:hover, .barra button:hover { background: #eef2f1; color: var(--tinta); }
-    .barra a.ativo { background: var(--tinta); color: #fff; }
-    .barra .adiado { opacity: .35; cursor: not-allowed; }
-    .barra .separador { height: 1px; background: #dee2e6; margin: 6px 8px; }
-    .barra .espaco { flex: 1; }
-    .barra form { margin: 0; }
-    .conteudo { margin-left: var(--barra); padding: 1.25rem 1.5rem 3rem; }
-    .conteudo.sem-barra { margin-left: 0; max-width: 720px; margin-inline: auto; }
-    /* O caminho no topo: seção › página. A seção é link para a raiz dela. */
-    .caminho a { color: #6c757d; text-decoration: none; }
-    .caminho a:hover { color: var(--tinta); text-decoration: underline; }
-    .caminho .separa { color: #adb5bd; margin: 0 .35rem; }
-    .card { border-color: #e4e7ea; }
-    .table > :not(caption) > * > * { padding: .5rem .6rem; }
-    .rotulo { font-size: .72rem; text-transform: uppercase; letter-spacing: .04em; color: #8a9299; }
-    /* No celular a barra vira uma faixa horizontal, rolável, logo abaixo do topo — em vez de sumir. */
-    @media (max-width: 768px) {
-      .conteudo { margin-left: 0; padding: 1rem; }
-      body { padding-top: calc(var(--topo) + 48px); }
-      .barra, .barra:hover, .barra:focus-within { width: 100%; height: 48px; flex-direction: row; align-items: center;
-             padding: 4px 8px; overflow-x: auto; box-shadow: none; border-right: 0; border-bottom: 1px solid #dee2e6; }
-      .barra a, .barra button { width: auto; height: 40px; padding: 0 10px; }
-      .barra .nome { display: none; }
-      .barra .separador { width: 1px; height: 24px; margin: 0 4px; }
-      .barra .espaco { display: none; }
-    }
-  </style>
+  {% include "components/_tema.html" %}
 </head>
 <body>
 
 <header class="topo d-flex align-items-center px-3">
-  <a href="{% url 'painel' %}" class="fw-semibold text-decoration-none me-3" style="color: var(--tinta)">
-    <i class="bi bi-clipboard2-pulse"></i> Hamilton
-  </a>
+  <a href="{% url 'painel' %}" class="marca me-3"><i class="bi bi-clipboard2-pulse"></i> Hamilton</a>
   {% comment %}ADR-088: o caminho. A seção leva à raiz dela; a página, quando o template a nomeia, vem depois.{% endcomment %}
   {% load navegacao %}{% raiz_da_secao request as raiz %}
   <span class="caminho small d-none d-md-inline">
@@ -79,9 +28,7 @@ importa é a tela existir e não mentir, não o CSS ser autoral.
   </span>
   <div class="ms-auto d-flex align-items-center gap-2">
     {% if user.is_authenticated %}
-      <a href="{% url 'contas:perfil' %}" class="text-decoration-none small text-muted">
-        {{ user.nome_completo }} <span class="text-black-50">· CRP {{ user.crp }}</span>
-      </a>
+      <a href="{% url 'contas:perfil' %}" class="quem">{{ user.nome_completo }} <span class="crp">· CRP {{ user.crp }}</span></a>
     {% endif %}
   </div>
 </header>

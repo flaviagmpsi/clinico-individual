@@ -66,5 +66,5 @@ class Navegacao(TransactionTestCase):
                 self.assertContains(resposta, "Registros de sessão")
                 self.assertContains(resposta, "Prontuário geral")
         # Sem paciente, a lista de registros e a aba de documentos não mostram as sub-abas de ninguém.
-        self.assertNotContains(self.client.get(reverse("prontuarios:lista")), "nav-tabs")
-        self.assertNotContains(self.client.get(reverse("documentos:aba")), "nav-tabs")
+        self.assertNotContains(self.client.get(reverse("prontuarios:lista")), '<ul class="nav nav-tabs">')
+        self.assertNotContains(self.client.get(reverse("documentos:aba")), '<ul class="nav nav-tabs">')

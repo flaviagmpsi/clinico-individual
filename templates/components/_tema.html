@@ -1,0 +1,209 @@
+{% comment %}
+O tema do Hamilton — direção "Prancheta" (ADR-089): frio, técnico, denso. Escolhido pelo usuário entre quatro
+direções exploradas fora do app (`design-exploration/direcoes.html`).
+
+Um lugar só para a aparência. A regra é: **variável primeiro, componente depois, tela nunca**. Cor, fonte, raio e
+espaçamento saem das variáveis abaixo; os componentes do Bootstrap são ajustados aqui uma vez; template nenhum deve
+precisar de cor ou fonte própria. É peça de template, e não arquivo estático, pelo mesmo motivo de `_folha_estilo`:
+sem build e sem `collectstatic` no caminho de quem só quer ver a tela.
+
+Princípios da direção:
+- hierarquia por **peso e posição**, não por caixa colorida: o que pede ação tem cor; o resto é tinta e cinza;
+- **números em fonte monoespaçada** e alinhados — horas, datas, valores;
+- **borda de 1 px, raio de 2 px, nenhuma sombra** (a única é a da barra lateral aberta, que flutua sobre o conteúdo);
+- densidade alta: base de 13 px, linhas de 28–34 px.
+{% endcomment %}
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    /* --- medidas da moldura --- */
+    --barra: 52px; --barra-aberta: 204px; --topo: 44px;
+    /* --- cor --- */
+    --fundo: #eef1f5; --superficie: #ffffff; --superficie-2: #f7f9fb;
+    --texto: #101a2b; --suave: #5b6878; --linha: #cfd6df; --linha-fina: #e6eaf0;
+    --tinta: #1f57c9;            /* o acento: link, ação principal, item em foco. O nome vem da versão anterior. */
+    --tinta-escura: #17439c; --tinta-fundo: #eef3ff;
+    --ok: #12715b; --ok-fundo: #e7f4f0; --atencao: #9a5b00; --atencao-fundo: #fff6e3;
+    --erro: #b3261e; --erro-fundo: #fdecea;
+    --marinho: #101a2b; --marinho-2: #18243a; --marinho-3: #223252; --marinho-linha: #2b3a55;
+    /* --- letra --- */
+    --f-texto: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --f-mono: "IBM Plex Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+    --raio: 2px;
+
+    /* --- o Bootstrap lê daqui --- */
+    --bs-body-font-family: var(--f-texto); --bs-body-font-size: .8125rem; --bs-body-line-height: 1.5;
+    --bs-body-color: var(--texto); --bs-body-bg: var(--fundo);
+    --bs-secondary-color: var(--suave); --bs-tertiary-color: #8794a5; --bs-emphasis-color: var(--texto);
+    --bs-border-color: var(--linha); --bs-border-radius: var(--raio); --bs-border-radius-sm: var(--raio);
+    --bs-border-radius-lg: var(--raio); --bs-border-radius-xl: var(--raio); --bs-border-radius-pill: var(--raio);
+    --bs-primary: #1f57c9; --bs-primary-rgb: 31, 87, 201; --bs-link-color: #1f57c9; --bs-link-color-rgb: 31, 87, 201;
+    --bs-link-hover-color: #17439c; --bs-link-hover-color-rgb: 23, 67, 156;
+    --bs-success: #12715b; --bs-success-rgb: 18, 113, 91; --bs-danger: #b3261e; --bs-danger-rgb: 179, 38, 30;
+    --bs-warning: #9a5b00; --bs-warning-rgb: 154, 91, 0;
+    --bs-focus-ring-color: rgba(31, 87, 201, .28);
+  }
+
+  body { background: var(--fundo); padding-top: var(--topo); font-variant-numeric: tabular-nums; -webkit-font-smoothing: antialiased; }
+  a { color: var(--tinta); }
+  .mono, .hora, .valor { font-family: var(--f-mono); }
+  .small, small { font-size: .75rem; }
+  .text-primary { color: var(--tinta) !important; }
+  .text-success { color: var(--ok) !important; } .text-danger { color: var(--erro) !important; }
+  .text-warning, .text-warning-emphasis { color: var(--atencao) !important; }
+  .fw-medium { font-weight: 500 !important; }
+
+  /* ---------- títulos ---------- */
+  h1, h2, h3, h4, h5, h6, .h1, .h2, .h3, .h4, .h5, .h6 { letter-spacing: -.005em; }
+  .h5, h1.h5 { font-size: .9375rem; font-weight: 600; }
+  .h6 { font-size: .8125rem; font-weight: 600; }
+  /* Os números grandes dos cartões: monoespaçados, para alinhar e para parecer número. */
+  .h2, .h3, .h4 { font-family: var(--f-mono); font-weight: 500; letter-spacing: -.02em; }
+  .h3 { font-size: 1.375rem; } .h4 { font-size: 1.25rem; }
+  .h3 .fs-6, .h4 .fs-6, .h3 small, .h4 small { font-family: var(--f-texto); font-size: .75rem !important; letter-spacing: 0; }
+  .rotulo { font-size: .6875rem; text-transform: uppercase; letter-spacing: .1em; color: var(--suave); font-weight: 600; }
+
+  /* ---------- a moldura: topo e barra ---------- */
+  .topo { position: fixed; top: 0; left: 0; right: 0; height: var(--topo); z-index: 1030; background: var(--marinho); color: #e8edf5; }
+  .topo .marca { color: #fff; font-weight: 600; font-size: .8125rem; text-transform: uppercase; letter-spacing: .06em; text-decoration: none; }
+  .topo .marca i { color: #6d9bff; }
+  .topo .quem { color: #b9c4d4; font-size: .75rem; text-decoration: none; }
+  .topo .quem:hover { color: #fff; }
+  .topo .quem .crp { color: #8797ad; }
+  .caminho { font-family: var(--f-mono); font-size: .75rem; color: #93a1b5; }
+  .caminho::before { content: "/"; margin-right: .45rem; color: #5d6c83; }
+  .caminho a { color: #b9c4d4; text-decoration: none; }
+  .caminho a:hover { color: #fff; text-decoration: underline; }
+  .caminho .separa { color: #5d6c83; margin: 0 .4rem; }
+
+  /* ADR-088: a barra fica só com ícones e abre com os nomes ao passar o mouse ou ao receber foco. Abre por cima. */
+  .barra { position: fixed; top: var(--topo); left: 0; width: var(--barra); height: calc(100vh - var(--topo));
+           background: var(--marinho-2); display: flex; flex-direction: column; padding: 6px 0; z-index: 1020;
+           overflow: hidden; transition: width .14s ease; }
+  .barra:hover, .barra:focus-within { width: var(--barra-aberta); box-shadow: 6px 0 18px rgba(16, 26, 43, .22); }
+  .barra a, .barra button { display: flex; align-items: center; gap: 14px; width: 100%; height: 38px; padding: 0 0 0 15px;
+           border: 0; border-left: 3px solid transparent; border-radius: 0; background: transparent; color: #8797ad;
+           font-size: 1rem; white-space: nowrap; text-decoration: none; }
+  .barra .nome { font-size: .8125rem; opacity: 0; transition: opacity .1s ease; }
+  .barra:hover .nome, .barra:focus-within .nome { opacity: 1; }
+  .barra a:hover, .barra button:hover { background: #1f2d47; color: #dfe6f1; }
+  .barra a.ativo { background: var(--marinho-3); color: #fff; border-left-color: #6d9bff; }
+  .barra .adiado { opacity: .35; cursor: not-allowed; }
+  .barra .separador { height: 1px; background: var(--marinho-linha); margin: 4px 0; }
+  .barra .espaco { flex: 1; }
+  .barra form { margin: 0; }
+  .conteudo { margin-left: var(--barra); padding: 18px 18px 48px; }
+  .conteudo.sem-barra { margin-left: 0; max-width: 720px; margin-inline: auto; }
+
+  /* ---------- cartão: o contêiner de quase tudo ---------- */
+  .card { border: 1px solid var(--linha); border-radius: var(--raio); box-shadow: none; background: var(--superficie); }
+  .card-header, .card-header.bg-white { background: var(--superficie-2) !important; border-bottom: 1px solid var(--linha);
+           padding: 7px 12px !important; font-size: .6875rem; font-weight: 600; text-transform: uppercase; letter-spacing: .1em; color: var(--texto); }
+  .card-header .fw-normal, .card-header a, .card-header .badge, .card-header .text-muted, .card-header .btn, .card-header small
+         { text-transform: none; letter-spacing: 0; font-size: .75rem; }
+  .card-header .badge { font-size: .65rem; }
+  .card-body { padding: 12px; }
+  .card-footer { background: var(--superficie-2) !important; border-top: 1px solid var(--linha); padding: 6px 12px; }
+
+  /* ---------- botões ---------- */
+  .btn { border-radius: var(--raio); font-size: .8125rem; font-weight: 500; --bs-btn-padding-y: .34rem; --bs-btn-padding-x: .8rem; box-shadow: none !important; }
+  .btn-sm { font-size: .75rem; --bs-btn-padding-y: .22rem; --bs-btn-padding-x: .6rem; }
+  .btn-primary, .bg-primary { --bs-btn-bg: var(--tinta); --bs-btn-border-color: var(--tinta); --bs-btn-hover-bg: var(--tinta-escura);
+           --bs-btn-hover-border-color: var(--tinta-escura); --bs-btn-active-bg: var(--tinta-escura); --bs-btn-active-border-color: var(--tinta-escura);
+           --bs-btn-disabled-bg: var(--tinta); --bs-btn-disabled-border-color: var(--tinta); }
+  .bg-primary { background-color: var(--tinta) !important; }
+  .btn-outline-primary { --bs-btn-color: var(--tinta); --bs-btn-border-color: var(--tinta); --bs-btn-hover-bg: var(--tinta);
+           --bs-btn-hover-border-color: var(--tinta); --bs-btn-active-bg: var(--tinta); --bs-btn-active-border-color: var(--tinta); background: var(--superficie); }
+  .btn-outline-secondary { --bs-btn-color: var(--texto); --bs-btn-border-color: var(--linha); --bs-btn-hover-color: var(--texto);
+           --bs-btn-hover-bg: #e9eef5; --bs-btn-hover-border-color: #b6c0cd; --bs-btn-active-color: #fff; --bs-btn-active-bg: var(--marinho);
+           --bs-btn-active-border-color: var(--marinho); background: var(--superficie); }
+  .btn-outline-secondary.active { background: var(--marinho); color: #fff; }
+  .btn-outline-success { --bs-btn-color: var(--ok); --bs-btn-border-color: var(--ok); --bs-btn-hover-bg: var(--ok); --bs-btn-hover-border-color: var(--ok); background: var(--superficie); }
+  .btn-danger { --bs-btn-bg: var(--erro); --bs-btn-border-color: var(--erro); }
+  .btn-link { --bs-btn-color: var(--tinta); text-decoration: none; }
+  .btn-link:hover { text-decoration: underline; }
+  .btn:focus-visible, .form-control:focus, .form-select:focus, .form-check-input:focus, a:focus-visible
+         { outline: 2px solid var(--tinta); outline-offset: 1px; box-shadow: none !important; }
+
+  /* ---------- etiqueta de situação: contorno, mono, sem bloco de cor ---------- */
+  .badge { font-family: var(--f-mono); font-weight: 500; font-size: .65rem; text-transform: uppercase; letter-spacing: .05em;
+           padding: 2px 6px; border-radius: var(--raio); border: 1px solid currentColor; background: transparent !important; color: var(--suave) !important; }
+  .badge.text-bg-success { color: var(--ok) !important; }
+  .badge.text-bg-warning { color: var(--atencao) !important; background: var(--atencao-fundo) !important; }
+  .badge.text-bg-danger { color: var(--erro) !important; }
+  .badge.text-bg-info, .badge.text-bg-primary { color: var(--tinta) !important; }
+  .badge.text-bg-light, .badge.text-bg-secondary { color: var(--suave) !important; border-color: var(--linha) !important; }
+
+  /* ---------- tabela e lista ---------- */
+  .table { --bs-table-bg: transparent; font-size: .78125rem; margin-bottom: 0; }
+  .table > :not(caption) > * > * { padding: 6px 12px; border-bottom-color: var(--linha-fina); }
+  .table > thead > tr > *, .table-light > tr > * { background: var(--superficie-2) !important; color: var(--suave); font-size: .6875rem;
+           font-weight: 600; text-transform: uppercase; letter-spacing: .06em; border-bottom: 1px solid var(--linha) !important; }
+  .table-hover > tbody > tr:hover > * { background: var(--tinta-fundo); }
+  .table tbody tr:last-child > * { border-bottom: 0; }
+  .list-group-item { border-color: var(--linha-fina); padding: 0 12px; min-height: 34px; background: transparent; }
+  .list-group-item .hora { color: var(--suave); font-size: .78125rem; }
+  /* A próxima sessão do dia: a única linha que se destaca sem precisar de etiqueta. */
+  .list-group-item.proxima { background: var(--tinta-fundo); box-shadow: inset 3px 0 0 var(--tinta); }
+  .list-group-item.proxima .hora { color: var(--tinta); font-weight: 600; }
+  .list-group-item.feita .nome, .list-group-item.feita .hora { color: var(--suave); }
+  .list-unstyled > li { border-top: 1px solid var(--linha-fina); min-height: 28px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .list-unstyled > li:first-child { border-top: 0; }
+  /* Em lista, o nome é tinta e só a ação é azul: uma coluna inteira de links azuis não destaca nada. */
+  .list-unstyled > li > a, .list-group-item .nome, td > a.text-decoration-none { color: var(--texto); }
+  .list-unstyled > li > a:hover, td > a.text-decoration-none:hover { color: var(--tinta); text-decoration: underline !important; }
+
+  /* ---------- abas ---------- */
+  .nav-pills { gap: 2px; }
+  .nav-pills .nav-link { border-radius: var(--raio); color: var(--suave); font-weight: 500; padding: .28rem .7rem; }
+  .nav-pills .nav-link:hover { background: #e2e8f0; color: var(--texto); }
+  .nav-pills .nav-link.active { background: var(--marinho); color: #fff; }
+  .nav-tabs { border-bottom: 1px solid var(--linha); }
+  .nav-tabs .nav-link { border: 0; border-bottom: 2px solid transparent; border-radius: 0; color: var(--suave); font-weight: 500; padding: .4rem .8rem; margin-bottom: -1px; }
+  .nav-tabs .nav-link:hover { color: var(--texto); border-bottom-color: var(--linha); }
+  .nav-tabs .nav-link.active { color: var(--tinta); border-bottom-color: var(--tinta); background: transparent; }
+
+  /* ---------- formulário ---------- */
+  .form-label { font-size: .75rem; font-weight: 500; color: var(--suave); margin-bottom: .2rem; }
+  .form-control, .form-select { border-radius: var(--raio); border-color: var(--linha); font-size: .8125rem; padding: .34rem .6rem; color: var(--texto); background-color: var(--superficie); }
+  .form-control-sm, .form-select-sm { font-size: .75rem; padding: .22rem .5rem; }
+  .form-select { padding-right: 2rem; } .form-select-sm { padding-right: 1.8rem; }
+  .form-control::placeholder { color: #9aa6b5; }
+  .form-text { font-size: .71875rem; color: var(--suave); }
+  .form-check-input { border-color: #9aa6b5; border-radius: var(--raio); }
+  .form-check-input:checked { background-color: var(--tinta); border-color: var(--tinta); }
+  .input-group-text { border-radius: var(--raio); border-color: var(--linha); background: var(--superficie-2); color: var(--suave); font-size: .8125rem; }
+
+  /* ---------- avisos ---------- */
+  .alert { border-radius: var(--raio); border: 1px solid var(--linha); border-left-width: 3px; font-size: .78125rem; padding: .5rem .75rem; color: var(--texto); background: var(--superficie); }
+  .alert-warning { background: var(--atencao-fundo); border-color: #ead9b3; border-left-color: var(--atencao); }
+  .alert-info { background: var(--tinta-fundo); border-color: #cfdcf7; border-left-color: var(--tinta); }
+  .alert-success { background: var(--ok-fundo); border-color: #c4e2d9; border-left-color: var(--ok); }
+  .alert-danger { background: var(--erro-fundo); border-color: #f3cbc7; border-left-color: var(--erro); }
+  .alert-light { background: var(--superficie-2); }
+
+  /* ---------- o resto ---------- */
+  .progress { border-radius: 0; background: var(--linha-fina); }
+  .progress-bar.bg-success { background-color: var(--ok) !important; } .progress-bar.bg-warning { background-color: var(--atencao) !important; }
+  .dropdown-menu { border-radius: var(--raio); border-color: var(--linha); font-size: .78125rem; box-shadow: 0 6px 18px rgba(16, 26, 43, .12); padding: 4px 0; }
+  .dropdown-item { padding: .3rem .8rem; }
+  .border, .border-top, .border-bottom { border-color: var(--linha) !important; }
+  .border-warning-subtle { border-color: #ead9b3 !important; } .border-success-subtle { border-color: #c4e2d9 !important; }
+  .border-danger-subtle { border-color: #f3cbc7 !important; } .bg-success-subtle { background: var(--ok-fundo) !important; }
+  .rounded, .rounded-top-0 { border-radius: var(--raio) !important; }
+  hr { border-color: var(--linha); opacity: 1; }
+
+  /* No celular a barra vira uma faixa horizontal, rolável, logo abaixo do topo — em vez de sumir. */
+  @media (max-width: 768px) {
+    .conteudo { margin-left: 0; padding: 12px; }
+    body { padding-top: calc(var(--topo) + 44px); }
+    .barra, .barra:hover, .barra:focus-within { width: 100%; height: 44px; flex-direction: row; align-items: center;
+           padding: 0 4px; overflow-x: auto; box-shadow: none; }
+    .barra a, .barra button { width: auto; height: 44px; padding: 0 12px; border-left: 0; border-bottom: 3px solid transparent; }
+    .barra a.ativo { border-bottom-color: #6d9bff; }
+    .barra .nome, .barra .espaco { display: none; }
+    .barra .separador { width: 1px; height: 22px; margin: 0 2px; }
+  }
+</style>

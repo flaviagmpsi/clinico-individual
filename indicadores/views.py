@@ -23,9 +23,12 @@ class Painel(LoginRequiredMixin, TemplateView):
         contexto = super().get_context_data(**kwargs)
         painel = montar_painel()
         pendencias = painel.pendencias
+        agora = timezone.now()
+        # A próxima sessão do dia: a primeira ainda por acontecer. É o que a tela destaca (ADR-089).
+        proxima = next((item for item in painel.hoje_itens if not item.cadastrada and item.inicio >= agora), None)
         contexto.update(
             hoje=painel.hoje, mes=painel.mes, resumo=painel.resumo,
-            itens=painel.hoje_itens,
+            itens=painel.hoje_itens, proxima=proxima,
             online=sum(1 for item in painel.hoje_itens if item.online), total_hoje=len(painel.hoje_itens),
             total_pendencias=pendencias.total,
             # A lista é inteira: o bloco rola por dentro em vez de cortar (ADR-074).

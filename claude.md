@@ -67,6 +67,13 @@ corre sob `hamilton_web` e só alcança a linha do próprio convite (`core.db.ap
 mostra dado de paciente nem toca tabela clínica; quem um dia escrever ali uma consulta a `Paciente` recebe
 `permission denied`, e é para ser assim.
 
+### 3.2b A aparência mora num lugar só (ADR-089)
+Tema "Prancheta", em `templates/components/_tema.html`. **Variável primeiro, componente depois, tela nunca:** tela
+nova usa os componentes do Bootstrap já ajustados e as classes `.rotulo`, `.hora`, `.valor`, `.mono`; não declara
+cor, fonte, raio nem sombra. Hora, data e dinheiro vão em mono. Cor só onde há significado (situação) ou ação
+(acento cobalto); em lista, o nome é tinta e só a ação é azul. Etiqueta é contorno, não bloco. Sem sombra.
+Exceções de propósito: a **folha** de documentos e prontuário (serifada — é papel) e as cores de situação da agenda.
+
 ### 3.3 O prontuário é peça de defesa legal (ADR-005)
 A Res. CFP 001/2009, Art. 4º, §2º o define como meio de prova em processo disciplinar. Portanto:
 versão congelada na confirmação, trilha de auditoria de quem escreveu o quê e quando, e
