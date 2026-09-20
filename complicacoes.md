@@ -2902,6 +2902,29 @@ um crossfade da página inteira — moldura incluída — e, somada à entrada, 
 - **`prefers-reduced-motion`:** sem animação de entrada, sem escala e sem transição — fica só a troca de cor,
   instantânea. Conferido por Playwright: animação `none`, escala 1,000, transição 0 s.
 
+## ADR-092 — O financeiro do mês numa tabela só
+
+**Contexto.** Rodada 56. O usuário: "no financeiro as informações dos pagamentos do mês repetem informações que estão
+em cobranças do mês [...] faça de um jeito que continue visível e fácil de entender quais atendimentos estão pagos e
+quais estão pendentes". As duas tabelas mostravam o mesmo pagamento duas vezes, de ângulos diferentes — a de cima por
+cobrança, a de baixo por data de recebimento. É a regra da ADR-072 (cada coisa uma vez) aplicada ao financeiro.
+
+**Decisões de arquitetura:**
+- **Sai a tabela "Pagamentos recebidos no mês".** O que só ela tinha foi para dentro da linha da cobrança: **quando
+  e como foi pago** (coluna "Pagamento": data e forma; valor de cada um quando há mais de um; observação), e o
+  **desfazer** de um lançamento por engano, num menu "⋯" da própria linha, com confirmação.
+- **Pago e pendente se separam por posição, peso e filete — não só pela etiqueta.** A ordem é: pendente (venceu e
+  não foi quitado), a vencer, pago. A linha pendente tem filete âmbar à esquerda, que o hover não apaga (ADR-091); a
+  paga recua para o tom de apoio. Pagamento parcial diz quanto falta.
+- **Filtros com contagem** no cabeçalho — Todas · Pendentes · A vencer · Pagas —, para saber o tamanho de cada grupo
+  antes de abrir. Os três números do topo continuam sendo do mês inteiro, qualquer que seja o filtro.
+- **O que a tabela antiga mostrava e a nova não alcança**: dinheiro que entrou neste mês por cobrança de **outro**
+  mês. Não volta como tabela: uma linha no rodapé diz de que meses veio e quanto, com link para cada um. Cada
+  pagamento aparece na cobrança a que se refere — num lugar só.
+- Excluir um pagamento volta ao mês **da cobrança**, e não ao mês em que ele foi pago: é lá que a linha está.
+- A linha pendente é clicável por inteiro e leva a "registrar pagamento" (ADR-091); a paga não leva a lugar nenhum,
+  e por isso não tem cursor de mão.
+
 ## Impeditivos
 
 | # | Impeditivo | Situação |

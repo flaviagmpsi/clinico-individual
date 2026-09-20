@@ -212,6 +212,12 @@ Princípios da direção:
   .list-group-item:has(a[href]:not(.btn)):hover, .list-group-item:has(a:focus-visible), .list-group-item.linha-clicavel:hover,
   .list-unstyled > li:has(a[href]):hover, .list-unstyled > li:has(a:focus-visible), .list-unstyled > li.linha-clicavel:hover
          { background: var(--tinta-fundo-leve); box-shadow: inset 3px 0 0 var(--tinta); }
+  /* Estado de linha de tabela (ADR-092): o filete âmbar de quem pede ação fica no hover e no foco; o que já foi
+     resolvido recua para o tom de apoio. */
+  .table > tbody > tr.estado-atencao > :first-child, .table > tbody > tr.estado-atencao:hover > :first-child,
+  .table > tbody > tr.estado-atencao:has(a:focus-visible) > :first-child { box-shadow: inset 3px 0 0 var(--atencao) !important; }
+  .table > tbody > tr.estado-feito > td { color: var(--suave); }
+  .table > tbody > tr.estado-feito > td.fw-medium { font-weight: 400 !important; }
   /* O estado próprio da linha não some no hover: a próxima sessão mantém o fundo e o filete mais largo dela. */
   .list-group-item.proxima:hover, .list-group-item.proxima:has(a:focus-visible) { background: var(--tinta-fundo); box-shadow: inset 4px 0 0 var(--tinta); }
   /* No foco pelo teclado quem acende é a linha; o link de dentro não precisa de um segundo anel. */

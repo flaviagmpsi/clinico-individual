@@ -27,28 +27,60 @@
   </div></div></div>
 </div>
 
+{% comment %}
+ADR-092: uma tabela só. Cada cobrança diz quanto, quando vence, se está paga — e, paga, quando e como foi. O que era a
+tabela "Pagamentos recebidos" (data, observação e o desfazer) mora dentro da linha. Pendente vem primeiro e tem filete
+âmbar; pago recua. Os filtros contam, para se saber o tamanho de cada grupo sem precisar abrir.
+{% endcomment %}
 <div class="card mb-3">
-  <div class="card-header bg-white py-2 fw-semibold">Cobranças do mês</div>
+  <div class="card-header bg-white py-2 d-flex align-items-center flex-wrap gap-2">
+    <span class="fw-semibold">Cobranças do mês</span>
+    <ul class="nav nav-pills ms-auto">
+      <li class="nav-item"><a class="nav-link py-0{% if not filtro %} active{% endif %}" href="?mes={{ inicio|date:'Y-m' }}">Todas · {{ total_de_cobrancas }}</a></li>
+      <li class="nav-item"><a class="nav-link py-0{% if filtro == 'pendentes' %} active{% endif %}" href="?mes={{ inicio|date:'Y-m' }}&situacao=pendentes">Pendentes · {{ contagem.pendentes }}</a></li>
+      <li class="nav-item"><a class="nav-link py-0{% if filtro == 'a_vencer' %} active{% endif %}" href="?mes={{ inicio|date:'Y-m' }}&situacao=a_vencer">A vencer · {{ contagem.a_vencer }}</a></li>
+      <li class="nav-item"><a class="nav-link py-0{% if filtro == 'pagas' %} active{% endif %}" href="?mes={{ inicio|date:'Y-m' }}&situacao=pagas">Pagas · {{ contagem.pagas }}</a></li>
+    </ul>
+  </div>
   {% if cobrancas %}
   <div class="table-responsive">
     <table class="table table-sm align-middle mb-0 small">
       <thead class="table-light">
-        <tr><th>Paciente</th><th>Cobrança</th><th>Vence</th><th class="text-end">Pago / devido</th><th>Situação</th><th>Forma</th><th></th></tr>
+        <tr><th>Paciente</th><th>Cobrança</th><th>Vence</th><th class="text-end">Pago / devido</th><th>Situação</th><th>Pagamento</th><th></th></tr>
       </thead>
       <tbody>
       {% for c in cobrancas %}
-        <tr>
+        <tr class="{% if c.quitada %}estado-feito{% elif c.vencimento <= hoje %}estado-atencao{% endif %}">
           <td class="fw-medium">{{ c.caso }}</td>
           <td>{{ c.descricao }}</td>
-          <td class="text-muted">{{ c.vencimento|date:"d/m" }}</td>
-          <td class="text-end text-nowrap">R$ {{ c.pago|floatformat:2 }} / R$ {{ c.devido|floatformat:2 }}</td>
+          <td class="text-muted valor">{{ c.vencimento|date:"d/m" }}</td>
+          <td class="text-end text-nowrap valor">R$ {{ c.pago|floatformat:2 }} / R$ {{ c.devido|floatformat:2 }}</td>
           <td>
             {% if c.quitada %}<span class="badge text-bg-success">Pago</span>
-            {% elif c.vencimento <= hoje %}<span class="badge text-bg-warning">Pendente</span>
+            {% elif c.vencimento <= hoje %}<span class="badge text-bg-warning">Pendente</span>{% if c.pago %} <span class="text-muted">falta R$ {{ c.saldo|floatformat:2 }}</span>{% endif %}
             {% else %}<span class="badge text-bg-light border">A vencer</span>{% endif %}
           </td>
-          <td class="text-muted">{{ c.formas|join:", "|default:"—" }}</td>
-          <td class="text-end">{% if not c.quitada %}<a href="{{ c.url_pagar }}" class="text-decoration-none">registrar pagamento</a>{% endif %}</td>
+          <td class="text-muted">
+            {% for p in c.pagamentos %}
+              <div><span class="valor">{{ p.data|date:"d/m" }}</span> · {{ p.get_forma_display }}{% if c.pagamentos|length > 1 %} · <span class="valor">R$ {{ p.valor|floatformat:2 }}</span>{% endif %}{% if p.observacao %} · <span title="{{ p.observacao }}">{{ p.observacao|truncatechars:40 }}</span>{% endif %}</div>
+            {% empty %}—{% endfor %}
+          </td>
+          <td class="text-end text-nowrap">
+            {% if not c.quitada %}<a href="{{ c.url_pagar }}" class="text-decoration-none" data-principal>registrar pagamento</a>{% endif %}
+            {% if c.pagamentos %}
+            <div class="dropdown d-inline">
+              <button class="btn btn-sm btn-link text-muted py-0" data-bs-toggle="dropdown" aria-label="Pagamentos desta cobrança"><i class="bi bi-three-dots"></i></button>
+              <ul class="dropdown-menu dropdown-menu-end">
+                {% for p in c.pagamentos %}
+                <li><form method="post" action="{% url 'financeiro:excluir' p.pk %}" class="m-0"
+                          onsubmit="return confirm('Excluir o pagamento de R$ {{ p.valor|floatformat:2 }} de {{ p.data|date:"d/m/Y" }}? A cobrança volta a ficar em aberto.')">
+                  {% csrf_token %}
+                  <button type="submit" class="dropdown-item text-danger">Excluir pagamento de {{ p.data|date:"d/m" }} · R$ {{ p.valor|floatformat:2 }}</button></form></li>
+                {% endfor %}
+              </ul>
+            </div>
+            {% endif %}
+          </td>
         </tr>
       {% endfor %}
       </tbody>
@@ -56,7 +88,15 @@
   </div>
   {% else %}
     <div class="card-body small text-muted">
-      Nenhuma cobrança neste mês. A mensalidade e o valor por sessão vêm da cobrança combinada na ficha de cada paciente.
+      {% if filtro %}Nenhuma cobrança nesta situação.
+      {% else %}Nenhuma cobrança neste mês. A mensalidade e o valor por sessão vêm da cobrança combinada na ficha de cada paciente.{% endif %}
+    </div>
+  {% endif %}
+  {% if de_outros_meses %}
+    <div class="card-footer small text-muted">
+      Neste mês também entrou dinheiro de cobranças de outros meses:
+      {% for mes, valor in de_outros_meses %}<a href="?mes={{ mes|date:'Y-m' }}" class="text-decoration-none">{{ mes|date:"F"|lower }} · <span class="valor">R$ {{ valor|floatformat:2 }}</span></a>{% if not forloop.last %}, {% endif %}{% endfor %}.
+      Cada pagamento aparece na cobrança a que se refere.
     </div>
   {% endif %}
 </div>
@@ -78,37 +118,4 @@ cobrança de mês anterior ainda em aberto — e só essa aparece à parte, sem 
   </ul>
 </div>
 {% endif %}
-
-<div class="card">
-  <div class="card-header bg-white py-2 fw-semibold">
-    Pagamentos recebidos no mês <span class="text-muted fw-normal">· R$ {{ total_recebido|floatformat:2 }}</span>
-  </div>
-  {% if recebidos %}
-  <div class="table-responsive">
-    <table class="table table-sm align-middle mb-0 small">
-      <thead class="table-light"><tr><th>Data</th><th>Paciente</th><th>Referente a</th><th>Forma</th><th class="text-end">Valor</th><th>Observação</th><th></th></tr></thead>
-      <tbody>
-      {% for p in recebidos %}
-        <tr>
-          <td class="text-muted">{{ p.data|date:"d/m" }}</td>
-          <td>{{ p.caso }}</td>
-          <td>{% if p.mes_referencia %}Mensalidade {{ p.mes_referencia|date:"m/Y" }}{% else %}Sessão de {{ p.consulta.inicio|date:"d/m/Y" }}{% endif %}</td>
-          <td>{{ p.get_forma_display }}</td>
-          <td class="text-end text-nowrap">R$ {{ p.valor|floatformat:2 }}</td>
-          <td class="text-muted">{{ p.observacao|default:"—" }}</td>
-          <td class="text-end">
-            <form method="post" action="{% url 'financeiro:excluir' p.pk %}" class="m-0">
-              {% csrf_token %}
-              <button type="submit" class="btn btn-sm btn-link p-0 text-danger" title="Excluir registro feito por engano"><i class="bi bi-trash"></i></button>
-            </form>
-          </td>
-        </tr>
-      {% endfor %}
-      </tbody>
-    </table>
-  </div>
-  {% else %}
-    <div class="card-body small text-muted">Nenhum pagamento registrado neste mês.</div>
-  {% endif %}
-</div>
 {% endblock %}

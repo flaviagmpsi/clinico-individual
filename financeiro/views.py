@@ -40,19 +40,29 @@ class MesFinanceiro(LoginRequiredMixin, TemplateView):
             inicio = date(hoje.year, hoje.month, 1)
         fim = servicos.ultimo_dia(inicio.year, inicio.month)
 
-        cobrancas = servicos.cobrancas_do_mes(inicio.year, inicio.month)
-        recebidos = list(
-            Pagamento.objects.filter(data__gte=inicio, data__lte=fim)
-            .select_related("caso", "consulta").prefetch_related("caso__pacientes")
-        )
+        todas = servicos.cobrancas_do_mes(inicio.year, inicio.month)
+        # ADR-092: uma tabela só. Primeiro o que pede ação (pendente), depois o que ainda vai vencer, por fim o pago.
+        grupos = {"pendentes": [c for c in todas if c.pendente(hoje)],
+                  "a_vencer": [c for c in todas if not c.quitada and not c.pendente(hoje)],
+                  "pagas": [c for c in todas if c.quitada]}
+        filtro = self.request.GET.get("situacao", "")
+        cobrancas = grupos.get(filtro) if filtro in grupos else grupos["pendentes"] + grupos["a_vencer"] + grupos["pagas"]
+        # O que entrou neste mês mas é cobrança de outro: não repete a tabela, só avisa onde está.
+        de_outros_meses: dict = {}
+        recebidos = Pagamento.objects.filter(data__gte=inicio, data__lte=fim).select_related("consulta")
+        for pagamento in recebidos:
+            referencia = pagamento.mes_referencia or timezone.localtime(pagamento.consulta.inicio).date().replace(day=1)
+            if referencia != inicio:
+                de_outros_meses[referencia] = de_outros_meses.get(referencia, 0) + pagamento.valor
         contexto.update(
             inicio=inicio, hoje=hoje, aba="receitas",
             anterior=servicos.mes_anterior(inicio), proximo=servicos.mes_seguinte(inicio),
             este=date(hoje.year, hoje.month, 1),
-            cobrancas=cobrancas,
-            devido=sum((c.devido for c in cobrancas), 0), pago=sum((c.pago for c in cobrancas), 0),
-            saldo=sum((c.saldo for c in cobrancas), 0),
-            recebidos=recebidos, total_recebido=sum((p.valor for p in recebidos), 0),
+            cobrancas=cobrancas, filtro=filtro if filtro in grupos else "",
+            contagem={nome: len(lista) for nome, lista in grupos.items()}, total_de_cobrancas=len(todas),
+            devido=sum((c.devido for c in todas), 0), pago=sum((c.pago for c in todas), 0),
+            saldo=sum((c.saldo for c in todas), 0),
+            de_outros_meses=sorted(de_outros_meses.items()),
             # ADR-074: a tabela do mês já marca o que está pendente nele. Só entra à parte o que ela não
             # alcança — cobrança vencida de mês anterior que ninguém quitou.
             pendentes_anteriores=[c for c in servicos.pagamentos_pendentes(hoje) if c.vencimento < inicio],
@@ -132,8 +142,9 @@ class ExcluirPagamento(LoginRequiredMixin, View):
     http_method_names = ["post"]
 
     def post(self, request, pk):
-        pagamento = get_object_or_404(Pagamento, pk=pk)
-        dia = pagamento.data
+        pagamento = get_object_or_404(Pagamento.objects.select_related("consulta"), pk=pk)
+        # Volta ao mês da **cobrança**, que é onde o pagamento aparece (ADR-092) — e não ao mês em que foi pago.
+        mes = pagamento.mes_referencia or timezone.localtime(pagamento.consulta.inicio).date()
         servicos.excluir_pagamento(pagamento)
-        messages.success(request, "Pagamento excluído.")
-        return redirect(_url_do_mes(dia))
+        messages.success(request, "Pagamento excluído. A cobrança voltou a ficar em aberto.")
+        return redirect(_url_do_mes(mes))

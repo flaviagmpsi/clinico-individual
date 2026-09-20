@@ -30,7 +30,9 @@ from django.utils import timezone
 
 from agenda.models import HorarioDisponivel, Recorrencia
 from atendimentos.models import Consulta, Desfecho
-from atendimentos.servicos import cadastrar_prevista, definir_frequencia, registrar_desfecho, sessoes_previstas
+from atendimentos.servicos import (
+    cadastrar_avulsa, cadastrar_prevista, definir_frequencia, registrar_desfecho, sessoes_previstas,
+)
 from contas.models import Psicologo
 from core import contexto
 from financeiro.models import Pagamento
@@ -289,6 +291,52 @@ def _aniversario_neste_mes(nascimento: date, deslocamento: int) -> date:
     hoje = timezone.localdate()
     ultimo = despesas_da_clinica.ultimo_dia(hoje.year, hoje.month).day
     return date(nascimento.year, hoje.month, min(max(hoje.day + deslocamento, 1), ultimo))
+
+
+# O dia de exemplo do painel. A semente roda em qualquer dia — inclusive domingo, quando nenhuma frequência prevê
+# sessão e o "Hoje" do painel ficaria vazio. Então ela monta o dia **relativo a agora**: o que já passou vira sessão
+# cadastrada (consulta só se cadastra no passado), e o que ainda vem sai de três pacientes cuja frequência cai no dia
+# da semana de hoje. Só ocupa horário em que ninguém tem sessão.
+_HORAS_DO_DIA = [8, 9, 10, 11, 14, 15, 16, 18]
+_SITUACOES_DO_DIA = ["REALIZADA", "REALIZADA", "FALTOU", "REALIZADA", "CANCELADA_CLIENTE", "REALIZADA", "REALIZADA",
+                     "REALIZADA"]
+_PACIENTES_DO_DIA = [
+    dict(nome="Paula Andrade", cpf="98765432100", data_nascimento=date(1990, 2, 17), telefone="31990001111",
+         cidade="Belo Horizonte", uf="MG"),
+    dict(nome="Renato Siqueira", cpf="87654321099", data_nascimento=date(1984, 6, 3), telefone="31990002222",
+         cidade="Belo Horizonte", uf="MG", modalidade="ONLINE"),
+    dict(nome="Sofia Barros", cpf="76543210988", data_nascimento=date(1997, 12, 1), telefone="31990003333",
+         cidade="Contagem", uf="MG"),
+]
+
+
+def _dia_de_exemplo(casos: dict, agora=None) -> tuple[int, int]:
+    """Devolve (sessões já cadastradas hoje, sessões previstas para hoje) criadas para o painel."""
+    agora = timezone.localtime(agora or timezone.now())
+    hoje = agora.date()
+    ocupadas = {timezone.localtime(c.inicio).hour for c in Consulta.objects.filter(inicio__date=hoje)}
+    ocupadas |= {s.inicio.astimezone(agora.tzinfo).hour for s in sessoes_previstas(hoje, hoje)}
+    com_sessao_hoje = {c.caso_id for c in Consulta.objects.filter(inicio__date=hoje)}
+    com_sessao_hoje |= {s.caso.pk for s in sessoes_previstas(hoje, hoje)}
+    livres = [caso for nome, caso in casos.items()
+              if caso.pk not in com_sessao_hoje and caso.desfecho_aberto() is None and caso.condicao_vigente(hoje)]
+
+    passadas = [h for h in _HORAS_DO_DIA if h not in ocupadas and h + 1 <= agora.hour]
+    futuras = [h for h in _HORAS_DO_DIA if h not in ocupadas and h > agora.hour]
+    cadastradas = 0
+    for hora, caso, estado in zip(passadas, livres, _SITUACOES_DO_DIA):
+        inicio = timezone.make_aware(datetime.combine(hoje, time(hora)))
+        cadastrar_avulsa(caso, estado=estado, inicio=inicio)
+        cadastradas += 1
+    previstas = 0
+    for hora, campos in zip(futuras, _PACIENTES_DO_DIA):
+        paciente = Paciente(**campos, data_primeira_sessao=hoje - timedelta(weeks=2))
+        caso = cadastrar_paciente(paciente, valor=Decimal("200"), modalidade=_POR_SESSAO,
+                                  vigente_desde=hoje - timedelta(weeks=2))
+        _frequencia_de_demonstracao(caso, frequencia=_SEMANAL, dia_semana=hoje.weekday(), hora=time(hora),
+                                    semanas_atras=2, cadastradas=["REALIZADA", "REALIZADA"])
+        previstas += 1
+    return cadastradas, previstas
 
 
 PSICOLOGOS = [
@@ -588,10 +636,12 @@ class Command(BaseCommand):
                     pagos = _pagar_o_passado(individuais, devedores=("Fernanda Lopes",))
                     escritos = _escrever_o_passado(individuais)
                     baixas = _despesas_de_demonstracao()
+                    do_dia = _dia_de_exemplo(individuais)
                     for nome_do_paciente, campos_da_anamnese in _ANAMNESES.items():
                         Anamnese.objects.create(paciente=por_nome[nome_do_paciente], **campos_da_anamnese)
                     self.stdout.write(f"  história: {pagos} pagamentos, {escritos} registros de sessão, "
-                                      f"{baixas} despesas pagas, {len(_ANAMNESES)} anamneses")
+                                      f"{baixas} despesas pagas, {len(_ANAMNESES)} anamneses; hoje no painel: "
+                                      f"{do_dia[0]} sessões cadastradas e {do_dia[1]} previstas")
                 for item in documentos_de_demonstracao:
                     # Como na tela: o sistema sugere identificação e assinatura; o resto é de quem escreve.
                     paciente = por_nome[item["paciente"]]
