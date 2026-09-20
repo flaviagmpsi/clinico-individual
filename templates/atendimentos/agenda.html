@@ -22,13 +22,16 @@ sessão cadastrada muda de cor (presente verde, falta vermelha, cancelada cinza 
             border: 1px solid transparent; border-left-width: 3px; }
   .cartao small { display: block; font-weight: 400; text-transform: none; letter-spacing: 0; font-size: .6875rem; color: var(--suave); }
   .cartao.livre { background: var(--superficie-2); color: var(--suave); border-color: var(--linha); border-style: dashed; border-left-width: 1px; font-weight: 500; }
-  .cartao.esperada { background: #fff3c9; border-color: #ecd98f; border-left-color: #d9a400; }
-  .cartao.pendente { background: #fff3c9; border-color: #d9a400; border-left-color: var(--atencao); }
-  .cartao.realizada { background: var(--ok-fundo); border-color: #c4e2d9; border-left-color: var(--ok); color: #0c4f40; }
-  .cartao.faltou { background: var(--erro-fundo); border-color: #f3cbc7; border-left-color: var(--erro); }
+  .cartao.esperada { background: #ffe27a; border-color: #e6b800; border-left-color: #c99700; }
+  .cartao.pendente { background: #ffe27a; border-color: #d99a00; border-left-color: var(--atencao); }
+  .cartao.realizada { background: #b4ecd2; border-color: #5fc79f; border-left-color: var(--ok); color: #064b36; }
+  .cartao.faltou { background: #ffc4bd; border-color: #f08a80; border-left-color: var(--erro); }
   .cartao.cancelada { background: var(--linha-fina); border-color: var(--linha); color: var(--suave); text-decoration: line-through; }
-  .cartao.remarcada { background: var(--tinta-fundo); border-color: #cfdcf7; border-left-color: var(--tinta); }
-  .cartao:hover { filter: brightness(.97); color: inherit; }
+  .cartao.remarcada { background: #c4d8ff; border-color: #7fa6ff; border-left-color: var(--tinta); }
+  .cartao { transition: transform var(--rapido), box-shadow var(--rapido), filter var(--rapido); }
+  .cartao:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(11, 21, 38, .18); filter: saturate(1.1); color: inherit; }
+  .cartao:active { transform: scale(.98); }
+  .cartao.livre:hover { background: var(--tinta-fundo); border-color: var(--tinta); color: var(--tinta-escura); }
   .mes .coluna .corpo { min-height: 96px; padding: 4px; gap: 3px; }
   .mes .cartao { font-size: .6875rem; padding: 2px 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .mes .numero { font-family: var(--f-mono); font-size: .75rem; font-weight: 500; color: var(--suave); }

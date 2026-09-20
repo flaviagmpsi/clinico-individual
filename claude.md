@@ -71,7 +71,9 @@ mostra dado de paciente nem toca tabela clínica; quem um dia escrever ali uma c
 Tema "Prancheta", em `templates/components/_tema.html`. **Variável primeiro, componente depois, tela nunca:** tela
 nova usa os componentes do Bootstrap já ajustados e as classes `.rotulo`, `.hora`, `.valor`, `.mono`; não declara
 cor, fonte, raio nem sombra. Hora, data e dinheiro vão em mono. Cor só onde há significado (situação) ou ação
-(acento cobalto); em lista, o nome é tinta e só a ação é azul. Etiqueta é contorno, não bloco. Sem sombra.
+(acento cobalto); em lista, o nome é tinta e só a ação é azul. Sombra não separa blocos; **brilho é resposta a
+gesto** e marca a ação principal (ADR-090). Toda ação clicável responde ao mouse — quem cria componente novo herda
+isso de `.btn`, `.list-group-item`, `.nav-link` e `.cartao`.
 Exceções de propósito: a **folha** de documentos e prontuário (serifada — é papel) e as cores de situação da agenda.
 
 ### 3.3 O prontuário é peça de defesa legal (ADR-005)

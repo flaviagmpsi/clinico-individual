@@ -2842,6 +2842,27 @@ diferença vir só de hierarquia, tipografia e espaçamento. **O usuário escolh
 - **Dependência nova:** Google Fonts (IBM Plex). A tela pública de cadastro já sai com `Referrer-Policy:
   no-referrer` (ADR-081), então o token do link não vaza para lá. Sem internet, cai na fonte do sistema.
 
+## ADR-090 — A Prancheta com mais cor e com resposta ao toque (refina a ADR-089)
+
+**Contexto.** Rodada 54. Aplicado o tema, o usuário achou o resultado pálido e parado: "quero saturar mais as cores,
+tá tudo muito claro, as ações também poderiam ser mais agradáveis na hora de clicar, talvez aumentar de tamanho,
+brilhar mais [...] tá muito sem graça". A direção continua; o que muda é a intensidade e o comportamento.
+
+**Decisões de arquitetura:**
+- **Mais saturação, menos branco.** Acento de `#1f57c9` para `#1558f0`; verde, âmbar e vermelho de situação mais
+  vivos; fundo da página um tom mais fundo (`#e3e9f2`) e bordas mais firmes, para os cartões brancos se destacarem.
+  A etiqueta de situação deixou de ser só contorno: ganhou o fundo da própria cor. As cores de situação da agenda
+  subiram de tom — amarelo, verde, vermelho e azul cheios, e não pastéis.
+- **Alvo maior.** Botão comum com 36 px de altura e o pequeno com 30 px (eram ~28 e ~24); abas e campos também
+  cresceram. Peso 600 no rótulo do botão.
+- **Toda ação responde.** Ao passar o mouse, o botão sobe 1 px e acende (brilho da cor dele); ao clicar, afunda. O
+  botão principal tem brilho permanente, e é o único. Linhas de lista e de tabela, cartões da agenda, abas e itens
+  da barra lateral acendem ao passar; o item ativo da barra e a marca têm um halo. O foco pelo teclado virou um anel
+  luminoso. Tudo em 120 ms, e desligado para quem pede menos movimento (`prefers-reduced-motion`).
+- **Revisa a ADR-089 num ponto:** lá a regra era "nenhuma sombra". Fica assim: **sombra não separa blocos** — quem
+  separa é borda e espaço —, **mas brilho é resposta a gesto e marca a ação principal**.
+- Continua tudo em `components/_tema.html`: foram trocadas variáveis e regras de componente, e nenhuma tela.
+
 ## Impeditivos
 
 | # | Impeditivo | Situação |
