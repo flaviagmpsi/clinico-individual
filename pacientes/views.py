@@ -17,6 +17,7 @@ para o login.
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.exceptions import ValidationError
+from django.db import transaction
 from django.db.models import Count, ProtectedError, Q
 from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect
@@ -33,6 +34,7 @@ from pacientes.forms import (
     ResponsavelLegalForm,
 )
 from pacientes import convites
+from pacientes.cadastro import blocos_registrados
 from pacientes.forms import GENEROS_SUGERIDOS
 from pacientes.models import Caso, ConviteDeCadastro, Paciente, ResponsavelLegal
 from pacientes.servicos import (
@@ -133,30 +135,47 @@ class NovoPaciente(LoginRequiredMixin, CreateView):
         contexto.setdefault("cobranca", CondicaoCobrancaForm(
             prefix="cobranca", dia_vencimento_padrao=self.request.user.dia_vencimento_mensalidade,
             tipo_vencimento_padrao=self.request.user.tipo_vencimento_mensalidade))
+        # ADR-095: o que outros apps perguntam no cadastro — hoje, o horário de atendimento.
+        contexto.setdefault("blocos", [bloco(self.request) for bloco in blocos_registrados()])
         contexto.update(convite=self.convite(), generos=GENEROS_SUGERIDOS)
         return contexto
 
     def post(self, request, *args, **kwargs):
         self.object = None
         form = self.get_form()
+        blocos = [bloco(request, request.POST) for bloco in blocos_registrados()]
         cobranca = CondicaoCobrancaForm(
             request.POST, prefix="cobranca", dia_vencimento_padrao=request.user.dia_vencimento_mensalidade,
             tipo_vencimento_padrao=request.user.tipo_vencimento_mensalidade)
         # Os dois validados sempre, sem curto-circuito: quem errou o CPF e o vencimento precisa ver
         # os dois erros de uma vez, e não um de cada vez a cada envio.
-        validos = [form.is_valid(), cobranca.is_valid()]
-        if all(validos):
-            return self.cadastrar(form, cobranca)
-        return self.render_to_response(self.get_context_data(form=form, cobranca=cobranca))
+        validos = [form.is_valid(), cobranca.is_valid()] + [bloco.is_valid() for bloco in blocos]
+        if all(validos) and self.cadastrar(form, cobranca, blocos):
+            messages.success(self.request, f"Paciente {self.object.nome} cadastrado.")
+            return redirect(self.get_success_url())
+        return self.render_to_response(self.get_context_data(form=form, cobranca=cobranca, blocos=blocos))
 
-    def cadastrar(self, form, cobranca):
-        self.object = form.save(commit=False)
-        cadastrar_paciente(self.object, **cobranca.condicao())
-        form.salvar_contatos_de_emergencia(self.object)
-        if self.convite() is not None:
-            convites.aceitar(self.convite(), self.object)
-        messages.success(self.request, f"Paciente {self.object.nome} cadastrado.")
-        return redirect(self.get_success_url())
+    def cadastrar(self, form, cobranca, blocos) -> bool:
+        """Tudo ou nada: se um bloco recusar — horário ocupado, por exemplo —, nem o paciente é gravado."""
+        bloco = None
+        try:
+            with transaction.atomic():
+                self.object = form.save(commit=False)
+                caso = cadastrar_paciente(self.object, **cobranca.condicao())
+                form.salvar_contatos_de_emergencia(self.object)
+                if self.convite() is not None:
+                    convites.aceitar(self.convite(), self.object)
+                for bloco in blocos:
+                    bloco.salvar(self.object, caso)
+        except ValidationError as erro:
+            if bloco is None:
+                raise
+            bloco.recusar(erro.messages[0])
+            # O paciente não foi gravado: a instância não pode sair daqui parecendo que existe.
+            self.object = None
+            form.instance.pk = None
+            return False
+        return True
 
     def get_success_url(self):
         return reverse("pacientes:detalhe", args=[self.object.pk])

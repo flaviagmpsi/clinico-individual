@@ -108,7 +108,7 @@ class CadastroComCobranca(BaseTelasCaso):
     def test_cadastro_com_valor_cria_caso_e_condicao(self):
         self.entrar(self.ana)
         self.client.post(reverse("pacientes:novo"), {
-            "nome": "Nova Paciente", "uf": "",
+            "nome": "Nova Paciente", "uf": "", "horario-frequencia": "AVULSO",
             "cobranca-modalidade": "MENSAL", "cobranca-valor": "700", "cobranca-dia_vencimento": "10",
         }, follow=True)
         with contexto.como(self.ana.pk):
@@ -130,7 +130,7 @@ class CadastroComCobranca(BaseTelasCaso):
     def test_cadastro_sem_cobranca_continua_funcionando(self):
         """ADR-012: quem ainda não combinou valor não é barrado."""
         self.entrar(self.ana)
-        self.client.post(reverse("pacientes:novo"), {"nome": "Sem Valor", "uf": ""}, follow=True)
+        self.client.post(reverse("pacientes:novo"), {"nome": "Sem Valor", "uf": "", "horario-frequencia": "AVULSO"}, follow=True)
         with contexto.como(self.ana.pk):
             caso = caso_individual_de(Paciente.objects.get(nome="Sem Valor"))
             self.assertIsNotNone(caso)

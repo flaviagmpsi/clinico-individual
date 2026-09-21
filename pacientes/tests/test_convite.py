@@ -339,7 +339,7 @@ class TelaPublica(BaseTelas):
         self.assertTrue(self.client.login(username=self.ana.email, password=SENHA))
         revisar = reverse("pacientes:novo") + f"?convite={self.convite.pk}"
         iniciais = self.client.get(revisar).context["form"].initial
-        self.client.post(revisar, dict(iniciais))
+        self.client.post(revisar, {**iniciais, "horario-frequencia": "AVULSO"})
         emma = Paciente.objetos_todos.get(nome="Helena Prado")
         self.assertEqual((emma.pais, emma.cep, emma.telefone, emma.estado_exterior, emma.uf),
                          ("Reino Unido", "SW1A 1AA", "442079460958", "Inglaterra", ""))
@@ -404,7 +404,8 @@ class TelasDoPsicologo(BaseTelas):
         self.assertContains(resposta, 'value="Rosa Prado"')
         iniciais = resposta.context["form"].initial
         dados = {**{campo: valor for campo, valor in iniciais.items() if valor is not None},
-                 "modalidade": "ONLINE", "cobranca-modalidade": "POR_SESSAO", "cobranca-valor": "180,00"}
+                 "modalidade": "ONLINE", "cobranca-modalidade": "POR_SESSAO", "cobranca-valor": "180,00",
+                 "horario-frequencia": "AVULSO"}
         resposta = self.client.post(revisar, dados)
         helena = Paciente.objetos_todos.get(nome="Helena Prado")
         self.assertRedirects(resposta, reverse("pacientes:detalhe", args=[helena.pk]), fetch_redirect_response=False)
@@ -425,7 +426,7 @@ class TelasDoPsicologo(BaseTelas):
         self.entrar(self.ana)
         revisar = reverse("pacientes:novo") + f"?convite={self.convite.pk}"
         iniciais = self.client.get(revisar).context["form"].initial
-        resposta = self.client.post(revisar, dict(iniciais))
+        resposta = self.client.post(revisar, {**iniciais, "horario-frequencia": "AVULSO"})
         self.assertEqual(resposta.status_code, 200)
         self.assertIn("Helena Antiga", resposta.context["form"].errors["cpf"][0])
         self.convite.refresh_from_db()

@@ -101,7 +101,7 @@ class Cadastro(BaseTelas):
         """O formulário não tem campo de psicólogo — o dono vem do contexto da requisição."""
         self.entrar(self.ana)
         resposta = self.client.post(reverse("pacientes:novo"),
-                                    {"nome": "Novo Paciente", "uf": ""}, follow=True)
+                                    {"nome": "Novo Paciente", "uf": "", "horario-frequencia": "AVULSO"}, follow=True)
         self.assertEqual(resposta.status_code, 200)
         novo = Paciente.objetos_todos.get(nome="Novo Paciente")
         self.assertEqual(novo.psicologo_id, self.ana.pk)
@@ -110,7 +110,7 @@ class Cadastro(BaseTelas):
         """Quem editar o HTML e injetar `psicologo` não consegue cadastrar para outro."""
         self.entrar(self.ana)
         self.client.post(reverse("pacientes:novo"),
-                         {"nome": "Injetado", "uf": "", "psicologo": self.bruno.pk}, follow=True)
+                         {"nome": "Injetado", "uf": "", "psicologo": self.bruno.pk, "horario-frequencia": "AVULSO"}, follow=True)
         self.assertEqual(Paciente.objetos_todos.get(nome="Injetado").psicologo_id, self.ana.pk)
 
     def test_cpf_com_pontuacao_e_recusado_pelo_formulario(self):

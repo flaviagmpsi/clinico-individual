@@ -166,3 +166,46 @@ def mapa_da_semana() -> Mapa:
         if dia.blocos or dia.fora:
             dias.append(dia)
     return Mapa(dias=dias, minutos_disponiveis=disponivel, minutos_ocupados=ocupado, tem_grade=bool(blocos))
+
+
+@dataclass
+class Vaga:
+    dia_semana: int
+    hora: time
+
+    @property
+    def codigo(self) -> str:
+        """Como a vaga viaja num formulário: `1-14:00` é terça, 14h."""
+        return f"{self.dia_semana}-{self.hora:%H:%M}"
+
+
+@dataclass
+class DiaComVagas:
+    numero: int
+    nome: str
+    vagas: list = field(default_factory=list)
+
+
+def vagas_da_semana(duracao: int) -> list[DiaComVagas]:
+    """Os horários livres da grade em que cabe uma sessão fixa nova (ADR-095) — de hora em hora, como na agenda.
+
+    Parte do começo de cada bloco declarado e anda de hora em hora, que é como o calendário já desenha os
+    horários livres (ADR-073). A vaga é livre quando **nenhuma** regra de frequência aberta encosta nela —
+    inclusive quinzenal: a semana alternada de um quinzenal existe, mas oferecê-la aqui pediria escolher também
+    *qual* semana, e esse caso continua resolvido por "outro horário", onde a checagem de colisão decide.
+    """
+    blocos = list(HorarioDisponivel.objects.all())
+    regras = list(Recorrencia.objects.filter(fim__isnull=True))
+    dias = []
+    for numero, nome in Recorrencia.DiaSemana.choices:
+        ocupados = [(_minutos(r.hora), _minutos(r.hora) + r.duracao) for r in regras if r.dia_semana == numero]
+        dia = DiaComVagas(numero, nome)
+        for bloco in (b for b in blocos if b.dia_semana == numero):
+            inicio, fim = _minutos(bloco.inicio), _minutos(bloco.fim)
+            while inicio + duracao <= fim:
+                if not any(a < inicio + duracao and b > inicio for a, b in ocupados):
+                    dia.vagas.append(Vaga(numero, _hora(inicio)))
+                inicio += 60
+        if dia.vagas:
+            dias.append(dia)
+    return dias

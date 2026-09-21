@@ -113,6 +113,8 @@ Dez apps. A fronteira é **quem é dono do dado**, nunca em que tela ele aparece
    prontuário geral (ADR-080); `prontuarios` nunca importa `documentos`.
 5. Sem dependência circular entre apps de domínio. Se dois precisam conversar nos dois sentidos,
    a conversa sobe para uma camada de serviço.
+   Quando o app de baixo precisa **mostrar** algo do de cima, ele oferece um encaixe e o de cima se registra:
+   `pacientes.cadastro` recebe o bloco de horário de `atendimentos` na tela "Novo paciente" (ADR-095).
 
 ---
 

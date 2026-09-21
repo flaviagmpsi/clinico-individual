@@ -1,0 +1,78 @@
+{% comment %}
+ADR-095: o bloco "Horário de atendimento" dentro do cadastro do paciente. Os horários livres vêm da aba Horários,
+menos o que já tem paciente fixo; "Outro horário" aceita o que não estava entre os livres. Sem JavaScript tudo fica
+à vista e continua funcionando — o script só esconde o que não se aplica à escolha feita.
+{% endcomment %}
+{% with form=bloco.form %}
+<div class="card mb-3" data-horario-no-cadastro>
+  <div class="card-header bg-white py-2 fw-semibold">
+    Horário de atendimento <span class="text-muted fw-normal small">— é o que põe o paciente na agenda</span></div>
+  <div class="card-body">
+    {% if form.non_field_errors %}
+      <div class="alert alert-danger py-2 small">{{ form.non_field_errors }}</div>
+    {% endif %}
+
+    <div class="form-label small mb-1">{{ form.frequencia.label }} <span class="text-danger">*</span></div>
+    {% for opcao in form.frequencia %}
+      <div class="form-check">{{ opcao.tag }}
+        <label class="form-check-label" for="{{ opcao.id_for_label }}">{{ opcao.choice_label }}</label></div>
+    {% endfor %}
+    {% for erro in form.frequencia.errors %}<div class="text-danger small">{{ erro }}</div>{% endfor %}
+
+    <div class="mt-3" data-com-horario>
+      <div class="form-label small mb-1">Seus horários livres <span class="text-muted">· sessões de {{ bloco.duracao }} minutos</span></div>
+      {% if bloco.dias %}
+        <div class="vagas">
+          {% for dia in bloco.dias %}
+          <div class="vagas-do-dia">
+            <span class="rotulo">{{ dia.nome }}</span>
+            {% for vaga in dia.vagas %}
+              <input type="radio" class="btn-check" name="{{ form.vaga.html_name }}" id="vaga-{{ vaga.codigo }}"
+                     value="{{ vaga.codigo }}"{% if bloco.vaga_escolhida == vaga.codigo %} checked{% endif %}>
+              <label class="btn btn-sm btn-outline-primary valor" for="vaga-{{ vaga.codigo }}">{{ vaga.hora|time:"H:i" }}</label>
+            {% endfor %}
+          </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class="alert alert-light border small py-2 mb-2">
+          Nenhum horário livre para mostrar: ou você ainda não cadastrou os seus na aba
+          <a href="{% url 'agenda:horarios' %}" target="_blank" rel="noopener" class="text-decoration-none">Horários</a>,
+          ou todos já têm paciente. Dá para informar o horário deste paciente logo abaixo.
+        </div>
+      {% endif %}
+
+      <div class="vagas-do-dia mt-2">
+        <span class="rotulo">Outro</span>
+        <input type="radio" class="btn-check" name="{{ form.vaga.html_name }}" id="vaga-outro" value="{{ bloco.outro }}"
+               {% if bloco.vaga_escolhida == bloco.outro %} checked{% endif %}>
+        <label class="btn btn-sm btn-outline-secondary" for="vaga-outro">Outro horário, fora dos meus livres</label>
+      </div>
+      {% for erro in form.vaga.errors %}<div class="text-danger small mt-1">{{ erro }}</div>{% endfor %}
+
+      <div class="row g-3 mt-0" data-outro-horario>
+        <div class="col-md-4">{% include "components/_campo.html" with campo=form.dia_semana %}</div>
+        <div class="col-md-3">{% include "components/_campo.html" with campo=form.hora %}</div>
+      </div>
+      <div class="form-text small mt-2">
+        Vale da data da primeira sessão em diante — ou de hoje, se ela já passou. Dá para trocar depois, na ficha do paciente.
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+  document.addEventListener("DOMContentLoaded", () => {
+    const bloco = document.querySelector("[data-horario-no-cadastro]");
+    if (!bloco) return;
+    const comHorario = bloco.querySelector("[data-com-horario]"), outro = bloco.querySelector("[data-outro-horario]");
+    const marcado = (nome) => bloco.querySelector(`input[name="${nome}"]:checked`);
+    const ajustar = () => {
+      const frequencia = marcado("{{ form.frequencia.html_name }}"), vaga = marcado("{{ form.vaga.html_name }}");
+      comHorario.hidden = !frequencia || frequencia.value === "AVULSO";
+      outro.hidden = !vaga || vaga.value !== "{{ bloco.outro }}";
+    };
+    bloco.addEventListener("change", ajustar);
+    ajustar();
+  });
+</script>
+{% endwith %}

@@ -99,6 +99,8 @@ dele — nada vira paciente antes deste "Salvar".{% endcomment %}
   Só no cadastro novo. A **troca** de valor e forma de cobrança de quem já está cadastrado depende
   de quando uma troca passa a valer, ainda em decisão — por isso não aparece na edição.
   {% endcomment %}
+  {% for bloco in blocos %}{% include bloco.template %}{% endfor %}
+
   {% if cobranca %}
   <div class="card mb-3">
     <div class="card-header bg-white py-2 fw-semibold">

@@ -212,6 +212,10 @@ Princípios da direção:
   .list-group-item:has(a[href]:not(.btn)):hover, .list-group-item:has(a:focus-visible), .list-group-item.linha-clicavel:hover,
   .list-unstyled > li:has(a[href]):hover, .list-unstyled > li:has(a:focus-visible), .list-unstyled > li.linha-clicavel:hover
          { background: var(--tinta-fundo-leve); box-shadow: inset 3px 0 0 var(--tinta); }
+  /* Horários livres no cadastro do paciente (ADR-095): uma linha por dia, o rótulo do dia à esquerda. */
+  .vagas { display: flex; flex-direction: column; gap: 6px; }
+  .vagas-do-dia { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+  .vagas-do-dia > .rotulo { width: 7.5rem; flex: none; }
   /* Aviso do teste grátis (ADR-094): uma faixa discreta no alto do conteúdo, com o filete âmbar de "pede atenção". */
   .aviso-de-teste { background: var(--superficie); border: 1px solid var(--linha); border-left: 3px solid var(--atencao);
                     padding: .45rem .75rem; }

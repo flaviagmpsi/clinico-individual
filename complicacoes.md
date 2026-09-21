@@ -3007,6 +3007,43 @@ Automático, sem boleto) continuam valendo. Da ADR-071 ficam o mecanismo (cada p
 - ⚠️ Pendência técnica para a S-01b: o webhook do Asaas atualiza a assinatura **sem** psicólogo autenticado. Isso
   pede uma policy endereçada ao papel da web, como a do convite de cadastro (ADR-081) — não o afrouxamento do RLS.
 
+## ADR-095 — O horário de atendimento se escolhe no cadastro do paciente
+
+**Status:** ✅ Aceita — Rodada 60.
+
+**Decisão do usuário:** "Quando eu cadastro um paciente eu não consigo escolher o horário que vou atender esse
+paciente e portanto não aparece na agenda. O que deve acontecer é que eu devo cadastrar meus horários livres na aba
+de horário e, quando eu cadastrar um paciente, eu ter que preencher um horário livre meu com o horário do paciente.
+Aí na hora de cadastrar o paciente vai ter o quadrado pra colocar a informação do horário, mostrando meus horários
+livres ou a possibilidade de um novo horário não cadastrado enquanto livre, para aquele paciente."
+
+**O que havia.** A frequência (ADR-053) já existia, com colisão e grade — mas numa tela à parte, aonde só se chegava
+pela ficha, **depois** de cadastrar. Quem cadastrava e parava ali ficava com um paciente sem sessão prevista, fora
+da agenda, sem nada na tela dizendo por quê.
+
+**Decisões de arquitetura:**
+- **O bloco "Horário de atendimento" mora dentro de "Novo paciente"** e é **obrigatório responder**: toda semana, a
+  cada duas semanas, ou "sem horário fixo — marco cada sessão à parte" (o avulso da ADR-053 continua existindo, mas
+  passa a ser uma escolha dita, não um esquecimento). Nada vem marcado.
+- **Os horários livres são os da aba Horários, menos o que já tem paciente fixo** (`agenda.grade.vagas_da_semana`),
+  de hora em hora a partir do começo de cada bloco — o mesmo desenho dos horários livres do calendário (ADR-073) —
+  e só onde cabe uma sessão da duração padrão do perfil. Escolher um deles o **preenche**: ele some da lista.
+- **"Outro horário, fora dos meus livres"** aceita dia e hora digitados, para o paciente que só pode num horário que
+  o psicólogo não tinha declarado. A grade continua sem bloquear nada (ADR-056); quem recusa é a colisão.
+- **Horário já ocupado é recusado e nem o paciente é gravado**: cadastro, cobrança, contatos e frequência são uma
+  transação só. A tela volta com o que foi digitado e o nome de quem ocupa o horário.
+- **Vaga que a tela não ofereceu não é aceita** — o `POST` editado à mão com o horário de outro paciente é recusado
+  pelo formulário, antes de chegar à colisão.
+- **A regra vale da data da primeira sessão em diante** — ou de hoje, se ela já passou (ADR-022: o passado não
+  ganha previsão).
+- **Horário meio livre de quinzenal não é oferecido.** A semana alternada existe, mas oferecê-la pediria escolher
+  também *qual* semana. Esse caso segue por "outro horário", onde a checagem de colisão decide.
+- **A seta de dependência não se inverte.** `atendimentos` depende de `pacientes`, nunca o contrário — então
+  `pacientes.cadastro` só define o **encaixe** (um registro de blocos: template, `is_valid`, `salvar`, `recusar`), e
+  `atendimentos` se registra nele no `ready()`. A tela do paciente não importa nada de agenda.
+- Trocar o horário depois continua na ficha, na tela de frequência — que ainda pede dia e hora digitados. Levar os
+  horários livres também para lá é melhoria natural, não feita nesta rodada.
+
 ## Impeditivos
 
 | # | Impeditivo | Situação |
