@@ -3028,12 +3028,14 @@ da agenda, sem nada na tela dizendo por quê.
 - **Os horários livres são os da aba Horários, menos o que já tem paciente fixo** (`agenda.grade.vagas_da_semana`),
   de hora em hora a partir do começo de cada bloco — o mesmo desenho dos horários livres do calendário (ADR-073) —
   e só onde cabe uma sessão da duração padrão do perfil. Escolher um deles o **preenche**: ele some da lista.
-- **"Outro horário, fora dos meus livres"** aceita dia e hora digitados, para o paciente que só pode num horário que
-  o psicólogo não tinha declarado. A grade continua sem bloquear nada (ADR-056); quem recusa é a colisão.
+- **Dia da semana e horário são campos sempre à vista; os horários livres são atalhos que os preenchem** (rodada
+  61). A primeira versão mostrava só a pergunta da frequência e escondia o resto até ela ser marcada — o usuário
+  abriu a tela e disse "você ainda não colocou o dia e horário da semana". Só somem com "sem horário fixo".
+- **Outro horário é só digitar** dia e hora que não estavam entre os livres, para o paciente que só pode num horário
+  que o psicólogo não tinha declarado. A grade continua sem bloquear nada (ADR-056); quem recusa é a colisão.
 - **Horário já ocupado é recusado e nem o paciente é gravado**: cadastro, cobrança, contatos e frequência são uma
   transação só. A tela volta com o que foi digitado e o nome de quem ocupa o horário.
-- **Vaga que a tela não ofereceu não é aceita** — o `POST` editado à mão com o horário de outro paciente é recusado
-  pelo formulário, antes de chegar à colisão.
+- O horário de outro paciente, digitado ou mandado num `POST` editado à mão, cai na mesma checagem de colisão.
 - **A regra vale da data da primeira sessão em diante** — ou de hoje, se ela já passou (ADR-022: o passado não
   ganha previsão).
 - **Horário meio livre de quinzenal não é oferecido.** A semana alternada existe, mas oferecê-la pediria escolher

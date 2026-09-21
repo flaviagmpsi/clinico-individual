@@ -4,6 +4,9 @@ Decisão do usuário: o psicólogo cadastra os horários livres dele na aba Hor�
 **preenche um deles** com o horário desse paciente — ou informa um horário novo, que não estava entre os livres.
 Sem isso o paciente nascia sem frequência e não aparecia na agenda.
 
+**Dia da semana e horário ficam sempre à vista** (rodada 61): a primeira versão os escondia até se marcar a
+frequência, e o usuário abriu a tela e não os encontrou. Os horários livres são atalhos que preenchem os dois campos.
+
 Nada aqui é regra nova de agenda: o que se grava é a mesma frequência de sempre (`servicos.definir_frequencia`),
 com a mesma checagem de colisão. Muda só **onde** se pergunta.
 """
@@ -15,12 +18,15 @@ from agenda.grade import vagas_da_semana
 from agenda.models import Recorrencia
 from atendimentos import servicos
 
-OUTRO = "OUTRO"
 _TEXTO = {"class": "form-control"}
 _SELECT = {"class": "form-select"}
 
 
 class HorarioDoPacienteForm(forms.Form):
+    """Dia da semana e horário são **os campos** — sempre à vista. Os horários livres da tela são atalhos que os
+    preenchem; quem digita um horário que não estava entre os livres está informando "outro horário", e é só isso.
+    """
+
     frequencia = forms.ChoiceField(
         label="Com que frequência",
         choices=[(Recorrencia.Frequencia.SEMANAL, "Toda semana"),
@@ -28,33 +34,20 @@ class HorarioDoPacienteForm(forms.Form):
                  (servicos.AVULSO, "Sem horário fixo — marco cada sessão à parte")],
         widget=forms.RadioSelect(attrs={"class": "form-check-input"}),
         error_messages={"required": "Escolha a frequência — ou diga que o paciente não tem horário fixo."})
-    vaga = forms.ChoiceField(label="Horário", required=False, widget=forms.RadioSelect)
     dia_semana = forms.TypedChoiceField(
-        label="Dia da semana", choices=[("", "—")] + list(Recorrencia.DiaSemana.choices),
+        label="Dia da semana", choices=[("", "Escolha")] + list(Recorrencia.DiaSemana.choices),
         coerce=int, empty_value=None, required=False, widget=forms.Select(attrs=_SELECT))
     hora = forms.TimeField(
         label="Horário", required=False, widget=forms.TimeInput(attrs={**_TEXTO, "type": "time"}, format="%H:%M"))
-
-    def __init__(self, *args, dias, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.dias = dias
-        self.vagas = {vaga.codigo: vaga for dia in dias for vaga in dia.vagas}
-        self.fields["vaga"].choices = [(codigo, codigo) for codigo in self.vagas] + [(OUTRO, "Outro horário")]
 
     def clean(self):
         dados = super().clean()
         if dados.get("frequencia") in (None, servicos.AVULSO):
             return dados
-        vaga = dados.get("vaga")
-        if not vaga:
-            self.add_error("vaga", "Escolha um dos seus horários livres, ou informe outro horário.")
-        elif vaga == OUTRO:
-            if dados.get("dia_semana") is None:
-                self.add_error("dia_semana", "Informe o dia da semana.")
-            if not dados.get("hora"):
-                self.add_error("hora", "Informe o horário.")
-        else:
-            dados["dia_semana"], dados["hora"] = self.vagas[vaga].dia_semana, self.vagas[vaga].hora
+        if dados.get("dia_semana") is None:
+            self.add_error("dia_semana", "Informe o dia da semana em que o paciente será atendido.")
+        if not dados.get("hora") and "hora" not in self.errors:
+            self.add_error("hora", "Informe o horário do atendimento.")
         return dados
 
 
@@ -66,12 +59,7 @@ class BlocoDeHorario:
     def __init__(self, request, dados=None):
         self.duracao = request.user.duracao_sessao
         self.dias = vagas_da_semana(self.duracao)
-        self.form = HorarioDoPacienteForm(dados, prefix="horario", dias=self.dias)
-        self.outro = OUTRO
-
-    @property
-    def vaga_escolhida(self) -> str:
-        return self.form["vaga"].value() or ""
+        self.form = HorarioDoPacienteForm(dados, prefix="horario")
 
     def is_valid(self) -> bool:
         return self.form.is_valid()

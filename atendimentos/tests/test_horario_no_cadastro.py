@@ -83,11 +83,19 @@ class HorarioNoCadastro(Base):
     def test_a_tela_mostra_os_meus_horarios_livres_e_so_os_meus(self):
         resposta = self.client.get(reverse("pacientes:novo"))
         self.assertContains(resposta, "Horário de atendimento")
-        self.assertContains(resposta, 'value="1-14:00"')
-        self.assertContains(resposta, 'value="1-16:00"')
-        self.assertNotContains(resposta, 'value="1-15:00"')  # é da Maria
-        self.assertNotContains(resposta, 'value="2-09:00"')  # é do Bruno
-        self.assertContains(resposta, "Outro horário")
+        self.assertContains(resposta, 'data-dia="1" data-hora="14:00"')
+        self.assertContains(resposta, 'data-dia="1" data-hora="16:00"')
+        self.assertNotContains(resposta, 'data-hora="15:00"')  # é da Maria
+        self.assertNotContains(resposta, 'data-hora="09:00"')  # é do Bruno
+
+    def test_dia_da_semana_e_horario_estao_sempre_na_tela(self):
+        """O usuário abriu o cadastro e não achou onde pôr o dia e a hora: a primeira versão os escondia."""
+        resposta = self.client.get(reverse("pacientes:novo"))
+        self.assertContains(resposta, 'name="horario-dia_semana"')
+        self.assertContains(resposta, 'name="horario-hora"')
+        self.assertContains(resposta, "Terça-feira")
+        conteudo = resposta.content.decode()
+        self.assertNotIn("hidden", conteudo[conteudo.index("data-horario-no-cadastro"):conteudo.index("<script>", conteudo.index("data-horario-no-cadastro"))])
 
     def test_a_edicao_do_paciente_nao_tem_o_bloco(self):
         with contexto.como(self.ana.pk):
@@ -95,13 +103,13 @@ class HorarioNoCadastro(Base):
         self.assertNotContains(self.client.get(reverse("pacientes:editar", args=[maria.pk])), "Horário de atendimento")
 
     def test_escolher_um_horario_livre_grava_a_frequencia_com_o_paciente(self):
-        resposta = self.cadastrar(frequencia="SEMANAL", vaga="1-14:00")
+        resposta = self.cadastrar(frequencia="SEMANAL", dia_semana="1", hora="14:00")
         self.assertEqual(resposta.status_code, 302)
         regra = self.regra_de("Paula Nova")
         self.assertEqual((regra.frequencia, regra.dia_semana, regra.hora, regra.duracao, regra.inicio),
                          ("SEMANAL", TERCA, time(14), 50, self.hoje))
         # O horário deixou de ser livre, e o paciente está na agenda.
-        self.assertNotContains(self.client.get(reverse("pacientes:novo")), 'value="1-14:00"')
+        self.assertNotContains(self.client.get(reverse("pacientes:novo")), 'data-hora="14:00"')
         proxima_terca = self.hoje + timedelta(days=(TERCA - self.hoje.weekday()) % 7)
         with contexto.como(self.ana.pk):
             previstas = servicos.sessoes_previstas(proxima_terca, proxima_terca)
@@ -111,25 +119,20 @@ class HorarioNoCadastro(Base):
         primeira = self.hoje + timedelta(days=20)
         self.client.post(reverse("pacientes:novo"), {
             "nome": "Paula Futura", "uf": "", "data_primeira_sessao": primeira.isoformat(),
-            "horario-frequencia": "QUINZENAL", "horario-vaga": "1-16:00"})
+            "horario-frequencia": "QUINZENAL", "horario-dia_semana": "1", "horario-hora": "16:00"})
         regra = self.regra_de("Paula Futura")
         self.assertEqual((regra.frequencia, regra.inicio), ("QUINZENAL", primeira))
 
     def test_outro_horario_fora_dos_livres(self):
-        resposta = self.cadastrar(frequencia="SEMANAL", vaga="OUTRO", dia_semana="4", hora="08:30")
+        resposta = self.cadastrar(frequencia="SEMANAL", dia_semana="4", hora="08:30")
         self.assertEqual(resposta.status_code, 302)
         regra = self.regra_de("Paula Nova")
         self.assertEqual((regra.dia_semana, regra.hora), (4, time(8, 30)))
 
-    def test_outro_horario_pede_dia_e_hora(self):
-        resposta = self.cadastrar(frequencia="SEMANAL", vaga="OUTRO")
-        self.assertContains(resposta, "Informe o dia da semana")
-        self.assertContains(resposta, "Informe o horário")
-        self.assertFalse(Paciente.objetos_todos.filter(nome="Paula Nova").exists())
-
-    def test_frequencia_sem_horario_nao_cadastra(self):
+    def test_frequencia_sem_dia_e_hora_nao_cadastra(self):
         resposta = self.cadastrar(frequencia="SEMANAL")
-        self.assertContains(resposta, "Escolha um dos seus horários livres")
+        self.assertContains(resposta, "Informe o dia da semana em que o paciente será atendido")
+        self.assertContains(resposta, "Informe o horário do atendimento")
         self.assertFalse(Paciente.objetos_todos.filter(nome="Paula Nova").exists())
 
     def test_nao_responder_o_bloco_nao_cadastra(self):
@@ -143,14 +146,13 @@ class HorarioNoCadastro(Base):
         self.assertIsNone(self.regra_de("Paula Nova"))
 
     def test_horario_ocupado_e_recusado_e_nem_o_paciente_e_gravado(self):
-        resposta = self.cadastrar(frequencia="SEMANAL", vaga="OUTRO", dia_semana=str(TERCA), hora="15:20")
+        resposta = self.cadastrar(frequencia="SEMANAL", dia_semana=str(TERCA), hora="15:20")
         self.assertEqual(resposta.status_code, 200)
         self.assertContains(resposta, "Horário ocupado")
         self.assertContains(resposta, "Maria Fixa")
         self.assertFalse(Paciente.objetos_todos.filter(nome="Paula Nova").exists())
         self.assertContains(resposta, 'value="Paula Nova"')  # o que foi digitado não se perde
 
-    def test_vaga_inventada_no_post_e_recusada(self):
-        resposta = self.cadastrar(frequencia="SEMANAL", vaga="1-15:00")  # a da Maria, que a tela não oferece
-        self.assertEqual(resposta.status_code, 200)
-        self.assertFalse(Paciente.objetos_todos.filter(nome="Paula Nova").exists())
+    def test_sem_horario_fixo_ignora_dia_e_hora_que_ficaram_nos_campos(self):
+        self.assertEqual(self.cadastrar(frequencia="AVULSO", dia_semana="1", hora="15:00").status_code, 302)
+        self.assertIsNone(self.regra_de("Paula Nova"))
