@@ -140,6 +140,44 @@ class SubAbasDosModelos(BaseTelasDocumentos):
         self.assertEqual(self.client.get(self.modelo("receita-medica")).status_code, 404)
 
 
+class ArquivoDoPaciente(BaseTelasDocumentos):
+    """ADR-096: na ficha do paciente, a aba Documentos é o arquivo dele — o que foi produzido sobre ele vem primeiro."""
+
+    def setUp(self):
+        super().setUp()
+        with contexto.como(self.ana.pk):
+            self.lucia = Paciente(nome="Lúcia Outra")
+            cadastrar_paciente(self.lucia)
+            servicos.salvar_rascunho("relatorio", {"atendido": "Lúcia Outra"}, paciente=self.lucia)
+        self.entrar(self.ana)
+        self.do_marcos = reverse("documentos:aba") + f"?paciente={self.marcos.pk}"
+
+    def test_o_relatorio_produzido_pela_tela_fica_guardado_no_perfil_do_paciente(self):
+        self.client.post(self.modelo("relatorio"), {"atendido": "Marcos Tela", "paciente": self.marcos.pk,
+                                                    "finalidade": "apresentação ao psiquiatra", "acao": "rascunho"})
+        corpo = self.client.get(self.do_marcos).content.decode()
+        self.assertIn("Documentos de Marcos Tela", corpo)
+        self.assertIn("Relatório psicológico", corpo[:corpo.index("Produzir um documento sobre")])
+        self.assertIn("1 guardado", corpo)
+        # Só os dele — o da Lúcia não aparece aqui, e aparece na aba geral.
+        self.assertNotIn("Lúcia Outra", corpo)
+        self.assertContains(self.client.get(reverse("documentos:aba")), "Lúcia Outra")
+
+    def test_os_guardados_vem_antes_dos_modelos_e_a_ficha_leva_ate_eles(self):
+        corpo = self.client.get(self.do_marcos).content.decode()
+        self.assertLess(corpo.index("Documentos de Marcos Tela"), corpo.index("Produzir um documento sobre"))
+        self.assertLess(corpo.index('<ul class="nav nav-tabs">'), corpo.index("Documentos de Marcos Tela"))
+        self.assertIn("Nenhum documento produzido sobre Marcos Tela ainda", corpo)
+        self.assertContains(self.client.get(reverse("pacientes:detalhe", args=[self.marcos.pk])), self.do_marcos)
+
+    def test_documento_emitido_volta_para_o_arquivo_do_paciente(self):
+        self.client.post(self.modelo(), {**DECLARACAO, "paciente": self.marcos.pk, "acao": "emitir"})
+        documento = Documento.objetos_todos.get(paciente=self.marcos)
+        self.assertContains(self.client.get(reverse("documentos:imprimir", args=[documento.pk])), self.do_marcos)
+        corpo = self.client.get(self.do_marcos).content.decode()
+        self.assertIn("emitido", corpo[:corpo.index("Produzir um documento sobre")])
+
+
 class EscritaPelaTela(BaseTelasDocumentos):
     def test_salvar_rascunho_continuar_e_emitir(self):
         self.entrar(self.ana)

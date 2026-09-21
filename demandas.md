@@ -375,6 +375,7 @@ dias sem sessão, sessões no mês e o financeiro do mês. A tela de análise (I
 | I-13 | **Aba Estatísticas**: horário mais usado, dia com mais sessões, atendimentos semanais × quinzenais × avulsos, presença por paciente | 🎨⚙️ | ✅ | 🟢 | ADR-084 |
 | I-14 | **Aniversariantes do mês** no painel, só de quem está em atendimento | 🎨 | ✅ | 🟢 | ADR-084 |
 | I-15 | **Navegação**: barra com nomes ao passar o mouse e faixa no celular; caminho clicável no topo; sub-abas do paciente presentes em todas as telas dele | 🎨 | ✅ | 🟢 | ADR-088 |
+| I-18 | **Arquivo de documentos do paciente**: na ficha, a aba Documentos abre com o que já foi produzido sobre ele (rascunhos e emitidos) e só depois oferece os modelos | 🎨 | ✅ | 🟢 | ADR-096 |
 | I-16 | **Tema visual "Prancheta"** num arquivo só: variáveis, componentes do Bootstrap ajustados, números em mono, próxima sessão destacada no painel | 🎨 | ✅ | 🟢 | ADR-089 |
 | I-17 | Segunda etapa do tema: tirar `style` solto dos templates, unificar abas e navegador de período, milhar nos valores em reais | 🎨 | ✅ | ⚪ | ADR-089 |
 

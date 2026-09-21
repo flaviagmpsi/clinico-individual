@@ -44,7 +44,9 @@ class Aba(LoginRequiredMixin, TemplateView):
     def get_context_data(self, **kwargs):
         contexto = super().get_context_data(**kwargs)
         paciente = _paciente_do_pedido(self.request.GET.get("paciente"))
-        contexto.update(grupos=_grupos(), paciente=paciente, documentos=servicos.documentos(paciente=paciente),
+        documentos = list(servicos.documentos(paciente=paciente))
+        contexto.update(grupos=_grupos(), paciente=paciente, documentos=documentos,
+                        rascunhos=sum(1 for d in documentos if d.rascunho),
                         versao_da_norma=modelos.VERSAO_DA_NORMA, manual=modelos.MANUAL_CFP,
                         resolucao=modelos.RESOLUCAO_06_2019)
         return contexto

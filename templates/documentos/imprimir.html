@@ -32,7 +32,7 @@ assinatura; laudas numeradas — a rubrica e o carimbo são de punho, ou a assin
 </head>
 <body>
 <div class="barra">
-  <a href="{% if documento.rascunho %}{% url 'documentos:editar' documento.pk %}{% else %}{% url 'documentos:aba' %}{% endif %}">← Voltar</a>
+  <a href="{% if documento.rascunho %}{% url 'documentos:editar' documento.pk %}{% else %}{% url 'documentos:aba' %}{% if documento.paciente_id %}?paciente={{ documento.paciente_id }}{% endif %}{% endif %}">← Voltar</a>
   <button class="principal" onclick="window.print()">Imprimir</button>
   <a href="{% url 'documentos:baixar' documento.pk 'pdf' %}">Baixar PDF</a>
   <a href="{% url 'documentos:baixar' documento.pk 'docx' %}">Baixar DOCX</a>

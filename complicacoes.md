@@ -3049,6 +3049,29 @@ da agenda, sem nada na tela dizendo por quê.
 - Trocar o horário depois continua na ficha, na tela de frequência — que ainda pede dia e hora digitados. Levar os
   horários livres também para lá é melhoria natural, não feita nesta rodada.
 
+## ADR-096 — Na ficha do paciente, a aba Documentos é o arquivo dele
+
+**Status:** ✅ Aceita — Rodada 63.
+
+**Decisão do usuário:** "Eu quero que na aba de pacientes, no perfil de cada paciente, tenha armazenado os documentos
+produzidos sobre aquele paciente. Então se eu produzir um relatório psicológico sobre um paciente, esse relatório
+fica armazenado nos documentos do paciente, no perfil dele." O usuário não sabia se isso já existia.
+
+**O que havia.** Existia pela metade. O documento já nascia ligado ao paciente (ADR-076) e a ficha já tinha a sub-aba
+"Documentos" (ADR-088), mas a tela era a aba geral com um filtro: abria com o texto das normas, o cartão do prontuário
+e todos os modelos, as sub-abas do paciente apareciam **no meio** da página, e os documentos guardados dele ficavam
+no fim, depois de tudo. Quem abria a aba não via arquivo nenhum.
+
+**Decisões de arquitetura:**
+- **A mesma view, dois desenhos.** Com paciente, a página é a ficha dele: nome, sub-abas no alto e, logo abaixo,
+  **"Documentos de <paciente>"** — rascunhos e emitidos, com abrir, continuar e baixar em PDF ou DOCX. Só depois vêm
+  os modelos, sob "Produzir um documento sobre <paciente>". Sem paciente, a aba geral continua como era.
+- **O cartão do prontuário geral não se repete** dentro da ficha: ele tem a própria sub-aba.
+- O caminho no topo passa a ser "Pacientes › <paciente> · Documentos", e o "Voltar" do documento emitido leva ao
+  arquivo do paciente, não à aba geral.
+- A tabela virou um pedaço só (`documentos/_lista.html`), usado nos dois desenhos.
+- Nenhum dado novo: `Documento.paciente` já guardava o vínculo. O que mudou foi a tela dizer isso.
+
 ## Impeditivos
 
 | # | Impeditivo | Situação |

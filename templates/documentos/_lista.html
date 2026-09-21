@@ -1,0 +1,43 @@
+{% comment %}
+Os documentos já escritos — rascunhos e emitidos. Na ficha do paciente (ADR-096) é o que abre a aba: os documentos
+guardados **dele**. Na aba geral, fica depois dos modelos e mostra os de todos.
+{% endcomment %}
+  {% if documentos %}
+  <div class="table-responsive">
+    <table class="table table-sm align-middle mb-0 small">
+      <thead class="table-light">
+        <tr><th>Documento</th><th>Referente a</th><th>Finalidade</th><th>Solicitante / destino</th><th>Situação</th><th></th></tr>
+      </thead>
+      <tbody>
+      {% for d in documentos %}
+        <tr>
+          <td class="fw-medium">{{ d.nome }}</td>
+          <td>{{ d.atendido|default:"—" }}</td>
+          <td class="text-muted">{{ d.finalidade|default:"—"|truncatechars:60 }}</td>
+          <td class="text-muted">{{ d.destinatario|default:"—"|truncatechars:40 }}</td>
+          <td>
+            {% if d.rascunho %}<span class="badge text-bg-warning">rascunho</span>
+            {% else %}<span class="badge text-bg-success">emitido</span> <span class="text-muted">{{ d.emitido_em|date:"d/m/Y" }}</span>{% endif %}
+          </td>
+          <td class="text-end text-nowrap">
+            {% if d.rascunho %}
+              <a href="{% url 'documentos:editar' d.pk %}" class="text-decoration-none">continuar</a>
+            {% else %}
+              <a href="{% url 'documentos:imprimir' d.pk %}" class="text-decoration-none">abrir</a>
+            {% endif %}
+            <a href="{% url 'documentos:baixar' d.pk 'pdf' %}" class="text-decoration-none ms-2" title="Baixar em PDF"><i class="bi bi-file-earmark-pdf"></i></a>
+            <a href="{% url 'documentos:baixar' d.pk 'docx' %}" class="text-decoration-none ms-1" title="Baixar em DOCX"><i class="bi bi-file-earmark-word"></i></a>
+          </td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+    <div class="card-body text-center text-muted py-4 small">
+      {% if paciente %}Nenhum documento produzido sobre {{ paciente.nome }} ainda. Escolha um modelo abaixo: o rascunho
+      fica guardado aqui, e o documento emitido passa a compor o registro documental do paciente.
+      {% else %}Nenhum documento ainda. Escolha um modelo acima: o rascunho fica salvo aqui, e o documento emitido passa a
+      compor o registro documental do paciente.{% endif %}
+    </div>
+  {% endif %}

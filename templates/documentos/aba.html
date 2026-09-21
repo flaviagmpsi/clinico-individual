@@ -1,10 +1,71 @@
 {% extends "base.html" %}
-{% block titulo %}Documentos{% endblock %}
-{% block secao %}Documentos{% endblock %}
+{% block titulo %}Documentos{% if paciente %} · {{ paciente.nome }}{% endif %}{% endblock %}
+{% block secao %}{% if paciente %}Pacientes{% else %}Documentos{% endif %}{% endblock %}
+{% block pagina %}{% if paciente %}<span class="separa">›</span>{{ paciente.nome }} · Documentos{% endif %}{% endblock %}
 
 {% block conteudo %}
+{% if paciente %}
+{% comment %}
+ADR-096: dentro da ficha do paciente esta aba é o **arquivo dele** — o que já foi produzido sobre ele vem primeiro,
+e os modelos para produzir o próximo vêm depois. O prontuário geral não se repete aqui: tem a própria aba.
+{% endcomment %}
+<div class="d-flex align-items-center mb-3">
+  <div>
+    <h1 class="h5 mb-0">{{ paciente.nome }}</h1>
+    <div class="text-muted small">Documentos · {{ documentos|length }} guardado{{ documentos|length|pluralize }}{% if rascunhos %} · {{ rascunhos }} em rascunho{% endif %}</div>
+  </div>
+  <a href="{% url 'pacientes:detalhe' paciente.pk %}" class="btn btn-sm btn-outline-secondary ms-auto">Voltar à ficha</a>
+</div>
+
+{% include "pacientes/_abas.html" with aba="documentos" %}
+<div class="card border-top-0 rounded-top-0 mb-4">
+  <div class="card-header bg-white py-2 d-flex align-items-center">
+    <span class="fw-semibold">Documentos de {{ paciente.nome }}</span>
+    <a href="{% url 'documentos:aba' %}" class="ms-auto small text-decoration-none">ver de todos os pacientes</a>
+  </div>
+  {% include "documentos/_lista.html" %}
+</div>
+
+<div class="d-flex align-items-center flex-wrap gap-2">
+  <h2 class="h6 mb-0">Produzir um documento sobre {{ paciente.nome }}</h2>
+  <span class="text-muted small">o modelo já abre com a identificação dele, e o que você escrever fica guardado aqui</span>
+</div>
+{% for titulo, lista in grupos %}
+  <div class="rotulo mt-3 mb-2">{{ titulo }}</div>
+  <div class="row g-3">
+    {% for m in lista %}
+      <div class="col-md-6 col-xl-4">
+        <div class="card h-100">
+          <div class="card-body py-3 d-flex flex-column">
+            <div class="fw-semibold">{{ m.nome }}</div>
+            <div class="text-muted small mb-2">{{ m.norma }}</div>
+            <div class="small flex-grow-1">{{ m.resumo }}</div>
+            <a href="{% url 'documentos:modelo' m.codigo %}{% if paciente %}?paciente={{ paciente.pk }}{% endif %}"
+               class="btn btn-sm btn-outline-primary mt-3 align-self-start stretched-link">Abrir modelo</a>
+          </div>
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+{% endfor %}
+
+<div class="mt-4">
+{% comment %}
+ADR-033 e ADR-076: norma exibida sem data é pior que norma ausente. A aba diz em que versão os modelos se apoiam
+e leva à fonte — a resolução, que é ato oficial, e o manual do CFP, que é obra protegida e por isso só linkado.
+{% endcomment %}
+<p class="small text-muted" style="max-width:900px">
+  Cada modelo segue a estrutura da <a href="{{ resolucao }}" target="_blank" rel="noopener">Resolução CFP nº 06/2019</a>
+  e as orientações do <a href="{{ manual }}" target="_blank" rel="noopener">Manual Orientativo do CFP</a>.
+  Os campos chegam em branco, com a explicação do que se espera em cada um; o sistema só sugere o que é
+  administrativo — a identificação do paciente que você escolher e a sua assinatura.
+  <span class="text-nowrap">Base: {{ versao_da_norma }}.</span>
+</p>
+</div>
+
+{% else %}
 <div class="d-flex align-items-center flex-wrap gap-2 mb-2">
-  <h1 class="h5 mb-0">Documentos psicológicos{% if paciente %} <span class="text-muted fw-normal">· {{ paciente.nome }}</span>{% endif %}</h1>
+  <h1 class="h5 mb-0">Documentos psicológicos</h1>
   <span class="text-muted small">modelos no formato que o CFP pede, prontos para preencher</span>
 </div>
 
@@ -39,8 +100,6 @@ registros de sessão ficam na aba Prontuários, e é deles que sai a evolução.
   </div>
 </div>
 
-{% if paciente %}{% include "pacientes/_abas.html" with aba="documentos" %}<div class="mb-3"></div>{% endif %}
-
 {% for titulo, lista in grupos %}
   <div class="rotulo mt-3 mb-2">{{ titulo }}</div>
   <div class="row g-3">
@@ -61,46 +120,8 @@ registros de sessão ficam na aba Prontuários, e é deles que sai a evolução.
 {% endfor %}
 
 <div class="card mt-4">
-  <div class="card-header bg-white py-2 d-flex align-items-center">
-    <span class="fw-semibold">Meus documentos{% if paciente %} <span class="text-muted fw-normal">· {{ paciente.nome }}</span>{% endif %}</span>
-    {% if paciente %}<a href="{% url 'documentos:aba' %}" class="ms-auto small text-decoration-none">ver de todos os pacientes</a>{% endif %}
-  </div>
-  {% if documentos %}
-  <div class="table-responsive">
-    <table class="table table-sm align-middle mb-0 small">
-      <thead class="table-light">
-        <tr><th>Documento</th><th>Referente a</th><th>Finalidade</th><th>Solicitante / destino</th><th>Situação</th><th></th></tr>
-      </thead>
-      <tbody>
-      {% for d in documentos %}
-        <tr>
-          <td class="fw-medium">{{ d.nome }}</td>
-          <td>{{ d.atendido|default:"—" }}</td>
-          <td class="text-muted">{{ d.finalidade|default:"—"|truncatechars:60 }}</td>
-          <td class="text-muted">{{ d.destinatario|default:"—"|truncatechars:40 }}</td>
-          <td>
-            {% if d.rascunho %}<span class="badge text-bg-warning">rascunho</span>
-            {% else %}<span class="badge text-bg-success">emitido</span> <span class="text-muted">{{ d.emitido_em|date:"d/m/Y" }}</span>{% endif %}
-          </td>
-          <td class="text-end text-nowrap">
-            {% if d.rascunho %}
-              <a href="{% url 'documentos:editar' d.pk %}" class="text-decoration-none">continuar</a>
-            {% else %}
-              <a href="{% url 'documentos:imprimir' d.pk %}" class="text-decoration-none">abrir</a>
-            {% endif %}
-            <a href="{% url 'documentos:baixar' d.pk 'pdf' %}" class="text-decoration-none ms-2" title="Baixar em PDF"><i class="bi bi-file-earmark-pdf"></i></a>
-            <a href="{% url 'documentos:baixar' d.pk 'docx' %}" class="text-decoration-none ms-1" title="Baixar em DOCX"><i class="bi bi-file-earmark-word"></i></a>
-          </td>
-        </tr>
-      {% endfor %}
-      </tbody>
-    </table>
-  </div>
-  {% else %}
-    <div class="card-body text-center text-muted py-4 small">
-      Nenhum documento ainda. Escolha um modelo acima: o rascunho fica salvo aqui, e o documento emitido passa a
-      compor o registro documental do paciente.
-    </div>
-  {% endif %}
+  <div class="card-header bg-white py-2"><span class="fw-semibold">Meus documentos</span></div>
+  {% include "documentos/_lista.html" %}
 </div>
+{% endif %}
 {% endblock %}
