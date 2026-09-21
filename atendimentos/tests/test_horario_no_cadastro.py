@@ -115,6 +115,22 @@ class HorarioNoCadastro(Base):
             previstas = servicos.sessoes_previstas(proxima_terca, proxima_terca)
         self.assertIn("Paula Nova", [str(s.caso) for s in previstas])
 
+    def test_na_agenda_o_horario_livre_da_lugar_ao_atendimento(self):
+        """Decisão do usuário: preenchido o horário livre, ele some da agenda e o atendimento aparece no lugar."""
+        terca = self.hoje + timedelta(days=(TERCA - self.hoje.weekday()) % 7 + 7)  # a terça da semana que vem
+        semana = f"{reverse('atendimentos:agenda')}?visao=semana&data={terca:%Y-%m-%d}"
+        antes = self.client.get(semana).content.decode()
+        self.assertIn("LIVRE - 14H", antes)
+        self.assertNotIn("Paula Nova", antes)
+
+        self.cadastrar(frequencia="SEMANAL", dia_semana="1", hora="14:00")
+        depois = self.client.get(semana).content.decode()
+        self.assertNotIn("LIVRE - 14H", depois)
+        self.assertIn("Paula Nova - 14H", depois)
+        self.assertIn("LIVRE - 16H", depois)  # o outro horário livre continua livre
+        # E na aba Horários o trecho passa a mostrar quem o ocupa.
+        self.assertContains(self.client.get(reverse("agenda:horarios")), "Paula Nova")
+
     def test_a_regra_vale_da_primeira_sessao_quando_ela_e_futura(self):
         primeira = self.hoje + timedelta(days=20)
         self.client.post(reverse("pacientes:novo"), {

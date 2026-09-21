@@ -3033,6 +3033,9 @@ da agenda, sem nada na tela dizendo por quê.
   abriu a tela e disse "você ainda não colocou o dia e horário da semana". Só somem com "sem horário fixo".
 - **Outro horário é só digitar** dia e hora que não estavam entre os livres, para o paciente que só pode num horário
   que o psicólogo não tinha declarado. A grade continua sem bloquear nada (ADR-056); quem recusa é a colisão.
+- **Na agenda, o horário livre some e o atendimento aparece no lugar** (confirmado pelo usuário na rodada 62). Não é
+  código novo: o cartão "livre" do calendário sempre foi calculado — a grade menos o que tem sessão (ADR-073) —, então
+  basta a frequência nascer junto com o paciente. Um teste de ponta a ponta, pelo cadastro, passou a garantir isso.
 - **Horário já ocupado é recusado e nem o paciente é gravado**: cadastro, cobrança, contatos e frequência são uma
   transação só. A tela volta com o que foi digitado e o nome de quem ocupa o horário.
 - O horário de outro paciente, digitado ou mandado num `POST` editado à mão, cai na mesma checagem de colisão.
