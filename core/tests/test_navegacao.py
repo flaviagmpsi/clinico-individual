@@ -36,7 +36,8 @@ class Navegacao(TransactionTestCase):
 
     def test_a_barra_tem_o_nome_de_cada_aba_e_marca_a_secao(self):
         resposta = self.client.get(reverse("financeiro:mes"))
-        for nome in ["Painel", "Pacientes", "Agenda", "Horários", "Prontuários", "Financeiro", "Estatísticas",
+        # ADR-098: "Horários" saiu da barra e virou sub-aba da Agenda; ADR-100 trouxe "Configurações".
+        for nome in ["Painel", "Pacientes", "Agenda", "Prontuários", "Financeiro", "Estatísticas", "Configurações",
                      "Documentos", "Meu perfil", "Sair"]:
             with self.subTest(nome=nome):
                 self.assertContains(resposta, f'<span class="nome">{nome}</span>')

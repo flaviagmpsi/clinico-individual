@@ -194,8 +194,12 @@ class Psicologo(ValidaAoSalvar, AbstractUser):
 
         `TenantOwnedModel` dá ao FK o `related_name` padrão `contas_mudancaderegime`; este nome existe para a view
         e o template não terem de saber disso.
+
+        Usa `objetos_todos` **filtrando pelo próprio psicólogo**, e não o manager de escopo: o dono aqui é este
+        objeto, então o filtro é explícito e não há como escapar dele. Sem isso, `regime_em` só funcionaria dentro
+        de uma requisição — e ele será chamado também de comando, relatório e teste.
         """
-        return self.contas_mudancaderegime.all()
+        return MudancaDeRegime.objetos_todos.filter(psicologo=self)
 
     def regime_em(self, dia) -> str:
         """O regime que valia num dia (ADR-100).
