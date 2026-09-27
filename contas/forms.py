@@ -167,18 +167,19 @@ class IdentificacaoForm(_QuemEVoce, LimpaMascara, forms.ModelForm):
 
 
 class RegimeForm(LimpaMascara, forms.ModelForm):
-    """Passo 2: como o psicólogo atende do ponto de vista fiscal (ADR-067)."""
+    """Passo 2: o lado fiscal — regime (ADR-067) e se o sistema controla as despesas (ADR-100)."""
 
     CAMPOS_NUMERICOS = ("cnpj",)
 
     class Meta:
         model = Psicologo
-        fields = ["regime", "cnpj", "razao_social"]
+        fields = ["regime", "cnpj", "razao_social", "usa_despesas"]
         widgets = {
             "regime": forms.RadioSelect(attrs=_MARCA),
             "cnpj": forms.TextInput(attrs={**_NUMERO, "data-mascara": "cnpj",
                                            "placeholder": "00.000.000/0000-00"}),
             "razao_social": forms.TextInput(attrs=_CONTROLE),
+            "usa_despesas": forms.CheckboxInput(attrs=_MARCA),
         }
 
     def clean(self):

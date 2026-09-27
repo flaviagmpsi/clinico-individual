@@ -1,0 +1,46 @@
+{% comment %}
+ADR-099: a categoria do carnê-leão. O seletor é agrupado, e ao lado fica o que a Receita diz da opção escolhida —
+sem JavaScript o texto de todas as categorias fica visível numa lista, e nada se perde.
+{% endcomment %}
+<div data-categoria-da-despesa>
+  <label class="form-label small mb-1" for="{{ form.categoria.id_for_label }}">
+    {{ form.categoria.label }} <span class="text-danger">*</span>
+  </label>
+  <select name="{{ form.categoria.html_name }}" id="{{ form.categoria.id_for_label }}" class="form-select" required>
+    <option value="">Escolha a categoria</option>
+    {% for grupo, categorias in form.categorias %}
+    <optgroup label="{{ grupo }}">
+      {% for c in categorias %}
+        <option value="{{ c.codigo }}"{% if form.categoria.value == c.codigo %} selected{% endif %}>{{ c.nome }}</option>
+      {% endfor %}
+    </optgroup>
+    {% endfor %}
+  </select>
+  {% for erro in form.categoria.errors %}<div class="text-danger small">{{ erro }}</div>{% endfor %}
+
+  {% for grupo, categorias in form.categorias %}{% for c in categorias %}
+    <div class="explicacao-da-categoria alert py-2 mt-2 mb-0 small
+                {% if c.dedutibilidade == 'DEDUTIVEL' %}alert-success{% elif c.dedutibilidade == 'VEDADA' %}alert-danger{% else %}alert-warning{% endif %}"
+         data-para="{{ c.codigo }}">
+      <strong>{{ c.rotulo_da_dedutibilidade }}.</strong> {{ c.explicacao }}
+    </div>
+  {% endfor %}{% endfor %}
+
+  <div class="form-text small mt-2">
+    O que entra no livro-caixa sai das orientações da Receita Federal sobre o
+    <a href="{{ fonte_receita }}" target="_blank" rel="noopener">carnê-leão</a> e do
+    <a href="{{ fonte_rir }}" target="_blank" rel="noopener">art. 68 do RIR/2018</a>, consultadas em {{ consultado_em }}.
+    Quem apura é você: o sistema organiza e mostra a regra.
+  </div>
+</div>
+<script>
+  document.addEventListener("DOMContentLoaded", () => {
+    const bloco = document.querySelector("[data-categoria-da-despesa]");
+    if (!bloco) return;
+    const seletor = bloco.querySelector("select");
+    const explicacoes = bloco.querySelectorAll(".explicacao-da-categoria");
+    const mostrar = () => explicacoes.forEach((e) => { e.hidden = e.dataset.para !== seletor.value; });
+    seletor.addEventListener("change", mostrar);
+    mostrar();
+  });
+</script>

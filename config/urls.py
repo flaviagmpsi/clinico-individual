@@ -1,5 +1,6 @@
 from django.contrib import admin
 from django.urls import include, path
+from django.views.generic import RedirectView
 
 from contas.views import Sair
 from indicadores.views import Estatisticas, Painel
@@ -15,7 +16,10 @@ urlpatterns = [
     path("conta/", include("contas.urls")),
     path("assinatura/", include("assinaturas.urls")),
     path("agenda/", include("atendimentos.urls")),
-    path("horarios/", include("agenda.urls")),
+    # ADR-098: os horários declarados moram **dentro** da agenda. A rota antiga continua levando lá, para link
+    # guardado ou favoritado não quebrar.
+    path("agenda/horarios/", include("agenda.urls")),
+    path("horarios/", RedirectView.as_view(pattern_name="agenda:horarios", permanent=False)),
     path("financeiro/", include("financeiro.urls")),
     path("prontuarios/", include("prontuarios.urls")),
     path("documentos/", include("documentos.urls")),

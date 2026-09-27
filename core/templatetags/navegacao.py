@@ -12,7 +12,8 @@ register = template.Library()
 RAIZES = {
     "pacientes": "pacientes:lista",
     "atendimentos": "atendimentos:agenda",
-    "agenda": "agenda:horarios",
+    # ADR-098: `agenda` (a grade declarada) e `atendimentos` (o que acontece) são uma seção só, cuja raiz é a agenda.
+    "agenda": "atendimentos:agenda",
     "prontuarios": "prontuarios:lista",
     "financeiro": "financeiro:mes",
     "documentos": "documentos:aba",

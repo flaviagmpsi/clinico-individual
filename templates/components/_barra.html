@@ -15,12 +15,10 @@ Os módulos que ainda não existem aparecem **apagados**, com o passo que os con
 
   <div class="separador"></div>
 
+  {% comment %}ADR-098: uma entrada só. Os horários declarados são sub-aba da agenda, e não uma seção à parte.{% endcomment %}
   <a href="{% url 'atendimentos:agenda' %}" title="Agenda"
-     class="{% if request.resolver_match.app_name == 'atendimentos' %}ativo{% endif %}">
+     class="{% if request.resolver_match.app_name == 'atendimentos' or request.resolver_match.app_name == 'agenda' %}ativo{% endif %}">
     <i class="bi bi-calendar-week"></i><span class="nome">Agenda</span></a>
-  <a href="{% url 'agenda:horarios' %}" title="Horários"
-     class="{% if request.resolver_match.app_name == 'agenda' %}ativo{% endif %}">
-    <i class="bi bi-clock"></i><span class="nome">Horários</span></a>
   <a href="{% url 'prontuarios:lista' %}" title="Prontuários"
      class="{% if request.resolver_match.app_name == 'prontuarios' %}ativo{% endif %}">
     <i class="bi bi-journal-medical"></i><span class="nome">Prontuários</span></a>
@@ -36,6 +34,9 @@ Os módulos que ainda não existem aparecem **apagados**, com o passo que os con
 
   <div class="espaco"></div>
 
+  <a href="{% url 'contas:configuracoes' %}" title="Configurações"
+     class="{% if request.resolver_match.url_name == 'configuracoes' %}ativo{% endif %}">
+    <i class="bi bi-sliders"></i><span class="nome">Configurações</span></a>
   <a href="{% url 'contas:perfil' %}" title="Meu perfil"
      class="{% if request.resolver_match.url_name == 'perfil' %}ativo{% endif %}">
     <i class="bi bi-person-gear"></i><span class="nome">Meu perfil</span></a>

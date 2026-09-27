@@ -5,13 +5,14 @@
 
 {% block conteudo %}
 {% comment %}
-ADR-085: a anamnese é um recurso opcional, numa sub-aba da ficha. Todos os campos são de texto livre e nenhum é
-obrigatório — o sistema oferece os temas, o psicólogo decide quais usa. Diferente do registro de sessão, ela se edita.
+ADR-085 e ADR-101: a anamnese é opcional, numa sub-aba da ficha, e o **roteiro é do psicólogo** — os temas
+sugeridos vêm prontos, e ele acrescenta, arquiva e reordena os seus. Todo campo é de texto livre e nenhum é
+obrigatório. Diferente do registro de sessão, ela se edita.
 {% endcomment %}
 <div class="d-flex align-items-center mb-3">
   <div>
     <h1 class="h5 mb-0">{{ paciente.nome }}</h1>
-    <div class="text-muted small">Anamnese{% if anamnese %} · atualizada em {{ anamnese.atualizado_em|date:"d/m/Y H:i" }} · {{ anamnese.preenchidos }} de 12 temas preenchidos{% endif %}</div>
+    <div class="text-muted small">Anamnese{% if anamnese %} · atualizada em {{ anamnese.atualizado_em|date:"d/m/Y H:i" }} · {{ anamnese.preenchidos }} de {{ form.blocos|length }} temas preenchidos{% endif %}</div>
   </div>
   <a href="{% url 'pacientes:detalhe' paciente.pk %}" class="btn btn-sm btn-outline-secondary ms-auto">Voltar à ficha</a>
 </div>
@@ -29,15 +30,52 @@ obrigatório — o sistema oferece os temas, o psicólogo decide quais usa. Dife
       {% csrf_token %}
       {% if form.non_field_errors %}<div class="alert alert-danger py-2 small">{{ form.non_field_errors }}</div>{% endif %}
       <div class="row g-3">
-        {% for campo in form %}
+        {% for tema, campo in form.campos_dos_blocos %}
           <div class="col-lg-6">
-            <label class="form-label small fw-semibold mb-1" for="{{ campo.id_for_label }}">{{ campo.label }}</label>
+            <div class="d-flex align-items-baseline gap-1">
+              <label class="form-label small fw-semibold mb-1 flex-grow-1" for="{{ campo.id_for_label }}">
+                {{ tema.titulo }}{% if tema.arquivado %} <span class="badge text-bg-light border fw-normal">arquivado</span>{% endif %}
+              </label>
+              {% comment %}Mexer no roteiro é do mesmo formulário: cada botão manda a sua ação, e o texto digitado
+              volta junto — nada do que estava escrito se perde ao mover ou arquivar um tema.{% endcomment %}
+              <button type="submit" name="acao" value="tema:subir:{{ tema.pk }}" class="btn btn-sm btn-link text-muted py-0 px-1" title="Subir">↑</button>
+              <button type="submit" name="acao" value="tema:descer:{{ tema.pk }}" class="btn btn-sm btn-link text-muted py-0 px-1" title="Descer">↓</button>
+              {% if tema.arquivado %}
+                <button type="submit" name="acao" value="tema:voltar:{{ tema.pk }}" class="btn btn-sm btn-link py-0 px-1" title="Voltar ao roteiro">voltar</button>
+              {% else %}
+                <button type="submit" name="acao" value="tema:arquivar:{{ tema.pk }}" class="btn btn-sm btn-link text-muted py-0 px-1" title="Tirar do meu roteiro">arquivar</button>
+              {% endif %}
+            </div>
             {{ campo }}
-            <div class="form-text small">{{ campo.help_text }}</div>
+            {% if campo.help_text %}<div class="form-text small">{{ campo.help_text }}</div>{% endif %}
             {% for erro in campo.errors %}<div class="text-danger small">{{ erro }}</div>{% endfor %}
           </div>
         {% endfor %}
       </div>
+
+      <div class="card mt-3" style="max-width:720px">
+        <div class="card-header bg-white py-2 fw-semibold">Acrescentar um tema ao meu roteiro</div>
+        <div class="card-body">
+          <div class="row g-3">
+            <div class="col-md-5">{% include "components/_campo.html" with campo=tema_novo.titulo %}</div>
+            <div class="col-md-7">{% include "components/_campo.html" with campo=tema_novo.ajuda %}</div>
+          </div>
+          <button type="submit" name="acao" value="tema:novo" class="btn btn-sm btn-outline-primary mt-3">
+            <i class="bi bi-plus-lg"></i> Acrescentar tema</button>
+          <div class="form-text small mt-2">
+            O tema entra no <strong>seu</strong> roteiro: vale para este e para os próximos pacientes. Arquivar tira
+            o tema das anamneses novas e mantém o que já foi escrito nele.
+          </div>
+        </div>
+      </div>
+
+      {% if arquivados %}
+        <div class="form-text small mt-2">
+          Arquivados: {% for t in arquivados %}{{ t.titulo }}{% if not forloop.last %}, {% endif %}{% endfor %}.
+          Eles voltam ao roteiro pelo botão "voltar", nas anamneses em que aparecem.
+        </div>
+      {% endif %}
+
       <div class="mt-3">
         <button type="submit" class="btn btn-primary">Salvar anamnese</button>
         <a href="{% url 'pacientes:detalhe' paciente.pk %}" class="btn btn-link text-muted">Cancelar</a>

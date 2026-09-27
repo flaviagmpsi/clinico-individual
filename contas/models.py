@@ -9,12 +9,13 @@ identificador do tenant.
 
 from django.contrib.auth.models import AbstractUser, UserManager as DjangoUserManager
 from django.core.validators import MaxValueValidator, MinValueValidator, RegexValidator
+from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils import timezone
 
 from core.calendario import TipoDia
 from core.enderecos import UF, cep_valido, telefone_opcional
-from core.models import ValidaAoSalvar
+from core.models import TenantOwnedModel, ValidaAoSalvar
 
 
 class PsicologoManager(DjangoUserManager):
@@ -111,6 +112,10 @@ class Psicologo(ValidaAoSalvar, AbstractUser):
     atende_online = models.BooleanField("Atende online", default=False)
     atende_presencial = models.BooleanField("Atende presencialmente", default=True)
 
+    # ADR-100: o psicólogo decide se o sistema controla as despesas dele. Quem não quer não vê a aba, e o fluxo
+    # de caixa vira só a receita. Liga e desliga em Configurações; desligar **não apaga** nada.
+    usa_despesas = models.BooleanField("Controlar despesas", default=True)
+
     # Quando o quiz de cadastro foi concluído. Vazio: a conta existe, mas o sistema ainda não sabe o
     # bastante para propor nada — e manda o psicólogo terminar o cadastro antes de qualquer tela.
     quiz_concluido_em = models.DateTimeField("Cadastro concluído em", null=True, blank=True)
@@ -182,3 +187,50 @@ class Psicologo(ValidaAoSalvar, AbstractUser):
     @property
     def crp(self) -> str:
         return f"{self.crp_regiao}/{self.crp_numero}"
+
+    @property
+    def mudancas_de_regime(self):
+        """O histórico de troca de regime, do mais recente para o mais antigo (ADR-100).
+
+        `TenantOwnedModel` dá ao FK o `related_name` padrão `contas_mudancaderegime`; este nome existe para a view
+        e o template não terem de saber disso.
+        """
+        return self.contas_mudancaderegime.all()
+
+    def regime_em(self, dia) -> str:
+        """O regime que valia num dia (ADR-100).
+
+        Trocar de PF para PJ não reescreve o passado: o recibo que saiu em maio saiu como pessoa física, e a
+        apuração daquele mês é a de pessoa física. Sem mudança nenhuma registrada, vale o regime de hoje — é a
+        conta que existia antes desta ADR, e continua certa para quem nunca trocou.
+        """
+        anterior = self.mudancas_de_regime.filter(vigente_desde__gt=dia).order_by("vigente_desde").first()
+        return anterior.regime_anterior if anterior is not None else self.regime
+
+
+class MudancaDeRegime(TenantOwnedModel):
+    """O dia em que o psicólogo passou de pessoa física a jurídica, ou o contrário (ADR-100).
+
+    Guardado porque a apuração é por período: até a véspera vale um regime, do dia em diante vale o outro. É
+    **histórico**, então não se edita nem se apaga — o mesmo princípio do pagamento e da versão de prontuário.
+    """
+
+    regime_anterior = models.CharField("Regime anterior", max_length=2, choices=Psicologo.Regime.choices)
+    regime_novo = models.CharField("Regime novo", max_length=2, choices=Psicologo.Regime.choices)
+    vigente_desde = models.DateField("Vale a partir de")
+
+    class Meta:
+        verbose_name = "Mudança de regime"
+        verbose_name_plural = "Mudanças de regime"
+        ordering = ["-vigente_desde"]
+
+    def __str__(self) -> str:
+        return f"{self.get_regime_anterior_display()} → {self.get_regime_novo_display()} em {self.vigente_desde:%d/%m/%Y}"
+
+    def save(self, *args, **kwargs):
+        if self.pk is not None:
+            raise ValidationError("Mudança de regime é histórico: não se altera.")
+        super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        raise ValidationError("Mudança de regime é histórico: não se apaga.")

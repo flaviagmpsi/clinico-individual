@@ -35,33 +35,36 @@ class FolhaDoProntuarioForm(forms.Form):
 
 
 # O que se espera em cada tema — dito em uma linha, embaixo do campo. São sugestões de roteiro, não exigências.
-AJUDA_DA_ANAMNESE = {
-    "queixa_principal": "O que trouxe a pessoa, nas palavras dela.",
-    "historia_da_queixa": "Quando começou, como evoluiu, o que piora e o que alivia, o que já tentou.",
-    "tratamentos_anteriores": "Psicoterapia, acompanhamento psiquiátrico, internações — quando, com quem, como foi.",
-    "saude_geral": "Doenças, cirurgias, condições crônicas e medicamentos em uso, conforme o relato.",
-    "sono_alimentacao_substancias": "Padrão de sono e de alimentação; álcool, tabaco e outras substâncias.",
-    "historia_familiar": "Com quem mora, composição da família, clima das relações, histórico de saúde mental.",
-    "desenvolvimento": "Para criança e adolescente: gestação, parto, marcos do desenvolvimento, escola. "
-                       "Para adulto: o que for relevante da infância e da adolescência.",
-    "escolaridade_e_trabalho": "Formação, ocupação atual, satisfação e dificuldades no trabalho ou nos estudos.",
-    "relacionamentos": "Vida afetiva, amizades, com quem conta quando precisa.",
-    "rotina_e_lazer": "Como é um dia comum; o que faz por prazer; atividade física.",
-    "expectativas": "O que espera da terapia, e o que seria melhorar.",
-    "observacoes": "Impressões suas da entrevista. Lembre que isto é registro seu — não vai para o prontuário geral.",
-}
+class AnamneseForm(forms.Form):
+    """Um campo de texto por bloco do roteiro (ADR-101). Os blocos vêm do psicólogo, não daqui."""
 
+    def __init__(self, *args, blocos, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.blocos = blocos
+        for tema, resposta in blocos:
+            self.fields[f"tema_{tema.pk}"] = forms.CharField(
+                label=tema.titulo, required=False, help_text=tema.ajuda,
+                initial=resposta.texto if resposta else "",
+                widget=forms.Textarea(attrs={"class": "form-control", "rows": 3}))
 
-class AnamneseForm(forms.ModelForm):
-    """Todos os campos opcionais e em texto livre (ADR-085)."""
+    def campos_dos_blocos(self):
+        """(tema, campo) na ordem do roteiro — é assim que a tela desenha, sem adivinhar nome de campo."""
+        return [(tema, self[f"tema_{tema.pk}"]) for tema, _ in self.blocos]
 
-    class Meta:
-        model = Anamnese
-        fields = list(Anamnese.CAMPOS_DE_TEXTO)
-        widgets = {campo: forms.Textarea(attrs={"class": "form-control", "rows": 3})
-                   for campo in Anamnese.CAMPOS_DE_TEXTO}
-        help_texts = AJUDA_DA_ANAMNESE
+    def textos(self) -> dict[int, str]:
+        return {tema.pk: self.cleaned_data.get(f"tema_{tema.pk}", "") for tema, _ in self.blocos}
 
     def tem_conteudo(self) -> bool:
-        return any((self.cleaned_data.get(campo) or "").strip() for campo in Anamnese.CAMPOS_DE_TEXTO)
+        return any((texto or "").strip() for texto in self.textos().values())
+
+
+class TemaDeAnamneseForm(forms.Form):
+    """O bloco novo que o psicólogo acrescenta ao roteiro dele."""
+
+    titulo = forms.CharField(
+        label="Novo tema", max_length=120,
+        widget=forms.TextInput(attrs={"class": "form-control", "placeholder": "Ex.: rede de apoio na comunidade"}))
+    ajuda = forms.CharField(
+        label="O que anotar aqui", max_length=255, required=False,
+        widget=forms.TextInput(attrs={"class": "form-control", "placeholder": "Opcional — a nota que aparece sob o campo"}))
 

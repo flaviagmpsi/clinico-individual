@@ -149,35 +149,50 @@ class FichaDoProntuario(Auditado, TenantOwnedModel):
         raise VersaoCongelada("A ficha do prontuário não se apaga.")
 
 
+class TemaDeAnamnese(TenantOwnedModel):
+    """Um bloco do roteiro de anamnese **do psicólogo** (ADR-101).
+
+    Cada conta começa com os temas sugeridos em `prontuarios.temas` e mexe neles à vontade: acrescenta, renomeia,
+    reordena e arquiva. É do psicólogo, não do paciente — o mesmo roteiro vale para todos os atendimentos dele, que
+    é o que faz dele um roteiro. O que é de cada paciente é a **resposta**.
+
+    Arquivar em vez de apagar: o tema que sai do roteiro pode ter resposta escrita em pacientes antigos, e apagá-lo
+    levaria o texto junto. Arquivado, ele some da anamnese em branco e continua aparecendo onde já foi respondido.
+    """
+
+    titulo = models.CharField("Tema", max_length=120)
+    ajuda = models.CharField("O que anotar aqui", max_length=255, blank=True)
+    ordem = models.PositiveSmallIntegerField("Ordem", default=0)
+    arquivado = models.BooleanField("Arquivado", default=False)
+    # A chave do campo fixo que este tema substituiu, quando é um dos sugeridos. Vazia nos que o psicólogo criou.
+    origem = models.CharField("Origem", max_length=40, blank=True, editable=False)
+
+    class Meta:
+        verbose_name = "Tema de anamnese"
+        verbose_name_plural = "Temas de anamnese"
+        ordering = ["ordem", "pk"]
+        constraints = [
+            models.UniqueConstraint(fields=["psicologo", "titulo"], name="tema_de_anamnese_sem_repetir"),
+        ]
+
+    def __str__(self) -> str:
+        return self.titulo
+
+
 class Anamnese(Auditado, TenantOwnedModel):
     """A anamnese do paciente — um recurso **opcional**, para o psicólogo que trabalha com ela (ADR-085).
 
     Uma por paciente, preenchida pelo psicólogo na entrevista inicial e retomada quando ele quiser: é roteiro de
-    trabalho, e por isso **se edita** — ao contrário do registro de sessão, que congela (ADR-064). Todo campo é
-    opcional e de texto livre: o sistema oferece os temas de uma anamnese clínica, e não decide quais importam.
+    trabalho, e por isso **se edita** — ao contrário do registro de sessão, que congela (ADR-064).
 
-    É dado clínico: auditada (a trilha guarda *que* campos mudaram, nunca o conteúdo), com RLS, e protege o
+    Desde a ADR-101 ela não tem campo de tema nenhum: o roteiro é `TemaDeAnamnese`, do psicólogo, e o que mora aqui
+    é a ligação com o paciente. O texto de cada bloco está em `RespostaDeAnamnese`.
+
+    É dado clínico: auditada (a trilha guarda *que* temas mudaram, nunca o conteúdo), com RLS, e protege o
     paciente contra exclusão. **Não entra no prontuário geral** que se entrega ao paciente (ADR-080) — ver P-84.
     """
 
     paciente = models.OneToOneField(Paciente, on_delete=models.PROTECT, related_name="anamnese")
-    queixa_principal = models.TextField("Queixa principal", blank=True)
-    historia_da_queixa = models.TextField("História da queixa", blank=True)
-    tratamentos_anteriores = models.TextField("Tratamentos anteriores", blank=True)
-    saude_geral = models.TextField("Saúde geral", blank=True)
-    sono_alimentacao_substancias = models.TextField("Sono, alimentação e uso de substâncias", blank=True)
-    historia_familiar = models.TextField("História familiar", blank=True)
-    desenvolvimento = models.TextField("Desenvolvimento e infância", blank=True)
-    escolaridade_e_trabalho = models.TextField("Escolaridade e trabalho", blank=True)
-    relacionamentos = models.TextField("Relacionamentos e rede de apoio", blank=True)
-    rotina_e_lazer = models.TextField("Rotina e lazer", blank=True)
-    expectativas = models.TextField("Expectativas com a terapia", blank=True)
-    observacoes = models.TextField("Observações do psicólogo", blank=True)
-
-    CAMPOS_DE_TEXTO = (
-        "queixa_principal", "historia_da_queixa", "tratamentos_anteriores", "saude_geral",
-        "sono_alimentacao_substancias", "historia_familiar", "desenvolvimento", "escolaridade_e_trabalho",
-        "relacionamentos", "rotina_e_lazer", "expectativas", "observacoes")
 
     class Meta:
         verbose_name = "Anamnese"
@@ -195,4 +210,28 @@ class Anamnese(Auditado, TenantOwnedModel):
 
     @property
     def preenchidos(self) -> int:
-        return sum(1 for campo in self.CAMPOS_DE_TEXTO if (getattr(self, campo) or "").strip())
+        return sum(1 for r in self.respostas.all() if (r.texto or "").strip())
+
+
+class RespostaDeAnamnese(TenantOwnedModel):
+    """O que foi escrito sobre um tema, na anamnese de um paciente (ADR-101)."""
+
+    anamnese = models.ForeignKey(Anamnese, on_delete=models.CASCADE, related_name="respostas")
+    tema = models.ForeignKey(TemaDeAnamnese, on_delete=models.PROTECT, related_name="respostas")
+    texto = models.TextField("Texto", blank=True)
+
+    class Meta:
+        verbose_name = "Resposta de anamnese"
+        verbose_name_plural = "Respostas de anamnese"
+        ordering = ["tema__ordem", "tema__pk"]
+        constraints = [
+            models.UniqueConstraint(fields=["anamnese", "tema"], name="uma_resposta_por_tema"),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.tema} · {self.anamnese}"
+
+    def clean(self):
+        super().clean()
+        exigir_mesmo_dono(self, anamnese=self.anamnese if self.anamnese_id else None,
+                          tema=self.tema if self.tema_id else None)

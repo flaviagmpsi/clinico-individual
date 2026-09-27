@@ -17,6 +17,7 @@ from django.db import models
 
 from atendimentos.models import Consulta
 from core.models import TenantOwnedModel, exigir_mesmo_dono
+from financeiro import carne_leao
 from pacientes.models import Caso
 
 
@@ -80,6 +81,10 @@ class Despesa(TenantOwnedModel):
     """
 
     descricao = models.CharField("Despesa", max_length=120)
+    # ADR-099: a categoria é o que o carnê-leão reconhece; a descrição continua sendo o nome que o psicólogo dá.
+    # As opções e o que cada uma significa moram em `financeiro.carne_leao` — quando a Receita mudar, muda-se lá.
+    categoria = models.CharField("Categoria", max_length=30, choices=carne_leao.ESCOLHAS,
+                                 default=carne_leao.PADRAO)
     valor = models.DecimalField("Valor", max_digits=10, decimal_places=2,
                                 validators=[MinValueValidator(Decimal("0.01"))])
     # Na despesa de um mês só, é a data de vencimento. Na mensal, é o **primeiro** vencimento: o dia vale para
@@ -96,6 +101,14 @@ class Despesa(TenantOwnedModel):
 
     def __str__(self) -> str:
         return f"{self.descricao} · R$ {self.valor}"
+
+    @property
+    def categoria_do_carne_leao(self) -> carne_leao.Categoria:
+        return carne_leao.categoria(self.categoria)
+
+    @property
+    def deduz(self) -> bool:
+        return self.categoria_do_carne_leao.deduz
 
     def clean(self):
         super().clean()

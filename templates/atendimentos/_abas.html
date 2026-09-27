@@ -1,0 +1,8 @@
+{% comment %}
+ADR-098: Agenda e Horários são a mesma seção. "Agenda" é o que acontece; "Horários", a grade que o psicólogo
+declara e que faz a agenda saber o que está livre. `aba` diz qual está aberta.
+{% endcomment %}
+<ul class="nav nav-tabs">
+  <li class="nav-item"><a class="nav-link{% if aba == 'agenda' %} active{% endif %}" href="{% url 'atendimentos:agenda' %}"><i class="bi bi-calendar-week"></i> Agenda</a></li>
+  <li class="nav-item"><a class="nav-link{% if aba == 'horarios' %} active{% endif %}" href="{% url 'agenda:horarios' %}"><i class="bi bi-clock"></i> Meus horários</a></li>
+</ul>

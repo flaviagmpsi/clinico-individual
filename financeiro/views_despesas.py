@@ -11,7 +11,7 @@ from django.utils import timezone
 from django.views import View
 from django.views.generic import CreateView, TemplateView, UpdateView
 
-from financeiro import despesas, servicos
+from financeiro import carne_leao, despesas, servicos
 from financeiro.forms import DespesaForm
 from financeiro.models import Despesa
 
@@ -36,7 +36,17 @@ def _voltar(nome: str, mes: date):
     return redirect(f"{reverse(nome)}?mes={mes:%Y-%m}")
 
 
-class Despesas(LoginRequiredMixin, TemplateView):
+class _ExigeDespesas(LoginRequiredMixin):
+    """ADR-100: desligado o controle de despesas, estas telas não existem — nem por link guardado."""
+
+    def dispatch(self, request, *args, **kwargs):
+        if request.user.is_authenticated and not request.user.usa_despesas:
+            messages.info(request, "O controle de despesas está desligado. Ligue aqui para usá-lo.")
+            return redirect("contas:configuracoes")
+        return super().dispatch(request, *args, **kwargs)
+
+
+class Despesas(_ExigeDespesas, TemplateView):
     template_name = "financeiro/despesas.html"
 
     def get_context_data(self, **kwargs):
@@ -47,17 +57,21 @@ class Despesas(LoginRequiredMixin, TemplateView):
             navegacao(inicio), aba="despesas", ocorrencias=ocorrencias,
             total=sum((o.valor for o in ocorrencias), despesas.ZERO),
             pago=sum((o.valor for o in ocorrencias if o.paga), despesas.ZERO),
-            a_pagar=sum((o.valor for o in ocorrencias if not o.paga), despesas.ZERO))
+            a_pagar=sum((o.valor for o in ocorrencias if not o.paga), despesas.ZERO),
+            # ADR-099: o que a Receita admite no livro-caixa, separado do que simplesmente saiu do caixa.
+            dedutivel=sum((o.valor for o in ocorrencias if o.despesa.deduz), despesas.ZERO))
         return contexto
 
 
-class _EscreverDespesa(LoginRequiredMixin):
+class _EscreverDespesa(_ExigeDespesas):
     model = Despesa
     form_class = DespesaForm
     template_name = "financeiro/despesa_form.html"
 
     def get_context_data(self, **kwargs):
-        return {**super().get_context_data(**kwargs), "aba": "despesas"}
+        return {**super().get_context_data(**kwargs), "aba": "despesas",
+                "fonte_receita": carne_leao.FONTE_RECEITA, "fonte_rir": carne_leao.FONTE_RIR,
+                "consultado_em": carne_leao.CONSULTADO_EM}
 
     def get_success_url(self):
         return f"{reverse('financeiro:despesas')}?mes={self.object.vencimento:%Y-%m}"
@@ -78,7 +92,7 @@ class EditarDespesa(_EscreverDespesa, UpdateView):
         return super().form_valid(form)
 
 
-class _AcaoNaDespesa(LoginRequiredMixin, View):
+class _AcaoNaDespesa(_ExigeDespesas, View):
     """Tudo por POST, com o mês vindo do formulário — é dele que a tela volta para o lugar certo."""
 
     http_method_names = ["post"]
@@ -134,7 +148,7 @@ class ExcluirDespesa(_AcaoNaDespesa):
         return f"Despesa excluída: {descricao}."
 
 
-class FluxoDeCaixa(LoginRequiredMixin, TemplateView):
+class FluxoDeCaixa(_ExigeDespesas, TemplateView):
     template_name = "financeiro/fluxo.html"
 
     def get_context_data(self, **kwargs):

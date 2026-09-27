@@ -55,7 +55,20 @@
           <div class="alert alert-light border mt-3 py-2 small mb-0">
             <strong>Pessoa física:</strong> recibo em seu nome e apuração pelo carnê-leão.
             <strong>Pessoa jurídica:</strong> cobrança e documentos no nome da empresa, e acesso à emissão de
-            nota fiscal de serviço — por isso o CNPJ. Dá para mudar depois, no seu perfil.
+            nota fiscal de serviço — por isso o CNPJ. Dá para mudar depois, em Configurações.
+          </div>
+          {% comment %}ADR-100: quem não quer controlar despesas não vê a aba nem o resultado.{% endcomment %}
+          <div class="mt-3 pt-3 border-top">
+            <div class="form-check">
+              {{ form.usa_despesas }}
+              <label class="form-check-label" for="{{ form.usa_despesas.id_for_label }}">
+                Quero controlar as despesas da minha clínica aqui</label>
+            </div>
+            <div class="form-text small">
+              Aluguel, internet, supervisão, material. O sistema já vem com as categorias que a Receita aceita no
+              carnê-leão, e o resultado do mês passa a descontar o que você gasta. Sem isso, o financeiro mostra
+              só o que entra. Muda quando quiser, em Configurações.
+            </div>
           </div>
           <script>
             document.addEventListener("DOMContentLoaded", () => {

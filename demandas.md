@@ -199,6 +199,7 @@ em atendimento de casal. Ver **P-70**, resolvida em parte.
 | A-21 | **Agenda em formato de calendário**: colunas por dia, cartões por horário, horários livres da grade, visões de dia, semana e mês | 🎨⚙️ | ✅ | 🟢 | ADR-073 |
 | A-22 | **Valor só na avulsa**: a sessão já combinada (da frequência ou data nova de remarcação) não pergunta valor; a tela diz se ela vira pendência no financeiro (por sessão) ou se já está na mensalidade | 🎨⚙️ | ✅ | 🟢 | ADR-093 |
 | A-23 | **Horário de atendimento dentro do cadastro do paciente**: escolher um dos horários livres da aba Horários (que passa a ficar preenchido), informar outro horário, ou dizer que o paciente não tem horário fixo. Horário ocupado não cadastra | 🎨⚙️ | ✅ | 🟢 | ADR-095 |
+| A-24 | **Anamnese por blocos editáveis**: os temas sugeridos vêm prontos, e o psicólogo acrescenta, arquiva e reordena os seus | 🎨⚙️🗄️ | ✅ | 🟢 | ADR-101 |
 
 ### Integração com Google Agenda — depois da agenda própria (ADR-051)
 
@@ -376,6 +377,9 @@ dias sem sessão, sessões no mês e o financeiro do mês. A tela de análise (I
 | I-14 | **Aniversariantes do mês** no painel, só de quem está em atendimento | 🎨 | ✅ | 🟢 | ADR-084 |
 | I-15 | **Navegação**: barra com nomes ao passar o mouse e faixa no celular; caminho clicável no topo; sub-abas do paciente presentes em todas as telas dele | 🎨 | ✅ | 🟢 | ADR-088 |
 | I-18 | **Arquivo de documentos do paciente**: na ficha, a aba Documentos abre com o que já foi produzido sobre ele (rascunhos e emitidos) e só depois oferece os modelos | 🎨 | ✅ | 🟢 | ADR-096 |
+| I-19 | **Cantos arredondados em escala**: controle 6 px, cartão 10 px, painel 14 px; selo e barra de progresso em pílula | 🎨 | ✅ | 🟢 | ADR-097 |
+| I-20 | **Agenda e Horários numa seção só**, com sub-abas; a rota antiga redireciona | 🎨 | ✅ | 🟢 | ADR-098 |
+| I-21 | **Configurações**: ligar e desligar despesas, e trocar de PF para PJ com data | 🎨⚙️🗄️ | ✅ | 🟢 | ADR-100 |
 | I-16 | **Tema visual "Prancheta"** num arquivo só: variáveis, componentes do Bootstrap ajustados, números em mono, próxima sessão destacada no painel | 🎨 | ✅ | 🟢 | ADR-089 |
 | I-17 | Segunda etapa do tema: tirar `style` solto dos templates, unificar abas e navegador de período, milhar nos valores em reais | 🎨 | ✅ | ⚪ | ADR-089 |
 

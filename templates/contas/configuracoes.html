@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+{% block titulo %}Configurações{% endblock %}
+{% block secao %}Configurações{% endblock %}
+
+{% block conteudo %}
+{% comment %}
+ADR-100: o que muda o funcionamento do sistema mora aqui — e não no perfil, que é identificação. São duas decisões:
+controlar despesas ou não, e trocar de pessoa física para jurídica (ou o contrário), com data.
+{% endcomment %}
+<div style="max-width:760px">
+  <div class="d-flex align-items-center mb-3">
+    <h1 class="h5 mb-0">Configurações</h1>
+    <a href="{% url 'contas:perfil' %}" class="ms-auto small text-decoration-none"><i class="bi bi-person-gear"></i> Meu perfil</a>
+  </div>
+
+  <form method="post" class="card mb-3">
+    {% csrf_token %}
+    <div class="card-header bg-white py-2 fw-semibold">Despesas</div>
+    <div class="card-body">
+      <div class="form-check">
+        {{ despesas.usa_despesas }}
+        <label class="form-check-label" for="{{ despesas.usa_despesas.id_for_label }}">
+          Controlar as despesas da minha clínica no Hamilton</label>
+      </div>
+      <div class="form-text small mt-2">
+        Ligado, você tem a aba <strong>Despesas</strong> no financeiro, com as categorias do carnê-leão, e o
+        resultado do mês desconta o que você gasta. Desligado, o financeiro mostra só o que entra.
+        Desligar <strong>não apaga</strong> nada: as despesas que você já cadastrou continuam guardadas e voltam
+        assim que você religar.
+      </div>
+      <button type="submit" class="btn btn-primary btn-sm mt-3">Salvar</button>
+    </div>
+  </form>
+
+  <div class="card">
+    <div class="card-header bg-white py-2 fw-semibold">
+      Pessoa física ou jurídica
+      <span class="text-muted fw-normal small">— hoje: {{ user.get_regime_display }}{% if user.cnpj %} · CNPJ {{ user.cnpj }}{% endif %}</span>
+    </div>
+    <div class="card-body">
+      <p class="small text-muted mb-3">
+        O regime decide <strong>o documento do pagamento</strong>: como pessoa física, recibo em seu nome e apuração
+        pelo carnê-leão; como pessoa jurídica, nota fiscal de serviço no nome da empresa. O resto do sistema —
+        cobrança, agenda, prontuário e despesas — não muda com a troca.
+      </p>
+
+      {% if mudancas %}
+        <div class="rotulo mb-1">Mudanças já registradas</div>
+        <ul class="list-unstyled small mb-3">
+          {% for m in mudancas %}
+            <li><span class="valor">{{ m.vigente_desde|date:"d/m/Y" }}</span> · {{ m.get_regime_anterior_display }} → {{ m.get_regime_novo_display }}</li>
+          {% endfor %}
+        </ul>
+      {% endif %}
+
+      <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="acao" value="regime">
+        {% if regime.non_field_errors %}<div class="alert alert-danger py-2 small">{{ regime.non_field_errors }}</div>{% endif %}
+        <div class="alert alert-light border py-2 small">
+          Você quer passar a atender como <strong>{% if regime.vira_pj %}pessoa jurídica{% else %}pessoa física{% endif %}</strong>.
+          {% if regime.vira_pj %}
+            Informe o CNPJ e a razão social: eles passam a sair nos seus documentos e recibos.
+          {% else %}
+            O CNPJ e a razão social saem do seu cadastro, e os documentos voltam a sair no seu nome.
+          {% endif %}
+        </div>
+        <div class="row g-3">
+          <div class="col-md-5">{% include "components/_campo.html" with campo=regime.vigente_desde %}</div>
+          {% if regime.vira_pj %}
+            <div class="col-md-7">{% include "components/_campo.html" with campo=regime.cnpj %}</div>
+            <div class="col-md-8">{% include "components/_campo.html" with campo=regime.razao_social %}</div>
+            <div class="col-md-4">{% include "components/_campo.html" with campo=regime.crp_empresa %}</div>
+          {% endif %}
+        </div>
+        <div class="form-text small mt-2">
+          O que já foi cobrado, recebido e emitido antes dessa data continua como está — o passado não é reescrito.
+        </div>
+        <button type="submit" class="btn btn-outline-primary btn-sm mt-3"
+                onclick="return confirm('Passar a atender como {% if regime.vira_pj %}pessoa jurídica{% else %}pessoa física{% endif %} a partir da data informada?')">
+          Mudar para {% if regime.vira_pj %}pessoa jurídica{% else %}pessoa física{% endif %}
+        </button>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

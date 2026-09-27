@@ -3072,6 +3072,142 @@ no fim, depois de tudo. Quem abria a aba não via arquivo nenhum.
 - A tabela virou um pedaço só (`documentos/_lista.html`), usado nos dois desenhos.
 - Nenhum dado novo: `Documento.paciente` já guardava o vínculo. O que mudou foi a tela dizer isso.
 
+## ADR-097 — Cantos arredondados, em escala
+
+**Status:** ✅ Aceita — Rodada 64.
+
+**Decisão do usuário:** "os quadrados e cards estão muito pontudos, eu gostaria deles mais arredondados".
+
+**Decisões de arquitetura:**
+- O tema tinha **um** raio, de 2 px, em tudo. Passa a ter uma escala de três: `--raio-controle` (6 px) no campo,
+  botão, aba-pílula; `--raio` (10 px) no cartão, tabela, alerta e menu; `--raio-grande` (14 px) no painel que
+  agrupa cartões. Quanto maior a caixa, mais macio o canto — a curva acompanha o tamanho, em vez de disputar com ele.
+- **Selo e barra de progresso viram pílula** (999 px), porque a forma diz o que eles são. O quadradinho de marcar
+  fica em 4 px e o botão de escolha única volta a ser redondo.
+- **Nada de `overflow: hidden` no cartão.** Seria o jeito curto de o conteúdo respeitar a curva, e comeria o menu
+  de três pontos do financeiro (ADR-092), que abre de dentro dele. Em vez disso, o primeiro e o último filho herdam
+  o raio, e a tabela colada no pé arredonda as células das pontas.
+- Continua valendo a regra do tema: **variável primeiro, componente depois, tela nunca**. Nenhum template mudou.
+
+---
+
+## ADR-098 — Agenda e Horários são uma seção só
+
+**Status:** ✅ Aceita — Rodada 65.
+
+**Decisão do usuário:** "tornar a aba de agenda e horário numa aba só, provavelmente a aba de horários é uma sub-aba
+dentro da aba de agenda".
+
+**Decisões de arquitetura:**
+- A barra lateral perde a entrada "Horários". A Agenda ganha duas sub-abas: **Agenda** (o que acontece) e **Meus
+  horários** (a grade que o psicólogo declara). São a mesma pergunta vista de dois lados — a grade é o que faz a
+  agenda saber o que está livre (ADR-095).
+- A tela de horários passa a morar em `/agenda/horarios/`, e a rota antiga `/horarios/` redireciona para lá: link
+  guardado ou favoritado não quebra.
+- Os **apps continuam dois** (`agenda` tem a grade e a regra de frequência; `atendimentos`, a consulta): a
+  arquitetura não muda porque a navegação juntou. O que muda é `raiz_da_secao`, onde `agenda` passa a apontar para
+  a agenda — quem está nos horários está na seção Agenda.
+
+---
+
+## ADR-099 — A despesa tem categoria, e a categoria é a do carnê-leão
+
+**Status:** ✅ Aceita — Rodada 66.
+
+**Decisão do usuário:** "quero que você olhe no carnê-leão do eCAC quais despesas realmente um psicólogo pode
+colocar na parte de despesas, para que na hora de cadastrar as despesas já tenha as opções pré-definidas do que pode
+ser cadastrado, assim as pessoas não colocam coisas que não podem ser descontadas de verdade e não escrevem errado".
+
+**O que havia.** A despesa era só texto livre (ADR-083). O psicólogo escrevia "gasolina", o sistema aceitava, somava
+no fluxo de caixa e dava a entender que aquilo abatia imposto. Não abate.
+
+**Fatos levantados** (Receita Federal, "Carnê-leão · Deduções", e art. 68 do RIR/2018 — Decreto 9.580/2018,
+consultados em 27/09/2026):
+- deduz-se da receita do trabalho não assalariado a remuneração paga a terceiros **com vínculo** e os encargos, os
+  emolumentos pagos a terceiros, e as **despesas de custeio** necessárias à percepção da receita e à manutenção da
+  fonte produtora — aluguel de sala, água, luz, telefone, material de expediente ou de consumo, contratação de pessoal;
+- **não** se deduz transporte, combustível, estacionamento, IPVA, seguro e manutenção de veículo (a exceção é o
+  representante comercial autônomo), depreciação de bens, conserto e reforma de imóvel próprio, arrendamento mercantil;
+- congresso, seminário e publicação da área entram quando necessários à atividade e à especialização, guardados nota
+  e certificado;
+- quem atende no imóvel em que mora pode levar uma fração das contas dele quando não dá para separar o que é do
+  trabalho — a Receita admite a quinta parte;
+- a dedução do mês é **limitada ao rendimento recebido no mês**, e o excedente passa para os meses seguintes até dezembro;
+- contribuição mensal a entidade de classe **não** é despesa de custeio, segundo a Receita.
+
+**Decisões de arquitetura:**
+- Nasce `financeiro/carne_leao.py`: o catálogo com código, nome, grupo, dedutibilidade e a explicação de cada
+  categoria. É **regra fiscal, não regra de produto** — quando a Receita mudar, muda-se esse arquivo e a tela toda
+  acompanha. A fonte e a data da consulta ficam na tela (ADR-033).
+- Quatro dedutibilidades, não duas: **entra**, **entra em parte** (a casa que também é consultório), **não entra** e
+  **confirme com a contabilidade**. A terceira categoria é a honesta para supervisão, anuidade do CRP e "outra": a
+  norma não as nomeia, e fingir certeza aí seria pior que não ter categoria. Fecha em parte a P-28.
+- **Na dúvida, não soma.** "Confirme" não entra no total dedutível: o sistema erra para o lado de não prometer
+  abatimento que a Receita pode recusar.
+- A **descrição livre continua** ao lado da categoria: "aluguel" dele pode ser "sala da terça com a Bete", e nenhum
+  catálogo escreve isso por ele. A categoria diz o que a Receita faz; a descrição, o que é aquilo na vida dele.
+- A tela de despesas ganha o total **"entra no carnê-leão"**, separado do total que saiu do caixa, e a lista mostra
+  a categoria com um aviso no que não deduz.
+- O sistema **não apura**: ele organiza, mostra a regra com a fonte, e diz que quem apura é o psicólogo. O limite
+  mensal (dedução até o rendimento do mês) é informado, não calculado — ver P-95.
+
+---
+
+## ADR-100 — Configurações: despesas opcionais e troca de regime com data
+
+**Status:** ✅ Aceita — Rodada 67.
+
+**Decisões do usuário:** "as despesas são personalizáveis também, no sentido de que o psicólogo, na hora do quiz de
+entrada no sistema, pode colocar a opção de se ele quer que tenha despesas no sistema dele ou não. Caso ele mude de
+ideia depois, ele pode ir em configurações e adicionar despesas"; "outra coisa que pode ser mudada em configurações é
+se a pessoa quiser mudar sua conta de PF pra PJ"; "quando a pessoa alterar isso, o sistema vai contar até aquele
+ponto os registros financeiros da maneira que o status pede, mas a partir da mudança o financeiro vai mudar".
+
+**Decisões de arquitetura:**
+- Nasce a tela **Configurações**, separada do perfil: o perfil é **identificação**, configurações é **o que o
+  sistema faz**. Ela fica na barra lateral, ao lado do perfil.
+- **`Psicologo.usa_despesas`.** Perguntado no passo do regime, no quiz. Desligado, somem as abas Despesas e Fluxo de
+  caixa, e as telas recusam até por link guardado — mas **nada é apagado**: religar devolve tudo onde estava. O fluxo
+  de caixa sem despesa seria a aba de receitas outra vez.
+- **A troca de regime tem data e vira histórico** (`MudancaDeRegime`, append-only, com RLS). `regime_em(dia)`
+  responde qual regime valia num dia: até a véspera, o antigo; do dia marcado em diante, o novo. É a mesma escolha
+  da condição de cobrança (ADR-022) e pelo mesmo motivo — o recibo emitido em maio saiu como pessoa física, e nenhuma
+  tela deve reescrever isso.
+- Virar PJ pede **CNPJ e razão social** (o CRP da empresa é opcional); voltar para PF **limpa** os três, porque PF
+  com CNPJ é recusado desde a ADR-067. A troca não vale para trás.
+- **O que muda depois da troca: o documento do pagamento, e só ele.** Perguntado ao usuário na rodada 67, ele
+  escolheu a opção mais estreita: antes da data, recibo de pessoa física; a partir dela, nota fiscal de serviço no
+  nome da empresa. **Cobrança, agenda, prontuário e despesas não mudam.** É a mudança que a lei força, e nada além
+  — o que evita ao Hamilton inventar regra de apuração de empresa, que é trabalho do contador do psicólogo.
+- Disso decorre que a emissão de nota fiscal (P-94) é o que falta para a troca ficar completa: até lá, a conta PJ
+  troca o regime e os dados que saem nos documentos, mas o documento em si continua sendo o recibo.
+
+---
+
+## ADR-101 — O roteiro da anamnese é do psicólogo
+
+**Status:** ✅ Aceita — Rodada 68.
+
+**Decisão do usuário:** "na parte de anamnese ela precisa ser editável, ou seja, terão os blocos que já estão lá mas
+tem como adicionar mais blocos com tipos de temas e assuntos para que o psicólogo possa personalizar a anamnese".
+
+**Decisões de arquitetura:**
+- **Tema virou dado.** A ADR-085 tinha doze campos fixos no banco — bons temas, mas de quem escreveu o sistema.
+  Agora são `TemaDeAnamnese`, do psicólogo, e o texto é `RespostaDeAnamnese`, do paciente. Os doze viram a
+  **sugestão inicial** (`prontuarios/temas.py`), criada na primeira vez que ele abre uma anamnese.
+- **O tema é do psicólogo, não do paciente.** É o que faz dele um roteiro: acrescentar "História espiritual" numa
+  ficha o põe em todas as outras. O que é de cada paciente é a resposta.
+- **Arquiva-se, não se apaga.** Tema fora do roteiro pode ter texto escrito em paciente antigo; apagá-lo levaria o
+  texto junto. Arquivado, ele some da anamnese em branco e continua aparecendo onde já foi respondido — e a
+  `PROTECT` na resposta garante isso no banco.
+- **A migração leva o que já estava escrito**: cria os doze temas de quem já tinha anamnese e transforma cada campo
+  preenchido em resposta, na ordem. Campo em branco não vira resposta — anamnese pela metade continua pela metade.
+  A ordem das operações importa: tabelas novas, cópia, e só então os campos antigos saem.
+- **Mexer no roteiro acontece na própria anamnese**, que é onde ele percebe o que falta, e pelo mesmo formulário: o
+  que já estava digitado volta junto ao acrescentar, arquivar ou mover um tema.
+- **A trilha de auditoria continua acusando a edição** e quais temas mudaram, nunca o conteúdo (ADR-085). O texto
+  mora na resposta, que não é auditada; o serviço registra a alteração na anamnese.
+
 ## Impeditivos
 
 | # | Impeditivo | Situação |

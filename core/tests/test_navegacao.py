@@ -9,6 +9,18 @@ from core.templatetags.navegacao import raiz_da_secao
 from pacientes.models import Paciente
 from pacientes.servicos import cadastrar_paciente
 
+class Rota:
+    """Uma rota resolvida de mentira, para exercitar `raiz_da_secao` sem passar por uma view."""
+
+    def __init__(self, app_name, url_name):
+        self.app_name, self.url_name = app_name, url_name
+
+
+class Pedido:
+    def __init__(self, rota):
+        self.resolver_match = rota
+
+
 SENHA = "senha-de-teste-123"
 
 
@@ -37,14 +49,6 @@ class Navegacao(TransactionTestCase):
         self.assertContains(self.client.get(reverse("financeiro:fluxo")), '<span class="separa">›</span>Fluxo de caixa')
 
     def test_raiz_de_cada_secao(self):
-        class Rota:
-            def __init__(self, app_name, url_name):
-                self.app_name, self.url_name = app_name, url_name
-
-        class Pedido:
-            def __init__(self, rota):
-                self.resolver_match = rota
-
         self.assertEqual(raiz_da_secao(Pedido(Rota("pacientes", "detalhe"))), reverse("pacientes:lista"))
         self.assertEqual(raiz_da_secao(Pedido(Rota("", "estatisticas"))), reverse("estatisticas"))
         self.assertEqual(raiz_da_secao(Pedido(Rota("", "painel"))), reverse("painel"))
@@ -68,6 +72,25 @@ class Navegacao(TransactionTestCase):
         # Sem paciente, a lista de registros e a aba de documentos não mostram as sub-abas de ninguém.
         self.assertNotContains(self.client.get(reverse("prontuarios:lista")), '<ul class="nav nav-tabs">')
         self.assertNotContains(self.client.get(reverse("documentos:aba")), '<ul class="nav nav-tabs">')
+
+    def test_agenda_e_horarios_sao_uma_secao_so(self):
+        """ADR-098: a barra tem uma entrada, e as duas telas trazem as mesmas sub-abas."""
+        agenda, horarios = reverse("atendimentos:agenda"), reverse("agenda:horarios")
+        for rota in (agenda, horarios):
+            with self.subTest(rota=rota):
+                resposta = self.client.get(rota)
+                self.assertEqual(resposta.status_code, 200)
+                self.assertContains(resposta, f'href="{agenda}"')
+                self.assertContains(resposta, f'href="{horarios}"')
+                self.assertContains(resposta, "Meus horários")
+        # a barra lateral não tem mais a entrada separada, e os horários ficam dentro da agenda
+        self.assertTrue(horarios.startswith(agenda))
+        self.assertEqual(self.client.get(agenda).content.decode().count('<span class="nome">Horários</span>'), 0)
+        # quem está nos horários tem a agenda como raiz da seção
+        self.assertEqual(raiz_da_secao(Pedido(Rota("agenda", "horarios"))), agenda)
+
+    def test_a_rota_antiga_dos_horarios_continua_levando_la(self):
+        self.assertRedirects(self.client.get("/horarios/"), reverse("agenda:horarios"))
 
     def test_interacao_e_global_e_a_pagina_nao_depende_dela(self):
         """ADR-091: os três refinamentos moram no tema e no base — toda tela os herda, e nenhum esconde conteúdo."""

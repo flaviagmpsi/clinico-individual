@@ -4,14 +4,16 @@ from django.contrib import messages
 from django.contrib.auth import login
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.views import LoginView, LogoutView
+from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
 from django.http import Http404
 from django.shortcuts import redirect
 from django.urls import reverse, reverse_lazy
 from django.utils import timezone
 from django.utils.decorators import method_decorator
-from django.views.generic import CreateView, UpdateView
+from django.views.generic import CreateView, TemplateView, UpdateView
 
+from contas.configuracoes import DespesasForm, RegimeNovoForm
 from contas.forms import (ClinicaForm, ComoAtendeForm, CriarContaForm, IdentificacaoForm, LoginForm, PerfilForm,
                           RegimeForm)
 from core.escopo import dispensa_escopo
@@ -77,13 +79,51 @@ class Perfil(GravaSemRepetir, LoginRequiredMixin, UpdateView):
         return resposta
 
 
+class Configuracoes(LoginRequiredMixin, TemplateView):
+    """O que o psicólogo liga, desliga e troca depois do cadastro (ADR-100)."""
+
+    template_name = "contas/configuracoes.html"
+
+    def get_context_data(self, **kwargs):
+        contexto = super().get_context_data(**kwargs)
+        psicologo = self.request.user
+        contexto.setdefault("despesas", DespesasForm(instance=psicologo))
+        contexto.setdefault("regime", RegimeNovoForm(psicologo=psicologo))
+        contexto["mudancas"] = psicologo.mudancas_de_regime.all()
+        return contexto
+
+    def post(self, request, *args, **kwargs):
+        if request.POST.get("acao") == "regime":
+            return self._trocar_regime(request)
+        formulario = DespesasForm(request.POST, instance=request.user)
+        if formulario.is_valid():
+            formulario.save()
+            messages.success(request, "Controle de despesas ligado." if request.user.usa_despesas
+                             else "Controle de despesas desligado. Nada foi apagado: religue quando quiser.")
+            return redirect("contas:configuracoes")
+        return self.render_to_response(self.get_context_data(despesas=formulario))
+
+    def _trocar_regime(self, request):
+        formulario = RegimeNovoForm(request.POST, psicologo=request.user)
+        if formulario.is_valid():
+            try:
+                with transaction.atomic():
+                    mudanca = formulario.aplicar()
+            except ValidationError as erro:
+                formulario.add_error(None, erro.messages[0])
+                return self.render_to_response(self.get_context_data(regime=formulario))
+            messages.success(request, f"Regime alterado: {mudanca}. O financeiro anterior a essa data não muda.")
+            return redirect("contas:configuracoes")
+        return self.render_to_response(self.get_context_data(regime=formulario))
+
+
 # O quiz de cadastro (C-10, ADR-071). Cada passo grava o que coletou: quem larga no meio volta de onde parou,
 # e não recomeça. O último marca `quiz_concluido_em`, que é o que libera o resto do sistema.
 # ADR-094: a conta nasce só com login e CRP, então o quiz ganhou a pergunta "quem é você" — e a do endereço só
 # aparece para quem atende presencialmente.
 PASSOS = [
     (IdentificacaoForm, "Quem é você"),
-    (RegimeForm, "Pessoa física ou jurídica"),
+    (RegimeForm, "Pessoa física ou jurídica, e as suas despesas"),
     (ComoAtendeForm, "Sua abordagem e como você atende"),
     (ClinicaForm, "Onde você atende presencialmente"),
 ]

@@ -15,8 +15,9 @@ from atendimentos.models import Consulta
 from core import auditoria
 from pacientes.models import Paciente
 from prontuarios import servicos
-from prontuarios.forms import AnamneseForm, ProntuarioForm
-from prontuarios.models import Anamnese
+from prontuarios import anamneses
+from prontuarios.forms import AnamneseForm, ProntuarioForm, TemaDeAnamneseForm
+from prontuarios.models import Anamnese, TemaDeAnamnese
 
 
 class ListaProntuarios(LoginRequiredMixin, TemplateView):
@@ -101,7 +102,11 @@ class DescartarRascunho(LoginRequiredMixin, _ComAlvo, View):
 
 
 class AnamneseDoPaciente(LoginRequiredMixin, FormView):
-    """A sub-aba de anamnese na ficha do paciente (ADR-085). Opcional: enquanto ninguém escreve, nada é gravado."""
+    """A sub-aba de anamnese na ficha do paciente (ADR-085), por blocos que o psicólogo edita (ADR-101).
+
+    Opcional: enquanto ninguém escreve, nada é gravado. A mesma tela é onde o roteiro se organiza — acrescentar,
+    arquivar e mover tema acontecem aqui, porque é aqui que ele percebe o que falta.
+    """
 
     form_class = AnamneseForm
     template_name = "prontuarios/anamnese.html"
@@ -123,17 +128,48 @@ class AnamneseDoPaciente(LoginRequiredMixin, FormView):
         return resposta
 
     def get_form_kwargs(self):
-        return {**super().get_form_kwargs(), "instance": self.anamnese() or Anamnese(paciente=self.paciente())}
+        return {**super().get_form_kwargs(), "blocos": anamneses.blocos(self.anamnese())}
 
     def get_context_data(self, **kwargs):
-        return {**super().get_context_data(**kwargs), "paciente": self.paciente(), "anamnese": self.anamnese()}
+        contexto = {**super().get_context_data(**kwargs), "paciente": self.paciente(), "anamnese": self.anamnese()}
+        contexto.setdefault("tema_novo", TemaDeAnamneseForm())
+        contexto["arquivados"] = TemaDeAnamnese.objects.filter(arquivado=True)
+        return contexto
+
+    def post(self, request, *args, **kwargs):
+        acao = request.POST.get("acao", "")
+        if acao.startswith("tema:"):
+            return self._mexer_no_roteiro(request, acao)
+        return super().post(request, *args, **kwargs)
+
+    def _mexer_no_roteiro(self, request, acao: str):
+        """`tema:novo`, `tema:arquivar:<pk>`, `tema:voltar:<pk>`, `tema:subir:<pk>`, `tema:descer:<pk>`."""
+        partes = acao.split(":")
+        if partes[1] == "novo":
+            formulario = TemaDeAnamneseForm(request.POST)
+            if formulario.is_valid():
+                try:
+                    tema = anamneses.criar_tema(**formulario.cleaned_data)
+                except ValidationError as erro:
+                    formulario.add_error("titulo", erro.messages[0])
+                    return self.render_to_response(self.get_context_data(form=self.get_form(), tema_novo=formulario))
+                messages.success(request, f"Tema “{tema.titulo}” acrescentado ao seu roteiro de anamnese.")
+            else:
+                return self.render_to_response(self.get_context_data(form=self.get_form(), tema_novo=formulario))
+        else:
+            tema = get_object_or_404(TemaDeAnamnese, pk=int(partes[2]))
+            if partes[1] in ("arquivar", "voltar"):
+                anamneses.arquivar(tema, arquivado=partes[1] == "arquivar")
+                messages.success(request, f"Tema “{tema.titulo}” {"arquivado" if tema.arquivado else "de volta ao roteiro"}.")
+            else:
+                anamneses.mover(tema, para_cima=partes[1] == "subir")
+        return redirect("prontuarios:anamnese", pk=self.paciente().pk)
 
     def form_valid(self, form):
-        # Formulário em branco numa anamnese que ainda não existe não cria registro vazio.
-        if self.anamnese() is None and not form.tem_conteudo():
+        anamnese = anamneses.salvar(self.paciente(), form.textos())
+        if anamnese is None:
             messages.info(self.request, "Nada escrito ainda — a anamnese continua em branco.")
         else:
-            form.save()
             messages.success(self.request, "Anamnese salva.")
         return redirect("prontuarios:anamnese", pk=self.paciente().pk)
 

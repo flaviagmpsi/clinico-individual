@@ -50,7 +50,8 @@ from pacientes.servicos import cadastrar_paciente, criar_caso_coletivo
 from financeiro import despesas as despesas_da_clinica
 from financeiro import servicos as financeiro
 from financeiro.models import BaixaDeDespesa, Despesa
-from prontuarios.models import Anamnese
+from prontuarios import anamneses
+from prontuarios.models import Anamnese, RespostaDeAnamnese, TemaDeAnamnese
 
 SENHA = "hamilton123"
 
@@ -167,7 +168,7 @@ def _apagar_conta_de_demonstracao(psicologo) -> int:
     dono = {"psicologo": psicologo}
     total = 0
     # `Documento` primeiro: ele protege o paciente (ADR-076), e a cascata do psicólogo esbarraria nele.
-    for modelo in (Assinatura, Documento, Anamnese, FichaDoProntuario, VersaoProntuario, Prontuario, BaixaDeDespesa, Despesa,
+    for modelo in (Assinatura, Documento, RespostaDeAnamnese, Anamnese, TemaDeAnamnese, FichaDoProntuario, VersaoProntuario, Prontuario, BaixaDeDespesa, Despesa,
                    Pagamento, Consulta, Desfecho,
                    Recorrencia, Caso):
         total += modelo.objetos_todos.filter(**dono).delete()[0]
@@ -648,8 +649,12 @@ class Command(BaseCommand):
                     escritos = _escrever_o_passado(individuais)
                     baixas = _despesas_de_demonstracao()
                     do_dia = _dia_de_exemplo(individuais)
+                    # ADR-101: a anamnese é por blocos. A semente fala pela chave do tema sugerido, e o
+                    # serviço cria o roteiro do psicólogo na primeira chamada.
                     for nome_do_paciente, campos_da_anamnese in _ANAMNESES.items():
-                        Anamnese.objects.create(paciente=por_nome[nome_do_paciente], **campos_da_anamnese)
+                        temas = {t.origem: t for t in anamneses.roteiro()}
+                        anamneses.salvar(por_nome[nome_do_paciente],
+                                         {temas[chave].pk: texto for chave, texto in campos_da_anamnese.items()})
                     self.stdout.write(f"  história: {pagos} pagamentos, {escritos} registros de sessão, "
                                       f"{baixas} despesas pagas, {len(_ANAMNESES)} anamneses; hoje no painel: "
                                       f"{do_dia[0]} sessões cadastradas e {do_dia[1]} previstas")

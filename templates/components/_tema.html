@@ -10,7 +10,9 @@ sem build e sem `collectstatic` no caminho de quem só quer ver a tela.
 Princípios da direção:
 - hierarquia por **peso e posição**, não por caixa colorida: o que pede ação tem cor; o resto é tinta e cinza;
 - **números em fonte monoespaçada** e alinhados — horas, datas, valores;
-- **borda de 1 px, raio de 2 px, nenhuma sombra** (a única é a da barra lateral aberta, que flutua sobre o conteúdo);
+- **borda de 1 px e nenhuma sombra** (a única é a da barra lateral aberta, que flutua sobre o conteúdo);
+- **cantos arredondados em escala** (ADR-097): quanto maior a caixa, mais macio o canto — controle 6 px, cartão
+  10 px, painel 14 px. A primeira versão tinha 2 px em tudo, e o usuário achou "muito pontudo";
 - densidade alta: base de 13 px, linhas de 28–34 px.
 {% endcomment %}
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -36,14 +38,18 @@ Princípios da direção:
     /* --- letra --- */
     --f-texto: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
     --f-mono: "IBM Plex Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
-    --raio: 2px;
+    /* ADR-097: a escala de cantos. `--raio` continua sendo o valor de uso geral (o que o Bootstrap lê), e os
+       outros dois existem para as pontas da escala: o controle pequeno e o painel grande. */
+    --raio-controle: 6px;   /* campo, botão, aba-pílula, selo */
+    --raio: 10px;           /* cartão, tabela, alerta, menu */
+    --raio-grande: 14px;    /* o painel que agrupa outros cartões */
 
     /* --- o Bootstrap lê daqui --- */
     --bs-body-font-family: var(--f-texto); --bs-body-font-size: .8125rem; --bs-body-line-height: 1.5;
     --bs-body-color: var(--texto); --bs-body-bg: var(--fundo);
     --bs-secondary-color: var(--suave); --bs-tertiary-color: #8794a5; --bs-emphasis-color: var(--texto);
-    --bs-border-color: var(--linha); --bs-border-radius: var(--raio); --bs-border-radius-sm: var(--raio);
-    --bs-border-radius-lg: var(--raio); --bs-border-radius-xl: var(--raio); --bs-border-radius-pill: var(--raio);
+    --bs-border-color: var(--linha); --bs-border-radius: var(--raio); --bs-border-radius-sm: var(--raio-controle);
+    --bs-border-radius-lg: var(--raio-grande); --bs-border-radius-xl: var(--raio-grande); --bs-border-radius-pill: 999px;
     --bs-primary: #1558f0; --bs-primary-rgb: 21, 88, 240; --bs-link-color: #1558f0; --bs-link-color-rgb: 21, 88, 240;
     --bs-link-hover-color: #0d43c4; --bs-link-hover-color-rgb: 13, 67, 196;
     --bs-success: #0b8a63; --bs-success-rgb: 11, 138, 99; --bs-danger: #d6281c; --bs-danger-rgb: 214, 40, 28;
@@ -107,6 +113,16 @@ Princípios da direção:
 
   /* ---------- cartão: o contêiner de quase tudo ---------- */
   .card { border: 1px solid var(--linha); border-radius: var(--raio); box-shadow: none; background: var(--superficie); }
+  /* O conteúdo respeita o canto **sem** `overflow: hidden` no cartão: cortar ali comeria o menu de três pontos e o
+     seletor que abrem de dentro dele (financeiro, ADR-092). Então o primeiro e o último filho herdam a curva, e a
+     tabela colada no pé arredonda as células das pontas. */
+  .card > :first-child { border-top-left-radius: inherit; border-top-right-radius: inherit; }
+  .card > :last-child { border-bottom-left-radius: inherit; border-bottom-right-radius: inherit; }
+  .card > .table-responsive:last-child > .table > tbody > tr:last-child > td:first-child,
+  .card > .table-responsive:last-child > .table > tbody > tr:last-child > th:first-child { border-bottom-left-radius: inherit; }
+  .card > .table-responsive:last-child > .table > tbody > tr:last-child > td:last-child { border-bottom-right-radius: inherit; }
+  /* A tabela rolável corta o que sai dela; sem rolagem horizontal de verdade, deixa o menu abrir. */
+  .table-responsive:has(.dropdown-menu) { overflow: visible; }
   .card-header, .card-header.bg-white { background: var(--superficie-2) !important; border-bottom: 1px solid var(--linha); box-shadow: inset 3px 0 0 var(--tinta);
            padding: 7px 12px !important; font-size: .6875rem; font-weight: 600; text-transform: uppercase; letter-spacing: .1em; color: var(--texto); }
   .card-header .fw-normal, .card-header a, .card-header .badge, .card-header .text-muted, .card-header .btn, .card-header small
@@ -132,7 +148,7 @@ Princípios da direção:
   .card .stretched-link:focus-visible { outline: none; box-shadow: none !important; }
 
   /* ---------- botões (ADR-090): alvo maior, e resposta a cada gesto — acende ao passar, afunda ao clicar ---------- */
-  .btn { border-radius: 4px; font-size: .84375rem; font-weight: 600; --bs-btn-padding-y: .5rem; --bs-btn-padding-x: 1.05rem;
+  .btn { border-radius: var(--raio-controle); font-size: .84375rem; font-weight: 600; --bs-btn-padding-y: .5rem; --bs-btn-padding-x: 1.05rem;
          min-height: 36px; display: inline-flex; align-items: center; justify-content: center; gap: .4rem;
          transition: transform var(--rapido), box-shadow var(--rapido), background-color var(--rapido), border-color var(--rapido), filter var(--rapido); }
   .btn-sm { font-size: .78125rem; --bs-btn-padding-y: .34rem; --bs-btn-padding-x: .8rem; min-height: 30px; }
@@ -167,7 +183,7 @@ Princípios da direção:
 
   /* ---------- etiqueta de situação: contorno, mono, sem bloco de cor ---------- */
   .badge { font-family: var(--f-mono); font-weight: 500; font-size: .65rem; text-transform: uppercase; letter-spacing: .05em;
-           padding: 2px 6px; border-radius: var(--raio); border: 1px solid currentColor; background: transparent !important; color: var(--suave) !important; }
+           padding: 2px 7px; border-radius: 999px; border: 1px solid currentColor; background: transparent !important; color: var(--suave) !important; }
   .badge { font-weight: 600; padding: 3px 7px; }
   .badge.text-bg-success { color: #06684a !important; background: var(--ok-fundo) !important; border-color: #7fd3b3 !important; }
   .badge.text-bg-warning { color: #8a4a00 !important; background: var(--atencao-fundo) !important; border-color: #f0b94a !important; }
@@ -234,8 +250,8 @@ Princípios da direção:
 
   /* ---------- abas ---------- */
   .nav-pills { gap: 2px; }
-  .nav-pills .nav-link { border-radius: var(--raio); color: var(--suave); font-weight: 500; padding: .28rem .7rem; }
-  .nav-pills .nav-link { transition: background-color var(--rapido), color var(--rapido), box-shadow var(--rapido); padding: .4rem .9rem; border-radius: 4px; }
+  .nav-pills .nav-link { border-radius: var(--raio-controle); color: var(--suave); font-weight: 500; padding: .28rem .7rem; }
+  .nav-pills .nav-link { transition: background-color var(--rapido), color var(--rapido), box-shadow var(--rapido); padding: .4rem .9rem; border-radius: var(--raio-controle); }
   .nav-pills .nav-link:hover { background: var(--tinta-fundo); color: var(--tinta-escura); }
   .nav-pills .nav-link.active { background: var(--tinta); color: #fff; box-shadow: 0 2px 10px var(--tinta-brilho); }
   .nav-tabs { border-bottom: 1px solid var(--linha); }
@@ -246,7 +262,7 @@ Princípios da direção:
 
   /* ---------- formulário ---------- */
   .form-label { font-size: .75rem; font-weight: 500; color: var(--suave); margin-bottom: .2rem; }
-  .form-control, .form-select { border-radius: var(--raio); border-color: var(--linha); font-size: .8125rem; padding: .34rem .6rem; color: var(--texto); background-color: var(--superficie); }
+  .form-control, .form-select { border-radius: var(--raio-controle); border-color: var(--linha); font-size: .8125rem; padding: .34rem .6rem; color: var(--texto); background-color: var(--superficie); }
   .form-control-sm, .form-select-sm { font-size: .75rem; padding: .22rem .5rem; }
   .form-select { padding-right: 2rem; } .form-select-sm { padding-right: 1.8rem; }
   .form-control, .form-select { transition: border-color var(--rapido), box-shadow var(--rapido); min-height: 34px; }
@@ -254,9 +270,10 @@ Princípios da direção:
   .form-control:focus, .form-select:focus { border-color: var(--tinta); }
   .form-control::placeholder { color: #8d9bb0; }
   .form-text { font-size: .71875rem; color: var(--suave); }
-  .form-check-input { border-color: #9aa6b5; border-radius: var(--raio); }
+  .form-check-input { border-color: #9aa6b5; border-radius: 4px; }
+  .form-check-input[type="radio"] { border-radius: 50%; }
   .form-check-input:checked { background-color: var(--tinta); border-color: var(--tinta); }
-  .input-group-text { border-radius: var(--raio); border-color: var(--linha); background: var(--superficie-2); color: var(--suave); font-size: .8125rem; }
+  .input-group-text { border-radius: var(--raio-controle); border-color: var(--linha); background: var(--superficie-2); color: var(--suave); font-size: .8125rem; }
 
   /* ---------- avisos ---------- */
   .alert { border-radius: var(--raio); border: 1px solid var(--linha); border-left-width: 3px; font-size: .78125rem; padding: .5rem .75rem; color: var(--texto); background: var(--superficie); }
@@ -267,14 +284,16 @@ Princípios da direção:
   .alert-light { background: var(--superficie-2); }
 
   /* ---------- o resto ---------- */
-  .progress { border-radius: 0; background: var(--linha-fina); }
+  .progress { border-radius: 999px; background: var(--linha-fina); }
   .progress-bar.bg-success { background-color: var(--ok) !important; } .progress-bar.bg-warning { background-color: var(--atencao) !important; }
   .dropdown-menu { border-radius: var(--raio); border-color: var(--linha); font-size: .78125rem; box-shadow: 0 6px 18px rgba(16, 26, 43, .12); padding: 4px 0; }
   .dropdown-item { padding: .3rem .8rem; }
   .border, .border-top, .border-bottom { border-color: var(--linha) !important; }
   .border-warning-subtle { border-color: #ead9b3 !important; } .border-success-subtle { border-color: #c4e2d9 !important; }
   .border-danger-subtle { border-color: #f3cbc7 !important; } .bg-success-subtle { background: var(--ok-fundo) !important; }
-  .rounded, .rounded-top-0 { border-radius: var(--raio) !important; }
+  .rounded { border-radius: var(--raio) !important; }
+  /* A aba colada no cartão (ficha do paciente, financeiro): o topo fica reto, o pé continua arredondado. */
+  .rounded-top-0 { border-top-left-radius: 0 !important; border-top-right-radius: 0 !important; }
   hr { border-color: var(--linha); opacity: 1; }
 
   /* ---------- entrada da página (ADR-091) ----------

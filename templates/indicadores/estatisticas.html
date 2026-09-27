@@ -36,11 +36,13 @@ recebem números e rótulos, nunca nome de paciente.
 <div class="order-2">
   <div class="rotulo mb-2">Resultado previsto de {{ ano }}{% if mes %} <span class="text-muted fw-normal text-lowercase">— {{ inicio|date:"F" }} em destaque</span>{% endif %}</div>
   {% if not mes %}
+  {% comment %}ADR-100: quem desligou o controle de despesas vê só a receita — despesa e resultado seriam zero.{% endcomment %}
   <div class="row g-3 mb-3">
-    <div class="col-md-4"><div class="card h-100"><div class="card-body py-3">
+    <div class="{% if user.usa_despesas %}col-md-4{% else %}col-md-6{% endif %}"><div class="card h-100"><div class="card-body py-3">
       <div class="rotulo">Receitas de {{ ano }}</div><div class="h4 mb-0 text-success">R$ {{ e.receitas_do_ano|floatformat:2 }}</div>
       <div class="small text-muted">recebidas e a receber</div>
     </div></div></div>
+    {% if user.usa_despesas %}
     <div class="col-md-4"><div class="card h-100"><div class="card-body py-3">
       <div class="rotulo">Despesas de {{ ano }}</div><div class="h4 mb-0 text-danger">R$ {{ e.despesas_do_ano|floatformat:2 }}</div>
       <div class="small text-muted">pagas e a pagar</div>
@@ -50,6 +52,13 @@ recebem números e rótulos, nunca nome de paciente.
       <div class="h4 mb-0 {% if e.resultado_do_ano < 0 %}text-danger{% endif %}">R$ {{ e.resultado_do_ano|floatformat:2 }}</div>
       <div class="small text-muted">se tudo o que está previsto se cumprir</div>
     </div></div></div>
+    {% else %}
+    <div class="col-md-6"><div class="card h-100"><div class="card-body py-3">
+      <div class="rotulo">Despesas</div>
+      <div class="small text-muted mt-1">O controle de despesas está desligado, então não há resultado a calcular.
+        <a href="{% url 'contas:configuracoes' %}" class="text-decoration-none">Ligar em Configurações</a>.</div>
+    </div></div></div>
+    {% endif %}
   </div>
   {% endif %}
   <div class="card mb-4">

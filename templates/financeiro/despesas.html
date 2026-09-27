@@ -12,14 +12,19 @@ marca "paguei". Em aberto depois do vencimento fica em amarelo — sem alerta re
 {% include "financeiro/_abas.html" %}
 
 <div class="row g-3 mb-3">
-  <div class="col-md-4"><div class="card h-100"><div class="card-body py-3">
+  <div class="col-6 col-lg-3"><div class="card h-100"><div class="card-body py-3">
     <div class="rotulo">Despesas do mês</div><div class="h4 mb-0">R$ {{ total|floatformat:2 }}</div>
   </div></div></div>
-  <div class="col-md-4"><div class="card h-100"><div class="card-body py-3">
+  <div class="col-6 col-lg-3"><div class="card h-100"><div class="card-body py-3">
     <div class="rotulo">Pagas</div><div class="h4 mb-0">R$ {{ pago|floatformat:2 }}</div>
   </div></div></div>
-  <div class="col-md-4"><div class="card h-100"><div class="card-body py-3">
+  <div class="col-6 col-lg-3"><div class="card h-100"><div class="card-body py-3">
     <div class="rotulo">A pagar</div><div class="h4 mb-0">R$ {{ a_pagar|floatformat:2 }}</div>
+  </div></div></div>
+  {% comment %}ADR-099: o que a Receita aceita no livro-caixa, separado do que saiu do caixa.{% endcomment %}
+  <div class="col-6 col-lg-3"><div class="card h-100"><div class="card-body py-3">
+    <div class="rotulo">Entra no carnê-leão</div><div class="h4 mb-0">R$ {{ dedutivel|floatformat:2 }}</div>
+    <div class="small text-muted">Do total do mês. A dedução é limitada ao que você recebeu.</div>
   </div></div></div>
 </div>
 
@@ -31,13 +36,18 @@ marca "paguei". Em aberto depois do vencimento fica em amarelo — sem alerta re
   {% if ocorrencias %}
   <div class="table-responsive">
     <table class="table table-sm align-middle mb-0 small">
-      <thead class="table-light"><tr><th>Despesa</th><th>Vence</th><th class="text-end">Valor</th><th>Situação</th><th></th></tr></thead>
+      <thead class="table-light"><tr><th>Despesa</th><th>Categoria</th><th>Vence</th><th class="text-end">Valor</th><th>Situação</th><th></th></tr></thead>
       <tbody>
       {% for o in ocorrencias %}
         <tr>
           <td class="fw-medium">{{ o.despesa.descricao }}
             {% if o.despesa.mensal %}<span class="badge text-bg-light border fw-normal ms-1" title="Aparece todo mês{% if o.despesa.fim %} até {{ o.despesa.fim|date:'m/Y' }}{% endif %}"><i class="bi bi-arrow-repeat"></i> todo mês{% if o.despesa.fim %} até {{ o.despesa.fim|date:"m/Y" }}{% endif %}</span>{% endif %}
           </td>
+          {% with c=o.despesa.categoria_do_carne_leao %}
+          <td class="text-muted">{{ c.nome }}
+            {% if not c.deduz %}<i class="bi bi-exclamation-circle text-warning ms-1" title="{{ c.rotulo_da_dedutibilidade }}: {{ c.explicacao }}"></i>{% endif %}
+          </td>
+          {% endwith %}
           <td class="text-muted">{{ o.vencimento|date:"d/m" }}</td>
           <td class="text-end text-nowrap">R$ {{ o.valor|floatformat:2 }}</td>
           <td>

@@ -2,8 +2,15 @@
 <ul class="nav nav-pills small mb-3">
   <li class="nav-item"><a class="nav-link py-1{% if aba == 'receitas' %} active{% endif %}"
       href="{% url 'financeiro:mes' %}?mes={{ inicio|date:'Y-m' }}"><i class="bi bi-arrow-down-circle"></i> Receitas</a></li>
+  {% comment %}ADR-100: quem não controla despesas não vê estas duas — o fluxo de caixa sem despesa seria a
+  aba de receitas outra vez. Liga-se de novo em Configurações.{% endcomment %}
+  {% if user.usa_despesas %}
   <li class="nav-item"><a class="nav-link py-1{% if aba == 'despesas' %} active{% endif %}"
       href="{% url 'financeiro:despesas' %}?mes={{ inicio|date:'Y-m' }}"><i class="bi bi-arrow-up-circle"></i> Despesas</a></li>
   <li class="nav-item"><a class="nav-link py-1{% if aba == 'fluxo' %} active{% endif %}"
       href="{% url 'financeiro:fluxo' %}?mes={{ inicio|date:'Y-m' }}"><i class="bi bi-arrow-left-right"></i> Fluxo de caixa</a></li>
+  {% else %}
+  <li class="nav-item"><a class="nav-link py-1 text-muted" href="{% url 'contas:configuracoes' %}"
+      title="Ligar o controle de despesas"><i class="bi bi-plus-circle"></i> Controlar despesas</a></li>
+  {% endif %}
 </ul>

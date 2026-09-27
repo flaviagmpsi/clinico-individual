@@ -6,6 +6,7 @@ from decimal import Decimal
 from django import forms
 
 from core.formularios import LimpaMascara
+from financeiro import carne_leao
 from financeiro.models import Despesa, Pagamento
 
 _TEXTO = {"class": "form-control"}
@@ -25,16 +26,21 @@ class PagamentoForm(forms.Form):
 
 
 class DespesaForm(LimpaMascara, forms.ModelForm):
-    """A despesa é descrita por quem a tem, em texto livre — sem catálogo (ADR-083)."""
+    """A despesa tem **categoria** do carnê-leão (ADR-099) e nome livre (ADR-083).
+
+    A categoria diz o que a Receita faz com o gasto; a descrição continua sendo do psicólogo, porque "aluguel" dele
+    pode ser "sala da terça com a Bete" — e nenhum catálogo escreve isso por ele.
+    """
 
     CAMPOS_DECIMAIS = ("valor",)
 
     class Meta:
         model = Despesa
-        fields = ["descricao", "valor", "vencimento", "mensal", "fim"]
+        fields = ["categoria", "descricao", "valor", "vencimento", "mensal", "fim"]
         widgets = {
-            "descricao": forms.TextInput(attrs={**_TEXTO, "autofocus": True,
-                                                "placeholder": "Ex.: aluguel da sala, internet, supervisão"}),
+            "categoria": forms.Select(attrs={"class": "form-select", "autofocus": True}),
+            "descricao": forms.TextInput(attrs={**_TEXTO,
+                                                "placeholder": "Ex.: sala da rua Bahia, internet do consultório"}),
             "valor": forms.TextInput(attrs={**_TEXTO, "inputmode": "numeric", "data-mascara": "valor",
                                             "placeholder": "0,00"}),
             "vencimento": forms.DateInput(attrs={**_TEXTO, "type": "date"}, format="%Y-%m-%d"),
@@ -42,10 +48,18 @@ class DespesaForm(LimpaMascara, forms.ModelForm):
             "fim": forms.DateInput(attrs={**_TEXTO, "type": "date"}, format="%Y-%m-%d"),
         }
         help_texts = {
+            "descricao": "O nome que você dá a ela. Aparece na lista e no fluxo de caixa.",
             "vencimento": "Na despesa que repete, é o primeiro vencimento: o dia vale para os meses seguintes.",
             "mensal": "Marque se ela aparece todo mês — aluguel, internet, contador.",
             "fim": "Opcional. Só para despesa mensal que tem data para acabar.",
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["categoria"].choices = [("", "Escolha a categoria")] + list(carne_leao.ESCOLHAS)
+        self.fields["categoria"].required = True
+        # A tela precisa saber, para cada opção, o que a Receita diz dela — sem repetir o catálogo no template.
+        self.categorias = carne_leao.por_grupo()
 
     def clean(self):
         dados = super().clean()
