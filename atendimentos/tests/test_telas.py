@@ -550,10 +550,19 @@ class CalendarioPelaTela(BaseTelasAgenda):
         self.assertNotContains(self.client.get(self.rota("semana", self.terca)), "LIVRE - ")
 
     def test_fim_de_semana_so_aparece_com_conteudo(self):
+        """Procura o **cabeçalho da coluna** ("Sábado · 26/09"), e não a palavra solta: o gráfico de dias da semana
+        vive na mesma tela desde a ADR-103 e nomeia todos os dias.
+
+        A base cria uma frequência semanal no dia de hoje; rodando num sábado ou domingo, ela encheria a coluna e o
+        resultado dependeria do dia em que o teste roda. Encerrá-la deixa o fim de semana limpo.
+        """
+        with contexto.como(self.ana.pk):
+            servicos.definir_frequencia(self.caso_joao, frequencia=servicos.AVULSO)
         self.entrar(self.ana)
-        self.assertNotContains(self.client.get(self.rota("semana", self.terca)), "Sábado")
+        coluna = "Sábado ·"
+        self.assertNotContains(self.client.get(self.rota("semana", self.terca)), coluna)
         self.grade(5, 9, 11)  # sábado
-        self.assertContains(self.client.get(self.rota("semana", self.terca)), "Sábado")
+        self.assertContains(self.client.get(self.rota("semana", self.terca)), coluna)
 
     def test_visao_do_dia_e_do_mes(self):
         self.entrar(self.ana)
