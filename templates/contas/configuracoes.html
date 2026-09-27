@@ -83,5 +83,18 @@ controlar despesas ou não, e trocar de pessoa física para jurídica (ou o cont
       </form>
     </div>
   </div>
+
+  {% comment %}ADR-105: sair da conta é assunto de conta, e a barra lateral deixou de ter essa entrada.{% endcomment %}
+  <div class="card mt-3">
+    <div class="card-header bg-white py-2 fw-semibold">Sair</div>
+    <div class="card-body d-flex align-items-center flex-wrap gap-2">
+      <div class="small text-muted flex-grow-1">
+        Encerra a sessão neste computador. Nada é apagado: você entra de novo com o mesmo e-mail e senha.
+      </div>
+      <form action="{% url 'contas:sair' %}" method="post" class="m-0">{% csrf_token %}
+        <button type="submit" class="btn btn-outline-secondary btn-sm"><i class="bi bi-box-arrow-right"></i> Sair da minha conta</button>
+      </form>
+    </div>
+  </div>
 </div>
 {% endblock %}

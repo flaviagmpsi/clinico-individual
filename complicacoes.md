@@ -3268,6 +3268,47 @@ vivia longe da tela em que ele muda alguma coisa — e a barra pagava uma seçã
   e quem a chama é a tela, nunca o modelo. Nenhum app passou a depender de `indicadores` em regra de negócio.
 - A rota `/estatisticas/` deixa de existir, e a barra fica com **seis seções** mais perfil e saída.
 
+## ADR-104 — O painel diz quantas pendências há; a lista abre a pedido
+
+**Status:** ✅ Aceita — Rodada 72.
+
+**Decisão do usuário:** "no painel tem as pendências, mas quero deixar mais visualmente agradável. O quadrado de
+pendências terá apenas o nome das pendências com a quantidade de cada uma — tipo '25 sessões esperando cadastro',
+'17 pagamentos pendentes', '12 prontuários para escrever' —, mas não aparece a lista longa. O que vai acontecer é
+que vai ter a opção de expandir detalhes, e aí sim vai aparecer uma por uma."
+
+**Decisões de arquitetura:**
+- Cada tipo de pendência é **uma linha**: o número, o que é, e o link para a seção. A lista item a item mora dentro
+  dela e abre com um clique. Com 54 pendências, a versão anterior despejava 54 linhas e enterrava o número que
+  importa — e o painel, que responde "o que eu faço agora" (ADR-072), virava uma parede de texto.
+- **`<details>` nativo, não JavaScript.** Abre e fecha sem script nenhum, o navegador cuida do teclado e do leitor
+  de tela, e quem imprime leva o que estiver aberto. O mesmo princípio da ADR-091: o conteúdo não depende de script.
+- O número usa a fonte monoespaçada e a cor de atenção — é ele que se lê primeiro, antes do rótulo.
+- Nada muda no que a view calcula: as três listas continuam vindo inteiras (ADR-074), só que fechadas.
+
+---
+
+## ADR-105 — A conta mora no topo; a barra é só do trabalho
+
+**Status:** ✅ Aceita — Rodada 72.
+
+**Decisões do usuário:** "tem o nome da psicóloga no topo do painel, e quando você passa o mouse por cima aparece
+'meu perfil'… assim a aba de meu perfil na barra some"; "a aba de configurações fica do lado do nome da psicóloga, e
+dentro dela tem a sub-aba sair. Assim a aba de configurações e sair somem da barra".
+
+**Decisões de arquitetura:**
+- **O nome é o caminho para o perfil, e diz isso.** Ao passar o mouse, um balão "Meu perfil" aparece abaixo do nome.
+  É a mesma ideia da barra lateral, que revela o nome de cada ícone (ADR-088) — e por isso não precisa de legenda.
+- **O balão fica fora do fluxo** (`position: absolute`). A primeira versão trocava o nome pela dica, e a largura do
+  topo mudava a cada passada de mouse: o alvo do clique fugia do cursor, e o Playwright travou tentando clicar. Foi
+  a máquina que achou; uma pessoa teria sentido o mesmo e culpado a si mesma.
+- **A engrenagem ao lado leva a Configurações, e é de lá que se sai.** Sair é assunto de conta, não uma seção de
+  trabalho; a tela de Configurações ganha o cartão "Sair", que diz o que acontece ("nada é apagado").
+- **A barra fica com cinco entradas** — Painel, Pacientes, Agenda, Prontuários, Financeiro. Com a ADR-102 e a
+  ADR-103, foram nove para cinco, e a faixa do celular cabe com folga.
+- Enquanto não há barra nem configurações (cadastro, escolha do plano, teste encerrado), a saída continua à mão no
+  topo: a conta a meio caminho não pode ficar presa.
+
 ## Impeditivos
 
 | # | Impeditivo | Situação |

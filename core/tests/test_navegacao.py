@@ -37,14 +37,26 @@ class Navegacao(TransactionTestCase):
     def test_a_barra_tem_o_nome_de_cada_aba_e_marca_a_secao(self):
         resposta = self.client.get(reverse("financeiro:mes"))
         # ADR-098: "Horários" saiu da barra e virou sub-aba da Agenda; ADR-100 trouxe "Configurações".
-        for nome in ["Painel", "Pacientes", "Agenda", "Prontuários", "Financeiro", "Configurações",
-                     "Meu perfil", "Sair"]:
+        # ADR-105: a barra é só das seções de trabalho — conta e saída moram no topo.
+        for nome in ["Painel", "Pacientes", "Agenda", "Prontuários", "Financeiro"]:
             with self.subTest(nome=nome):
                 self.assertContains(resposta, f'<span class="nome">{nome}</span>')
+        for fora in ["Configurações", "Meu perfil", "Sair"]:
+            with self.subTest(fora_da_barra=fora):
+                self.assertNotContains(resposta, f'<span class="nome">{fora}</span>')
         # ADR-102: Documentos não é seção da barra — todo documento é sobre um paciente, e mora na ficha dele.
         self.assertNotContains(resposta, '<span class="nome">Documentos</span>')
         # ADR-103: Estatísticas também não — cada número foi para a tela de que ele fala.
         self.assertNotContains(resposta, '<span class="nome">Estatísticas</span>')
+
+    def test_a_conta_mora_no_topo(self):
+        """ADR-105: o nome leva ao perfil e diz isso; a engrenagem leva a Configurações, de onde se sai."""
+        resposta = self.client.get(reverse("painel"))
+        self.assertContains(resposta, f'href="{reverse("contas:perfil")}"')
+        self.assertContains(resposta, "Meu perfil")            # a dica que aparece ao passar o mouse
+        self.assertContains(resposta, f'href="{reverse("contas:configuracoes")}"')
+        # e sair é um botão dentro de Configurações, não uma entrada da barra
+        self.assertContains(self.client.get(reverse("contas:configuracoes")), "Sair da minha conta")
         self.assertContains(resposta, 'title="Financeiro"\n     class="ativo"')
 
     def test_o_caminho_no_topo_leva_a_raiz_da_secao_e_nomeia_a_pagina(self):

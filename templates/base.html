@@ -26,13 +26,25 @@ Bootstrap via CDN, sem build, sem pipeline de assets, sem framework de front. A 
     {% if raiz %}<a href="{{ raiz }}">{% endif %}{% block secao %}{% endblock %}{% if raiz %}</a>{% endif %}
     {% block pagina %}{% endblock %}
   </span>
-  <div class="ms-auto d-flex align-items-center gap-2">
+  {% comment %}
+  ADR-105: a conta mora no topo, não na barra. O **nome** é o caminho para o perfil — passando o mouse, ele diz
+  "Meu perfil", que é como a barra lateral já ensina os ícones dela (ADR-088). A **engrenagem** ao lado leva a
+  Configurações, e é de lá que se sai. Com isso a barra perde três entradas e fica só com o trabalho.
+  {% endcomment %}
+  <div class="ms-auto d-flex align-items-center gap-1">
     {% if user.is_authenticated %}
-      <a href="{% url 'contas:perfil' %}" class="quem">{{ user.nome_completo|default:user.email }} <span class="crp">· CRP {{ user.crp }}</span></a>
-      {% comment %}Sem a barra lateral (cadastro, escolha do plano, teste encerrado) a saída mora aqui.{% endcomment %}
+      <a href="{% url 'contas:perfil' %}" class="quem{% if request.resolver_match.url_name == 'perfil' %} ativo{% endif %}"
+         title="Meu perfil">
+        <i class="bi bi-person-circle"></i>
+        <span class="nome-de-quem">{{ user.nome_completo|default:user.email }} <span class="crp">· CRP {{ user.crp }}</span></span>
+        <span class="dica-do-perfil">Meu perfil</span>
+      </a>
+      <a href="{% url 'contas:configuracoes' %}" class="quem{% if request.resolver_match.url_name == 'configuracoes' %} ativo{% endif %}"
+         title="Configurações" aria-label="Configurações"><i class="bi bi-sliders"></i></a>
+      {% comment %}Enquanto não há barra nem configurações (cadastro, escolha do plano), a saída fica à mão aqui.{% endcomment %}
       {% if esconder_barra %}
       <form action="{% url 'contas:sair' %}" method="post" class="m-0">{% csrf_token %}
-        <button type="submit" class="btn btn-sm btn-link text-decoration-none quem">Sair</button></form>
+        <button type="submit" class="quem border-0 bg-transparent" title="Sair"><i class="bi bi-box-arrow-right"></i></button></form>
       {% endif %}
     {% endif %}
   </div>

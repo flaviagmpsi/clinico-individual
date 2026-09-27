@@ -18,7 +18,20 @@ Primeiro o dia; depois as pendências, num bloco; por fim o resumo do mês.
 {% endcomment %}
 <style>
   /* ADR-074: o "Hoje" tem o tamanho do dia; as pendências cabem na tela e rolam por dentro. */
-  .pendencias .card-body { max-height: 60vh; overflow-y: auto; }
+  /* Quem rola é a lista aberta, não o cartão: assim os três resumos ficam sempre à vista, e abrir um não
+     empurra os outros para fora da tela. */
+  .pendencias .pendencia ul { max-height: 42vh; overflow-y: auto; }
+  /* ADR-104: cada pendência é uma linha que abre. O número puxa o olho; a lista, quem quiser, abre. */
+  .pendencia > summary { display: flex; align-items: center; gap: .5rem; cursor: pointer; padding: .45rem .1rem;
+                         border-bottom: 1px solid var(--linha-fina); list-style: none; font-weight: 500; }
+  .pendencia:last-of-type > summary { border-bottom: 0; }
+  .pendencia > summary::-webkit-details-marker { display: none; }
+  .pendencia > summary::before { content: '›'; display: inline-block; width: .7rem; color: var(--suave);
+                                 transition: transform var(--rapido); }
+  .pendencia[open] > summary::before { transform: rotate(90deg); }
+  .pendencia > summary:hover { color: var(--tinta-escura); }
+  .pendencia .quantas { font-family: var(--f-mono); font-weight: 600; font-size: 1.05rem; color: var(--atencao); }
+  .pendencia[open] > summary { color: var(--texto); }
 </style>
 <div class="row g-3 mb-3 align-items-start">
   <div class="col-lg-7">
@@ -82,49 +95,66 @@ Primeiro o dia; depois as pendências, num bloco; por fim o resumo do mês.
         <span class="fw-semibold">Pendências</span>
         {% if total_pendencias %}<span class="badge text-bg-warning ms-2">{{ total_pendencias }}</span>{% endif %}
       </div>
+      {% comment %}
+      ADR-104: o painel diz **quantas** pendências há de cada tipo; a lista item a item fica dentro de "ver uma por
+      uma". A versão anterior despejava as três listas inteiras — com 25 sessões e 17 pagamentos, o painel virava
+      uma parede de texto, e o número que importa ("quantas faltam?") se perdia no meio.
+
+      `<details>` nativo: abre e fecha sem JavaScript, o navegador cuida do teclado e do leitor de tela, e quem
+      imprime a página leva o que estiver aberto.
+      {% endcomment %}
       {% if total_pendencias %}
-        <div class="card-body py-2 small">
+        <div class="card-body py-2">
           {% if sessoes_pendentes %}
-            <div class="d-flex align-items-center mt-1 mb-1">
-              <span class="rotulo">Sessões esperando cadastro · {{ total_sessoes_pendentes }}</span>
-              <a href="{% url 'atendimentos:agenda' %}" class="ms-auto text-decoration-none">agenda</a>
-            </div>
-            <ul class="list-unstyled mb-2">
-            {% for s in sessoes_pendentes %}
-              <li>
-                <a href="{% if s.origem %}{% url 'atendimentos:cadastrar_remarcada' s.origem.pk %}{% else %}{% url 'atendimentos:cadastrar_prevista' s.regra.pk s.data_iso %}{% endif %}"
-                   class="text-decoration-none"><span class="hora text-muted me-1">{{ s.inicio|date:"d/m H:i" }}</span> {{ s.caso }}</a>
-                {% if s.origem %}<span class="text-muted">· remarcada</span>{% endif %}
-              </li>
-            {% endfor %}
-            </ul>
+            <details class="pendencia">
+              <summary>
+                <span class="quantas">{{ total_sessoes_pendentes }}</span>
+                sess{{ total_sessoes_pendentes|pluralize:"ão esperando,ões esperando" }} cadastro
+                <a href="{% url 'atendimentos:agenda' %}" class="ms-auto small text-decoration-none">agenda</a>
+              </summary>
+              <ul class="list-unstyled small mb-2 mt-1">
+              {% for s in sessoes_pendentes %}
+                <li>
+                  <a href="{% if s.origem %}{% url 'atendimentos:cadastrar_remarcada' s.origem.pk %}{% else %}{% url 'atendimentos:cadastrar_prevista' s.regra.pk s.data_iso %}{% endif %}"
+                     class="text-decoration-none"><span class="hora text-muted me-1">{{ s.inicio|date:"d/m H:i" }}</span> {{ s.caso }}</a>
+                  {% if s.origem %}<span class="text-muted">· remarcada</span>{% endif %}
+                </li>
+              {% endfor %}
+              </ul>
+            </details>
           {% endif %}
 
           {% if pagamentos_pendentes %}
-            <div class="d-flex align-items-center mt-1 mb-1">
-              <span class="rotulo">Pagamentos pendentes · {{ total_pagamentos_pendentes }}</span>
-              <a href="{% url 'financeiro:mes' %}" class="ms-auto text-decoration-none">financeiro</a>
-            </div>
-            <ul class="list-unstyled mb-2">
-            {% for c in pagamentos_pendentes %}
-              <li><a href="{{ c.url_pagar }}" class="text-decoration-none fw-medium">{{ c.caso }}</a>
-                <span class="text-muted">{{ c.descricao|lower }} · venceu {{ c.vencimento|date:"d/m" }}</span>
-                <span class="valor ms-auto">R$ {{ c.saldo|floatformat:2 }}</span></li>
-            {% endfor %}
-            </ul>
+            <details class="pendencia">
+              <summary>
+                <span class="quantas">{{ total_pagamentos_pendentes }}</span>
+                pagamento{{ total_pagamentos_pendentes|pluralize }} pendente{{ total_pagamentos_pendentes|pluralize }}
+                <a href="{% url 'financeiro:mes' %}" class="ms-auto small text-decoration-none">financeiro</a>
+              </summary>
+              <ul class="list-unstyled small mb-2 mt-1">
+              {% for c in pagamentos_pendentes %}
+                <li><a href="{{ c.url_pagar }}" class="text-decoration-none fw-medium">{{ c.caso }}</a>
+                  <span class="text-muted">{{ c.descricao|lower }} · venceu {{ c.vencimento|date:"d/m" }}</span>
+                  <span class="valor ms-auto">R$ {{ c.saldo|floatformat:2 }}</span></li>
+              {% endfor %}
+              </ul>
+            </details>
           {% endif %}
 
           {% if prontuarios_pendentes %}
-            <div class="d-flex align-items-center mt-1 mb-1">
-              <span class="rotulo">Prontuários para escrever · {{ total_prontuarios_pendentes }}</span>
-              <a href="{% url 'prontuarios:lista' %}" class="ms-auto text-decoration-none">prontuários</a>
-            </div>
-            <ul class="list-unstyled mb-1">
-            {% for r in prontuarios_pendentes %}
-              <li><a href="{{ r.url }}" class="text-decoration-none"><span class="hora text-muted me-1">{{ r.consulta.inicio|date:"d/m H:i" }}</span>
-                {{ r.paciente.nome }}</a></li>
-            {% endfor %}
-            </ul>
+            <details class="pendencia">
+              <summary>
+                <span class="quantas">{{ total_prontuarios_pendentes }}</span>
+                prontuário{{ total_prontuarios_pendentes|pluralize }} para escrever
+                <a href="{% url 'prontuarios:lista' %}" class="ms-auto small text-decoration-none">prontuários</a>
+              </summary>
+              <ul class="list-unstyled small mb-1 mt-1">
+              {% for r in prontuarios_pendentes %}
+                <li><a href="{{ r.url }}" class="text-decoration-none"><span class="hora text-muted me-1">{{ r.consulta.inicio|date:"d/m H:i" }}</span>
+                  {{ r.paciente.nome }}</a></li>
+              {% endfor %}
+              </ul>
+            </details>
           {% endif %}
         </div>
       {% else %}

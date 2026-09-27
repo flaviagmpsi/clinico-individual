@@ -31,16 +31,6 @@ Os módulos que ainda não existem aparecem **apagados**, com o passo que os con
   ficha dele; uma entrada a mais na barra custaria espaço — e no celular, onde a barra vira faixa, custaria caro.
   A visão de todos os documentos continua existindo, a um clique de dentro da ficha.{% endcomment %}
 
-  <div class="espaco"></div>
-
-  <a href="{% url 'contas:configuracoes' %}" title="Configurações"
-     class="{% if request.resolver_match.url_name == 'configuracoes' %}ativo{% endif %}">
-    <i class="bi bi-sliders"></i><span class="nome">Configurações</span></a>
-  <a href="{% url 'contas:perfil' %}" title="Meu perfil"
-     class="{% if request.resolver_match.url_name == 'perfil' %}ativo{% endif %}">
-    <i class="bi bi-person-gear"></i><span class="nome">Meu perfil</span></a>
-  <form action="{% url 'contas:sair' %}" method="post" class="m-0">
-    {% csrf_token %}
-    <button type="submit" title="Sair"><i class="bi bi-box-arrow-right"></i><span class="nome">Sair</span></button>
-  </form>
+  {% comment %}ADR-105: perfil, configurações e sair saíram daqui para o topo — a barra é das seções de trabalho,
+  e cada entrada a menos é espaço ganho, sobretudo na faixa do celular.{% endcomment %}
 </nav>

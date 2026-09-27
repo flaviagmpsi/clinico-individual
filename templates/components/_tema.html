@@ -80,9 +80,26 @@ Princípios da direção:
   .topo { position: fixed; top: 0; left: 0; right: 0; height: var(--topo); z-index: 1030; background: var(--marinho); color: #e8edf5; }
   .topo .marca { color: #fff; font-weight: 600; font-size: .8125rem; text-transform: uppercase; letter-spacing: .06em; text-decoration: none; }
   .topo .marca i { color: #5b93ff; filter: drop-shadow(0 0 6px rgba(91, 147, 255, .7)); }
-  .topo .quem { color: #b9c4d4; font-size: .75rem; text-decoration: none; }
-  .topo .quem:hover { color: #fff; }
+  /* ADR-105: a conta mora no topo. O nome leva ao perfil e **diz isso ao passar o mouse** — a mesma ideia da barra
+     lateral, que revela o nome de cada ícone (ADR-088). A engrenagem ao lado leva a Configurações. */
+  .topo .quem { color: #b9c4d4; font-size: .75rem; text-decoration: none; display: inline-flex; align-items: center;
+                gap: .4rem; padding: .3rem .55rem; border-radius: var(--raio-controle); line-height: 1.2;
+                transition: background-color var(--rapido), color var(--rapido); }
+  .topo .quem:hover, .topo .quem:focus-visible { color: #fff; background: var(--marinho-3); }
+  .topo .quem.ativo { color: #fff; background: var(--marinho-3); }
   .topo .quem .crp { color: #8797ad; }
+  .topo .quem i { font-size: .95rem; }
+  /* A dica é um balão **fora do fluxo**, logo abaixo do nome: trocá-la pelo nome mudaria a largura do topo a cada
+     passada de mouse, e o alvo do clique fugiria do cursor. */
+  .topo .quem { position: relative; }
+  .topo .quem .dica-do-perfil { position: absolute; top: calc(100% - 2px); right: 0; white-space: nowrap;
+                                background: var(--marinho-3); color: #fff; font-weight: 600; font-size: .7rem;
+                                padding: .2rem .5rem; border-radius: var(--raio-controle); border: 1px solid var(--marinho-linha);
+                                opacity: 0; transform: translateY(-3px); pointer-events: none;
+                                transition: opacity var(--rapido), transform var(--rapido); }
+  .topo .quem:hover .dica-do-perfil, .topo .quem:focus-visible .dica-do-perfil { opacity: 1; transform: translateY(0); }
+  @media (max-width: 575.98px) { .topo .quem .nome-de-quem { display: none; } }
+  @media (prefers-reduced-motion: reduce) { .topo .quem .dica-do-perfil { transition: none; transform: none; } }
   .caminho { font-family: var(--f-mono); font-size: .75rem; color: #93a1b5; }
   .caminho::before { content: "/"; margin-right: .45rem; color: #5d6c83; }
   .caminho a { color: #b9c4d4; text-decoration: none; }
