@@ -38,9 +38,11 @@ class Navegacao(TransactionTestCase):
         resposta = self.client.get(reverse("financeiro:mes"))
         # ADR-098: "Horários" saiu da barra e virou sub-aba da Agenda; ADR-100 trouxe "Configurações".
         for nome in ["Painel", "Pacientes", "Agenda", "Prontuários", "Financeiro", "Estatísticas", "Configurações",
-                     "Documentos", "Meu perfil", "Sair"]:
+                     "Meu perfil", "Sair"]:
             with self.subTest(nome=nome):
                 self.assertContains(resposta, f'<span class="nome">{nome}</span>')
+        # ADR-102: Documentos não é seção da barra — todo documento é sobre um paciente, e mora na ficha dele.
+        self.assertNotContains(resposta, '<span class="nome">Documentos</span>')
         self.assertContains(resposta, 'title="Financeiro"\n     class="ativo"')
 
     def test_o_caminho_no_topo_leva_a_raiz_da_secao_e_nomeia_a_pagina(self):
@@ -57,19 +59,20 @@ class Navegacao(TransactionTestCase):
         self.assertEqual(raiz_da_secao(Pedido(None)), "")
 
     def test_as_sub_abas_do_paciente_acompanham_o_paciente(self):
+        # ADR-102: quatro sub-abas. O prontuário geral não é uma delas — mora dentro de Documentos —, mas traz as
+        # mesmas quatro, para de lá se ir a qualquer outra.
         abas = [reverse("pacientes:detalhe", args=[self.marcos.pk]),
                 reverse("prontuarios:anamnese", args=[self.marcos.pk]),
                 reverse("prontuarios:lista") + f"?paciente={self.marcos.pk}",
-                reverse("documentos:prontuario", args=[self.marcos.pk]),
                 reverse("documentos:aba") + f"?paciente={self.marcos.pk}"]
-        for rota in abas:
+        for rota in abas + [reverse("documentos:prontuario", args=[self.marcos.pk])]:
             with self.subTest(rota=rota):
                 resposta = self.client.get(rota)
                 self.assertEqual(resposta.status_code, 200)
                 for outra in abas:
                     self.assertContains(resposta, f'href="{outra}"')
-                self.assertContains(resposta, "Registros de sessão")
-                self.assertContains(resposta, "Prontuário geral")
+                self.assertNotContains(resposta, "Registros de sessão")
+                self.assertNotContains(resposta, ">Prontuário geral<")
         # Sem paciente, a lista de registros e a aba de documentos não mostram as sub-abas de ninguém.
         self.assertNotContains(self.client.get(reverse("prontuarios:lista")), '<ul class="nav nav-tabs">')
         self.assertNotContains(self.client.get(reverse("documentos:aba")), '<ul class="nav nav-tabs">')

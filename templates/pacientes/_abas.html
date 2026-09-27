@@ -1,12 +1,14 @@
 {% comment %}
-As sub-abas da ficha do paciente (ADR-088): acompanham o paciente aonde ele for. Aparecem na ficha, na anamnese,
-nos registros de sessão dele, no prontuário geral e nos documentos dele — de qualquer uma se vai a qualquer outra.
-`aba` diz qual está aberta.
+As sub-abas da ficha do paciente (ADR-088, ADR-102): acompanham o paciente aonde ele for — na ficha, na anamnese, no
+prontuário dele e nos documentos dele. `aba` diz qual está aberta.
+
+São **quatro**, e o nome de cada uma é o que o psicólogo chama aquilo: "Prontuário" é onde ele escreve sessão a
+sessão. O prontuário geral, que é documento de entrega, mora dentro de Documentos — junto com os outros que ele
+produz sobre a pessoa.
 {% endcomment %}
 <ul class="nav nav-tabs">
   <li class="nav-item"><a class="nav-link{% if aba == 'cadastro' %} active{% endif %}" href="{% url 'pacientes:detalhe' paciente.pk %}"><i class="bi bi-person"></i> Cadastro</a></li>
   <li class="nav-item"><a class="nav-link{% if aba == 'anamnese' %} active{% endif %}" href="{% url 'prontuarios:anamnese' paciente.pk %}"><i class="bi bi-clipboard2-heart"></i> Anamnese</a></li>
-  <li class="nav-item"><a class="nav-link{% if aba == 'registros' %} active{% endif %}" href="{% url 'prontuarios:lista' %}?paciente={{ paciente.pk }}"><i class="bi bi-journal-medical"></i> Registros de sessão</a></li>
-  <li class="nav-item"><a class="nav-link{% if aba == 'prontuario' %} active{% endif %}" href="{% url 'documentos:prontuario' paciente.pk %}"><i class="bi bi-journal-text"></i> Prontuário geral</a></li>
-  <li class="nav-item"><a class="nav-link{% if aba == 'documentos' %} active{% endif %}" href="{% url 'documentos:aba' %}?paciente={{ paciente.pk }}"><i class="bi bi-file-earmark-text"></i> Documentos</a></li>
+  <li class="nav-item"><a class="nav-link{% if aba == 'registros' %} active{% endif %}" href="{% url 'prontuarios:lista' %}?paciente={{ paciente.pk }}"><i class="bi bi-journal-medical"></i> Prontuário</a></li>
+  <li class="nav-item"><a class="nav-link{% if aba == 'documentos' or aba == 'prontuario' %} active{% endif %}" href="{% url 'documentos:aba' %}?paciente={{ paciente.pk }}"><i class="bi bi-file-earmark-text"></i> Documentos</a></li>
 </ul>

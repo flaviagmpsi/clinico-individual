@@ -236,11 +236,12 @@ class EscritaPelaTela(BaseTelasDocumentos):
         self.client.post(reverse("documentos:duplicar", args=[documento.pk]))
         self.assertEqual(Documento.objetos_todos.filter(paciente=self.marcos, emitido_em__isnull=True).count(), 1)
 
-    def test_rascunho_se_exclui_e_a_barra_lateral_leva_a_aba(self):
+    def test_rascunho_se_exclui(self):
         with contexto.como(self.ana.pk):
             documento = servicos.salvar_rascunho("declaracao", {"atendido": "Marcos Tela"})
         self.entrar(self.ana)
-        self.assertContains(self.client.get(reverse("painel")), reverse("documentos:aba"))
+        # ADR-102: Documentos não é seção da barra — a porta é a ficha do paciente.
+        self.assertNotContains(self.client.get(reverse("painel")), '<span class="nome">Documentos</span>')
         self.assertEqual(self.client.post(reverse("documentos:excluir", args=[documento.pk])).status_code, 302)
         self.assertFalse(Documento.objetos_todos.filter(pk=documento.pk).exists())
 

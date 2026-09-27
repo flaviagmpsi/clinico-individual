@@ -28,9 +28,9 @@ Os módulos que ainda não existem aparecem **apagados**, com o passo que os con
   <a href="{% url 'estatisticas' %}" title="Estatísticas"
      class="{% if request.resolver_match.url_name == 'estatisticas' %}ativo{% endif %}">
     <i class="bi bi-bar-chart-line"></i><span class="nome">Estatísticas</span></a>
-  <a href="{% url 'documentos:aba' %}" title="Documentos"
-     class="{% if request.resolver_match.app_name == 'documentos' %}ativo{% endif %}">
-    <i class="bi bi-file-earmark-text"></i><span class="nome">Documentos</span></a>
+  {% comment %}ADR-102: Documentos **não** tem entrada aqui. Todo documento é sobre um paciente, então ele mora na
+  ficha dele; uma entrada a mais na barra custaria espaço — e no celular, onde a barra vira faixa, custaria caro.
+  A visão de todos os documentos continua existindo, a um clique de dentro da ficha.{% endcomment %}
 
   <div class="espaco"></div>
 

@@ -1,14 +1,15 @@
 {% extends "base.html" %}
 {% block titulo %}Prontuário psicológico{% if paciente %} · {{ paciente.nome }}{% endif %}{% endblock %}
-{% block secao %}Documentos{% endblock %}
+{% block secao %}{% if paciente %}Pacientes{% else %}Documentos{% endif %}{% endblock %}
 {% block pagina %}<span class="separa">›</span>Prontuário psicológico{% if paciente %} · {{ paciente.nome }}{% endif %}{% endblock %}
 
 {% block conteudo %}
 {% comment %}
 ADR-079 e ADR-080: o **prontuário geral** do paciente é documento — o que se entrega a ele ou a quem solicitar — e
 por isso mora nesta aba, no mesmo desenho dos outros modelos (ADR-076, ADR-077). Os **registros de sessão** moram na
-aba Prontuários. Aqui se escrevem só a avaliação da demanda e o encerramento; a evolução é montada com os registros
-de sessão confirmados e **não se edita nesta tela** — é o que impede a dúvida sobre qual dos dois se está fazendo.
+aba **Prontuário** da ficha (ADR-102). Aqui se escrevem só a avaliação da demanda e o encerramento; a evolução é
+montada com os registros de sessão confirmados e **não se edita nesta tela** — é o que impede a dúvida sobre qual
+dos dois se está fazendo.
 {% endcomment %}
 {% include "documentos/_folha_estilo.html" %}
 {% include "_folha_preenchivel_estilo.html" %}
@@ -23,7 +24,7 @@ de sessão confirmados e **não se edita nesta tela** — é o que impede a dúv
 
 {% if paciente %}{% include "pacientes/_abas.html" with aba="prontuario" %}<div class="mb-3"></div>{% endif %}
 <ul class="nav nav-pills flex-wrap gap-1 small mb-3">
-  <li class="nav-item"><a class="nav-link py-1 px-2" href="{% url 'documentos:aba' %}{% if paciente %}?paciente={{ paciente.pk }}{% endif %}"><i class="bi bi-grid"></i> Todos</a></li>
+  <li class="nav-item"><a class="nav-link py-1 px-2" href="{% url 'documentos:aba' %}{% if paciente %}?paciente={{ paciente.pk }}{% endif %}"><i class="bi bi-grid"></i> {% if paciente %}Documentos de {{ paciente.nome }}{% else %}Todos{% endif %}</a></li>
   <li class="nav-item"><a class="nav-link py-1 px-2 active" href="{% url 'documentos:escolher_prontuario' %}">Prontuário psicológico</a></li>
   {% for titulo, lista in grupos %}{% for m in lista %}
     <li class="nav-item"><a class="nav-link py-1 px-2" href="{% url 'documentos:modelo' m.codigo %}">{{ m.nome }}</a></li>
@@ -42,7 +43,8 @@ de sessão confirmados e **não se edita nesta tela** — é o que impede a dúv
         <div class="alert alert-info py-2 mb-3">
           <strong>Este é o prontuário geral</strong> — o documento que reúne o atendimento e pode ser entregue ao
           paciente ou a quem o solicitar. O registro de cada sessão você escreve na aba
-          <a href="{% url 'prontuarios:lista' %}">Prontuários</a>; ele entra aqui sozinho, na evolução.
+          <a href="{% url 'prontuarios:lista' %}{% if paciente %}?paciente={{ paciente.pk }}{% endif %}">Prontuário</a>;
+          ele entra aqui sozinho, na evolução.
         </div>
         <div class="alert alert-warning py-2 mb-3"><strong>Antes de entregar:</strong> {{ antes }}</div>
 

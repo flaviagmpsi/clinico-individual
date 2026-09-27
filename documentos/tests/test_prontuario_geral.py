@@ -77,14 +77,21 @@ class ExigeLoginENaoAtravessa(BaseProntuarioGeral):
 
 
 class OndeMora(BaseProntuarioGeral):
-    def test_a_aba_documentos_oferece_o_prontuario_e_a_aba_prontuarios_aponta_para_ela(self):
+    def test_o_prontuario_geral_mora_dentro_dos_documentos_do_paciente(self):
+        """ADR-102: perdeu a aba própria e virou o primeiro cartão de Documentos, na ficha."""
         self.entrar(self.ana)
-        aba = self.client.get(reverse("documentos:aba"))
-        self.assertContains(aba, "Prontuário psicológico")
-        self.assertContains(aba, reverse("documentos:escolher_prontuario"))
-        registros = self.client.get(reverse("prontuarios:lista"))
-        self.assertContains(registros, "registros de sessão")
-        self.assertContains(registros, reverse("documentos:escolher_prontuario"))
+        na_ficha = self.client.get(reverse("documentos:aba") + f"?paciente={self.marcos.pk}")
+        self.assertContains(na_ficha, "Prontuário psicológico")
+        self.assertContains(na_ficha, reverse("documentos:prontuario", args=[self.marcos.pk]))
+        self.assertNotContains(na_ficha, ">Prontuário geral<")  # não é mais uma sub-aba
+        # a visão geral, sem paciente, continua oferecendo o prontuário
+        self.assertContains(self.client.get(reverse("documentos:aba")), reverse("documentos:escolher_prontuario"))
+
+    def test_a_aba_prontuario_aponta_para_onde_o_geral_e_montado(self):
+        self.entrar(self.ana)
+        registros = self.client.get(reverse("prontuarios:lista") + f"?paciente={self.marcos.pk}")
+        self.assertContains(registros, "sessão a sessão")
+        self.assertContains(registros, reverse("documentos:aba") + f"?paciente={self.marcos.pk}")
 
     def test_sem_paciente_mostra_a_orientacao_e_o_seletor_so_com_os_proprios(self):
         self.entrar(self.ana)

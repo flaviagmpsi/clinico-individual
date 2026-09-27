@@ -3208,6 +3208,31 @@ tem como adicionar mais blocos com tipos de temas e assuntos para que o psicólo
 - **A trilha de auditoria continua acusando a edição** e quais temas mudaram, nunca o conteúdo (ADR-085). O texto
   mora na resposta, que não é auditada; o serviço registra a alteração na anamnese.
 
+## ADR-102 — Quatro sub-abas no paciente, e Documentos sai da barra
+
+**Status:** ✅ Aceita — Rodada 70.
+
+**Decisões do usuário:** "dentro de pacientes tem a aba de registro de sessão, na verdade quero que ela se chame
+prontuário mesmo"; "a aba de prontuário geral não vai estar separada, ela vai estar dentro de documentos"; "como
+existe uma aba de documentos dentro de cada paciente, a aba principal de documentos seria desnecessária, e ocuparia
+muito espaço na barra de tarefas (e eu tenho que me preocupar se a barra vai ficar cheia de abas na versão pra
+celular)".
+
+**Decisões de arquitetura:**
+- A ficha tem **quatro** sub-abas: Cadastro · Anamnese · **Prontuário** · Documentos. "Registros de sessão" era o
+  nome de quem escreveu o sistema; "prontuário" é como o psicólogo chama aquilo, e é o que a ADR-080 já dizia ser —
+  o prontuário do dia a dia.
+- **O prontuário geral perde a aba e vira o primeiro cartão de Documentos**, com largura dobrada, antes dos modelos.
+  A separação que a ADR-080 quis — "não confundir qual dos dois estou fazendo" — continua de pé, e agora pelo lugar:
+  o que se escreve sessão a sessão está em Prontuário, o que se entrega está em Documentos. A tela do prontuário
+  geral continua existindo e marca a aba Documentos como aberta.
+- **Documentos sai da barra lateral.** Todo documento é sobre um paciente, então a porta dele é a ficha. A visão de
+  todos continua existindo, a um clique de dentro da ficha ("ver os de todos os pacientes") — nenhuma tela foi
+  apagada, só deixou de ocupar a barra.
+- A barra fica com **sete seções** e cabe na faixa do celular sem rolagem: foi o que o usuário pediu para preservar.
+- **As sub-abas sobem para o topo da ficha**, acima das duas colunas. Estavam dentro da coluna da direita, que no
+  celular vai para o fim da pilha — a navegação do paciente ficava soterrada embaixo de tudo.
+
 ## Impeditivos
 
 | # | Impeditivo | Situação |

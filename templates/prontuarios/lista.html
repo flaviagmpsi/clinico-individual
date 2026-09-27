@@ -6,7 +6,7 @@
 {% block conteudo %}
 <div class="d-flex align-items-center mb-3">
   <h1 class="h5 mb-0">
-    {% if paciente %}Registros de sessão <span class="text-muted fw-normal">· {{ paciente.nome }}</span>{% else %}Prontuários para escrever{% endif %}
+    {% if paciente %}Prontuário <span class="text-muted fw-normal">· {{ paciente.nome }}</span>{% else %}Prontuários para escrever{% endif %}
   </h1>
   <form method="get" class="ms-auto d-flex gap-2 align-items-center small">
     <select name="paciente" class="form-select form-select-sm" style="max-width:260px" aria-label="Paciente" onchange="this.form.submit()">
@@ -24,9 +24,9 @@
   {% if paciente %}Todas as sessões realizadas deste paciente, da mais recente para a mais antiga.
   {% else %}Toda sessão realizada precisa de um prontuário confirmado para cada participante. Aqui ficam os que ainda faltam.{% endif %}
   {% comment %}ADR-080: aqui é o registro do dia a dia. O prontuário geral, que reúne tudo, é documento.{% endcomment %}
-  Estes são os <strong>registros de sessão</strong>. O prontuário geral do paciente — o que se entrega a ele ou a quem
-  solicitar — é montado a partir deles na aba
-  <a href="{% url 'documentos:escolher_prontuario' %}{% if paciente %}?paciente={{ paciente.pk }}{% endif %}">Documentos</a>.
+  Aqui é o prontuário <strong>sessão a sessão</strong>. O prontuário geral do paciente — o que se entrega a ele ou a
+  quem solicitar — é montado a partir destes registros, e fica na aba
+  <a href="{% if paciente %}{% url 'documentos:aba' %}?paciente={{ paciente.pk }}{% else %}{% url 'documentos:escolher_prontuario' %}{% endif %}">Documentos</a> da ficha.
 </p>
 
 {% if registros %}

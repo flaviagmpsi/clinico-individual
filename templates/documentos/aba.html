@@ -6,8 +6,8 @@
 {% block conteudo %}
 {% if paciente %}
 {% comment %}
-ADR-096: dentro da ficha do paciente esta aba é o **arquivo dele** — o que já foi produzido sobre ele vem primeiro,
-e os modelos para produzir o próximo vêm depois. O prontuário geral não se repete aqui: tem a própria aba.
+ADR-096 e ADR-102: dentro da ficha do paciente esta aba é o **arquivo dele** — o que já foi produzido vem primeiro, e
+o que ele pode produzir vem depois, começando pelo prontuário geral, que deixou de ter aba própria.
 {% endcomment %}
 <div class="d-flex align-items-center mb-3">
   <div>
@@ -21,7 +21,7 @@ e os modelos para produzir o próximo vêm depois. O prontuário geral não se r
 <div class="card border-top-0 rounded-top-0 mb-4">
   <div class="card-header bg-white py-2 d-flex align-items-center">
     <span class="fw-semibold">Documentos de {{ paciente.nome }}</span>
-    <a href="{% url 'documentos:aba' %}" class="ms-auto small text-decoration-none">ver de todos os pacientes</a>
+    <a href="{% url 'documentos:aba' %}" class="ms-auto small text-decoration-none">ver os de todos os pacientes</a>
   </div>
   {% include "documentos/_lista.html" %}
 </div>
@@ -29,6 +29,25 @@ e os modelos para produzir o próximo vêm depois. O prontuário geral não se r
 <div class="d-flex align-items-center flex-wrap gap-2">
   <h2 class="h6 mb-0">Produzir um documento sobre {{ paciente.nome }}</h2>
   <span class="text-muted small">o modelo já abre com a identificação dele, e o que você escrever fica guardado aqui</span>
+</div>
+
+{% comment %}ADR-102: o prontuário geral é o documento principal do paciente, e por isso abre a lista — com a
+largura dobrada, para não se confundir com um modelo qualquer.{% endcomment %}
+<div class="rotulo mt-3 mb-2">Prontuário do paciente</div>
+<div class="row g-3">
+  <div class="col-md-12 col-xl-8">
+    <div class="card h-100">
+      <div class="card-body py-3 d-flex flex-column">
+        <div class="fw-semibold">Prontuário psicológico</div>
+        <div class="text-muted small mb-2">Res. CFP nº 001/2009, Art. 2º</div>
+        <div class="small flex-grow-1">Identificação, avaliação da demanda e objetivos, evolução e encerramento. A
+          evolução é montada sozinha com o que você escreve na aba <strong>Prontuário</strong>, sessão a sessão. É o
+          documento que se entrega ao paciente ou a quem o solicitar.</div>
+        <a href="{% url 'documentos:prontuario' paciente.pk %}"
+           class="btn btn-sm btn-primary mt-3 align-self-start stretched-link">Abrir prontuário de {{ paciente.nome }}</a>
+      </div>
+    </div>
+  </div>
 </div>
 {% for titulo, lista in grupos %}
   <div class="rotulo mt-3 mb-2">{{ titulo }}</div>
