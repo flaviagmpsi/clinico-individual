@@ -7,12 +7,9 @@ Mora em `indicadores`, que depende de todos os apps e de quem ninguém depende (
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.views.generic import TemplateView
 
-from datetime import date
-
 from django.utils import timezone
 
-from financeiro import servicos as servicos_financeiros
-from indicadores import estatisticas
+from indicadores import estatisticas, periodo
 from indicadores.servicos import montar_painel
 
 
@@ -37,46 +34,12 @@ class Painel(LoginRequiredMixin, TemplateView):
             prontuarios_pendentes=pendencias.prontuarios, total_prontuarios_pendentes=len(pendencias.prontuarios),
             aniversariantes=estatisticas.aniversariantes_do_mes(painel.hoje),
         )
-        return contexto
-
-
-class Estatisticas(LoginRequiredMixin, TemplateView):
-    """A aba de estatísticas (ADR-084): o ano em receitas e despesas, e o retrato dos atendimentos."""
-
-    template_name = "indicadores/estatisticas.html"
-
-    def get_context_data(self, **kwargs):
-        contexto = super().get_context_data(**kwargs)
-        hoje = timezone.localdate()
-        # `?periodo=ano&ano=2026` ou `?mes=2026-09` (o padrão é o mês corrente — ADR-087). Lixo cai no padrão.
-        ano, mes = hoje.year, hoje.month
-        if self.request.GET.get("periodo") == "ano":
-            pedido = self.request.GET.get("ano", "")
-            ano, mes = (int(pedido) if pedido.isdigit() and 2000 <= int(pedido) <= 2100 else hoje.year), None
-        else:
-            try:
-                ano, mes = (int(parte) for parte in self.request.GET.get("mes", "").split("-"))
-                date(ano, mes, 1)
-            except ValueError:
-                ano, mes = hoje.year, hoje.month
-        dados = estatisticas.montar(ano, mes)
-        inicio = date(ano, mes or 1, 1)
-        contexto.update(
-            ano=ano, mes=mes, inicio=inicio, este_ano=hoje.year, e=dados, hoje=hoje,
-            anterior=servicos_financeiros.mes_anterior(inicio), proximo=servicos_financeiros.mes_seguinte(inicio),
-            este=date(hoje.year, hoje.month, 1),
-            # O que os gráficos leem. Só números e rótulos — nenhum nome de paciente vai para o JavaScript.
-            grafico={
-                "meses": estatisticas.MESES,
-                "mes_em_foco": mes,
-                "receitas_recebidas": [float(f.receitas_recebidas) for f in dados.fluxos],
-                "receitas_a_receber": [float(f.receitas_a_receber) for f in dados.fluxos],
-                "despesas_pagas": [float(f.despesas_pagas) for f in dados.fluxos],
-                "despesas_a_pagar": [float(f.despesas_a_pagar) for f in dados.fluxos],
-                "resultado": [float(f.resultado) for f in dados.fluxos],
-                "horarios": {"rotulos": [r for r, _ in dados.horarios], "valores": [n for _, n in dados.horarios]},
-                "dias": {"rotulos": [r for r, _ in dados.dias], "valores": [n for _, n in dados.dias]},
-                "composicao": [dados.composicao.semanais, dados.composicao.quinzenais, dados.composicao.avulsos],
-                "presenca": [dados.presenca.presentes, dados.presenca.faltas, dados.presenca.canceladas_pelo_cliente],
-            })
+        # ADR-103: "como a clínica funcionou" mora aqui, e não numa aba à parte — responde pelo mês ou pelo ano.
+        contexto.update(periodo.contexto_do_seletor(self.request, painel.hoje))
+        retrato = estatisticas.retrato_da_clinica(contexto["periodo"])
+        contexto.update(retrato=retrato, grafico={
+            "presenca": [retrato.presenca.presentes, retrato.presenca.faltas,
+                         retrato.presenca.canceladas_pelo_cliente],
+            "composicao": [retrato.composicao.semanais, retrato.composicao.quinzenais, retrato.composicao.avulsos],
+        })
         return contexto

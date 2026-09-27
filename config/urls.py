@@ -3,12 +3,11 @@ from django.urls import include, path
 from django.views.generic import RedirectView
 
 from contas.views import Sair
-from indicadores.views import Estatisticas, Painel
+from indicadores.views import Painel
 from pacientes.views_convite import CadastroPeloPaciente
 
 urlpatterns = [
     path("", Painel.as_view(), name="painel"),
-    path("estatisticas/", Estatisticas.as_view(), name="estatisticas"),
     path("pacientes/", include("pacientes.urls")),
     # Pública e sem login: o link que o psicólogo manda ao paciente (ADR-081). Fora de `pacientes/` de
     # propósito — o endereço que o paciente vê não diz nada sobre a estrutura do sistema.

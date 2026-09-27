@@ -1,0 +1,35 @@
+{% comment %}
+ADR-103: o resultado previsto — do mês e do ano — no financeiro, que é onde ele é lido. Era a aba de Estatísticas.
+Os cards falam do período escolhido; o gráfico é sempre do ano, com o mês em destaque quando há um (ADR-087).
+{% endcomment %}
+<div class="card mt-4">
+  <div class="card-header bg-white py-2 d-flex align-items-center flex-wrap gap-2">
+    <span class="fw-semibold">Resultado previsto de {{ periodo.rotulo }}</span>
+    <div class="ms-auto">{% include "indicadores/_periodo.html" %}</div>
+  </div>
+  <div class="card-body">
+    <div class="row g-3 mb-3">
+      <div class="col-md-4 col-12">
+        <div class="rotulo">Receitas</div>
+        <div class="h4 mb-0 text-success">R$ {{ previsto.receitas|floatformat:2 }}</div>
+        <div class="small text-muted">recebidas e a receber</div>
+      </div>
+      <div class="col-md-4 col-6">
+        <div class="rotulo">Despesas</div>
+        <div class="h4 mb-0 text-danger">R$ {{ previsto.despesas|floatformat:2 }}</div>
+        <div class="small text-muted">pagas e a pagar</div>
+      </div>
+      <div class="col-md-4 col-6">
+        <div class="rotulo">Resultado</div>
+        <div class="h4 mb-0 {% if previsto.resultado < 0 %}text-danger{% endif %}">R$ {{ previsto.resultado|floatformat:2 }}</div>
+        <div class="small text-muted">se tudo o que está previsto se cumprir</div>
+      </div>
+    </div>
+    <div style="height:300px"><canvas id="grafico-do-ano" aria-label="Receitas e despesas por mês"></canvas></div>
+    <div class="small text-muted mt-2">
+      Cor cheia é o que já aconteceu — recebido e pago; cor clara é o previsto — a receber e a pagar. Os meses à
+      frente vêm das mensalidades combinadas, das sessões que a frequência prevê e das despesas que repetem todo mês.
+      A linha é o resultado de cada mês{% if periodo.por_mes %}, e {{ periodo.rotulo }} está em destaque{% endif %}.
+    </div>
+  </div>
+</div>

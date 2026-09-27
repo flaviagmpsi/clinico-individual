@@ -25,6 +25,7 @@ from django.views.generic import FormView, TemplateView
 from agenda.grade import fora_da_grade
 from agenda.models import Recorrencia
 from atendimentos import servicos
+from indicadores import estatisticas, periodo
 from atendimentos.forms import (
     CadastroAvulsaForm,
     CadastroPrevistaForm,
@@ -149,6 +150,15 @@ class Agenda(LoginRequiredMixin, TemplateView):
             total_sessoes=len(sessoes), online=online, presenciais=len(sessoes) - online,
             percentual_online=round(100 * online / len(sessoes)) if sessoes else None,
         )
+        # ADR-103: como a sua agenda funciona — em que horas, em que dias, com que frequência. Era a aba de
+        # Estatísticas; agora mora aqui, ao lado do calendário de que fala, e responde pelo mês ou pelo ano.
+        contexto.update(periodo.contexto_do_seletor(self.request))
+        retrato = estatisticas.retrato_da_agenda(contexto["periodo"])
+        contexto.update(retrato=retrato, grafico={
+            "horarios": {"rotulos": [r for r, _ in retrato.horarios], "valores": [n for _, n in retrato.horarios]},
+            "dias": {"rotulos": [r for r, _ in retrato.dias], "valores": [n for _, n in retrato.dias]},
+            "composicao": [retrato.composicao.semanais, retrato.composicao.quinzenais, retrato.composicao.avulsos],
+        })
         return contexto
 
 

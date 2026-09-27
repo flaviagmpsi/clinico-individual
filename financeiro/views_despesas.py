@@ -12,6 +12,7 @@ from django.views import View
 from django.views.generic import CreateView, TemplateView, UpdateView
 
 from financeiro import carne_leao, despesas, servicos
+from indicadores import estatisticas, periodo
 from financeiro.forms import DespesaForm
 from financeiro.models import Despesa
 
@@ -155,4 +156,15 @@ class FluxoDeCaixa(_ExigeDespesas, TemplateView):
         contexto = super().get_context_data(**kwargs)
         inicio = mes_do_pedido(self.request)
         contexto.update(navegacao(inicio), aba="fluxo", fluxo=despesas.fluxo_de_caixa(inicio.year, inicio.month))
+        # ADR-103: o resultado previsto — do mês e do ano — mora no financeiro, e não numa aba de estatísticas.
+        contexto.update(periodo.contexto_do_seletor(self.request))
+        previsto = estatisticas.resultado_previsto(contexto["periodo"])
+        contexto.update(previsto=previsto, grafico={
+            "meses": estatisticas.MESES, "mes_em_foco": contexto["periodo"].mes,
+            "receitas_recebidas": [float(f.receitas_recebidas) for f in previsto.fluxos],
+            "receitas_a_receber": [float(f.receitas_a_receber) for f in previsto.fluxos],
+            "despesas_pagas": [float(f.despesas_pagas) for f in previsto.fluxos],
+            "despesas_a_pagar": [float(f.despesas_a_pagar) for f in previsto.fluxos],
+            "resultado": [float(f.resultado) for f in previsto.fluxos],
+        })
         return contexto

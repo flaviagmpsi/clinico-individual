@@ -37,12 +37,14 @@ class Navegacao(TransactionTestCase):
     def test_a_barra_tem_o_nome_de_cada_aba_e_marca_a_secao(self):
         resposta = self.client.get(reverse("financeiro:mes"))
         # ADR-098: "Horários" saiu da barra e virou sub-aba da Agenda; ADR-100 trouxe "Configurações".
-        for nome in ["Painel", "Pacientes", "Agenda", "Prontuários", "Financeiro", "Estatísticas", "Configurações",
+        for nome in ["Painel", "Pacientes", "Agenda", "Prontuários", "Financeiro", "Configurações",
                      "Meu perfil", "Sair"]:
             with self.subTest(nome=nome):
                 self.assertContains(resposta, f'<span class="nome">{nome}</span>')
         # ADR-102: Documentos não é seção da barra — todo documento é sobre um paciente, e mora na ficha dele.
         self.assertNotContains(resposta, '<span class="nome">Documentos</span>')
+        # ADR-103: Estatísticas também não — cada número foi para a tela de que ele fala.
+        self.assertNotContains(resposta, '<span class="nome">Estatísticas</span>')
         self.assertContains(resposta, 'title="Financeiro"\n     class="ativo"')
 
     def test_o_caminho_no_topo_leva_a_raiz_da_secao_e_nomeia_a_pagina(self):
@@ -53,7 +55,6 @@ class Navegacao(TransactionTestCase):
 
     def test_raiz_de_cada_secao(self):
         self.assertEqual(raiz_da_secao(Pedido(Rota("pacientes", "detalhe"))), reverse("pacientes:lista"))
-        self.assertEqual(raiz_da_secao(Pedido(Rota("", "estatisticas"))), reverse("estatisticas"))
         self.assertEqual(raiz_da_secao(Pedido(Rota("", "painel"))), reverse("painel"))
         self.assertEqual(raiz_da_secao(Pedido(Rota("desconhecido", "x"))), "")
         self.assertEqual(raiz_da_secao(Pedido(None)), "")

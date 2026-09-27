@@ -1,20 +1,30 @@
-"""Estatísticas da clínica (ADR-084): o resultado previsto do ano e o retrato dos atendimentos.
+"""Estatísticas da clínica (ADR-084, ADR-103): cada número ao lado do assunto de que ele fala.
 
-Mora numa aba própria, e não no painel: o painel responde "o que eu faço agora" (ADR-027, ADR-072); isto responde
-"como a minha clínica funciona". Tudo é derivado e **só de dado administrativo** — horário, situação da sessão,
-frequência, valor. Nunca conteúdo de prontuário (I-10).
+A aba própria deixou de existir (ADR-103). O que era um painel de estatísticas virou **quatro blocos**, cada um na
+tela a que pertence — e por isso este módulo expõe um por um, em vez de um `montar()` que calcula tudo: quem abre a
+agenda não deve pagar pelo cálculo da presença por paciente.
+
+| Bloco | Onde aparece | O que responde |
+|---|---|---|
+| `retrato_da_clinica` | painel | como a clínica funcionou no período — presença e atendimentos em curso |
+| `retrato_da_agenda` | agenda | horário mais usado, dia mais cheio, e a frequência dos atendimentos |
+| `presenca_dos_pacientes` | pacientes | quem vem e quem falta, paciente a paciente |
+| `resultado_previsto` | financeiro | receitas, despesas e resultado, mês a mês no ano |
+
+Tudo é derivado e **só de dado administrativo** — horário, situação da sessão, frequência, valor. Nunca conteúdo de
+prontuário (I-10), e nenhum nome de paciente vai para o JavaScript dos gráficos.
 """
 
 from collections import Counter
 from dataclasses import dataclass
-from datetime import date, datetime, time, timedelta
+from datetime import date, datetime
 from decimal import Decimal
 
 from django.utils import timezone
 
 from atendimentos.models import Consulta
 from financeiro.despesas import Fluxo, fluxo_do_ano
-from financeiro.servicos import ultimo_dia
+from indicadores.periodo import Periodo
 from pacientes.models import Caso
 from pacientes.servicos import pacientes_ativos
 
@@ -88,12 +98,19 @@ class Composicao:
 
 
 @dataclass
-class Estatisticas:
-    ano: int
-    mes: int | None  # `None` é o ano inteiro; um mês é o retrato daquele mês (ADR-087)
-    fluxos: list[Fluxo]
+class RetratoDaClinica:
+    """Painel: como a clínica funcionou no período (ADR-103)."""
+
+    periodo: Periodo
     presenca: Presenca
-    por_paciente: list  # (caso, Presenca), da menor presença para a maior
+    composicao: Composicao
+
+
+@dataclass
+class RetratoDaAgenda:
+    """Agenda: quando a clínica acontece, e com que frequência (ADR-103)."""
+
+    periodo: Periodo
     horarios: list  # (rótulo, sessões), só das horas que tiveram sessão
     dias: list  # (dia da semana, sessões)
     composicao: Composicao
@@ -108,16 +125,42 @@ class Estatisticas:
         return cheio if cheio and cheio[1] else None
 
     @property
-    def receitas_do_ano(self) -> Decimal:
-        return sum((f.total_receitas for f in self.fluxos), Decimal("0"))
+    def tem_sessoes(self) -> bool:
+        return any(n for _, n in self.horarios)
+
+
+@dataclass
+class PresencaDosPacientes:
+    """Pacientes: quem vem e quem falta (ADR-103)."""
+
+    periodo: Periodo
+    presenca: Presenca  # o total do período, que é o gráfico
+    por_paciente: list  # (caso, Presenca), da menor presença para a maior
+
+
+@dataclass
+class ResultadoPrevisto:
+    """Financeiro: o ano em receitas e despesas, com o mês em foco quando o período é um mês (ADR-103)."""
+
+    periodo: Periodo
+    fluxos: list[Fluxo]
 
     @property
-    def despesas_do_ano(self) -> Decimal:
-        return sum((f.total_despesas for f in self.fluxos), Decimal("0"))
+    def _do_periodo(self) -> list[Fluxo]:
+        """No mês, só ele; no ano, os doze. Os cards falam do período escolhido; o gráfico, sempre do ano."""
+        return [self.fluxos[self.periodo.mes - 1]] if self.periodo.por_mes else self.fluxos
 
     @property
-    def resultado_do_ano(self) -> Decimal:
-        return self.receitas_do_ano - self.despesas_do_ano
+    def receitas(self) -> Decimal:
+        return sum((f.total_receitas for f in self._do_periodo), Decimal("0"))
+
+    @property
+    def despesas(self) -> Decimal:
+        return sum((f.total_despesas for f in self._do_periodo), Decimal("0"))
+
+    @property
+    def resultado(self) -> Decimal:
+        return self.receitas - self.despesas
 
 
 def _composicao() -> Composicao:
@@ -136,40 +179,52 @@ def _composicao() -> Composicao:
     return composicao
 
 
-def montar(ano: int, mes: int | None = None, agora: datetime | None = None) -> Estatisticas:
-    """O retrato de um mês (padrão da tela) ou do ano inteiro. O gráfico de dinheiro é sempre do ano (ADR-087)."""
-    agora = agora or timezone.now()
-    primeiro = date(ano, mes, 1) if mes else date(ano, 1, 1)
-    depois = ultimo_dia(ano, mes) if mes else date(ano, 12, 31)
-    inicio = timezone.make_aware(datetime.combine(primeiro, time.min))
-    fim = timezone.make_aware(datetime.combine(depois, time.min)) + timedelta(days=1)
-    do_ano = Consulta.objects.filter(inicio__gte=inicio, inicio__lt=fim)
+def _consultas(periodo: Periodo):
+    return Consulta.objects.filter(inicio__gte=periodo.inicio, inicio__lt=periodo.fim)
 
+
+def retrato_da_clinica(periodo: Periodo) -> RetratoDaClinica:
+    """Painel (ADR-103): a presença do período e os atendimentos em curso hoje."""
+    return RetratoDaClinica(periodo=periodo, presenca=presenca_de(_consultas(periodo)), composicao=_composicao())
+
+
+def retrato_da_agenda(periodo: Periodo) -> RetratoDaAgenda:
+    """Agenda (ADR-103): em que horas e em que dias as sessões aconteceram, e a frequência combinada."""
     horas, dias = Counter(), Counter()
-    for momento in do_ano.filter(estado=E.REALIZADA).values_list("inicio", flat=True):
+    for momento in _consultas(periodo).filter(estado=E.REALIZADA).values_list("inicio", flat=True):
         local = timezone.localtime(momento)
         horas[local.hour] += 1
         dias[local.weekday()] += 1
+    return RetratoDaAgenda(
+        periodo=periodo,
+        horarios=[(f"{hora:02d}h", horas[hora]) for hora in sorted(horas)],
+        # Sábado e domingo só aparecem quando houve sessão: a coluna vazia do fim de semana não diz nada.
+        dias=[(_DIAS[dia], dias[dia]) for dia in range(7) if dia < 5 or dias[dia]],
+        composicao=_composicao(),
+    )
 
+
+def presenca_dos_pacientes(periodo: Periodo) -> PresencaDosPacientes:
+    """Pacientes (ADR-103): a presença de cada um, da menor para a maior."""
+    consultas = _consultas(periodo)
     por_caso: dict = {}
-    for consulta in do_ano.select_related("caso").prefetch_related("caso__pacientes"):
+    for consulta in consultas.select_related("caso").prefetch_related("caso__pacientes"):
         por_caso.setdefault(consulta.caso, Presenca()).somar(consulta.estado)
     # No mês, quem está em atendimento e não teve sessão também aparece — "sem sessão no mês" é informação real da
     # clínica, não linha vazia. No ano, entra só quem teve sessão: o ano de quem começou em dezembro não é zero.
-    if mes:
+    if periodo.por_mes:
         for caso in Caso.objects.prefetch_related("pacientes", "desfechos"):
             if caso.desfecho_aberto() is None:
                 por_caso.setdefault(caso, Presenca())
     por_paciente = sorted(
-        ((caso, p) for caso, p in por_caso.items() if p.esperadas or (mes and not p.total)),
+        ((caso, p) for caso, p in por_caso.items() if p.esperadas or (periodo.por_mes and not p.total)),
         key=lambda par: (par[1].percentual is None, par[1].percentual or 0, -par[1].esperadas, str(par[0])))
+    return PresencaDosPacientes(periodo=periodo, presenca=presenca_de(consultas), por_paciente=por_paciente)
 
-    return Estatisticas(
-        ano=ano, mes=mes, fluxos=fluxo_do_ano(ano, agora), presenca=presenca_de(do_ano), por_paciente=por_paciente,
-        horarios=[(f"{hora:02d}h", horas[hora]) for hora in sorted(horas)],
-        dias=[(_DIAS[dia], dias[dia]) for dia in range(7) if dia < 5 or dias[dia]],
-        composicao=_composicao(),
-    )
+
+def resultado_previsto(periodo: Periodo, agora: datetime | None = None) -> ResultadoPrevisto:
+    """Financeiro (ADR-103): o ano em receitas e despesas. O gráfico é sempre do ano; os cards, do período."""
+    return ResultadoPrevisto(periodo=periodo, fluxos=fluxo_do_ano(periodo.ano, agora or timezone.now()))
 
 
 def aniversariantes_do_mes(hoje: date | None = None) -> list:

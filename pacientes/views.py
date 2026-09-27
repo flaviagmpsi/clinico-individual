@@ -33,6 +33,7 @@ from pacientes.forms import (
     PagadorForm,
     ResponsavelLegalForm,
 )
+from indicadores import estatisticas, periodo
 from pacientes import convites
 from pacientes.cadastro import blocos_registrados
 from pacientes.forms import GENEROS_SUGERIDOS
@@ -73,6 +74,13 @@ class ListaPacientes(LoginRequiredMixin, ListView):
         contexto.update(busca=self.request.GET.get("q", ""), situacao=self.situacao(),
                         total_ativos=pacientes_ativos().count(), total_encerrados=pacientes_encerrados().count(),
                         cadastros_para_revisar=convites.esperando_revisao())
+        # ADR-103: quem vem e quem falta fica ao lado da lista de pacientes, e não numa aba de estatísticas.
+        contexto.update(periodo.contexto_do_seletor(self.request))
+        presenca = estatisticas.presenca_dos_pacientes(contexto["periodo"])
+        contexto.update(presenca=presenca, grafico={
+            "presenca": [presenca.presenca.presentes, presenca.presenca.faltas,
+                         presenca.presenca.canceladas_pelo_cliente],
+        })
         return contexto
 
 

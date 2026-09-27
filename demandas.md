@@ -381,6 +381,7 @@ dias sem sessão, sessões no mês e o financeiro do mês. A tela de análise (I
 | I-20 | **Agenda e Horários numa seção só**, com sub-abas; a rota antiga redireciona | 🎨 | ✅ | 🟢 | ADR-098 |
 | I-21 | **Configurações**: ligar e desligar despesas, e trocar de PF para PJ com data | 🎨⚙️🗄️ | ✅ | 🟢 | ADR-100 |
 | I-22 | **Quatro sub-abas no paciente** (Cadastro · Anamnese · Prontuário · Documentos), prontuário geral dentro de Documentos, e Documentos fora da barra lateral | 🎨 | ✅ | 🟢 | ADR-102 |
+| I-23 | **Estatísticas distribuídas**: a aba sai, e cada bloco vai para a tela de que fala — painel, agenda, pacientes e financeiro —, todos com seletor de mês ou ano | 🎨⚙️ | ✅ | 🟢 | ADR-103 |
 | I-16 | **Tema visual "Prancheta"** num arquivo só: variáveis, componentes do Bootstrap ajustados, números em mono, próxima sessão destacada no painel | 🎨 | ✅ | 🟢 | ADR-089 |
 | I-17 | Segunda etapa do tema: tirar `style` solto dos templates, unificar abas e navegador de período, milhar nos valores em reais | 🎨 | ✅ | ⚪ | ADR-089 |
 

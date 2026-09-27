@@ -1,0 +1,73 @@
+{% comment %}
+O desenho dos gráficos (ADR-103). Um arquivo só, incluído por quem tiver gráfico na tela: painel, agenda, pacientes
+e financeiro herdaram um bloco cada da antiga aba de Estatísticas, e não faria sentido cada um repetir o Chart.js.
+
+Só desenha o que existe na página: cada gráfico é criado se o `<canvas>` dele estiver lá. Sem internet, o Chart.js
+não carrega e **nada quebra** — os números ao lado dos gráficos continuam na tela, que é o que importa.
+
+Os dados vêm de `{{ grafico|json_script:"dados-dos-graficos" }}`, que a view monta: só números e rótulos, nunca
+nome de paciente (I-10).
+{% endcomment %}
+{{ grafico|json_script:"dados-dos-graficos" }}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script>
+(function () {
+  const fonte = document.getElementById('dados-dos-graficos');
+  if (!window.Chart || !fonte) return;
+  const d = JSON.parse(fonte.textContent);
+  const verde = '#1f6f68', verdeClaro = '#a9d3cf', vermelho = '#c0504d', vermelhoClaro = '#ecc3c1', cinza = '#adb5bd';
+  const reais = (v) => 'R$ ' + Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+  Chart.defaults.font.family = 'system-ui, sans-serif';
+  Chart.defaults.font.size = 11;
+  const tela = (id) => document.getElementById(id);
+
+  if (tela('grafico-do-ano')) {
+    // No modo mês, o mês escolhido fica com a cor cheia e os outros esmaecem (ADR-087).
+    const foco = d.mes_em_foco;
+    const cores = (cor) => d.meses.map((_, i) => (foco && i !== foco - 1) ? cor + '55' : cor);
+    new Chart(tela('grafico-do-ano'), {
+      data: {
+        labels: d.meses,
+        datasets: [
+          { type: 'line', label: 'Resultado do mês', data: d.resultado, borderColor: '#333', backgroundColor: '#333', tension: .25,
+            pointRadius: d.meses.map((_, i) => (foco && i === foco - 1) ? 6 : 3), order: 0 },
+          { type: 'bar', label: 'Receitas recebidas', data: d.receitas_recebidas, backgroundColor: cores(verde), stack: 'receitas', order: 1 },
+          { type: 'bar', label: 'Receitas a receber', data: d.receitas_a_receber, backgroundColor: cores(verdeClaro), stack: 'receitas', order: 1 },
+          { type: 'bar', label: 'Despesas pagas', data: d.despesas_pagas, backgroundColor: cores(vermelho), stack: 'despesas', order: 1 },
+          { type: 'bar', label: 'Despesas a pagar', data: d.despesas_a_pagar, backgroundColor: cores(vermelhoClaro), stack: 'despesas', order: 1 },
+        ],
+      },
+      options: {
+        maintainAspectRatio: false,
+        scales: { x: { stacked: true, grid: { display: false } },
+                  y: { stacked: true, ticks: { callback: (v) => 'R$ ' + Number(v).toLocaleString('pt-BR') } } },
+        plugins: { legend: { position: 'bottom' },
+                   tooltip: { callbacks: { label: (c) => c.dataset.label + ': ' + reais(c.parsed.y) } } },
+      },
+    });
+  }
+
+  const barras = (id, serie) => {
+    if (!tela(id) || !serie) return;
+    new Chart(tela(id), {
+      type: 'bar',
+      data: { labels: serie.rotulos, datasets: [{ data: serie.valores, backgroundColor: verde, borderRadius: 3 }] },
+      options: { maintainAspectRatio: false, plugins: { legend: { display: false } },
+                 scales: { x: { grid: { display: false } }, y: { ticks: { precision: 0 }, beginAtZero: true } } },
+    });
+  };
+  barras('grafico-de-horarios', d.horarios);
+  barras('grafico-de-dias', d.dias);
+
+  const rosca = (id, rotulos, valores, cores) => {
+    if (!tela(id) || !valores) return;
+    new Chart(tela(id), {
+      type: 'doughnut',
+      data: { labels: rotulos, datasets: [{ data: valores, backgroundColor: cores, borderWidth: 1 }] },
+      options: { maintainAspectRatio: false, cutout: '62%', plugins: { legend: { display: false } } },
+    });
+  };
+  rosca('grafico-de-presenca', ['Presentes', 'Faltas sem avisar', 'Canceladas pelo paciente'], d.presenca, [verde, vermelho, cinza]);
+  rosca('grafico-de-composicao', ['Semanais', 'Quinzenais', 'Avulsos'], d.composicao, [verde, verdeClaro, cinza]);
+})();
+</script>

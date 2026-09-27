@@ -25,9 +25,8 @@ Os módulos que ainda não existem aparecem **apagados**, com o passo que os con
   <a href="{% url 'financeiro:mes' %}" title="Financeiro"
      class="{% if request.resolver_match.app_name == 'financeiro' %}ativo{% endif %}">
     <i class="bi bi-cash-stack"></i><span class="nome">Financeiro</span></a>
-  <a href="{% url 'estatisticas' %}" title="Estatísticas"
-     class="{% if request.resolver_match.url_name == 'estatisticas' %}ativo{% endif %}">
-    <i class="bi bi-bar-chart-line"></i><span class="nome">Estatísticas</span></a>
+  {% comment %}ADR-103: não há aba de Estatísticas. Cada número foi para a tela de que ele fala — a presença
+  está em Pacientes, o horário e o dia na Agenda, o resultado no Financeiro, e o retrato da clínica no painel.{% endcomment %}
   {% comment %}ADR-102: Documentos **não** tem entrada aqui. Todo documento é sobre um paciente, então ele mora na
   ficha dele; uma entrada a mais na barra custaria espaço — e no celular, onde a barra vira faixa, custaria caro.
   A visão de todos os documentos continua existindo, a um clique de dentro da ficha.{% endcomment %}

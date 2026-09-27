@@ -1,0 +1,43 @@
+{% comment %}
+ADR-103: "como a clínica funcionou" no painel. Era o primeiro bloco da aba de Estatísticas; ficou aqui porque é a
+única estatística que fala da clínica inteira, e não de uma seção. Presença e atendimentos em curso — o horário e o
+dia foram para a Agenda, que é onde se faz alguma coisa com eles.
+{% endcomment %}
+<div class="card mt-3">
+  <div class="card-header bg-white py-2 d-flex align-items-center flex-wrap gap-2">
+    <span class="fw-semibold">Como a clínica funcionou em {{ periodo.rotulo }}</span>
+    <div class="ms-auto">{% include "indicadores/_periodo.html" %}</div>
+  </div>
+  <div class="card-body">
+    <div class="row g-3">
+      <div class="col-lg-6">
+        <div class="rotulo mb-1">Presença</div>
+        <div class="row align-items-center">
+          <div class="col-5"><div style="height:150px"><canvas id="grafico-de-presenca"></canvas></div></div>
+          <div class="col-7 small">
+            <div class="h4 mb-1">{% if retrato.presenca.percentual is not None %}{{ retrato.presenca.percentual }}%{% else %}—{% endif %}</div>
+            <div><span class="fw-semibold">{{ retrato.presenca.presentes }}</span> presente{{ retrato.presenca.presentes|pluralize }} de {{ retrato.presenca.esperadas }}</div>
+            <div><span class="fw-semibold">{{ retrato.presenca.faltas }}</span> falta{{ retrato.presenca.faltas|pluralize }} sem avisar</div>
+            <div><span class="fw-semibold">{{ retrato.presenca.canceladas_pelo_cliente }}</span> cancelada{{ retrato.presenca.canceladas_pelo_cliente|pluralize }} pelo paciente</div>
+            <div class="text-muted mt-2">Fora da conta: {{ retrato.presenca.canceladas_pelo_profissional }} cancelada{{ retrato.presenca.canceladas_pelo_profissional|pluralize }} por você e
+              {{ retrato.presenca.remarcadas }} remarcada{{ retrato.presenca.remarcadas|pluralize }} — não dizem nada sobre a frequência do paciente.</div>
+            <a href="{% url 'pacientes:lista' %}?{{ periodo.na_url }}" class="text-decoration-none">ver paciente a paciente</a>
+          </div>
+        </div>
+      </div>
+      <div class="col-lg-6">
+        <div class="rotulo mb-1">Atendimentos em curso</div>
+        <div class="row align-items-center">
+          <div class="col-5"><div style="height:150px"><canvas id="grafico-de-composicao"></canvas></div></div>
+          <div class="col-7 small">
+            <div class="h4 mb-1">{{ retrato.composicao.total }}</div>
+            <div><span class="fw-semibold">{{ retrato.composicao.semanais }}</span> semana{{ retrato.composicao.semanais|pluralize:"l,is" }}</div>
+            <div><span class="fw-semibold">{{ retrato.composicao.quinzenais }}</span> quinzena{{ retrato.composicao.quinzenais|pluralize:"l,is" }}</div>
+            <div><span class="fw-semibold">{{ retrato.composicao.avulsos }}</span> avulso{{ retrato.composicao.avulsos|pluralize }} <span class="text-muted">— marcam sem frequência fixa</span></div>
+            <div class="text-muted mt-2">É a foto de hoje, e não do período: conta quem está em atendimento agora.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

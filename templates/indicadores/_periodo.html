@@ -1,0 +1,21 @@
+{% comment %}
+O seletor de período de uma estatística (ADR-103): mês ou ano, com as setas para andar. Um pedaço só, usado nas
+quatro telas que ficaram com os blocos da antiga aba de Estatísticas — assim a escolha é a mesma em todas.
+
+`outros_parametros` devolve à URL o que não é período (filtro, busca): escolher "ano" na lista de pacientes não
+pode jogar fora o "encerrados" que estava aplicado. Quem monta isso é `indicadores.periodo.contexto_do_seletor`.
+{% endcomment %}
+<div class="d-flex flex-wrap gap-2 align-items-center">
+  <div class="btn-group btn-group-sm" role="group" aria-label="Período">
+    <a href="?{{ este_mes.na_url }}{{ outros_parametros }}" class="btn {% if periodo.por_mes %}btn-primary{% else %}btn-outline-primary{% endif %}">Mês</a>
+    <a href="?{{ este_ano.na_url }}{{ outros_parametros }}" class="btn {% if not periodo.por_mes %}btn-primary{% else %}btn-outline-primary{% endif %}">Ano</a>
+  </div>
+  <div class="btn-group btn-group-sm" role="group" aria-label="Navegar no período">
+    <a href="?{{ periodo_anterior.na_url }}{{ outros_parametros }}" class="btn btn-outline-secondary"
+       title="{% if periodo.por_mes %}Mês anterior{% else %}Ano anterior{% endif %}"><i class="bi bi-chevron-left"></i></a>
+    <a href="?{% if periodo.por_mes %}{{ este_mes.na_url }}{% else %}{{ este_ano.na_url }}{% endif %}{{ outros_parametros }}"
+       class="btn btn-outline-secondary">{% if periodo.por_mes %}Este mês{% else %}Este ano{% endif %}</a>
+    <a href="?{{ periodo_proximo.na_url }}{{ outros_parametros }}" class="btn btn-outline-secondary"
+       title="{% if periodo.por_mes %}Próximo mês{% else %}Próximo ano{% endif %}"><i class="bi bi-chevron-right"></i></a>
+  </div>
+</div>

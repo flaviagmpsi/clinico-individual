@@ -1,0 +1,54 @@
+{% comment %}
+ADR-103: quem vem e quem falta, ao lado da lista de pacientes — era a aba de Estatísticas. São duas vistas do mesmo
+número: o gráfico é o total do período, a tabela é paciente a paciente, da menor presença para a maior, que é a
+ordem em que ela importa.
+{% endcomment %}
+<div class="card mt-4">
+  <div class="card-header bg-white py-2 d-flex align-items-center flex-wrap gap-2">
+    <span class="fw-semibold">Presença dos pacientes em {{ periodo.rotulo }}</span>
+    <div class="ms-auto">{% include "indicadores/_periodo.html" %}</div>
+  </div>
+  <div class="card-body">
+    <div class="row align-items-center g-3">
+      <div class="col-md-3 col-6"><div style="height:170px"><canvas id="grafico-de-presenca"></canvas></div></div>
+      <div class="col-md-9 col-6 small">
+        <div class="h4 mb-1">{% if presenca.presenca.percentual is not None %}{{ presenca.presenca.percentual }}%{% else %}—{% endif %}
+          <span class="fw-normal text-muted fs-6">de presença</span></div>
+        <div><span class="fw-semibold">{{ presenca.presenca.presentes }}</span> presente{{ presenca.presenca.presentes|pluralize }} de {{ presenca.presenca.esperadas }} sessões que dependiam do paciente</div>
+        <div><span class="fw-semibold">{{ presenca.presenca.faltas }}</span> falta{{ presenca.presenca.faltas|pluralize }} sem avisar ·
+          <span class="fw-semibold">{{ presenca.presenca.canceladas_pelo_cliente }}</span> cancelada{{ presenca.presenca.canceladas_pelo_cliente|pluralize }} pelo paciente</div>
+        <div class="text-muted mt-1">Fora da conta: {{ presenca.presenca.canceladas_pelo_profissional }} cancelada{{ presenca.presenca.canceladas_pelo_profissional|pluralize }} por você e
+          {{ presenca.presenca.remarcadas }} remarcada{{ presenca.presenca.remarcadas|pluralize }}.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card-header bg-white py-2 border-top fw-semibold">Presença por paciente
+    <span class="text-muted fw-normal small">— da menor para a maior{% if periodo.por_mes %}; quem está em atendimento e não teve sessão vem por último{% endif %}</span></div>
+  {% if presenca.por_paciente %}
+  <div class="table-responsive" style="max-height:340px; overflow-y:auto">
+    <table class="table table-sm align-middle mb-0 small">
+      <thead class="table-light"><tr><th>Paciente</th><th>Presença</th><th class="text-end">Presentes</th><th class="text-end">Faltas</th><th class="text-end">Canceladas</th><th class="text-end">Remarcadas</th></tr></thead>
+      <tbody>
+      {% for caso, p in presenca.por_paciente %}
+        <tr{% if not p.total %} class="text-muted"{% endif %}>
+          <td class="fw-medium">{{ caso }}</td>
+          <td style="min-width:160px">
+            {% if p.esperadas %}
+            <div class="d-flex align-items-center gap-2">
+              <div class="progress flex-grow-1" style="height:6px"><div class="progress-bar {% if p.percentual < 70 %}bg-warning{% else %}bg-success{% endif %}" style="width:{{ p.percentual }}%"></div></div>
+              <span class="text-nowrap">{{ p.percentual }}% <span class="text-muted">· {{ p.presentes }} de {{ p.esperadas }}</span></span>
+            </div>
+            {% else %}<span class="fst-italic">sem sessão no mês</span>{% endif %}
+          </td>
+          <td class="text-end">{{ p.presentes }}</td><td class="text-end">{{ p.faltas }}</td>
+          <td class="text-end">{{ p.canceladas }}</td><td class="text-end">{{ p.remarcadas }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+    <div class="card-body small text-muted">Nenhuma sessão cadastrada em {{ periodo.rotulo }}.</div>
+  {% endif %}
+</div>

@@ -1,0 +1,56 @@
+{% comment %}
+ADR-103: como a sua agenda funciona — horário mais usado, dia mais cheio, e a frequência dos atendimentos em curso.
+Era a aba de Estatísticas; ficou aqui, embaixo do calendário de que fala. O seletor é próprio, porque a pergunta é
+outra: o calendário navega por semana, a estatística responde por mês ou por ano.
+{% endcomment %}
+<div class="card mt-4">
+  <div class="card-header bg-white py-2 d-flex align-items-center flex-wrap gap-2">
+    <span class="fw-semibold">Como a sua agenda funcionou em {{ periodo.rotulo }}</span>
+    <div class="ms-auto">{% include "indicadores/_periodo.html" %}</div>
+  </div>
+  <div class="card-body">
+    <div class="row g-3 mb-3">
+      <div class="col-md-4 col-6">
+        <div class="rotulo">Horário mais usado</div>
+        <div class="h4 mb-0">{{ retrato.horario_mais_usado.0|default:"—" }}</div>
+        <div class="small text-muted">{% if retrato.horario_mais_usado %}{{ retrato.horario_mais_usado.1 }} sess{{ retrato.horario_mais_usado.1|pluralize:"ão,ões" }}{% else %}sem sessões no período{% endif %}</div>
+      </div>
+      <div class="col-md-4 col-6">
+        <div class="rotulo">Dia com mais sessões</div>
+        <div class="h4 mb-0">{{ retrato.dia_mais_cheio.0|default:"—" }}</div>
+        <div class="small text-muted">{% if retrato.dia_mais_cheio %}{{ retrato.dia_mais_cheio.1 }} sess{{ retrato.dia_mais_cheio.1|pluralize:"ão,ões" }}{% else %}sem sessões no período{% endif %}</div>
+      </div>
+      <div class="col-md-4 col-12">
+        <div class="rotulo">Atendimentos em curso</div>
+        <div class="h4 mb-0">{{ retrato.composicao.total }}</div>
+        <div class="small text-muted">{{ retrato.composicao.semanais }} semana{{ retrato.composicao.semanais|pluralize:"l,is" }} · {{ retrato.composicao.quinzenais }} quinzena{{ retrato.composicao.quinzenais|pluralize:"l,is" }} · {{ retrato.composicao.avulsos }} avulso{{ retrato.composicao.avulsos|pluralize }}</div>
+      </div>
+    </div>
+
+    <div class="row g-3">
+      <div class="col-lg-4">
+        <div class="fw-semibold small mb-2">Sessões realizadas por horário</div>
+        <div style="height:220px"><canvas id="grafico-de-horarios"></canvas></div>
+      </div>
+      <div class="col-lg-4">
+        <div class="fw-semibold small mb-2">Sessões realizadas por dia da semana</div>
+        <div style="height:220px"><canvas id="grafico-de-dias"></canvas></div>
+      </div>
+      <div class="col-lg-4">
+        <div class="fw-semibold small mb-2">Atendimentos em curso, pela frequência</div>
+        <div class="row align-items-center">
+          <div class="col-6"><div style="height:180px"><canvas id="grafico-de-composicao"></canvas></div></div>
+          <div class="col-6 small">
+            <div><span class="fw-semibold">{{ retrato.composicao.semanais }}</span> semana{{ retrato.composicao.semanais|pluralize:"l,is" }}</div>
+            <div><span class="fw-semibold">{{ retrato.composicao.quinzenais }}</span> quinzena{{ retrato.composicao.quinzenais|pluralize:"l,is" }}</div>
+            <div><span class="fw-semibold">{{ retrato.composicao.avulsos }}</span> avulso{{ retrato.composicao.avulsos|pluralize }}</div>
+            <div class="text-muted mt-2">É a foto de hoje: conta quem está em atendimento agora.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    {% if not retrato.tem_sessoes %}
+      <div class="form-text small mt-2">Nenhuma sessão realizada em {{ periodo.rotulo }} — os gráficos enchem conforme você cadastra o que aconteceu.</div>
+    {% endif %}
+  </div>
+</div>

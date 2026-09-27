@@ -19,7 +19,7 @@ RAIZES = {
     "documentos": "documentos:aba",
     "contas": "contas:perfil",
 }
-RAIZES_POR_NOME = {"painel": "painel", "estatisticas": "estatisticas"}
+RAIZES_POR_NOME = {"painel": "painel"}
 
 
 @register.simple_tag

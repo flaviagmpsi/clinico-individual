@@ -21,6 +21,7 @@ from core import contexto
 from financeiro import servicos as financeiro
 from financeiro.models import Pagamento
 from indicadores import estatisticas
+from indicadores.periodo import Periodo
 from indicadores.templatetags.ficha_do_paciente import situacao_financeira
 from pacientes.models import Paciente
 from pacientes.servicos import cadastrar_paciente
@@ -80,40 +81,63 @@ class BaseEstatisticas(TestCase):
             agenda.cadastrar_avulsa(cadastrar_paciente(carla), estado=E.REALIZADA, inicio=momento(9, 4, 20))
 
 
-class RetratoDaClinica(BaseEstatisticas):
-    def montar(self, ano=2026):
-        with contexto.como(self.ana.pk):
-            return estatisticas.montar(ano)
+class BlocosDoPeriodo(BaseEstatisticas):
+    """ADR-103: `montar()` virou quatro blocos, um por tela. As contas são as mesmas; muda quem as pede."""
 
-    def test_presenca_horario_dia_e_composicao(self):
-        e = self.montar()
+    def ano(self, ano=2026) -> Periodo:
+        return Periodo(ano, None)
+
+    def test_retrato_da_clinica_traz_presenca_e_composicao(self):
+        with contexto.como(self.ana.pk):
+            e = estatisticas.retrato_da_clinica(self.ano())
         self.assertEqual((e.presenca.presentes, e.presenca.esperadas, e.presenca.percentual), (3, 4, 75))
         self.assertEqual(e.presenca.canceladas_pelo_profissional, 1)
+        self.assertEqual((e.composicao.semanais, e.composicao.quinzenais, e.composicao.avulsos), (0, 1, 1))
+
+    def test_retrato_da_agenda_traz_horario_dia_e_frequencia(self):
+        with contexto.como(self.ana.pk):
+            e = estatisticas.retrato_da_agenda(self.ano())
         self.assertEqual(e.horario_mais_usado, ("14h", 2))
         self.assertEqual(e.dia_mais_cheio, ("Terça", 2))
         self.assertNotIn("20h", [rotulo for rotulo, _ in e.horarios])  # a sessão do Bruno não aparece
         self.assertEqual((e.composicao.semanais, e.composicao.quinzenais, e.composicao.avulsos), (0, 1, 1))
 
     def test_presenca_por_paciente_vem_da_menor_para_a_maior(self):
-        por_paciente = [(str(caso), p.percentual, p.presentes, p.esperadas) for caso, p in self.montar().por_paciente]
-        self.assertEqual(por_paciente, [("Marcos", 67, 2, 3), ("Júlia", 100, 1, 1)])
+        with contexto.como(self.ana.pk):
+            e = estatisticas.presenca_dos_pacientes(self.ano())
+        self.assertEqual([(str(caso), p.percentual, p.presentes, p.esperadas) for caso, p in e.por_paciente],
+                         [("Marcos", 67, 2, 3), ("Júlia", 100, 1, 1)])
+        self.assertEqual((e.presenca.presentes, e.presenca.esperadas), (3, 4))
 
     def test_no_mes_quem_esta_em_atendimento_sem_sessao_aparece_por_ultimo(self):
         """ADR-087: "sem sessão no mês" é informação real da clínica; o Pedro, encerrado, não entra."""
         with contexto.como(self.ana.pk):
-            setembro = estatisticas.montar(2026, 9)
-            agosto = estatisticas.montar(2026, 8)
-        self.assertEqual(setembro.mes, 9)
+            setembro = estatisticas.presenca_dos_pacientes(Periodo(2026, 9))
+            agosto = estatisticas.presenca_dos_pacientes(Periodo(2026, 8))
+            agenda_de_agosto = estatisticas.retrato_da_agenda(Periodo(2026, 8))
         self.assertEqual([(str(caso), p.percentual) for caso, p in setembro.por_paciente],
                          [("Marcos", 67), ("Júlia", 100)])
         self.assertEqual([(str(caso), p.total) for caso, p in agosto.por_paciente], [("Júlia", 0), ("Marcos", 0)])
-        self.assertEqual((agosto.presenca.total, agosto.horario_mais_usado), (0, None))
-        self.assertEqual(len(agosto.fluxos), 12)  # o dinheiro é sempre do ano
+        self.assertEqual((agosto.presenca.total, agenda_de_agosto.horario_mais_usado), (0, None))
+
+    def test_o_resultado_previsto_e_do_periodo_e_o_grafico_do_ano(self):
+        """ADR-103: os cards falam do mês escolhido; o gráfico continua mostrando os doze meses."""
+        with contexto.como(self.ana.pk):
+            do_ano = estatisticas.resultado_previsto(self.ano())
+            do_mes = estatisticas.resultado_previsto(Periodo(2026, 9))
+        self.assertEqual(len(do_ano.fluxos), 12)
+        self.assertEqual(len(do_mes.fluxos), 12)
+        self.assertEqual(do_mes.receitas, do_ano.fluxos[8].total_receitas)
+        self.assertEqual(do_ano.resultado, do_ano.receitas - do_ano.despesas)
 
     def test_ano_sem_sessao_nao_quebra(self):
-        e = self.montar(2024)
-        self.assertEqual((e.presenca.total, e.horario_mais_usado, e.dia_mais_cheio, e.por_paciente), (0, None, None, []))
-        self.assertEqual(len(e.fluxos), 12)
+        with contexto.como(self.ana.pk):
+            clinica = estatisticas.retrato_da_clinica(self.ano(2024))
+            agenda_vazia = estatisticas.retrato_da_agenda(self.ano(2024))
+            pacientes = estatisticas.presenca_dos_pacientes(self.ano(2024))
+        self.assertEqual((clinica.presenca.total, agenda_vazia.horario_mais_usado, agenda_vazia.dia_mais_cheio,
+                          pacientes.por_paciente), (0, None, None, []))
+        self.assertFalse(agenda_vazia.tem_sessoes)
 
     def test_frequencia_do_paciente_conta_todas_as_sessoes_dele(self):
         with contexto.como(self.ana.pk):
@@ -161,31 +185,53 @@ class Telas(TransactionTestCase):
     def entrar(self, quem):
         self.assertTrue(self.client.login(username=quem.email, password=SENHA))
 
-    def test_estatisticas_exige_login_e_mostra_so_a_propria_clinica(self):
-        self.assertEqual(self.client.get(reverse("estatisticas")).status_code, 302)
+    def test_cada_bloco_esta_na_tela_de_que_ele_fala(self):
+        """ADR-103: a aba de Estatísticas deixou de existir; os números foram para as telas."""
         self.entrar(self.ana)
-        resposta = self.client.get(reverse("estatisticas"), {"periodo": "ano", "ano": "2026"})
-        self.assertContains(resposta, "Resultado previsto de 2026")
-        self.assertContains(resposta, "Receitas de 2026")
-        self.assertIsNone(resposta.context["mes"])
-        self.assertContains(resposta, "1 de 2 sessões realizadas")
-        self.assertContains(resposta, "14h")
-        self.assertNotContains(resposta, "20h")
-        self.assertNotContains(resposta, "Carla Alheia")
-        self.assertEqual(resposta.context["grafico"]["horarios"], {"rotulos": ["14h"], "valores": [1]})
-        self.assertEqual(len(resposta.context["grafico"]["resultado"]), 12)
-        self.assertContains(self.client.get(reverse("painel")), reverse("estatisticas"))  # a barra lateral leva até lá
+        do_ano = {"periodo": "ano", "ano": "2026"}
+        painel = self.client.get(reverse("painel"), do_ano)
+        self.assertContains(painel, "Como a clínica funcionou em 2026")
+        self.assertContains(painel, "presente de 2")          # presença: 1 presente de 2 esperadas
+        self.assertContains(painel, "Atendimentos em curso")
+        self.assertNotContains(painel, "Carla Alheia")           # a clínica do Bruno não vaza
 
-    def test_abre_no_mes_corrente_e_lixo_cai_no_padrao(self):
-        """ADR-087: o padrão é o mês; o ano é opção no topo."""
+        agenda = self.client.get(reverse("atendimentos:agenda"), do_ano)
+        self.assertContains(agenda, "Como a sua agenda funcionou em 2026")
+        self.assertContains(agenda, "Horário mais usado")
+        self.assertContains(agenda, "Sessões realizadas por dia da semana")
+        self.assertEqual(agenda.context["grafico"]["horarios"], {"rotulos": ["14h"], "valores": [1]})
+        self.assertNotContains(agenda, "20h")                    # a sessão do Bruno não aparece
+
+        pacientes = self.client.get(reverse("pacientes:lista"), do_ano)
+        self.assertContains(pacientes, "Presença dos pacientes em 2026")
+        self.assertContains(pacientes, "Presença por paciente")
+
+        fluxo = self.client.get(reverse("financeiro:fluxo"), do_ano)
+        self.assertContains(fluxo, "Resultado previsto de 2026")
+        self.assertEqual(len(fluxo.context["grafico"]["resultado"]), 12)
+
+    def test_a_aba_de_estatisticas_nao_existe_mais(self):
+        self.entrar(self.ana)
+        self.assertEqual(self.client.get("/estatisticas/").status_code, 404)
+        self.assertNotContains(self.client.get(reverse("painel")), '<span class="nome">Estatísticas</span>')
+
+    def test_todo_bloco_abre_no_mes_e_lixo_cai_no_padrao(self):
+        """ADR-087 e ADR-103: o padrão é o mês, e o seletor é o mesmo nas quatro telas."""
         self.entrar(self.ana)
         hoje = timezone.localdate()
-        resposta = self.client.get(reverse("estatisticas"))
-        self.assertEqual((resposta.context["ano"], resposta.context["mes"]), (hoje.year, hoje.month))
-        self.assertNotContains(resposta, "Receitas de")  # os cartões de dinheiro são do modo ano
-        self.assertContains(resposta, "fluxo de caixa")
-        self.assertEqual(self.client.get(reverse("estatisticas"), {"mes": "abc"}).context["mes"], hoje.month)
-        self.assertIsNone(self.client.get(reverse("estatisticas"), {"periodo": "ano", "ano": "abc"}).context["mes"])
+        for nome in ["painel", "atendimentos:agenda", "pacientes:lista", "financeiro:fluxo"]:
+            with self.subTest(tela=nome):
+                resposta = self.client.get(reverse(nome))
+                self.assertEqual(resposta.context["periodo"], Periodo(hoje.year, hoje.month))
+                self.assertEqual(self.client.get(reverse(nome), {"mes": "abc"}).context["periodo"].mes, hoje.month)
+                self.assertIsNone(self.client.get(reverse(nome), {"periodo": "ano", "ano": "x"}).context["periodo"].mes)
+
+    def test_o_seletor_guarda_o_que_ja_estava_filtrado(self):
+        """Trocar para o ano na lista de pacientes não pode jogar fora o filtro de encerrados."""
+        self.entrar(self.ana)
+        resposta = self.client.get(reverse("pacientes:lista"), {"situacao": "encerrados"})
+        self.assertContains(resposta, "situacao=encerrados")
+        self.assertIn("&situacao=encerrados", resposta.context["outros_parametros"])
 
     def test_painel_mostra_os_aniversariantes_do_mes(self):
         self.entrar(self.ana)

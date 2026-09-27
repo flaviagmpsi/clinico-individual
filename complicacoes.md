@@ -2691,6 +2691,9 @@ do financeiro, com sete números: receitas recebidas, a receber e total; despesa
 - Fora desta rodada: despesa em atraso **não** entrou no bloco de pendências do painel (ADR-072) — é decisão do
   usuário se conta do consultório é pendência clínica (P-88); comprovante anexo (N-06) segue adiado.
 
+> ⚠️ **A aba criada aqui foi revogada pela ADR-103:** os blocos foram para as telas de que falam. As contas, a
+> definição de presença e a escolha de abrir no mês continuam valendo.
+
 ## ADR-084 — Estatísticas numa aba própria; frequência e situação financeira na ficha; aniversariantes no painel
 
 **Contexto.** Rodada 50. O usuário pediu gráficos — resultado previsto do ano, horário mais usado, dia com mais
@@ -3232,6 +3235,38 @@ celular)".
 - A barra fica com **sete seções** e cabe na faixa do celular sem rolagem: foi o que o usuário pediu para preservar.
 - **As sub-abas sobem para o topo da ficha**, acima das duas colunas. Estavam dentro da coluna da direita, que no
   celular vai para o fim da pilha — a navegação do paciente ficava soterrada embaixo de tudo.
+
+## ADR-103 — Cada estatística ao lado do assunto de que ela fala (revoga a aba da ADR-084)
+
+**Status:** ✅ Aceita — Rodada 71.
+
+**Decisão do usuário:** "a aba de estatísticas vai desaparecer, mas as estatísticas que estão nela aparecerão em
+outros lugares" — o resultado financeiro no financeiro, a presença por paciente em pacientes, os gráficos de
+horário, dia e frequência na agenda, e "como a clínica funcionou" no painel. "Todas essas estatísticas mostram
+tanto do mês quanto o do ano."
+
+**Por que a aba existia, e por que sai.** A ADR-084 a criou para não inchar o painel, e a ADR-087 fez com que
+abrisse no mês. O problema não era o conteúdo: era a distância. Para saber se um paciente estava faltando, o
+psicólogo saía de Pacientes e ia a outra aba; para saber quanto o mês ia render, saía do Financeiro. Cada número
+vivia longe da tela em que ele muda alguma coisa — e a barra pagava uma seção por isso (ADR-102).
+
+**Decisões de arquitetura:**
+- **Quatro blocos, quatro telas.** Painel: presença e atendimentos em curso ("como a clínica funcionou"). Agenda:
+  horário mais usado, dia mais cheio, sessões por horário, sessões por dia da semana e atendimentos em curso pela
+  frequência. Pacientes: presença do período e a tabela paciente a paciente. Financeiro (fluxo de caixa): receitas,
+  despesas e resultado, com o gráfico do ano.
+- **`montar()` vira quatro funções.** Calcular tudo numa chamada só fazia sentido quando tudo aparecia junto; agora
+  quem abre a agenda pagaria pela presença por paciente sem vê-la. Cada tela pede o seu bloco.
+- **`indicadores/periodo.py`: o período é um objeto, e o seletor é um pedaço de template só.** As quatro telas lêem
+  a URL do mesmo jeito (`?mes=2026-09` ou `?periodo=ano&ano=2026`, com o mês corrente por padrão — ADR-087) e
+  mostram o mesmo controle. O seletor **guarda os outros parâmetros da URL**: trocar para o ano na lista de
+  pacientes não pode jogar fora o filtro de encerrados que estava aplicado.
+- **Um arquivo de gráficos** (`indicadores/_graficos.html`), incluído por quem tem gráfico na tela, que desenha só o
+  que encontra. Sem internet, o Chart.js não carrega e nada quebra: os números ao lado continuam lá.
+- `indicadores` continua sendo o app que depende de todos e de quem ninguém depende — agora **os outros apps o
+  importam** nas views. Isso inverteria a regra 2 se `indicadores` fosse domínio; ele não é: é a camada de leitura,
+  e quem a chama é a tela, nunca o modelo. Nenhum app passou a depender de `indicadores` em regra de negócio.
+- A rota `/estatisticas/` deixa de existir, e a barra fica com **seis seções** mais perfil e saída.
 
 ## Impeditivos
 
