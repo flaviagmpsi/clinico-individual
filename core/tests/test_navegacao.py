@@ -48,6 +48,8 @@ class Navegacao(TransactionTestCase):
         self.assertNotContains(resposta, '<span class="nome">Documentos</span>')
         # ADR-103: Estatísticas também não — cada número foi para a tela de que ele fala.
         self.assertNotContains(resposta, '<span class="nome">Estatísticas</span>')
+        # e a seção em que se está fica marcada
+        self.assertContains(resposta, 'title="Financeiro"\n     class="ativo"')
 
     def test_a_conta_mora_no_topo(self):
         """ADR-105: o nome leva ao perfil e diz isso; a engrenagem leva a Configurações, de onde se sai."""
@@ -57,7 +59,6 @@ class Navegacao(TransactionTestCase):
         self.assertContains(resposta, f'href="{reverse("contas:configuracoes")}"')
         # e sair é um botão dentro de Configurações, não uma entrada da barra
         self.assertContains(self.client.get(reverse("contas:configuracoes")), "Sair da minha conta")
-        self.assertContains(resposta, 'title="Financeiro"\n     class="ativo"')
 
     def test_o_caminho_no_topo_leva_a_raiz_da_secao_e_nomeia_a_pagina(self):
         resposta = self.client.get(reverse("pacientes:detalhe", args=[self.marcos.pk]))
