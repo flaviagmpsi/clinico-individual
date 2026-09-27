@@ -20,7 +20,14 @@ Primeiro o dia; depois as pendências, num bloco; por fim o resumo do mês.
   /* ADR-074: o "Hoje" tem o tamanho do dia; as pendências cabem na tela e rolam por dentro. */
   /* Quem rola é a lista aberta, não o cartão: assim os três resumos ficam sempre à vista, e abrir um não
      empurra os outros para fora da tela. */
-  .pendencias .pendencia ul { max-height: 42vh; overflow-y: auto; }
+  /* ADR-106: `overflow-y: auto` sozinho faz o eixo x virar `auto` também, e qualquer linha um pouco longa
+     ganhava barra horizontal. Aqui o x é fechado e o texto quebra — cabe tudo sem arrastar para o lado. */
+  /* A lista rola só na vertical. O padding de 6px devolve o que a margem negativa do tema tira de cada item
+     (ela existe para o realce do hover ir de ponta a ponta) — sem ele, o recorte comia a primeira letra do nome. */
+  .pendencias .pendencia ul { max-height: 42vh; overflow: hidden auto; padding-inline: 6px; }
+  .pendencias .pendencia li { align-items: baseline; padding-block: .1rem; }
+  .pendencias .pendencia li .valor { margin-left: auto; }
+  .pendencias .pendencia li > * { min-width: 0; overflow-wrap: anywhere; }
   /* ADR-104: cada pendência é uma linha que abre. O número puxa o olho; a lista, quem quiser, abre. */
   .pendencia > summary { display: flex; align-items: center; gap: .5rem; cursor: pointer; padding: .45rem .1rem;
                          border-bottom: 1px solid var(--linha-fina); list-style: none; font-weight: 500; }
@@ -34,7 +41,9 @@ Primeiro o dia; depois as pendências, num bloco; por fim o resumo do mês.
   .pendencia[open] > summary { color: var(--texto); }
 </style>
 <div class="row g-3 mb-3 align-items-start">
-  <div class="col-lg-7">
+  {% comment %}ADR-106: a agenda de hoje costuma ter poucas linhas e sobrava espaço; as pendências, que são muitas,
+  ganharam a metade da largura para caber sem arrastar para o lado.{% endcomment %}
+  <div class="col-lg-6">
     <div class="card">
       <div class="card-header bg-white py-2 d-flex align-items-center flex-wrap gap-2">
         <span class="fw-semibold">Hoje</span>
@@ -89,7 +98,7 @@ Primeiro o dia; depois as pendências, num bloco; por fim o resumo do mês.
   ADR-072: um bloco só de pendências. Três grupos — o que trava cobrança, o que é dinheiro em aberto, o que é
   registro clínico por escrever —, cada item com o link para resolver. Vazio, diz que está vazio.
   {% endcomment %}
-  <div class="col-lg-5 pendencias">
+  <div class="col-lg-6 pendencias">
     <div class="card{% if total_pendencias %} border-warning-subtle{% endif %}">
       <div class="card-header bg-white py-2 d-flex align-items-center">
         <span class="fw-semibold">Pendências</span>
@@ -176,10 +185,12 @@ Primeiro o dia; depois as pendências, num bloco; por fim o resumo do mês.
     <div class="h3 mb-0">R$ {{ resumo.recebido|floatformat:2 }} <span class="fs-6 text-muted fw-normal">recebido</span></div>
     <div class="small text-muted">a receber R$ {{ resumo.a_receber|floatformat:2 }} (previsto)</div>
   </div></div></div>
+  {% comment %}ADR-106: "pacientes ativos" saiu daqui — é o mesmo número de "atendimentos em curso", logo abaixo,
+  e o painel não repete a mesma informação em dois lugares (ADR-072).{% endcomment %}
   <div class="col-md-4"><div class="card h-100"><div class="card-body py-3">
-    <div class="rotulo">Pacientes ativos</div>
-    <div class="h3 mb-0">{{ resumo.pacientes_ativos }}</div>
-    <div class="small text-muted"><a href="{% url 'pacientes:lista' %}" class="text-decoration-none">ver pacientes</a></div>
+    <div class="rotulo">Sessões esperando cadastro</div>
+    <div class="h3 mb-0">{{ total_sessoes_pendentes }}</div>
+    <div class="small text-muted">das que já passaram</div>
   </div></div></div>
 </div>
 

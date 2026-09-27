@@ -35,6 +35,7 @@ dia foram para a Agenda, que é onde se faz alguma coisa com eles.
             <div><span class="fw-semibold">{{ retrato.composicao.quinzenais }}</span> quinzena{{ retrato.composicao.quinzenais|pluralize:"l,is" }}</div>
             <div><span class="fw-semibold">{{ retrato.composicao.avulsos }}</span> avulso{{ retrato.composicao.avulsos|pluralize }} <span class="text-muted">— marcam sem frequência fixa</span></div>
             <div class="text-muted mt-2">É a foto de hoje, e não do período: conta quem está em atendimento agora.</div>
+            <a href="{% url 'pacientes:lista' %}" class="text-decoration-none">ver pacientes</a>
           </div>
         </div>
       </div>

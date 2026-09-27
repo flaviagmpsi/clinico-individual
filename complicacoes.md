@@ -3309,6 +3309,29 @@ dentro dela tem a sub-aba sair. Assim a aba de configurações e sair somem da b
 - Enquanto não há barra nem configurações (cadastro, escolha do plano, teste encerrado), a saída continua à mão no
   topo: a conta a meio caminho não pode ficar presa.
 
+## ADR-106 — Prevista não é a mesma coisa que a cadastrar
+
+**Status:** ✅ Aceita — Rodada 73.
+
+**Decisões do usuário:** "na agenda tem que ter uma diferença de cores entre prevista e a cadastrar"; "no painel
+talvez devesse sumir o quadrado de pacientes ativos, e essa informação aparecer na estatística sobre atendimentos em
+curso"; "na parte de pendências, quando eu expando as informações, a barra de deslizar na horizontal não precisa
+existir, porque dá pra ver todas as informações sem arrastar pro lado se você diminuir um pouquinho o espaço vazio".
+
+**Decisões de arquitetura:**
+- **A cor separa o que ainda vai acontecer do que já passou.** As duas tinham o mesmo amarelo e diferiam só na
+  borda — de longe, eram a mesma coisa. A prevista fica em **palha**, calma, porque não pede nada; a que passou sem
+  cadastro fica em **âmbar carregado**, que é a cor de "pede ação" no resto do sistema (`--atencao`). A legenda passa
+  a nomear as duas: "prevista, ainda vai acontecer" e "pendente, passou e falta cadastrar".
+- **"Pacientes ativos" sai do painel.** Era o mesmo número de "atendimentos em curso", que agora mora ali embaixo
+  (ADR-103) — e o painel não repete a mesma informação em dois lugares (ADR-072). O link "ver pacientes" foi junto,
+  para o bloco de atendimentos em curso. No lugar entra **sessões esperando cadastro**, que é ação, não retrato.
+- **A lista de pendências não rola para o lado.** Três coisas causavam isso, e as três foram corrigidas: `overflow-y`
+  sozinho faz o eixo horizontal virar `auto` também; a coluna era estreita demais (as pendências passam a dividir a
+  largura com a agenda de hoje, que sobrava espaço); e — a causa real do texto cortado — a **margem negativa de 6 px**
+  que o tema dá a todo item de lista, para o realce do hover ir de ponta a ponta, era recortada pelo container. O
+  container devolve esses 6 px em padding, e o realce continua funcionando.
+
 ## Impeditivos
 
 | # | Impeditivo | Situação |

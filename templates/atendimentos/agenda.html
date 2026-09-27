@@ -22,8 +22,12 @@ sessão cadastrada muda de cor (presente verde, falta vermelha, cancelada cinza 
             border: 1px solid transparent; border-left-width: 3px; }
   .cartao small { display: block; font-weight: 400; text-transform: none; letter-spacing: 0; font-size: .6875rem; color: var(--suave); }
   .cartao.livre { background: var(--superficie-2); color: var(--suave); border-color: var(--linha); border-style: dashed; border-left-width: 1px; font-weight: 500; }
-  .cartao.esperada { background: #ffe27a; border-color: #e6b800; border-left-color: #c99700; }
-  .cartao.pendente { background: #ffe27a; border-color: #d99a00; border-left-color: var(--atencao); }
+  /* ADR-106: prevista e a cadastrar tinham o mesmo amarelo e só mudavam a borda — de longe, eram a mesma coisa.
+     Agora a diferença é o **tom**: a prevista é palha, calma, porque ainda vai acontecer; a que passou sem cadastro
+     é âmbar carregado, que é a cor de "pede ação" no resto do sistema (--atencao). */
+  .cartao.esperada { background: #fff2c2; border-color: #e8cd79; border-left-color: #cfa12a; }
+  .cartao.pendente { background: #ffca7a; border-color: #e09428; border-left-color: var(--atencao); color: #4a2600; }
+  .cartao.pendente small { color: #7a4300; font-weight: 600; }
   .cartao.realizada { background: #b4ecd2; border-color: #5fc79f; border-left-color: var(--ok); color: #064b36; }
   .cartao.faltou { background: #ffc4bd; border-color: #f08a80; border-left-color: var(--erro); }
   .cartao.cancelada { background: var(--linha-fina); border-color: var(--linha); color: var(--suave); text-decoration: line-through; }
@@ -80,7 +84,8 @@ calendário, como cartão "pendente"; repetir em cima seria a mesma informação
     <span><i class="bi bi-person"></i> {{ presenciais }} presencia{{ presenciais|pluralize:"l,is" }}</span>
   {% endif %}
   {% if not situacao %}
-    <span class="ms-auto"><span class="cartao esperada d-inline-block py-0 px-2">prevista</span> ainda não cadastrada ·
+    <span class="ms-auto"><span class="cartao esperada d-inline-block py-0 px-2">prevista</span> ainda vai acontecer ·
+      <span class="cartao pendente d-inline-block py-0 px-2">pendente</span> passou e falta cadastrar ·
       <span class="cartao realizada d-inline-block py-0 px-2">presente</span> cadastrada ·
       <span class="cartao livre d-inline-block py-0 px-2">livre</span> horário da grade sem sessão</span>
   {% endif %}
