@@ -92,6 +92,24 @@ Primeiro o dia; depois as pendências, num bloco; por fim o resumo do mês.
         </div>
       {% endif %}
     </div>
+
+    {% comment %}
+    ADR-106: o resumo do mês mora **dentro** da coluna da esquerda, embaixo da agenda de hoje. Numa linha própria
+    ele ocupava dois terços da largura e deixava um terço vazio; aqui ele equilibra as duas colunas, que antes
+    terminavam em alturas muito diferentes.
+    {% endcomment %}
+    <div class="row g-3 mt-0">
+      <div class="col-sm-6"><div class="card h-100"><div class="card-body py-3">
+        <div class="rotulo">Sessões no mês</div>
+        <div class="h3 mb-0">{{ resumo.sessoes_feitas }} <span class="fs-6 text-muted fw-normal">feita{{ resumo.sessoes_feitas|pluralize }}</span></div>
+        <div class="small text-muted">faltam {{ resumo.sessoes_faltam }} prevista{{ resumo.sessoes_faltam|pluralize }}</div>
+      </div></div></div>
+      <div class="col-sm-6"><div class="card h-100"><div class="card-body py-3">
+        <div class="rotulo">Receita do mês</div>
+        <div class="h3 mb-0">R$ {{ resumo.recebido|floatformat:2 }} <span class="fs-6 text-muted fw-normal">recebido</span></div>
+        <div class="small text-muted">a receber R$ {{ resumo.a_receber|floatformat:2 }} (previsto)</div>
+      </div></div></div>
+    </div>
   </div>
 
   {% comment %}
@@ -172,24 +190,6 @@ Primeiro o dia; depois as pendências, num bloco; por fim o resumo do mês.
     </div>
   </div>
 </div>
-
-{% comment %}ADR-061: o resumo do mês. "A receber" é previsão, e a tela diz isso.{% endcomment %}
-<div class="row g-3">
-  <div class="col-md-4"><div class="card h-100"><div class="card-body py-3">
-    <div class="rotulo">Sessões no mês</div>
-    <div class="h3 mb-0">{{ resumo.sessoes_feitas }} <span class="fs-6 text-muted fw-normal">feita{{ resumo.sessoes_feitas|pluralize }}</span></div>
-    <div class="small text-muted">faltam {{ resumo.sessoes_faltam }} prevista{{ resumo.sessoes_faltam|pluralize }}</div>
-  </div></div></div>
-  <div class="col-md-4"><div class="card h-100"><div class="card-body py-3">
-    <div class="rotulo">Receita do mês</div>
-    <div class="h3 mb-0">R$ {{ resumo.recebido|floatformat:2 }} <span class="fs-6 text-muted fw-normal">recebido</span></div>
-    <div class="small text-muted">a receber R$ {{ resumo.a_receber|floatformat:2 }} (previsto)</div>
-  </div></div></div>
-  {% comment %}ADR-106: eram três cards. "Pacientes ativos" saiu porque é o mesmo número de "atendimentos em curso",
-  logo abaixo; "sessões esperando cadastro" também, porque é a primeira linha das pendências, ali ao lado. O painel
-  não diz a mesma coisa duas vezes (ADR-072), e o espaço vazio é preferível à repetição.{% endcomment %}
-</div>
-
 {% comment %}ADR-084: aniversariantes do mês, entre os pacientes em atendimento. Fica por último: não é tarefa, é
 lembrança — e o painel é primeiro do que precisa ser feito (ADR-072).{% endcomment %}
 <div class="card mt-3">

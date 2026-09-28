@@ -3328,6 +3328,9 @@ existir, porque dá pra ver todas as informações sem arrastar pro lado se voc�
   primeira linha das pendências, ali ao lado — o usuário apontou na hora. Sobram "sessões no mês" e "receita do mês".
   Espaço vazio é melhor que informação dita duas vezes (ADR-072). O link "ver pacientes" foi para o bloco de
   atendimentos em curso.
+- **O resumo do mês desce para a coluna da esquerda**, embaixo da agenda de hoje. Numa linha própria, os dois
+  cards ocupavam dois terços da largura e deixavam um terço vazio — "desproporcional, parece desorganizado", nas
+  palavras do usuário. Ali eles preenchem a linha e emparelham a altura das duas colunas.
 - **O número diz o que conta.** "14" sozinho não significava nada: passa a ser "14 pacientes ativos". Quando há
   atendimento de casal ou família, os dois números divergem, e a tela explica ("em 13 atendimentos — casal e família
   contam como um") em vez de escolher um e esconder o outro.
