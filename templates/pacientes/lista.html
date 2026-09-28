@@ -32,35 +32,51 @@
   </div>
 </form>
 
-{% if pacientes %}
-<div class="card">
-  <div class="table-responsive">
-    <table class="table table-sm table-hover align-middle mb-0">
-      <thead class="table-light">
-        <tr>
-          <th>Nome</th><th>CPF</th><th>Idade</th><th>Telefone</th>
-          <th>1ª sessão</th><th class="text-end">Ações</th>
-        </tr>
-      </thead>
-      <tbody>
-      {% for p in pacientes %}
-        <tr>
-          <td><a href="{% url 'pacientes:detalhe' p.pk %}" class="text-decoration-none fw-medium">{{ p.nome }}</a></td>
-          <td class="text-muted">{{ p.cpf|default:"—" }}</td>
-          <td class="text-muted">{{ p.idade|default:"—" }}</td>
-          <td class="text-muted">{{ p.telefone|default:"—" }}</td>
-          <td class="text-muted">{{ p.data_primeira_sessao|date:"d/m/Y"|default:"—" }}</td>
-          <td class="text-end">
-            <a href="{% url 'pacientes:editar' p.pk %}" class="btn btn-sm btn-link p-0 me-2" title="Editar">
-              <i class="bi bi-pencil"></i></a>
-            <a href="{% url 'pacientes:excluir' p.pk %}" class="btn btn-sm btn-link p-0 text-danger" title="Excluir">
-              <i class="bi bi-trash"></i></a>
-          </td>
-        </tr>
-      {% endfor %}
-      </tbody>
-    </table>
-  </div>
+{% comment %}
+ADR-109: a lista virou blocos. A tabela tratava todo paciente como uma linha igual às outras; o bloco dá ao nome
+o peso que ele tem no trabalho, e a **cor da faixa diz a frequência** sem obrigar a ler uma coluna. O rótulo vai
+escrito ao lado da cor — quem não distingue cor lê "semanal" do mesmo jeito.
+
+Cada bloco é um link para a ficha. As ações (editar, excluir) ficam **fora** desse link, num canto: link dentro de
+link não é HTML válido, e os dois cliques brigariam.
+{% endcomment %}
+{% if fichas %}
+<div class="blocos">
+  {% for f in fichas %}
+    <div class="paciente {{ f.frequencia }}">
+      <div class="acoes">
+        <a href="{% url 'pacientes:editar' f.paciente.pk %}" class="btn btn-sm btn-link p-1" title="Editar">
+          <i class="bi bi-pencil"></i></a>
+        <a href="{% url 'pacientes:excluir' f.paciente.pk %}" class="btn btn-sm btn-link p-1 text-danger" title="Excluir">
+          <i class="bi bi-trash"></i></a>
+      </div>
+      <a href="{% url 'pacientes:detalhe' f.paciente.pk %}" class="cabeca text-decoration-none text-reset stretched-link">
+        <span class="inicial">{{ f.paciente.nome|slice:":1"|upper }}</span>
+        <span>
+          <span class="nome d-block">{{ f.paciente.nome }}</span>
+          <span class="quando">{{ f.quando }}</span>
+        </span>
+      </a>
+      <div class="dados">
+        {% if f.em_dia %}
+          <span class="badge text-bg-success">em dia</span>
+        {% else %}
+          <span class="badge text-bg-danger">R$ {{ f.em_aberto|floatformat:2 }} em aberto</span>
+        {% endif %}
+        <span class="badge text-bg-light border">{{ f.paciente.get_modalidade_display|lower }}</span>
+      </div>
+      {% comment %}A presença só aparece para quem tinha sessão no período — "0%" para quem não tinha
+      nenhuma seria uma acusação falsa.{% endcomment %}
+      {% if f.presenca.esperadas %}
+        <footer>
+          <span>presença</span>
+          <span class="barrinha{% if f.presenca.percentual < 70 %} baixa{% endif %}">
+            <i style="width:{{ f.presenca.percentual }}%"></i></span>
+          <b class="valor">{{ f.presenca.percentual }}%</b>
+        </footer>
+      {% endif %}
+    </div>
+  {% endfor %}
 </div>
 
 {% if is_paginated %}

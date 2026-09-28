@@ -1,7 +1,10 @@
 {% comment %}
 Lista de textos escritos à mão (`core.formularios.ListaDeTextos`): uma caixa por item e um botão que abre outra.
 Sem JavaScript continua funcionando — sempre há uma caixa vazia a mais para escrever.
-Uso: {% include "components/_lista_de_textos.html" with campo=form.abordagens exemplo="Psicanálise" mais="outra abordagem" %}
+Uso: {% include "components/_lista_de_textos.html" with campo=form.apelidos exemplo="Como te chamam" mais="outro apelido" %}
+
+⚠️ Hoje nenhuma tela usa este componente. As abordagens, que eram o caso dele (ADR-094), viraram catálogo fechado
+na ADR-107 — quem precisa de escolha múltipla usa `components/_catalogo.html`.
 {% endcomment %}
 <div data-lista-de-textos data-maximo="{{ campo.field.maximo }}">
   <label class="form-label small mb-1" for="{{ campo.id_for_label }}_0">

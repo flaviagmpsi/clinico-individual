@@ -345,8 +345,8 @@ def _dia_de_exemplo(casos: dict, agora=None) -> tuple[int, int]:
 PSICOLOGOS = [
     {
         "email": "ana@exemplo.com", "nome_completo": "Ana Ribeiro", "cpf": "11111111111",
-        "crp_numero": "111111", "abordagens": ["Terapia cognitivo-comportamental", "Terapia do esquema"],
-        "outras_areas": ["Avaliação neuropsicológica"], "assinatura": "ATIVA",
+        "crp_numero": "111111", "abordagens": ["TCC", "TERAPIA_DO_ESQUEMA"],
+        "outras_areas": ["AVALIACAO_NEUROPSICOLOGICA"], "assinatura": "ATIVA",
         "pacientes": [
             dict(nome="Marcos Vieira", cpf="52998224725", data_nascimento=date(1988, 4, 12),
                  telefone="31988112233", email="marcos@exemplo.com", cep="30140071",
@@ -497,7 +497,7 @@ PSICOLOGOS = [
     },
     {
         "email": "bruno@exemplo.com", "nome_completo": "Bruno Carvalho", "cpf": "22222222222",
-        "crp_numero": "222222", "abordagens": ["Psicanálise"],
+        "crp_numero": "222222", "abordagens": ["PSICANALISE"],
         # Bruno está no meio do teste grátis (ADR-094): é por ele que se vê o aviso de prazo no alto das telas.
         "assinatura": "TESTE",
         "pacientes": [

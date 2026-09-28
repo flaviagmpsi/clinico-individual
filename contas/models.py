@@ -13,6 +13,7 @@ from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils import timezone
 
+from contas import abordagens
 from core.calendario import TipoDia
 from core.enderecos import UF, cep_valido, telefone_opcional
 from core.models import TenantOwnedModel, ValidaAoSalvar
@@ -103,12 +104,17 @@ class Psicologo(ValidaAoSalvar, AbstractUser):
     razao_social = models.CharField("Razão social", max_length=255, blank=True)
     crp_empresa = models.CharField("CRP da empresa", max_length=20, blank=True)
 
-    # --- Como atende (C-10, ADR-071) -------------------------------------------------------------
-    # ADR-094: o psicólogo **escreve** as suas abordagens, quantas forem. A lista fechada da ADR-071 saiu: é o
-    # campo dele, não uma taxonomia oficial. `outras_areas` é o que ele faz além da clínica — avaliação
-    # neuropsicológica, orientação profissional, supervisão.
+    # --- Como atende (C-10, ADR-071, ADR-094, ADR-107) -------------------------------------------
+    # ADR-107: as duas voltam a ser **lista fechada**, e o que se guarda é o código do catálogo
+    # (`contas.abordagens`), não o texto. Texto livre não conta: "Psicanálise" e "psicanálise" viravam duas
+    # respostas. Quem não está na lista marca OUTRA e escreve no campo ao lado — o que vem por ali fica
+    # separado de propósito, para ser lido e promovido quando repetir.
+    # Abordagem é **como** a pessoa trabalha; área é o que ela faz **além** da clínica. Avaliação
+    # neuropsicológica é área, não abordagem: nas duas listas, a mesma pessoa contaria duas vezes.
     abordagens = models.JSONField("Abordagens", default=list, blank=True)
+    abordagem_outra = models.CharField("Qual abordagem", max_length=120, blank=True)
     outras_areas = models.JSONField("Outras áreas de atuação", default=list, blank=True)
+    area_outra = models.CharField("Qual área", max_length=120, blank=True)
     atende_online = models.BooleanField("Atende online", default=False)
     atende_presencial = models.BooleanField("Atende presencialmente", default=True)
 
@@ -172,7 +178,11 @@ class Psicologo(ValidaAoSalvar, AbstractUser):
 
     @property
     def abordagem_descrita(self) -> str:
-        return ", ".join(self.abordagens or [])
+        return abordagens.descrever(self.abordagens, abordagens.ROTULO_DA_ABORDAGEM, self.abordagem_outra)
+
+    @property
+    def areas_descritas(self) -> str:
+        return abordagens.descrever(self.outras_areas, abordagens.ROTULO_DA_AREA, self.area_outra)
 
     @property
     def emite_nota_fiscal(self) -> bool:

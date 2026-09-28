@@ -3,28 +3,56 @@ Navegação (ADR-088). Ícones fechados; ao passar o mouse a barra abre e mostra
 A aba ativa é a da seção em que se está — clicar nela volta à raiz da seção. No celular a barra vira uma faixa
 horizontal logo abaixo do topo, em vez de sumir.
 
+ADR-108: os ícones são desenhados aqui, em SVG, e não mais tirados do Bootstrap Icons. Motivo: os do Bootstrap são
+de famílias diferentes entre si — uns cheios, outros vazados, espessuras que não combinam — e ao lado de uma letra
+com serifa a diferença fica evidente. Estes têm a **mesma espessura de traço** (1,7), as mesmas pontas
+arredondadas e o mesmo tamanho de caixa, então lidos em coluna eles parecem um conjunto.
+
 Os módulos que ainda não existem aparecem **apagados**, com o passo que os constrói no tooltip (ADR-012).
 {% endcomment %}
 <nav class="barra" aria-label="Seções">
   <a href="{% url 'painel' %}" title="Painel"
      class="{% if request.resolver_match.url_name == 'painel' %}ativo{% endif %}">
-    <i class="bi bi-speedometer2"></i><span class="nome">Painel</span></a>
+    {# O ponteiro de um mostrador: é o retrato do dia, não uma casa. #}
+    <svg class="icone" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
+         stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M4 13a8 8 0 0 1 16 0"/><path d="M12 13l3.4-3.2"/>
+      <circle cx="12" cy="13" r="1.4" fill="currentColor" stroke="none"/>
+      <path d="M4 13v3.5A1.5 1.5 0 0 0 5.5 18h13a1.5 1.5 0 0 0 1.5-1.5V13"/>
+    </svg><span class="nome">Painel</span></a>
   <a href="{% url 'pacientes:lista' %}" title="Pacientes"
      class="{% if request.resolver_match.app_name == 'pacientes' %}ativo{% endif %}">
-    <i class="bi bi-people"></i><span class="nome">Pacientes</span></a>
+    <svg class="icone" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
+         stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <circle cx="9.5" cy="8" r="3.2"/><path d="M3.8 19a5.8 5.8 0 0 1 11.4 0"/>
+      <path d="M16.5 5.6a3 3 0 0 1 0 5.6"/><path d="M17.4 13.8A5.4 5.4 0 0 1 21 19"/>
+    </svg><span class="nome">Pacientes</span></a>
 
   <div class="separador"></div>
 
   {% comment %}ADR-098: uma entrada só. Os horários declarados são sub-aba da agenda, e não uma seção à parte.{% endcomment %}
   <a href="{% url 'atendimentos:agenda' %}" title="Agenda"
      class="{% if request.resolver_match.app_name == 'atendimentos' or request.resolver_match.app_name == 'agenda' %}ativo{% endif %}">
-    <i class="bi bi-calendar-week"></i><span class="nome">Agenda</span></a>
+    <svg class="icone" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
+         stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <rect x="3.5" y="5" width="17" height="15" rx="3"/><path d="M3.5 9.5h17"/><path d="M8 3.5v3M16 3.5v3"/>
+      <circle cx="9" cy="14" r="1.2" fill="currentColor" stroke="none"/>
+      <circle cx="15" cy="14" r="1.2" fill="currentColor" stroke="none"/>
+    </svg><span class="nome">Agenda</span></a>
   <a href="{% url 'prontuarios:lista' %}" title="Prontuários"
      class="{% if request.resolver_match.app_name == 'prontuarios' %}ativo{% endif %}">
-    <i class="bi bi-journal-medical"></i><span class="nome">Prontuários</span></a>
+    <svg class="icone" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
+         stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M6.5 3.5h11a2 2 0 0 1 2 2v13a2 2 0 0 1-2 2h-11a2 2 0 0 1-2-2v-13a2 2 0 0 1 2-2Z"/>
+      <path d="M9 8.5h6M9 12h6M9 15.5h3.5"/>
+    </svg><span class="nome">Prontuários</span></a>
   <a href="{% url 'financeiro:mes' %}" title="Financeiro"
      class="{% if request.resolver_match.app_name == 'financeiro' %}ativo{% endif %}">
-    <i class="bi bi-cash-stack"></i><span class="nome">Financeiro</span></a>
+    <svg class="icone" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
+         stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <rect x="3" y="6" width="18" height="12" rx="3"/><circle cx="12" cy="12" r="2.6"/>
+      <path d="M6.6 12h.01M17.4 12h.01"/>
+    </svg><span class="nome">Financeiro</span></a>
   {% comment %}ADR-103: não há aba de Estatísticas. Cada número foi para a tela de que ele fala — a presença
   está em Pacientes, o horário e o dia na Agenda, o resultado no Financeiro, e o retrato da clínica no painel.{% endcomment %}
   {% comment %}ADR-102: Documentos **não** tem entrada aqui. Todo documento é sobre um paciente, então ele mora na

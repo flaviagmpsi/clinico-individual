@@ -37,7 +37,7 @@ Primeiro o dia; depois as pendências, num bloco; por fim o resumo do mês.
                                  transition: transform var(--rapido); }
   .pendencia[open] > summary::before { transform: rotate(90deg); }
   .pendencia > summary:hover { color: var(--tinta-escura); }
-  .pendencia .quantas { font-family: var(--f-mono); font-weight: 600; font-size: 1.05rem; color: var(--atencao); }
+  .pendencia .quantas { font-family: var(--f-num); font-variant-numeric: tabular-nums; font-weight: 600; font-size: 1.05rem; color: var(--atencao); }
   .pendencia[open] > summary { color: var(--texto); }
 </style>
 <div class="row g-3 mb-3 align-items-start">

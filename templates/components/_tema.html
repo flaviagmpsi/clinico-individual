@@ -1,6 +1,7 @@
 {% comment %}
-O tema do Hamilton — direção "Prancheta" (ADR-089): frio, técnico, denso. Escolhido pelo usuário entre quatro
-direções exploradas fora do app (`design-exploration/direcoes.html`).
+O tema do Hamilton — direção "Terrosa" (ADR-108): quente, calma, para ficar horas olhando. Substitui a
+"Prancheta" (ADR-089), que era fria e técnica. Explorada fora do app, em `design-exploration/terroso.html`, e
+escolhida lá pelo usuário: fundo pêssego, acento terracota e tipografia Bitter.
 
 Um lugar só para a aparência. A regra é: **variável primeiro, componente depois, tela nunca**. Cor, fonte, raio e
 espaçamento saem das variáveis abaixo; os componentes do Bootstrap são ajustados aqui uma vez; template nenhum deve
@@ -8,8 +9,8 @@ precisar de cor ou fonte própria. É peça de template, e não arquivo estátic
 sem build e sem `collectstatic` no caminho de quem só quer ver a tela.
 
 Princípios da direção:
-- hierarquia por **peso e posição**, não por caixa colorida: o que pede ação tem cor; o resto é tinta e cinza;
-- **números em fonte monoespaçada** e alinhados — horas, datas, valores;
+- hierarquia por **peso e posição**, não por caixa colorida: o que pede ação tem cor; o resto é tinta e terra;
+- **números na mesma letra do texto**, com dígitos tabulares para alinhar — horas, datas, valores;
 - **borda de 1 px e nenhuma sombra** (a única é a da barra lateral aberta, que flutua sobre o conteúdo);
 - **cantos arredondados em escala** (ADR-097): quanto maior a caixa, mais macio o canto — controle 6 px, cartão
   10 px, painel 14 px. A primeira versão tinha 2 px em tudo, e o usuário achou "muito pontudo";
@@ -17,49 +18,59 @@ Princípios da direção:
 {% endcomment %}
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Bitter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
   :root {
     /* --- medidas da moldura --- */
     --barra: 52px; --barra-aberta: 204px; --topo: 44px;
     /* --- cor --- */
-    /* ADR-090: cores mais saturadas e fundo menos lavado — a primeira versão ficou pálida. */
-    --fundo: #e3e9f2; --superficie: #ffffff; --superficie-2: #eef3fa;
-    --texto: #0b1526; --suave: #4a586c; --linha: #b9c5d6; --linha-fina: #d9e1ec;
-    --tinta: #1558f0;            /* o acento: link, ação principal, item em foco. O nome vem da versão anterior. */
-    --tinta-escura: #0d43c4; --tinta-clara: #4d86ff; --tinta-fundo: #dce8ff; --tinta-brilho: rgba(21, 88, 240, .38);
-    --ok: #0b8a63; --ok-fundo: #cdf1e1; --ok-brilho: rgba(11, 138, 99, .35);
-    --atencao: #a05200; --atencao-fundo: #ffe6ad;  /* #a05200: o âmbar mais vivo que ainda passa em AA sobre branco, sobre o hover de linha e sobre o próprio fundo */ --erro: #d6281c; --erro-fundo: #ffd9d4; --erro-brilho: rgba(214, 40, 28, .35);
-    --marinho: #0b1526; --marinho-2: #12203a; --marinho-3: #1c3160; --marinho-linha: #25375a;
+    /* ADR-108: terra quente e **dessaturada no fundo** — o que preenche a tela inteira precisa ser calmo, e a
+       cor forte fica guardada para o que pede ação. Todo par foi medido em contraste antes de entrar. */
+    --fundo: #fbefe6; --superficie: #fffaf6; --superficie-2: #f6e6da;
+    --texto: #2e2320; --suave: #6b5a50; --linha: #e8d3c4; --linha-fina: #f2e2d6;
+    --tinta: #a64a23;            /* o acento: terracota. Link, ação principal, item em foco. */
+    --tinta-escura: #8e3f1e; --tinta-clara: #e08a5e; --tinta-fundo: #fbe5d8; --tinta-brilho: rgba(166, 74, 35, .38);
+    --ok: #44693f; --ok-fundo: #e1eddc; --ok-brilho: rgba(68, 105, 63, .35);
+    --atencao: #9a6114; --atencao-fundo: #fbeacb;  /* #9a6114: o âmbar mais vivo que ainda passa em AA sobre o cartão, sobre o hover de linha e sobre o próprio fundo */ --erro: #a93b33; --erro-fundo: #fadcd8; --erro-brilho: rgba(169, 59, 51, .35);
+    /* A barra e o topo: marrom profundo e quente. Chamava-se `--marinho` enquanto era azul (ADR-089). */
+    --escuro: #2e2320; --escuro-2: #4a3831; --escuro-3: #5d463c; --escuro-linha: #6b5245;
     --rapido: 120ms ease;
     /* ADR-091. Tudo derivado de tokens que já existiam: nenhum valor de cor novo solto. */
     --tinta-fundo-leve: color-mix(in srgb, var(--tinta) 7%, var(--superficie));  /* o fundo do hover de linha */
     --t-linha: 130ms ease-out; --t-cartao: 180ms ease-out; --t-entrada: 220ms ease-out;
     /* --- letra --- */
-    --f-texto: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
-    --f-mono: "IBM Plex Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+    /* ADR-108: Bitter, escolhida pelo usuário. Os **números saem da mesma letra**: os dígitos da Bitter já têm
+       largura igual entre si, então a coluna de valores alinha sem fonte monoespaçada — e sem o zero cortado,
+       que era da mono e destoava do texto. `--f-num` existe para o caso de um dia voltarem a ser outra letra. */
+    --f-texto: "Bitter", Georgia, serif;
+    --f-num: "Bitter", Georgia, serif;
     /* ADR-097: a escala de cantos. `--raio` continua sendo o valor de uso geral (o que o Bootstrap lê), e os
        outros dois existem para as pontas da escala: o controle pequeno e o painel grande. */
+    /* ADR-109: a frequência do paciente vira cor no bloco. Três matizes bem separados dentro da família
+       terrosa, cada um com o seu fundo claro para a inicial do nome. */
+    --f-semanal: #a14e27; --f-semanal-fundo: #fbe7da;
+    --f-quinzenal: #7a5a10; --f-quinzenal-fundo: #f8efd3;
+    --f-avulso: #6b6057; --f-avulso-fundo: #eeeae4;
     --raio-controle: 6px;   /* campo, botão, aba-pílula, selo */
     --raio: 10px;           /* cartão, tabela, alerta, menu */
     --raio-grande: 14px;    /* o painel que agrupa outros cartões */
 
     /* --- o Bootstrap lê daqui --- */
-    --bs-body-font-family: var(--f-texto); --bs-body-font-size: .8125rem; --bs-body-line-height: 1.5;
+    --bs-body-font-family: var(--f-texto); --bs-body-font-size: .84375rem; --bs-body-line-height: 1.6;
     --bs-body-color: var(--texto); --bs-body-bg: var(--fundo);
-    --bs-secondary-color: var(--suave); --bs-tertiary-color: #8794a5; --bs-emphasis-color: var(--texto);
+    --bs-secondary-color: var(--suave); --bs-tertiary-color: #8a7768; --bs-emphasis-color: var(--texto);
     --bs-border-color: var(--linha); --bs-border-radius: var(--raio); --bs-border-radius-sm: var(--raio-controle);
     --bs-border-radius-lg: var(--raio-grande); --bs-border-radius-xl: var(--raio-grande); --bs-border-radius-pill: 999px;
-    --bs-primary: #1558f0; --bs-primary-rgb: 21, 88, 240; --bs-link-color: #1558f0; --bs-link-color-rgb: 21, 88, 240;
-    --bs-link-hover-color: #0d43c4; --bs-link-hover-color-rgb: 13, 67, 196;
-    --bs-success: #0b8a63; --bs-success-rgb: 11, 138, 99; --bs-danger: #d6281c; --bs-danger-rgb: 214, 40, 28;
-    --bs-warning: #a05200; --bs-warning-rgb: 160, 82, 0;
-    --bs-focus-ring-color: rgba(21, 88, 240, .35);
+    --bs-primary: #a64a23; --bs-primary-rgb: 166, 74, 35; --bs-link-color: #a64a23; --bs-link-color-rgb: 166, 74, 35;
+    --bs-link-hover-color: #8e3f1e; --bs-link-hover-color-rgb: 142, 63, 30;
+    --bs-success: #44693f; --bs-success-rgb: 68, 105, 63; --bs-danger: #a93b33; --bs-danger-rgb: 169, 59, 51;
+    --bs-warning: #9a6114; --bs-warning-rgb: 154, 97, 20;
+    --bs-focus-ring-color: rgba(166, 74, 35, .35);
   }
 
   body { background: var(--fundo); padding-top: var(--topo); font-variant-numeric: tabular-nums; -webkit-font-smoothing: antialiased; }
   a { color: var(--tinta); }
-  .mono, .hora, .valor { font-family: var(--f-mono); }
+  .mono, .hora, .valor { font-family: var(--f-num); font-variant-numeric: tabular-nums; }
   .small, small { font-size: .75rem; }
   .text-primary { color: var(--tinta) !important; }
   .text-success { color: var(--ok) !important; } .text-danger { color: var(--erro) !important; }
@@ -70,59 +81,63 @@ Princípios da direção:
   h1, h2, h3, h4, h5, h6, .h1, .h2, .h3, .h4, .h5, .h6 { letter-spacing: -.005em; }
   .h5, h1.h5 { font-size: .9375rem; font-weight: 600; }
   .h6 { font-size: .8125rem; font-weight: 600; }
-  /* Os números grandes dos cartões: monoespaçados, para alinhar e para parecer número. */
-  .h2, .h3, .h4 { font-family: var(--f-mono); font-weight: 500; letter-spacing: -.02em; }
+  /* Os números grandes dos cartões. Dígitos tabulares para alinhar; o peso sobe porque a serifa da Bitter
+     já é escura e um 500 ficava mole ao lado do texto. */
+  .h2, .h3, .h4 { font-family: var(--f-num); font-variant-numeric: tabular-nums; font-weight: 600;
+                  letter-spacing: -.01em; }
   .h3 { font-size: 1.375rem; } .h4 { font-size: 1.25rem; }
   .h3 .fs-6, .h4 .fs-6, .h3 small, .h4 small { font-family: var(--f-texto); font-size: .75rem !important; letter-spacing: 0; }
   .rotulo { font-size: .6875rem; text-transform: uppercase; letter-spacing: .1em; color: var(--suave); font-weight: 600; }
 
   /* ---------- a moldura: topo e barra ---------- */
-  .topo { position: fixed; top: 0; left: 0; right: 0; height: var(--topo); z-index: 1030; background: var(--marinho); color: #e8edf5; }
+  .topo { position: fixed; top: 0; left: 0; right: 0; height: var(--topo); z-index: 1030; background: var(--escuro); color: #e8ddd2; }
   .topo .marca { color: #fff; font-weight: 600; font-size: .8125rem; text-transform: uppercase; letter-spacing: .06em; text-decoration: none; }
-  .topo .marca i { color: #5b93ff; filter: drop-shadow(0 0 6px rgba(91, 147, 255, .7)); }
+  .topo .marca i { color: #e08a5e; filter: drop-shadow(0 0 6px rgba(224, 138, 94, .7)); }
   /* ADR-105: a conta mora no topo. O nome leva ao perfil e **diz isso ao passar o mouse** — a mesma ideia da barra
      lateral, que revela o nome de cada ícone (ADR-088). A engrenagem ao lado leva a Configurações. */
-  .topo .quem { color: #b9c4d4; font-size: .75rem; text-decoration: none; display: inline-flex; align-items: center;
+  .topo .quem { color: #c9b6a6; font-size: .75rem; text-decoration: none; display: inline-flex; align-items: center;
                 gap: .4rem; padding: .3rem .55rem; border-radius: var(--raio-controle); line-height: 1.2;
                 transition: background-color var(--rapido), color var(--rapido); }
-  .topo .quem:hover, .topo .quem:focus-visible { color: #fff; background: var(--marinho-3); }
-  .topo .quem.ativo { color: #fff; background: var(--marinho-3); }
-  .topo .quem .crp { color: #8797ad; }
+  .topo .quem:hover, .topo .quem:focus-visible { color: #fff; background: var(--escuro-3); }
+  .topo .quem.ativo { color: #fff; background: var(--escuro-3); }
+  .topo .quem .crp { color: #b5a094; }
   .topo .quem i { font-size: .95rem; }
   /* A dica é um balão **fora do fluxo**, logo abaixo do nome: trocá-la pelo nome mudaria a largura do topo a cada
      passada de mouse, e o alvo do clique fugiria do cursor. */
   .topo .quem { position: relative; }
   .topo .quem .dica-do-perfil { position: absolute; top: calc(100% - 2px); right: 0; white-space: nowrap;
-                                background: var(--marinho-3); color: #fff; font-weight: 600; font-size: .7rem;
-                                padding: .2rem .5rem; border-radius: var(--raio-controle); border: 1px solid var(--marinho-linha);
+                                background: var(--escuro-3); color: #fff; font-weight: 600; font-size: .7rem;
+                                padding: .2rem .5rem; border-radius: var(--raio-controle); border: 1px solid var(--escuro-linha);
                                 opacity: 0; transform: translateY(-3px); pointer-events: none;
                                 transition: opacity var(--rapido), transform var(--rapido); }
   .topo .quem:hover .dica-do-perfil, .topo .quem:focus-visible .dica-do-perfil { opacity: 1; transform: translateY(0); }
   @media (max-width: 575.98px) { .topo .quem .nome-de-quem { display: none; } }
   @media (prefers-reduced-motion: reduce) { .topo .quem .dica-do-perfil { transition: none; transform: none; } }
-  .caminho { font-family: var(--f-mono); font-size: .75rem; color: #93a1b5; }
-  .caminho::before { content: "/"; margin-right: .45rem; color: #5d6c83; }
-  .caminho a { color: #b9c4d4; text-decoration: none; }
+  .caminho { font-size: .75rem; color: #b09b8b; }
+  .caminho::before { content: "/"; margin-right: .45rem; color: #8a7160; }
+  .caminho a { color: #c9b6a6; text-decoration: none; }
   .caminho a:hover { color: #fff; text-decoration: underline; }
-  .caminho .separa { color: #5d6c83; margin: 0 .4rem; }
+  .caminho .separa { color: #8a7160; margin: 0 .4rem; }
 
   /* ADR-088: a barra fica só com ícones e abre com os nomes ao passar o mouse ou ao receber foco. Abre por cima. */
   .barra { position: fixed; top: var(--topo); left: 0; width: var(--barra); height: calc(100vh - var(--topo));
-           background: var(--marinho-2); display: flex; flex-direction: column; padding: 6px 0; z-index: 1020;
+           background: var(--escuro-2); display: flex; flex-direction: column; padding: 6px 0; z-index: 1020;
            overflow: hidden; transition: width .14s ease; }
-  .barra:hover, .barra:focus-within { width: var(--barra-aberta); box-shadow: 6px 0 18px rgba(16, 26, 43, .22); }
+  .barra:hover, .barra:focus-within { width: var(--barra-aberta); box-shadow: 6px 0 18px rgba(58, 44, 38, .22); }
   .barra a, .barra button { display: flex; align-items: center; gap: 14px; width: 100%; height: 38px; padding: 0 0 0 15px;
-           border: 0; border-left: 3px solid transparent; border-radius: 0; background: transparent; color: #8797ad;
+           border: 0; border-left: 3px solid transparent; border-radius: 0; background: transparent; color: #b5a094;
            font-size: 1rem; white-space: nowrap; text-decoration: none; }
   .barra .nome { font-size: .8125rem; opacity: 0; transition: opacity .1s ease; }
   .barra:hover .nome, .barra:focus-within .nome { opacity: 1; }
   .barra a, .barra button { transition: background var(--rapido), color var(--rapido); }
-  .barra a:hover, .barra button:hover { background: #1a2c52; color: #fff; }
+  .barra a:hover, .barra button:hover { background: #5a4238; color: #fff; }
   .barra a:hover i, .barra button:hover i { filter: drop-shadow(0 0 6px rgba(91, 147, 255, .75)); }
-  .barra a.ativo { background: linear-gradient(90deg, #214aa8, var(--marinho-3)); color: #fff; border-left-color: #6fa0ff; }
-  .barra a.ativo i { filter: drop-shadow(0 0 7px rgba(111, 160, 255, .9)); }
+  .barra a.ativo { background: linear-gradient(90deg, #7a5341, var(--escuro-3)); color: #fff; border-left-color: #e08a5e; }
+  /* ADR-108: os ícones da barra são SVG desenhados em `_barra.html`, com traço de 1,7 e caixa de 24. */
+  .barra .icone { width: 21px; height: 21px; flex: none; }
+  .barra a.ativo .icone { filter: drop-shadow(0 0 7px rgba(224, 138, 94, .9)); }
   .barra .adiado { opacity: .35; cursor: not-allowed; }
-  .barra .separador { height: 1px; background: var(--marinho-linha); margin: 4px 0; }
+  .barra .separador { height: 1px; background: var(--escuro-linha); margin: 4px 0; }
   .barra .espaco { flex: 1; }
   .barra form { margin: 0; }
   .conteudo { margin-left: var(--barra); padding: 18px 18px 48px; }
@@ -171,11 +186,11 @@ Princípios da direção:
   .btn-sm { font-size: .78125rem; --bs-btn-padding-y: .34rem; --bs-btn-padding-x: .8rem; min-height: 30px; }
   .btn:hover { transform: translateY(-1px); }
   .btn:active, .btn.active:active { transform: translateY(0) scale(.97); filter: brightness(.95); }
-  .btn-primary, .bg-primary { --bs-btn-bg: var(--tinta); --bs-btn-border-color: var(--tinta); --bs-btn-hover-bg: #2a69ff;
-           --bs-btn-hover-border-color: #2a69ff; --bs-btn-active-bg: var(--tinta-escura); --bs-btn-active-border-color: var(--tinta-escura);
+  .btn-primary, .bg-primary { --bs-btn-bg: var(--tinta); --bs-btn-border-color: var(--tinta); --bs-btn-hover-bg: #c05a2c;
+           --bs-btn-hover-border-color: #c05a2c; --bs-btn-active-bg: var(--tinta-escura); --bs-btn-active-border-color: var(--tinta-escura);
            --bs-btn-disabled-bg: var(--tinta); --bs-btn-disabled-border-color: var(--tinta); }
   .btn-primary { background-image: linear-gradient(180deg, rgba(255,255,255,.16), rgba(255,255,255,0)); box-shadow: 0 2px 8px var(--tinta-brilho) !important; }
-  .btn-primary:hover { box-shadow: 0 4px 18px var(--tinta-brilho), 0 0 0 3px rgba(21, 88, 240, .16) !important; }
+  .btn-primary:hover { box-shadow: 0 4px 18px var(--tinta-brilho), 0 0 0 3px rgba(166, 74, 35, .16) !important; }
   .bg-primary { background-color: var(--tinta) !important; }
   .btn-outline-primary { --bs-btn-color: var(--tinta); --bs-btn-border-color: var(--tinta); --bs-btn-hover-bg: var(--tinta);
            --bs-btn-hover-border-color: var(--tinta); --bs-btn-active-bg: var(--tinta-escura); --bs-btn-active-border-color: var(--tinta-escura);
@@ -184,7 +199,7 @@ Princípios da direção:
   .btn-outline-secondary { --bs-btn-color: var(--texto); --bs-btn-border-color: var(--linha); --bs-btn-hover-color: var(--tinta-escura);
            --bs-btn-hover-bg: var(--tinta-fundo); --bs-btn-hover-border-color: var(--tinta); --bs-btn-active-color: #fff;
            --bs-btn-active-bg: var(--tinta); --bs-btn-active-border-color: var(--tinta); background: var(--superficie); }
-  .btn-outline-secondary:hover { box-shadow: 0 3px 12px rgba(21, 88, 240, .2) !important; }
+  .btn-outline-secondary:hover { box-shadow: 0 3px 12px rgba(166, 74, 35, .2) !important; }
   .btn-outline-secondary.active { background: var(--tinta); border-color: var(--tinta); color: #fff; box-shadow: 0 2px 8px var(--tinta-brilho) !important; }
   .btn-outline-success { --bs-btn-color: var(--ok); --bs-btn-border-color: var(--ok); --bs-btn-hover-bg: var(--ok); --bs-btn-hover-border-color: var(--ok);
            background: var(--superficie); border-width: 1.5px; }
@@ -194,18 +209,18 @@ Princípios da direção:
   .btn-link:hover { text-decoration: underline; transform: none; }
   .btn-group > .btn:hover { transform: none; }
   .btn:focus-visible, .form-control:focus, .form-select:focus, .form-check-input:focus, a:focus-visible
-         { outline: 2px solid var(--tinta); outline-offset: 1px; box-shadow: 0 0 0 4px rgba(21, 88, 240, .18) !important; }
+         { outline: 2px solid var(--tinta); outline-offset: 1px; box-shadow: 0 0 0 4px rgba(166, 74, 35, .18) !important; }
   /* Link de ação: sublinha e acende ao passar, em vez de só mudar de tom. */
   a { transition: color var(--rapido), background-color var(--rapido); }
 
   /* ---------- etiqueta de situação: contorno, mono, sem bloco de cor ---------- */
-  .badge { font-family: var(--f-mono); font-weight: 500; font-size: .65rem; text-transform: uppercase; letter-spacing: .05em;
+  .badge { font-weight: 600; font-size: .6875rem; letter-spacing: .01em;
            padding: 2px 7px; border-radius: 999px; border: 1px solid currentColor; background: transparent !important; color: var(--suave) !important; }
   .badge { font-weight: 600; padding: 3px 7px; }
-  .badge.text-bg-success { color: #06684a !important; background: var(--ok-fundo) !important; border-color: #7fd3b3 !important; }
-  .badge.text-bg-warning { color: #8a4a00 !important; background: var(--atencao-fundo) !important; border-color: #f0b94a !important; }
-  .badge.text-bg-danger { color: #a81d13 !important; background: var(--erro-fundo) !important; border-color: #f29a92 !important; }
-  .badge.text-bg-info, .badge.text-bg-primary { color: var(--tinta-escura) !important; background: var(--tinta-fundo) !important; border-color: #8fb2ff !important; }
+  .badge.text-bg-success { color: #2f4a31 !important; background: var(--ok-fundo) !important; border-color: #a9c4a3 !important; }
+  .badge.text-bg-warning { color: #6b430e !important; background: var(--atencao-fundo) !important; border-color: #dfb264 !important; }
+  .badge.text-bg-danger { color: #7a2a24 !important; background: var(--erro-fundo) !important; border-color: #dda49d !important; }
+  .badge.text-bg-info, .badge.text-bg-primary { color: var(--tinta-escura) !important; background: var(--tinta-fundo) !important; border-color: #e3ab8a !important; }
   .badge.text-bg-light, .badge.text-bg-secondary { color: var(--suave) !important; border-color: var(--linha) !important; }
 
   /* ---------- tabela e lista ---------- */
@@ -274,7 +289,7 @@ Princípios da direção:
   .nav-tabs { border-bottom: 1px solid var(--linha); }
   .nav-tabs .nav-link { border: 0; border-bottom: 2px solid transparent; border-radius: 0; color: var(--suave); font-weight: 500; padding: .4rem .8rem; margin-bottom: -1px; }
   .nav-tabs .nav-link { transition: color var(--rapido), border-color var(--rapido), background-color var(--rapido); padding: .5rem .95rem; border-bottom-width: 3px; }
-  .nav-tabs .nav-link:hover { color: var(--tinta-escura); border-bottom-color: #8fb2ff; background: var(--tinta-fundo); }
+  .nav-tabs .nav-link:hover { color: var(--tinta-escura); border-bottom-color: #e3ab8a; background: var(--tinta-fundo); }
   .nav-tabs .nav-link.active { color: var(--tinta); border-bottom-color: var(--tinta); background: transparent; font-weight: 600; }
 
   /* ---------- formulário ---------- */
@@ -283,31 +298,81 @@ Princípios da direção:
   .form-control-sm, .form-select-sm { font-size: .75rem; padding: .22rem .5rem; }
   .form-select { padding-right: 2rem; } .form-select-sm { padding-right: 1.8rem; }
   .form-control, .form-select { transition: border-color var(--rapido), box-shadow var(--rapido); min-height: 34px; }
-  .form-control:hover, .form-select:hover { border-color: #8fa3bf; }
+  .form-control:hover, .form-select:hover { border-color: #b79c84; }
   .form-control:focus, .form-select:focus { border-color: var(--tinta); }
-  .form-control::placeholder { color: #8d9bb0; }
+  .form-control::placeholder { color: #9c8874; }
   .form-text { font-size: .71875rem; color: var(--suave); }
-  .form-check-input { border-color: #9aa6b5; border-radius: 4px; }
+  .form-check-input { border-color: #a08b76; border-radius: 4px; }
   .form-check-input[type="radio"] { border-radius: 50%; }
   .form-check-input:checked { background-color: var(--tinta); border-color: var(--tinta); }
   .input-group-text { border-radius: var(--raio-controle); border-color: var(--linha); background: var(--superficie-2); color: var(--suave); font-size: .8125rem; }
+  /* Catálogo fechado (ADR-107): 19 opções em lista única viram uma coluna longa demais para varrer com o olho.
+     Em colunas, cada uma fica com o tamanho de uma lista que se lê de uma vez. `break-inside` impede que uma
+     opção seja cortada ao meio na virada da coluna. */
+  .catalogo-opcoes { columns: 2; column-gap: 1.25rem; }
+  /* Flex em vez do recuo com float do Bootstrap: a `.form-check-label` dele é inline-block, e um inline-block não
+     contorna o float — a etiqueta de duas linhas caía inteira para baixo da caixa. Com flex ela fica ao lado e
+     quebra alinhada consigo mesma. `align-items: baseline` casa a caixa com a primeira linha do texto. */
+  .catalogo-opcoes .form-check { break-inside: avoid; margin-bottom: .15rem; padding-left: 0;
+                                 display: flex; align-items: baseline; gap: .45rem; }
+  .catalogo-opcoes .form-check-input { margin: 0; flex: none; float: none; position: relative; top: 1px; }
+  .catalogo-opcoes .form-check-label { font-size: .8125rem; line-height: 1.35; }
+  .catalogo-outra { margin-top: .35rem; padding-top: .35rem; border-top: 1px solid var(--linha-fina); }
+  @media (max-width: 575.98px) { .catalogo-opcoes { columns: 1; } }
+
+  /* ---------- pacientes em blocos (ADR-109) ---------- */
+  /* A lista virou cartão. O que ela ganha: o nome deixa de ser uma linha entre linhas iguais, e a **cor da faixa
+     diz a frequência** — semanal, quinzenal ou avulso — sem obrigar a ler a coluna. O rótulo vai escrito ao lado
+     de propósito: quem não distingue cor lê "semanal" do mesmo jeito.
+     `auto-fill` com mínimo de 232px: quem tem 6 pacientes não fica com blocos esticados, e quem tem 60 enche a
+     largura que a tela tiver. */
+  .blocos { display: grid; grid-template-columns: repeat(auto-fill, minmax(232px, 1fr)); gap: 13px; }
+  .paciente { background: var(--superficie); border: 1px solid var(--linha); border-radius: var(--raio);
+              padding: 14px; display: flex; flex-direction: column; gap: 9px; position: relative;
+              border-top: 3px solid var(--faixa); text-decoration: none; color: inherit;
+              transition: transform var(--t-cartao), box-shadow var(--t-cartao), border-color var(--t-cartao); }
+  .paciente:hover, .paciente:focus-visible { transform: translateY(-2px); border-color: var(--faixa);
+                                             box-shadow: 0 12px 24px -16px rgba(58, 44, 38, .55); }
+  .paciente.semanal { --faixa: var(--f-semanal); --faixa-fundo: var(--f-semanal-fundo); }
+  .paciente.quinzenal { --faixa: var(--f-quinzenal); --faixa-fundo: var(--f-quinzenal-fundo); }
+  .paciente.avulso { --faixa: var(--f-avulso); --faixa-fundo: var(--f-avulso-fundo); }
+  .paciente .cabeca { display: flex; align-items: center; gap: 10px; }
+  .paciente .inicial { width: 38px; height: 38px; border-radius: 13px; display: grid; place-items: center;
+                       font-weight: 700; font-size: .875rem; background: var(--faixa-fundo); color: var(--faixa);
+                       flex: none; }
+  .paciente .nome { font-weight: 600; font-size: .90625rem; line-height: 1.25; }
+  .paciente .quando { font-size: .78125rem; color: var(--suave); }
+  .paciente .dados { display: flex; gap: 6px; flex-wrap: wrap; }
+  .paciente footer { display: flex; align-items: center; gap: 8px; margin-top: auto; padding-top: 9px;
+                     border-top: 1px solid var(--linha-fina); font-size: .78125rem; color: var(--suave); }
+  /* As ações ficam fora do <a> do bloco: link dentro de link não é HTML válido, e o clique brigaria.
+     `z-index: 2` porque o `stretched-link` do nome cobre o cartão inteiro com um ::after de z-index 1 —
+     sem isso, o clique em "excluir" cairia no link da ficha. */
+  .paciente .acoes { position: absolute; top: 8px; right: 8px; z-index: 2; display: flex; gap: 2px; opacity: 0;
+                     transition: opacity var(--rapido); }
+  .paciente:hover .acoes, .paciente:focus-within .acoes { opacity: 1; }
+  .barrinha { height: 5px; border-radius: 999px; background: var(--superficie-2); overflow: hidden; flex: 1; }
+  .barrinha i { display: block; height: 100%; min-width: 4px; border-radius: 999px; background: var(--ok); }
+  .barrinha.baixa i { background: var(--atencao); }
+  @media (prefers-reduced-motion: reduce) { .paciente:hover, .paciente:focus-visible { transform: none; }
+                                            .paciente .acoes { opacity: 1; } }
 
   /* ---------- avisos ---------- */
   .alert { border-radius: var(--raio); border: 1px solid var(--linha); border-left-width: 3px; font-size: .78125rem; padding: .5rem .75rem; color: var(--texto); background: var(--superficie); }
-  .alert-warning { background: var(--atencao-fundo); border-color: #ead9b3; border-left-color: var(--atencao); }
-  .alert-info { background: var(--tinta-fundo); border-color: #cfdcf7; border-left-color: var(--tinta); }
-  .alert-success { background: var(--ok-fundo); border-color: #c4e2d9; border-left-color: var(--ok); }
-  .alert-danger { background: var(--erro-fundo); border-color: #f3cbc7; border-left-color: var(--erro); }
+  .alert-warning { background: var(--atencao-fundo); border-color: #ebd4a3; border-left-color: var(--atencao); }
+  .alert-info { background: var(--tinta-fundo); border-color: #f1cdba; border-left-color: var(--tinta); }
+  .alert-success { background: var(--ok-fundo); border-color: #bbd3b4; border-left-color: var(--ok); }
+  .alert-danger { background: var(--erro-fundo); border-color: #efc2bb; border-left-color: var(--erro); }
   .alert-light { background: var(--superficie-2); }
 
   /* ---------- o resto ---------- */
   .progress { border-radius: 999px; background: var(--linha-fina); }
   .progress-bar.bg-success { background-color: var(--ok) !important; } .progress-bar.bg-warning { background-color: var(--atencao) !important; }
-  .dropdown-menu { border-radius: var(--raio); border-color: var(--linha); font-size: .78125rem; box-shadow: 0 6px 18px rgba(16, 26, 43, .12); padding: 4px 0; }
+  .dropdown-menu { border-radius: var(--raio); border-color: var(--linha); font-size: .78125rem; box-shadow: 0 6px 18px rgba(58, 44, 38, .12); padding: 4px 0; }
   .dropdown-item { padding: .3rem .8rem; }
   .border, .border-top, .border-bottom { border-color: var(--linha) !important; }
-  .border-warning-subtle { border-color: #ead9b3 !important; } .border-success-subtle { border-color: #c4e2d9 !important; }
-  .border-danger-subtle { border-color: #f3cbc7 !important; } .bg-success-subtle { background: var(--ok-fundo) !important; }
+  .border-warning-subtle { border-color: #ebd4a3 !important; } .border-success-subtle { border-color: #bbd3b4 !important; }
+  .border-danger-subtle { border-color: #efc2bb !important; } .bg-success-subtle { background: var(--ok-fundo) !important; }
   .rounded { border-radius: var(--raio) !important; }
   /* A aba colada no cartão (ficha do paciente, financeiro): o topo fica reto, o pé continua arredondado. */
   .rounded-top-0 { border-top-left-radius: 0 !important; border-top-right-radius: 0 !important; }
@@ -341,7 +406,7 @@ Princípios da direção:
     .barra, .barra:hover, .barra:focus-within { width: 100%; height: 44px; flex-direction: row; align-items: center;
            padding: 0 4px; overflow-x: auto; box-shadow: none; }
     .barra a, .barra button { width: auto; height: 44px; padding: 0 12px; border-left: 0; border-bottom: 3px solid transparent; }
-    .barra a.ativo { border-bottom-color: #6d9bff; }
+    .barra a.ativo { border-bottom-color: #e08a5e; }
     .barra .nome, .barra .espaco { display: none; }
     .barra .separador { width: 1px; height: 22px; margin: 0 2px; }
   }

@@ -127,7 +127,7 @@ que só fazem sentido quando houver saída fiscal.
 | C-07 | Validação de **formato** do CRP. **Sem** consulta ao cadastro do CFP | ⚙️ | ✅ | 🟢 | ADR-044 |
 | C-08 | Campos vazios para `situacao_registro` e `verificado_em`, prontos caso a verificação volte | 🗄️ | ✅ | 🟢 | ADR-044 |
 | C-09 | CRP da empresa (PJ): campo **opcional** | 🎨🗄️ | ✅ | 🟢 | ADR-044 |
-| C-10 | **Cadastro em três tempos**: conta só com login e CRP → assinar ou testar → **quiz de quatro perguntas** (quem é você; PF ou PJ; abordagens escritas à mão, outras áreas e formas de atendimento; endereço do presencial). Tranca o sistema até terminar | 🎨⚙️🗄️ | ✅ | 🟢 | ADR-094, ADR-071 |
+| C-10 | **Cadastro em três tempos**: conta só com login e CRP → assinar ou testar → **quiz de quatro perguntas** (quem é você; PF ou PJ; abordagens e outras áreas **escolhidas de catálogo fechado**, mais as formas de atendimento; endereço do presencial). Tranca o sistema até terminar | 🎨⚙️🗄️ | ✅ | 🟢 | ADR-107, ADR-094, ADR-071 |
 | C-11 | **Dados da clínica no perfil**: nome, telefone e endereço, com regime PF/PJ, CNPJ e razão social | 🎨🗄️ | ✅ | 🟢 | ADR-067 |
 | C-03 | Padrões do psicólogo: duração da sessão (50 min), vencimento da mensalidade, cobro falta (sim/não) | 🎨🗄️ | ✅ | 🟢 | ADR-025 |
 | C-04 | Toda tela de cadastro mostra **de onde veio** o valor herdado do perfil | 🎨 | ✅ | 🟢 | ADR-025 |
@@ -385,8 +385,10 @@ dias sem sessão, sessões no mês e o financeiro do mês. A tela de análise (I
 | I-24 | **Pendências em resumo**: o painel mostra quantas há de cada tipo, e a lista item a item abre a pedido | 🎨 | ✅ | 🟢 | ADR-104 |
 | I-25 | **Conta no topo**: o nome leva ao perfil e diz isso ao passar o mouse; a engrenagem leva a Configurações, onde fica o sair. A barra fica com cinco seções | 🎨 | ✅ | 🟢 | ADR-105 |
 | I-26 | **Prevista ≠ a cadastrar** na agenda; o painel perde o card repetido de pacientes ativos; as pendências abrem sem rolagem lateral | 🎨 | ✅ | 🟢 | ADR-106 |
-| I-16 | **Tema visual "Prancheta"** num arquivo só: variáveis, componentes do Bootstrap ajustados, números em mono, próxima sessão destacada no painel | 🎨 | ✅ | 🟢 | ADR-089 |
+| I-16 | **Tema visual num arquivo só**: variáveis, componentes do Bootstrap ajustados, próxima sessão destacada no painel. Hoje na direção **terrosa** (pêssego, terracota, Bitter); antes era a "Prancheta", fria e técnica | 🎨 | ✅ | 🟢 | ADR-108, ADR-089 |
 | I-17 | Segunda etapa do tema: tirar `style` solto dos templates, unificar abas e navegador de período, milhar nos valores em reais | 🎨 | ✅ | ⚪ | ADR-089 |
+| I-18 | **Pacientes em blocos**: a lista vira grade de cartões, a faixa colorida diz a frequência, e a carga das fichas é em lote (`indicadores.fichas`) | 🎨⚙️ | ✅ | 🟢 | ADR-109 |
+| I-19 | **Catálogo de abordagens e áreas**: lista fechada guardada por código, com saída "Outra" e migração do que estava escrito à mão | 🎨⚙️🗄️ | ✅ | 🟢 | ADR-107 |
 
 ---
 

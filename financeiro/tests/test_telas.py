@@ -124,7 +124,7 @@ class RegistroPelaTela(BaseTelasFinanceiro):
 
     def test_painel_lembra_pagamento_pendente(self):
         self.entrar(self.ana)
-        self.assertContains(self.client.get(reverse("painel")), "Pagamentos pendentes")
+        self.assertContains(self.client.get(reverse("painel")), "pendente")  # ADR-104: "2 pagamentos pendentes"
 
 
 class RLSNoFinanceiro(TransactionTestCase):

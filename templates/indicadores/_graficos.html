@@ -15,9 +15,16 @@ nome de paciente (I-10).
   const fonte = document.getElementById('dados-dos-graficos');
   if (!window.Chart || !fonte) return;
   const d = JSON.parse(fonte.textContent);
-  const verde = '#1f6f68', verdeClaro = '#a9d3cf', vermelho = '#c0504d', vermelhoClaro = '#ecc3c1', cinza = '#adb5bd';
+  // ADR-108: as cores dos gráficos saem da mesma paleta terrosa do tema — um verde-oliva no lugar do teal, e
+  // um tijolo no lugar do vermelho frio. Não podem vir de `var(--ok)` porque o Chart.js desenha em canvas e não
+  // lê variável de CSS; então ficam escritas aqui, com o token de origem anotado.
+  const verde = '#44693f',        // --ok
+        verdeClaro = '#a9c4a3',   // o mesmo verde lavado das sessões feitas
+        vermelho = '#a93b33',     // --erro
+        vermelhoClaro = '#dda49d',
+        cinza = '#b5a094';        // o neutro quente da barra lateral, e não um cinza azulado
   const reais = (v) => 'R$ ' + Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
-  Chart.defaults.font.family = 'system-ui, sans-serif';
+  Chart.defaults.font.family = 'Bitter, Georgia, serif';   // a mesma letra do resto da tela (ADR-108)
   Chart.defaults.font.size = 11;
   const tela = (id) => document.getElementById(id);
 
@@ -29,7 +36,7 @@ nome de paciente (I-10).
       data: {
         labels: d.meses,
         datasets: [
-          { type: 'line', label: 'Resultado do mês', data: d.resultado, borderColor: '#333', backgroundColor: '#333', tension: .25,
+          { type: 'line', label: 'Resultado do mês', data: d.resultado, borderColor: '#2e2320', backgroundColor: '#2e2320', tension: .25,
             pointRadius: d.meses.map((_, i) => (foco && i === foco - 1) ? 6 : 3), order: 0 },
           { type: 'bar', label: 'Receitas recebidas', data: d.receitas_recebidas, backgroundColor: cores(verde), stack: 'receitas', order: 1 },
           { type: 'bar', label: 'Receitas a receber', data: d.receitas_a_receber, backgroundColor: cores(verdeClaro), stack: 'receitas', order: 1 },
@@ -68,6 +75,8 @@ nome de paciente (I-10).
     });
   };
   rosca('grafico-de-presenca', ['Presentes', 'Faltas sem avisar', 'Canceladas pelo paciente'], d.presenca, [verde, vermelho, cinza]);
-  rosca('grafico-de-composicao', ['Semanais', 'Quinzenais', 'Avulsos'], d.composicao, [verde, verdeClaro, cinza]);
+  // As mesmas cores da faixa do bloco de paciente (ADR-109): semanal, quinzenal e avulso falam uma língua só.
+  rosca('grafico-de-composicao', ['Semanais', 'Quinzenais', 'Avulsos'], d.composicao,
+        ['#a14e27', '#7a5a10', '#6b6057']);
 })();
 </script>

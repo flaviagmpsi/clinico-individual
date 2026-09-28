@@ -206,8 +206,11 @@ class Telas(TransactionTestCase):
 
     def test_cadastrar_pela_tela_com_valor_mascarado(self):
         self.entrar(self.ana)
+        # ADR-099: a despesa passou a ter **categoria** do carnê-leão, e ela é obrigatória — sem ela o formulário
+        # volta com erro em vez de redirecionar.
         resposta = self.client.post(reverse("financeiro:despesa_nova"), {
-            "descricao": "Supervisão clínica", "valor": "1.400,50", "vencimento": "2026-08-20", "mensal": "on"})
+            "categoria": "SUPERVISAO", "descricao": "Supervisão clínica", "valor": "1.400,50",
+            "vencimento": "2026-08-20", "mensal": "on"})
         self.assertRedirects(resposta, reverse("financeiro:despesas") + "?mes=2026-08", fetch_redirect_response=False)
         despesa = Despesa.objetos_todos.get(descricao="Supervisão clínica")
         self.assertEqual((despesa.valor, despesa.mensal, despesa.psicologo_id), (Decimal("1400.50"), True, self.ana.pk))

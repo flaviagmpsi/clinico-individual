@@ -533,21 +533,21 @@ class CalendarioPelaTela(BaseTelasAgenda):
         resposta = self.client.get(self.rota("semana", self.terca))
         for dia in ["Segunda-feira", "Terça-feira", "Sexta-feira"]:
             self.assertContains(resposta, dia)
-        self.assertContains(resposta, "Maria Agenda - 14H")
+        self.assertContains(resposta, "Maria Agenda · 14h")
 
     def test_livre_so_onde_ha_horario_cadastrado_e_nao_em_cima_de_sessao(self):
         """Grade de terça 13h–16h com a Maria às 14h: livre às 13h e às 15h, e em nenhum outro dia."""
         self.grade(TERCA, 13, 16)
         self.entrar(self.ana)
         corpo = self.client.get(self.rota("semana", self.terca)).content.decode()
-        self.assertIn("LIVRE - 13H", corpo)
-        self.assertIn("LIVRE - 15H", corpo)
-        self.assertNotIn("LIVRE - 14H", corpo)
-        self.assertEqual(corpo.count("LIVRE - "), 2)
+        self.assertIn("livre · 13h", corpo)
+        self.assertIn("livre · 15h", corpo)
+        self.assertNotIn("livre · 14h", corpo)
+        self.assertEqual(corpo.count("livre · "), 2)
 
     def test_sem_grade_nao_ha_livre_nenhum(self):
         self.entrar(self.ana)
-        self.assertNotContains(self.client.get(self.rota("semana", self.terca)), "LIVRE - ")
+        self.assertNotContains(self.client.get(self.rota("semana", self.terca)), "livre · ")
 
     def test_fim_de_semana_so_aparece_com_conteudo(self):
         """Procura o **cabeçalho da coluna** ("Sábado · 26/09"), e não a palavra solta: o gráfico de dias da semana
@@ -567,24 +567,24 @@ class CalendarioPelaTela(BaseTelasAgenda):
     def test_visao_do_dia_e_do_mes(self):
         self.entrar(self.ana)
         dia = self.client.get(self.rota("dia", self.terca))
-        self.assertContains(dia, "Maria Agenda - 14H")
+        self.assertContains(dia, "Maria Agenda · 14h")
         self.assertNotContains(dia, "Segunda-feira")
         mes = self.client.get(self.rota("mes", self.terca))
         self.assertContains(mes, f"{self.terca:%Y}")
-        self.assertContains(mes, "Maria Agenda - 14H")
+        self.assertContains(mes, "Maria Agenda · 14h")
 
     def test_filtro_de_situacao_esconde_livres_e_previstas(self):
         self.grade(TERCA, 13, 16)
         self.entrar(self.ana)
         corpo = self.client.get(self.rota("semana", self.terca, situacao=REALIZADA)).content.decode()
-        self.assertNotIn("LIVRE - ", corpo)
-        self.assertNotIn("Maria Agenda - 14H", corpo)  # prevista, não cadastrada
+        self.assertNotIn("livre · ", corpo)
+        self.assertNotIn("Maria Agenda · 14h", corpo)  # prevista, não cadastrada
 
     def test_a_grade_de_outro_psicologo_nao_vira_livre_aqui(self):
         with contexto.como(self.bruno.pk):
             HorarioDisponivel.objects.create(dia_semana=TERCA, inicio=time(8), fim=time(10))
         self.entrar(self.ana)
-        self.assertNotContains(self.client.get(self.rota("semana", self.terca)), "LIVRE - ")
+        self.assertNotContains(self.client.get(self.rota("semana", self.terca)), "livre · ")
 
 
 class RLSNaAgenda(TransactionTestCase):

@@ -1,0 +1,49 @@
+{% comment %}
+Escolha múltipla num catálogo fechado (ADR-107), com o campo de texto que só vale se “Outra” estiver marcada.
+
+Sem JavaScript continua funcionando: o campo de texto nasce visível e o formulário recusa texto sem a marca —
+o script só antecipa essa conversa, escondendo o campo enquanto “Outra” estiver desmarcada.
+
+Uso: {% include "components/_catalogo.html" with campo=form.abordagens outro=form.abordagem_outra %}
+{% endcomment %}
+<div data-catalogo>
+  <div class="form-label small mb-1">
+    {{ campo.label }}{% if campo.field.required %} <span class="text-danger">*</span>{% endif %}
+  </div>
+  <div class="catalogo-opcoes">
+    {% for opcao in campo %}
+      <div class="form-check{% if opcao.data.value == "OUTRA" %} catalogo-outra{% endif %}">
+        {{ opcao.tag }}
+        <label class="form-check-label" for="{{ opcao.id_for_label }}">{{ opcao.choice_label }}</label>
+      </div>
+    {% endfor %}
+  </div>
+  <div class="mt-2" data-campo-outro{% if "OUTRA" not in campo.value %} hidden{% endif %}>
+    {{ outro }}
+    {% for erro in outro.errors %}<div class="text-danger small">{{ erro }}</div>{% endfor %}
+  </div>
+  {% if campo.help_text %}<div class="form-text small">{{ campo.help_text }}</div>{% endif %}
+  {% for erro in campo.errors %}<div class="text-danger small">{{ erro }}</div>{% endfor %}
+</div>
+<script>
+  // Um script só por página, por mais catálogos que ela tenha.
+  if (!window.catalogoLigado) {
+    window.catalogoLigado = true;
+    document.addEventListener("DOMContentLoaded", () => {
+      document.querySelectorAll("[data-catalogo]").forEach((bloco) => {
+        const outra = bloco.querySelector(".catalogo-outra input");
+        const campo = bloco.querySelector("[data-campo-outro]");
+        if (!outra || !campo) return;
+        const ajustar = () => {
+          campo.hidden = !outra.checked;
+          // O que ficou escrito some junto com o campo: gravado com a opção desmarcada, apareceria no perfil
+          // como uma abordagem que a pessoa tirou.
+          if (campo.hidden) campo.querySelectorAll("input").forEach((c) => { c.value = ""; });
+          else campo.querySelector("input")?.focus();
+        };
+        outra.addEventListener("change", ajustar);
+        campo.hidden = !outra.checked;
+      });
+    });
+  }
+</script>

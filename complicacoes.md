@@ -3340,6 +3340,114 @@ existir, porque dá pra ver todas as informações sem arrastar pro lado se voc�
   que o tema dá a todo item de lista, para o realce do hover ir de ponta a ponta, era recortada pelo container. O
   container devolve esses 6 px em padding, e o realce continua funcionando.
 
+## ADR-107 — A abordagem volta a ser escolhida numa lista, para poder ser contada (revoga a ADR-094 nesta parte)
+
+**Status:** ✅ Aceita — Rodada 74.
+
+**Decisão do usuário:** "eu quero que tenha as abordagens previamente numa lista pra selecionar porque evita da
+pessoa escrever errado o nome de sua abordagem e eu nao conseguir calcular quantas pessoas de cada abordagem estao
+usando o sistema quando eu quiser fazer isso"; "lembrando que dá pra cadastrar mais de uma".
+
+**Decisões de arquitetura:**
+- **Lista fechada, e o que se guarda é o código.** A ADR-094 abriu para texto livre a pedido do usuário; a ADR-107
+  fecha de novo, por um motivo melhor: texto livre não conta. "Psicanálise", "psicanálise" e "Psicanalise" eram
+  três respostas diferentes. Guardar o **código** e não o rótulo protege a contagem de mudanças de redação:
+  renomear "Sistêmica" para "Sistêmica / familiar" muda a tela e não racha o número.
+- **Múltipla escolha continua.** `abordagens` já era lista; muda só a origem do valor. Quem faz TCC e Terapia do
+  Esquema marca as duas.
+- **Quem não está na lista marca "Outra" e escreve.** Sem essa saída, um psicólogo de abordagem não prevista —
+  esquizoanálise, EMDR, terapia narrativa, reichiana — travaria no cadastro ou marcaria algo errado, e aí a
+  contagem ficaria pior do que era com texto livre. O que vem por "Outra" fica num campo separado, para ser lido
+  de vez em quando e promovido quando repetir. O texto é **apagado** se a opção for desmarcada: gravado com a
+  marca desligada, ele apareceria no perfil como uma abordagem que a pessoa tirou.
+- **Abordagem é como a pessoa trabalha; área é o que ela faz além da clínica.** Avaliação neuropsicológica saiu da
+  lista de abordagens, que o usuário tinha escrito com ela dentro, e virou a primeira opção de "outras áreas" —
+  campo que já existia e cujo texto de ajuda a citava como exemplo. Nas duas listas, a mesma pessoa seria contada
+  duas vezes e nenhum dos dois números fecharia. **ABA ficou nas abordagens**, porque quem é ABA se apresenta
+  assim. Restam 18 abordagens e 9 áreas, cada lista com a sua "Outra".
+- **Quatro rótulos da mesma família continuam separados.** "Humanista-existencial", "abordagem centrada na
+  pessoa", "fenomenologia existencial" e "daseinsanálise" se sobrepõem, mas psicólogos se identificam com um e não
+  com os outros — juntá-los decidiria por eles. Na hora de contar, saiba que somam um grupo só.
+- **A migração converte sem perder ninguém.** As colunas de texto entram **antes** da conversão, senão o que não
+  batesse com nenhum código não teria onde ser guardado e seria apagado. O catálogo reconhece o próprio rótulo sem
+  acento nem caixa, os rótulos da lista fechada anterior (ADR-071, que a migração 0009 gravou como texto) e uma
+  lista de apelidos correntes. O que sobra vira OUTRA com o texto preservado.
+
+## ADR-108 — Direção terrosa: fundo pêssego, acento terracota, tipografia Bitter (revoga a ADR-089)
+
+**Status:** ✅ Aceita — Rodada 74.
+
+**Decisões do usuário:** "quero um visual que seja limpo, organizado e agradavel de ler [...] as pessoas vao passar
+muito tempo mexendo entao tem que ser algo que nao pese a vista"; "o fundo pessego é o mais bonito, vamos ficar com
+esse"; "nos numeros, o zero cortado é feio e preciso que os numeros ornem com as letras, e alias, vou escolher a
+tipografia bitter".
+
+**Decisões de arquitetura:**
+- **A direção "Prancheta" (ADR-089) sai inteira.** Era fria, técnica e densa. A nova é quente e calma, porque o uso
+  real é ficar horas na tela. Explorada fora do app, em `design-exploration/terroso.html`, com três fundos e cinco
+  tipografias para o usuário comparar antes de qualquer mudança no sistema.
+- **Fundo pêssego, escolhido entre três.** A primeira areia lia como cinza (40% de saturação); a corrigida subiu
+  para 71% na mesma claridade. O pêssego é mais rosado ainda, e é o que conversa com a terracota do acento.
+- **Todo par medido antes de entrar.** Texto normal 4,5:1, borda e elemento de interface 3:1. O mais apertado é a
+  borda do campo, em 3,14:1. Uma paleta bonita que reprova aqui não serve.
+- **Os números saem da própria letra.** O zero cortado que o usuário reprovou era da fonte monoespaçada posta para
+  os valores — e era ela também que destoava do texto. Saiu do sistema inteiro. Os dígitos da Bitter já têm largura
+  igual entre si (medidos: 25,2px cada a 40px, com ou sem `font-variant-numeric`), então a coluna de valores alinha
+  sem mono. `--f-num` fica como ponto de troca, caso um dia voltem a ser outra letra.
+- **Serifa pede mais ar.** Corpo de 13px para 13,5px e entrelinha de 1,5 para 1,6. E a **caixa alta some** dos selos
+  e dos cartões da agenda: era da direção técnica, e em corpo pequeno com serifa ela cansa — nome de paciente em
+  caixa alta parece formulário, não gente. Fica só em `.rotulo`, que é etiqueta curta.
+- **Os ícones da barra passam a ser desenhados aqui.** Os do Bootstrap Icons são de famílias diferentes entre si —
+  uns cheios, outros vazados, espessuras que não combinam — e ao lado de uma letra com serifa a diferença fica
+  evidente. Os novos têm a mesma espessura de traço (1,7), as mesmas pontas arredondadas e a mesma caixa.
+- **O token `--marinho` virou `--escuro`.** Continuar chamando de marinho um marrom seria mentira no código.
+
+## ADR-109 — Os pacientes viram blocos, e a frequência vira cor
+
+**Status:** ✅ Aceita — Rodada 74.
+
+**Decisão do usuário:** "quero testar pra ver se nao fica mais esteticamente agradavel os pacientes estarem em
+blocos ao inves de uma lista"; "diferenciar as informaçoes, dos pacientes por exemplo, por cores, seria
+interessante, pois ta muito cinza, muito sobrio".
+
+**Decisões de arquitetura:**
+- **A tabela vira grade de cartões.** A tabela tratava todo paciente como uma linha igual às outras. O bloco dá ao
+  nome o peso que ele tem no trabalho, e cabem num relance o horário, o que está em aberto e a presença.
+- **A faixa colorida diz a frequência** — semanal, quinzenal ou avulso — em três matizes bem separados dentro da
+  família terrosa. O rótulo vai **escrito ao lado** de propósito: quem não distingue cor lê "semanal" do mesmo
+  jeito. As mesmas três cores passam a valer no gráfico de composição da agenda, senão o mesmo dado teria duas
+  linguagens.
+- **A grade substitui a lista, não convive com ela.** Duas visões seriam o dobro de tela para manter e uma decisão
+  a mais para quem usa. Se com 40 pacientes o bloco cansar, aí sim vale uma lista compacta — com o problema real
+  na mão, e não por precaução.
+- **A carga é em lote, e mora em `indicadores`.** Cada bloco mostra dado de três apps (`pacientes`, `agenda`,
+  `financeiro`), e `indicadores` é o único que pode depender de todos. Uma consulta por bloco seriam dezenas de
+  idas a um banco remoto: `indicadores.fichas` faz uma consulta para as recorrências e reaproveita a carga única de
+  `financeiro.servicos.pagamentos_pendentes`.
+- **As ações ficam fora do link do bloco.** Link dentro de link não é HTML válido, e os dois cliques brigariam.
+
+## ADR-110 — Quatro estados de sessão que se distinguem de relance (refina a ADR-106)
+
+**Status:** ✅ Aceita — Rodada 74.
+
+**Decisão do usuário:** "as sessoes previstas e a cadastrar estao com cores muito proximas, está dificil
+diferenciar".
+
+**Decisões de arquitetura:**
+- **O problema foi medido, não estimado.** Em distância perceptual (Lab, ΔE), "prevista" e "a cadastrar" estavam a
+  **7,7** uma da outra — abaixo do limiar de separar de relance. Pior: "prevista" e "livre" estavam a 6,5. A causa
+  era todas serem lavados quentes sobre um fundo quente, o que a ADR-106 não tinha como prever porque o fundo era
+  frio na época dela.
+- **A correção anda em três eixos ao mesmo tempo**, porque mexer só no matiz do preenchimento não resolveria:
+  **matiz** — "prevista" sai da família quente e vai para petróleo pálido, a única cor fria da tela, porque sobre
+  fundo pêssego é o único jeito de uma cor clara se destacar sem gritar, e frio combina com o que ela significa;
+  **peso** — "a cadastrar" é a única que pede ação, então é a única com preenchimento cheio (ΔE 31,6 contra a
+  prevista); **barra** — a lateral saturada engorda para 5px e carrega o estado em cor cheia, e entre as quatro
+  barras a menor distância é ΔE 34, então dá para ler o estado só por ela.
+- **"Livre" perde o preenchimento** e fica só com o tracejado, que é o que ele é: vazio.
+- **O verde de "feita" ficou mais cheio.** Contra o azul da prevista, o verde lavado dava ΔE 11,1 e as duas
+  competiam na mesma semana; agora dá 21,1, e o texto ainda lê a 6,77:1.
+
 ## Impeditivos
 
 | # | Impeditivo | Situação |

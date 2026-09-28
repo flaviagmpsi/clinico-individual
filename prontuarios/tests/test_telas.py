@@ -117,5 +117,5 @@ class EscritaPelaTela(BaseTelasProntuario):
         self.entrar(self.ana)
         self.assertContains(self.client.get(reverse("pacientes:detalhe", args=[self.marcos.pk])),
                             f"{reverse('prontuarios:lista')}?paciente={self.marcos.pk}")
-        self.assertContains(self.client.get(reverse("painel")), "Prontuários para escrever")
+        self.assertContains(self.client.get(reverse("painel")), "para escrever")  # ADR-104: "2 prontuários para escrever"
         self.assertContains(self.client.get(reverse("prontuarios:lista"), {"paciente": self.marcos.pk}), "Não escrito")

@@ -120,14 +120,14 @@ class HorarioNoCadastro(Base):
         terca = self.hoje + timedelta(days=(TERCA - self.hoje.weekday()) % 7 + 7)  # a terça da semana que vem
         semana = f"{reverse('atendimentos:agenda')}?visao=semana&data={terca:%Y-%m-%d}"
         antes = self.client.get(semana).content.decode()
-        self.assertIn("LIVRE - 14H", antes)
+        self.assertIn("livre · 14h", antes)
         self.assertNotIn("Paula Nova", antes)
 
         self.cadastrar(frequencia="SEMANAL", dia_semana="1", hora="14:00")
         depois = self.client.get(semana).content.decode()
-        self.assertNotIn("LIVRE - 14H", depois)
-        self.assertIn("Paula Nova - 14H", depois)
-        self.assertIn("LIVRE - 16H", depois)  # o outro horário livre continua livre
+        self.assertNotIn("livre · 14h", depois)
+        self.assertIn("Paula Nova · 14h", depois)
+        self.assertIn("livre · 16h", depois)  # o outro horário livre continua livre
         # E na aba Horários o trecho passa a mostrar quem o ocupa.
         self.assertContains(self.client.get(reverse("agenda:horarios")), "Paula Nova")
 

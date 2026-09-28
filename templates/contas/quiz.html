@@ -83,8 +83,8 @@
           </script>
 
         {% elif passo == 3 %}
-          <div class="mb-3">{% include "components/_lista_de_textos.html" with campo=form.abordagens exemplo="Ex.: Psicanálise" mais="outra abordagem" %}</div>
-          <div class="mb-3">{% include "components/_lista_de_textos.html" with campo=form.outras_areas exemplo="Ex.: Avaliação neuropsicológica" mais="outra área" %}</div>
+          <div class="mb-3">{% include "components/_catalogo.html" with campo=form.abordagens outro=form.abordagem_outra %}</div>
+          <div class="mb-3 pt-3 border-top">{% include "components/_catalogo.html" with campo=form.outras_areas outro=form.area_outra %}</div>
           <div>
             <div class="form-label small mb-1">Como você atende <span class="text-danger">*</span></div>
             <div class="form-check">

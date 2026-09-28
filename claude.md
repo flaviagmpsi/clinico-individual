@@ -67,13 +67,22 @@ corre sob `hamilton_web` e só alcança a linha do próprio convite (`core.db.ap
 mostra dado de paciente nem toca tabela clínica; quem um dia escrever ali uma consulta a `Paciente` recebe
 `permission denied`, e é para ser assim.
 
-### 3.2b A aparência mora num lugar só (ADR-089)
-Tema "Prancheta", em `templates/components/_tema.html`. **Variável primeiro, componente depois, tela nunca:** tela
-nova usa os componentes do Bootstrap já ajustados e as classes `.rotulo`, `.hora`, `.valor`, `.mono`; não declara
-cor, fonte, raio nem sombra. Hora, data e dinheiro vão em mono. Cor só onde há significado (situação) ou ação
-(acento cobalto); em lista, o nome é tinta e só a ação é azul. Sombra não separa blocos; **brilho é resposta a
-gesto** e marca a ação principal (ADR-090). Toda ação clicável responde ao mouse — quem cria componente novo herda
-isso de `.btn`, `.list-group-item`, `.nav-link` e `.cartao`.
+### 3.2b A aparência mora num lugar só (ADR-108)
+Direção **terrosa**, em `templates/components/_tema.html`: fundo pêssego, acento terracota, tipografia **Bitter**.
+**Variável primeiro, componente depois, tela nunca:** tela nova usa os componentes do Bootstrap já ajustados e as
+classes `.rotulo`, `.hora`, `.valor`, `.mono`; não declara cor, fonte, raio nem sombra.
+- **Não há fonte monoespaçada.** Hora, data e dinheiro saem da própria Bitter, cujos dígitos já têm largura igual;
+  o que alinha a coluna é `font-variant-numeric: tabular-nums`, não uma família à parte. O ponto de troca, se um
+  dia mudar, é `--f-num`.
+- **Toda cor nova é medida antes de entrar**: 4,5:1 para texto normal, 3:1 para borda e elemento de interface. E
+  quando duas cores precisam ser distinguidas entre si — estados da agenda, frequência do paciente —, o que vale é
+  a distância perceptual (ΔE em Lab): abaixo de ~10 o olho não separa de relance (ADR-110).
+- **Cor só onde há significado** (situação) ou ação; em lista, o nome é tinta e só a ação é terracota. Sombra não
+  separa blocos; **brilho é resposta a gesto** e marca a ação principal (ADR-090). Toda ação clicável responde ao
+  mouse — quem cria componente novo herda isso de `.btn`, `.list-group-item`, `.nav-link` e `.cartao`.
+- **Caixa alta só em `.rotulo`.** Com serifa, em corpo pequeno, ela cansa e lê mais devagar.
+- **Ícone de navegação é SVG desenhado em `_barra.html`**, com traço de 1,7 e caixa de 24 — e não do Bootstrap
+  Icons, cujas famílias não combinam entre si. Bootstrap Icons continua valendo para ícone solto dentro de tela.
 Exceções de propósito: a **folha** de documentos e prontuário (serifada — é papel) e as cores de situação da agenda.
 
 ### 3.3 O prontuário é peça de defesa legal (ADR-005)

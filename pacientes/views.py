@@ -33,7 +33,7 @@ from pacientes.forms import (
     PagadorForm,
     ResponsavelLegalForm,
 )
-from indicadores import estatisticas, periodo
+from indicadores import estatisticas, fichas, periodo
 from pacientes import convites
 from pacientes.cadastro import blocos_registrados
 from pacientes.forms import GENEROS_SUGERIDOS
@@ -77,6 +77,9 @@ class ListaPacientes(LoginRequiredMixin, ListView):
         # ADR-103: quem vem e quem falta fica ao lado da lista de pacientes, e não numa aba de estatísticas.
         contexto.update(periodo.contexto_do_seletor(self.request))
         presenca = estatisticas.presenca_dos_pacientes(contexto["periodo"])
+        # ADR-109: a lista virou blocos, e cada bloco mostra horário, frequência, o que está em aberto e a
+        # presença. Tudo em **uma** carga (`indicadores.fichas`), e não uma consulta por paciente.
+        contexto["fichas"] = fichas.fichas(contexto["pacientes"], presenca.por_paciente)
         contexto.update(presenca=presenca, grafico={
             "presenca": [presenca.presenca.presentes, presenca.presenca.faltas,
                          presenca.presenca.canceladas_pelo_cliente],

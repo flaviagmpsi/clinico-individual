@@ -9,9 +9,10 @@ grava dado fora do formato.
 from django import forms
 from django.contrib.auth.forms import AuthenticationForm, BaseUserCreationForm
 
+from contas import abordagens as catalogo
 from contas.models import Psicologo
 from core.calendario import MAIOR_DIA_UTIL, TipoDia
-from core.formularios import LimpaMascara, ListaDeTextos
+from core.formularios import LimpaMascara
 
 
 class LoginForm(AuthenticationForm):
@@ -26,8 +27,42 @@ class LoginForm(AuthenticationForm):
     )
 
 
-_AJUDA_ABORDAGENS = "Escreva como você se apresenta. Pode ser mais de uma."
-_AJUDA_AREAS = "O que você faz além da clínica — avaliação neuropsicológica, orientação profissional, supervisão."
+_AJUDA_ABORDAGENS = "Marque quantas quiser. Não achou a sua? Marque “Outra” e escreva."
+_AJUDA_AREAS = "O que você faz além da clínica. Deixe em branco se atende só no consultório."
+
+
+class _Catalogo(forms.MultipleChoiceField):
+    """Escolha múltipla num catálogo fechado, guardada como lista de códigos (ADR-107).
+
+    A classe vai no widget, e não no template: sem ela o navegador desenha a caixa nativa — azul, fora da paleta,
+    e sem o recuo que põe o rótulo ao lado dela.
+    """
+
+    def __init__(self, catalogo, **kwargs):
+        kwargs.setdefault("widget", forms.CheckboxSelectMultiple(attrs={"class": "form-check-input"}))
+        super().__init__(choices=catalogo, **kwargs)
+
+
+class EscolhasComOutra:
+    """Liga cada catálogo ao seu campo de texto: marcou “Outra”, escreve; desmarcou, o texto some.
+
+    O texto não é limpo só na tela — se ficasse gravado com a opção desmarcada, `abordagem_descrita` continuaria
+    mostrando algo que a pessoa tirou, e a contagem por OUTRA acusaria gente que não marcou OUTRA.
+    """
+
+    CATALOGOS: dict[str, str] = {}   # {campo da lista: campo de texto}
+
+    def clean(self):
+        dados = super().clean()
+        for lista, escrito in self.CATALOGOS.items():
+            escolhidos = dados.get(lista) or []
+            texto = (dados.get(escrito) or "").strip()
+            if catalogo.OUTRA in escolhidos:
+                if not texto:
+                    self.add_error(escrito, "Escreva qual, ou desmarque “Outra”.")
+            elif texto:
+                dados[escrito] = ""
+        return dados
 
 
 class _QuemEVoce:
@@ -42,16 +77,20 @@ class _QuemEVoce:
     # responderia sempre "não existe". Quem recusa é a coluna única; a view traduz a recusa (`GravaSemRepetir`).
 
 
-class PerfilForm(_QuemEVoce, LimpaMascara, forms.ModelForm):
+class PerfilForm(EscolhasComOutra, _QuemEVoce, LimpaMascara, forms.ModelForm):
     CAMPOS_NUMERICOS = ("cpf", "telefone", "cnpj", "telefone_clinica", "cep")
+    CATALOGOS = {"abordagens": "abordagem_outra", "outras_areas": "area_outra"}
 
-    abordagens = ListaDeTextos(label="Abordagens", required=False, help_text=_AJUDA_ABORDAGENS)
-    outras_areas = ListaDeTextos(label="Outras áreas de atuação", required=False, help_text=_AJUDA_AREAS)
+    abordagens = _Catalogo(catalogo.ABORDAGENS, label="Abordagens", required=False,
+                           help_text=_AJUDA_ABORDAGENS)
+    outras_areas = _Catalogo(catalogo.AREAS, label="Outras áreas de atuação", required=False,
+                             help_text=_AJUDA_AREAS)
 
     class Meta:
         model = Psicologo
         fields = ["nome_completo", "email", "cpf", "telefone",
-                  "crp_regiao", "crp_numero", "abordagens", "outras_areas",
+                  "crp_regiao", "crp_numero",
+                  "abordagens", "abordagem_outra", "outras_areas", "area_outra",
                   "atende_online", "atende_presencial",
                   "regime", "cnpj", "razao_social", "crp_empresa",
                   "nome_clinica", "telefone_clinica", "cep", "logradouro", "numero", "complemento",
@@ -68,6 +107,10 @@ class PerfilForm(_QuemEVoce, LimpaMascara, forms.ModelForm):
                                                  "inputmode": "numeric"}),
             "crp_numero": forms.TextInput(attrs={"class": "form-control", "placeholder": "123456",
                                                  "inputmode": "numeric"}),
+            "abordagem_outra": forms.TextInput(attrs={"class": "form-control form-control-sm",
+                                                      "placeholder": "Escreva qual"}),
+            "area_outra": forms.TextInput(attrs={"class": "form-control form-control-sm",
+                                                 "placeholder": "Escreva qual"}),
             "atende_online": forms.CheckboxInput(attrs={"class": "form-check-input"}),
             "atende_presencial": forms.CheckboxInput(attrs={"class": "form-check-input"}),
             "regime": forms.Select(attrs={"class": "form-select"}),
@@ -191,16 +234,25 @@ class RegimeForm(LimpaMascara, forms.ModelForm):
         return dados
 
 
-class ComoAtendeForm(forms.ModelForm):
-    """Passo 3: abordagens, outras áreas e formas de atendimento (ADR-094)."""
+class ComoAtendeForm(EscolhasComOutra, forms.ModelForm):
+    """Passo 3: abordagens, outras áreas e formas de atendimento (ADR-094, ADR-107)."""
 
-    abordagens = ListaDeTextos(label="Qual é a sua abordagem?", help_text=_AJUDA_ABORDAGENS)
-    outras_areas = ListaDeTextos(label="Atua em alguma outra área?", required=False, help_text=_AJUDA_AREAS)
+    CATALOGOS = {"abordagens": "abordagem_outra", "outras_areas": "area_outra"}
+
+    abordagens = _Catalogo(catalogo.ABORDAGENS, label="Qual é a sua abordagem?",
+                           help_text=_AJUDA_ABORDAGENS)
+    outras_areas = _Catalogo(catalogo.AREAS, label="Atua em alguma outra área?", required=False,
+                             help_text=_AJUDA_AREAS)
 
     class Meta:
         model = Psicologo
-        fields = ["abordagens", "outras_areas", "atende_online", "atende_presencial"]
+        fields = ["abordagens", "abordagem_outra", "outras_areas", "area_outra",
+                  "atende_online", "atende_presencial"]
         widgets = {
+            "abordagem_outra": forms.TextInput(attrs={"class": "form-control form-control-sm",
+                                                      "placeholder": "Escreva qual"}),
+            "area_outra": forms.TextInput(attrs={"class": "form-control form-control-sm",
+                                                 "placeholder": "Escreva qual"}),
             "atende_online": forms.CheckboxInput(attrs=_MARCA),
             "atende_presencial": forms.CheckboxInput(attrs=_MARCA),
         }

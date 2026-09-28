@@ -220,8 +220,12 @@ class PainelPelaTela(TransactionTestCase):
     def test_mostra_o_dia_as_pendencias_e_nao_o_atendimento_alheio(self):
         self.assertTrue(self.client.login(username=self.ana.email, password=SENHA))
         resposta = self.client.get(reverse("painel"))
-        for texto in ["Hoje", "Pendências", "Sessões esperando cadastro", "Pagamentos pendentes",
-                      "Prontuários para escrever", "Marcos Painel"]:
+        # ADR-104: cada pendência virou uma linha-resumo que começa pelo número e continua em minúscula
+        # ("3 sessões esperando cadastro"). Os títulos em maiúscula que este teste procurava sumiram com ela.
+        # O trecho procurado é o que **não** muda com o singular e o plural, para a asserção não depender de
+        # quantas pendências a semente gerou.
+        for texto in ["Hoje", "Pendências", "esperando cadastro", "pendente",
+                      "para escrever", "Marcos Painel"]:
             with self.subTest(texto=texto):
                 self.assertContains(resposta, texto)
         self.assertNotContains(resposta, "Carla Painel")

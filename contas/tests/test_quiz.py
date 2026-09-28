@@ -97,7 +97,7 @@ class PerguntasDoQuiz(TransactionTestCase):
         return self.client.post(self.passo(2), dados)
 
     def responder_atendimento(self, **ajustes):
-        dados = {"abordagens": ["Psicanálise"], "outras_areas": [""], "atende_presencial": "on"}
+        dados = {"abordagens": ["PSICANALISE"], "outras_areas": [], "atende_presencial": "on"}
         dados.update(ajustes)
         return self.client.post(self.passo(3), dados)
 
@@ -115,7 +115,7 @@ class PerguntasDoQuiz(TransactionTestCase):
         self.psicologo.refresh_from_db()
         # ADR-066: a tela manda com máscara, o banco guarda número puro.
         self.assertEqual((self.psicologo.cpf, self.psicologo.telefone), ("52998224725", "31988887777"))
-        self.assertEqual((self.psicologo.regime, self.psicologo.abordagens), ("PF", ["Psicanálise"]))
+        self.assertEqual((self.psicologo.regime, self.psicologo.abordagens), ("PF", ["PSICANALISE"]))
         self.assertFalse(self.psicologo.cadastro_completo)  # ainda falta o endereço do presencial
 
         self.assertRedirects(self.responder_clinica(), reverse("painel"), fetch_redirect_response=False)
@@ -133,28 +133,65 @@ class PerguntasDoQuiz(TransactionTestCase):
                                       cpf="52998224725", telefone="31988887777", crp_regiao="04", crp_numero="9")
         self.assertContains(self.responder_quem_e(), "Já existe uma conta com este CPF")
 
-    def test_varias_abordagens_escritas_a_mao_e_outra_area(self):
+    def test_varias_abordagens_e_uma_area(self):
         self.responder_quem_e()
         self.responder_regime()
-        self.responder_atendimento(abordagens=["  Psicanálise ", "Esquizoanálise", "", "psicanálise"],
-                                   outras_areas=["Avaliação neuropsicológica"])
+        self.responder_atendimento(abordagens=["TCC", "TERAPIA_DO_ESQUEMA"],
+                                   outras_areas=["AVALIACAO_NEUROPSICOLOGICA"])
         self.psicologo.refresh_from_db()
-        # Espaço sobrando, caixa vazia e repetição saem; a ordem em que ele escreveu fica.
-        self.assertEqual(self.psicologo.abordagens, ["Psicanálise", "Esquizoanálise"])
-        self.assertEqual(self.psicologo.outras_areas, ["Avaliação neuropsicológica"])
-        self.assertEqual(self.psicologo.abordagem_descrita, "Psicanálise, Esquizoanálise")
+        self.assertEqual(self.psicologo.abordagens, ["TCC", "TERAPIA_DO_ESQUEMA"])
+        self.assertEqual(self.psicologo.outras_areas, ["AVALIACAO_NEUROPSICOLOGICA"])
+        # O que se mostra é o rótulo, na ordem do catálogo — o que se guarda é o código (ADR-107).
+        self.assertEqual(self.psicologo.abordagem_descrita,
+                         "Terapia cognitivo-comportamental (TCC), Terapia do esquema")
+        self.assertEqual(self.psicologo.areas_descritas, "Avaliação neuropsicológica")
 
-    def test_a_abordagem_e_escrita_e_nao_escolhida_de_lista(self):
+    def test_a_abordagem_e_escolhida_da_lista_e_nao_escrita(self):
         self.responder_quem_e()
         self.responder_regime()
         resposta = self.client.get(self.passo(3))
-        self.assertContains(resposta, 'name="abordagens"')
-        self.assertNotContains(resposta, "<select")
+        self.assertContains(resposta, 'name="abordagens" value="PSICANALISE"')
+        self.assertContains(resposta, "Gestalt-terapia")
+        # Avaliação neuropsicológica é área, não abordagem: se estivesse nas duas, contaria duas vezes.
+        self.assertNotContains(resposta, 'name="abordagens" value="AVALIACAO_NEUROPSICOLOGICA"')
+        self.assertContains(resposta, 'name="outras_areas" value="AVALIACAO_NEUROPSICOLOGICA"')
+
+    def test_abordagem_fora_do_catalogo_e_recusada(self):
+        """A lista fechada não aceita o que não está nela — é o que torna a contagem confiável."""
+        self.responder_quem_e()
+        self.responder_regime()
+        resposta = self.responder_atendimento(abordagens=["Esquizoanálise"])
+        self.assertEqual(resposta.status_code, 200)
+        self.assertIn("abordagens", resposta.context["form"].errors)
+
+    def test_quem_nao_esta_na_lista_marca_outra_e_escreve(self):
+        self.responder_quem_e()
+        self.responder_regime()
+        self.responder_atendimento(abordagens=["OUTRA"], abordagem_outra="Esquizoanálise")
+        self.psicologo.refresh_from_db()
+        self.assertEqual(self.psicologo.abordagens, ["OUTRA"])
+        self.assertEqual(self.psicologo.abordagem_descrita, "Esquizoanálise")
+
+    def test_outra_marcada_sem_escrever_nao_passa(self):
+        self.responder_quem_e()
+        self.responder_regime()
+        resposta = self.responder_atendimento(abordagens=["OUTRA"], abordagem_outra="  ")
+        self.assertEqual(resposta.status_code, 200)
+        self.assertIn("abordagem_outra", resposta.context["form"].errors)
+
+    def test_texto_de_outra_some_quando_outra_e_desmarcada(self):
+        """Senão o perfil continuaria mostrando uma abordagem que a pessoa tirou, e a contagem por OUTRA mentiria."""
+        self.responder_quem_e()
+        self.responder_regime()
+        self.responder_atendimento(abordagens=["PSICANALISE"], abordagem_outra="Esquizoanálise")
+        self.psicologo.refresh_from_db()
+        self.assertEqual(self.psicologo.abordagem_outra, "")
+        self.assertEqual(self.psicologo.abordagem_descrita, "Psicanálise")
 
     def test_sem_nenhuma_abordagem_nao_passa(self):
         self.responder_quem_e()
         self.responder_regime()
-        resposta = self.responder_atendimento(abordagens=["", "  "])
+        resposta = self.responder_atendimento(abordagens=[])
         self.assertEqual(resposta.status_code, 200)
         self.assertIn("abordagens", resposta.context["form"].errors)
 
@@ -224,7 +261,7 @@ class SistemaTrancado(TransactionTestCase):
         self.client.post(reverse("contas:quiz", args=[1]),
                          {"nome_completo": "Ana Ribeiro", "cpf": "52998224725", "telefone": "31988887777"})
         self.client.post(reverse("contas:quiz", args=[2]), {"regime": "PF", "cnpj": "", "razao_social": ""})
-        self.client.post(reverse("contas:quiz", args=[3]), {"abordagens": ["Gestalt-terapia"], "atende_online": "on"})
+        self.client.post(reverse("contas:quiz", args=[3]), {"abordagens": ["GESTALT"], "atende_online": "on"})
         resposta = self.client.get(reverse("painel"))
         self.assertEqual(resposta.status_code, 200)
         self.assertContains(resposta, "Teste grátis")  # o aviso de prazo, no alto das telas

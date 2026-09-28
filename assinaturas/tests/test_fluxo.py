@@ -33,7 +33,7 @@ class ContaNova(TransactionTestCase):
 
     def concluir_quiz(self):
         Psicologo.objects.filter(pk=self.psicologo.pk).update(
-            nome_completo="Cora Lima", cpf="52998224725", telefone="11988887777", abordagens=["Psicanálise"],
+            nome_completo="Cora Lima", cpf="52998224725", telefone="11988887777", abordagens=["PSICANALISE"],
             atende_online=True, quiz_concluido_em=timezone.now())
 
 

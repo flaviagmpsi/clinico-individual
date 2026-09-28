@@ -76,6 +76,10 @@ class ListaDeTextos(forms.Field):
 
     Guarda numa coluna JSON. Tira espaço sobrando, caixa vazia e repetição (sem olhar maiúscula), e mantém a
     ordem em que a pessoa escreveu. Renderize com `components/_lista_de_textos.html`.
+
+    ⚠️ **Hoje nenhum formulário usa este campo.** Ele nasceu para as abordagens (ADR-094), que voltaram a ser
+    catálogo fechado na ADR-107 justamente porque texto livre não dá para contar. Fica aqui para o próximo caso
+    em que a resposta certa seja mesmo escrever — e não é a de um dado que alguém vá querer somar depois.
     """
 
     widget = _VariasCaixas

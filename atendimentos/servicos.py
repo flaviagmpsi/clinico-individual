@@ -220,9 +220,13 @@ def horarios_livres(dia: date, ocupados: list, blocos, duracao: int) -> list[Hor
 
 
 def hora_curta(instante: datetime) -> str:
-    """`14H`, `8H30` — o jeito da planilha, sem os zeros que não dizem nada."""
+    """`14h`, `8h30` — o jeito da planilha, sem os zeros que não dizem nada.
+
+    Minúsculo desde a ADR-108: a caixa alta do cartão da agenda era do CSS da direção técnica anterior, e este
+    `h` maiúsculo era o único pedaço que vinha do Python. Sem ela, um `H` solto destoava do resto da linha.
+    """
     local = timezone.localtime(instante)
-    return f"{local.hour}H" + (f"{local.minute:02d}" if local.minute else "")
+    return f"{local.hour}h" + (f"{local.minute:02d}" if local.minute else "")
 
 
 @dataclass

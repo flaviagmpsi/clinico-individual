@@ -9,36 +9,45 @@ ordem de horário, horários livres visíveis onde há grade cadastrada. Amarelo
 sessão cadastrada muda de cor (presente verde, falta vermelha, cancelada cinza riscada); livre é cinza.
 {% endcomment %}
 <style>
-  /* As cores dizem a situação, como o usuário definiu (ADR-073, ADR-074): amarelo esperada, verde realizada, azul
-     remarcada, cinza livre. Os tons são os do tema (ADR-089). */
+  /* As cores dizem a situação (ADR-073, ADR-074). Os tons são os do tema terroso (ADR-108). */
   .calendario { display: grid; gap: 8px; }
-  .coluna .cabecalho { background: var(--marinho-3); color: #dfe6f1; font-size: .6875rem; font-weight: 600; letter-spacing: .08em;
+  .coluna .cabecalho { background: var(--escuro-3); color: #e8ddd2; font-size: .6875rem; font-weight: 600; letter-spacing: .08em;
                        text-transform: uppercase; text-align: center; padding: 5px 4px; border-radius: var(--raio) var(--raio) 0 0; }
   .coluna .cabecalho.hoje { background: var(--tinta); color: #fff; }
   .coluna .corpo { border: 1px solid var(--linha); border-top: 0; min-height: 120px; padding: 6px;
                    display: flex; flex-direction: column; gap: 5px; border-radius: 0 0 var(--raio) var(--raio); background: var(--superficie); }
-  .cartao { display: block; padding: 4px 7px; border-radius: var(--raio); font-size: .75rem; font-weight: 600;
-            text-transform: uppercase; letter-spacing: .02em; line-height: 1.25; text-decoration: none; color: var(--texto);
+  .cartao { display: block; padding: 5px 8px; border-radius: var(--raio); font-size: .78125rem; font-weight: 600;
+            line-height: 1.3; text-decoration: none; color: var(--texto);
             border: 1px solid transparent; border-left-width: 3px; }
-  .cartao small { display: block; font-weight: 400; text-transform: none; letter-spacing: 0; font-size: .6875rem; color: var(--suave); }
-  .cartao.livre { background: var(--superficie-2); color: var(--suave); border-color: var(--linha); border-style: dashed; border-left-width: 1px; font-weight: 500; }
-  /* ADR-106: prevista e a cadastrar tinham o mesmo amarelo e só mudavam a borda — de longe, eram a mesma coisa.
-     Agora a diferença é o **tom**: a prevista é palha, calma, porque ainda vai acontecer; a que passou sem cadastro
-     é âmbar carregado, que é a cor de "pede ação" no resto do sistema (--atencao). */
-  .cartao.esperada { background: #fff2c2; border-color: #e8cd79; border-left-color: #cfa12a; }
-  .cartao.pendente { background: #ffca7a; border-color: #e09428; border-left-color: var(--atencao); color: #4a2600; }
-  .cartao.pendente small { color: #7a4300; font-weight: 600; }
-  .cartao.realizada { background: #b4ecd2; border-color: #5fc79f; border-left-color: var(--ok); color: #064b36; }
-  .cartao.faltou { background: #ffc4bd; border-color: #f08a80; border-left-color: var(--erro); }
+  .cartao small { display: block; font-weight: 400; font-size: .6875rem; color: var(--suave); }
+  /* ADR-110: os quatro estados eram lavados quentes sobre um fundo quente, e mediam dE 7,7 entre "prevista" e
+     "a cadastrar" — abaixo do limiar de distinguir de relance. "Livre" e "prevista" davam 6,5. A correção anda em
+     três eixos ao mesmo tempo, porque mexer só no matiz do preenchimento não bastava:
+       1. MATIZ  — "prevista" sai da família quente e vai para petróleo pálido. Sobre um fundo pêssego, frio é o
+                   único jeito de uma cor clara se destacar sem gritar, e frio combina com o que ela diz: ainda
+                   vai acontecer, não há nada a fazer.
+       2. PESO   — "a cadastrar" é a única que pede ação, então é a única com preenchimento cheio. dE 31,6 contra
+                   a prevista e 28,8 contra o cartão: salta da tela de longe.
+       3. BARRA  — a lateral saturada engorda para 5px e carrega o estado em cor cheia. Entre as quatro barras a
+                   menor distância é dE 34, então dá para ler o estado só pela barra.
+     O verde do "realizada" também ficou mais cheio: contra o azul da prevista, o verde lavado dava dE 11,1 e as
+     duas competiam na mesma semana. */
+  .cartao { border-left-width: 5px; }
+  .cartao.livre { background: transparent; color: var(--suave); border-color: var(--linha-campo); border-style: dashed; border-left-width: 1px; font-weight: 500; }
+  .cartao.esperada { background: #dee9eb; border-color: #b9d2d7; border-left-color: #3c6b79; color: #24444c; }
+  .cartao.pendente { background: #f4c4a2; border-color: #de9463; border-left-color: var(--tinta-escura); color: #5e2a12; }
+  .cartao.pendente small { color: #7a3a19; font-weight: 600; }
+  .cartao.realizada { background: #c4debb; border-color: #9bbe91; border-left-color: var(--ok); color: #2f4a31; }
+  .cartao.faltou { background: #f6cbc6; border-color: #dda49d; border-left-color: var(--erro); color: #7a2a24; }
   .cartao.cancelada { background: var(--linha-fina); border-color: var(--linha); color: var(--suave); text-decoration: line-through; }
-  .cartao.remarcada { background: #c4d8ff; border-color: #7fa6ff; border-left-color: var(--tinta); }
+  .cartao.remarcada { background: #e6dcef; border-color: #c1aed1; border-left-color: #6b5296; color: #3f2f5c; }
   .cartao { transition: transform var(--rapido), box-shadow var(--rapido), filter var(--rapido); }
-  .cartao:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(11, 21, 38, .18); filter: saturate(1.1); color: inherit; }
+  .cartao:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(58, 44, 38, .18); filter: saturate(1.1); color: inherit; }
   .cartao:active { transform: scale(.98); }
   .cartao.livre:hover { background: var(--tinta-fundo); border-color: var(--tinta); color: var(--tinta-escura); }
   .mes .coluna .corpo { min-height: 96px; padding: 4px; gap: 3px; }
   .mes .cartao { font-size: .6875rem; padding: 2px 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .mes .numero { font-family: var(--f-mono); font-size: .75rem; font-weight: 500; color: var(--suave); }
+  .mes .numero { font-variant-numeric: tabular-nums; font-size: .75rem; font-weight: 600; color: var(--suave); }
   .mes .numero.hoje { color: var(--tinta); font-weight: 600; }
 </style>
 
