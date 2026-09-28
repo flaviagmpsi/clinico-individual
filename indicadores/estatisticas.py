@@ -104,6 +104,12 @@ class RetratoDaClinica:
     periodo: Periodo
     presenca: Presenca
     composicao: Composicao
+    pacientes_ativos: int
+
+    @property
+    def tem_atendimento_coletivo(self) -> bool:
+        """Casal e família fazem um atendimento valer por duas pessoas — aí os dois números divergem."""
+        return self.pacientes_ativos != self.composicao.total
 
 
 @dataclass
@@ -185,7 +191,8 @@ def _consultas(periodo: Periodo):
 
 def retrato_da_clinica(periodo: Periodo) -> RetratoDaClinica:
     """Painel (ADR-103): a presença do período e os atendimentos em curso hoje."""
-    return RetratoDaClinica(periodo=periodo, presenca=presenca_de(_consultas(periodo)), composicao=_composicao())
+    return RetratoDaClinica(periodo=periodo, presenca=presenca_de(_consultas(periodo)), composicao=_composicao(),
+                            pacientes_ativos=pacientes_ativos().count())
 
 
 def retrato_da_agenda(periodo: Periodo) -> RetratoDaAgenda:

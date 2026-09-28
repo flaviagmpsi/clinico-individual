@@ -3323,9 +3323,14 @@ existir, porque dá pra ver todas as informações sem arrastar pro lado se voc�
   borda — de longe, eram a mesma coisa. A prevista fica em **palha**, calma, porque não pede nada; a que passou sem
   cadastro fica em **âmbar carregado**, que é a cor de "pede ação" no resto do sistema (`--atencao`). A legenda passa
   a nomear as duas: "prevista, ainda vai acontecer" e "pendente, passou e falta cadastrar".
-- **"Pacientes ativos" sai do painel.** Era o mesmo número de "atendimentos em curso", que agora mora ali embaixo
-  (ADR-103) — e o painel não repete a mesma informação em dois lugares (ADR-072). O link "ver pacientes" foi junto,
-  para o bloco de atendimentos em curso. No lugar entra **sessões esperando cadastro**, que é ação, não retrato.
+- **O painel perde dois dos três cards de resumo, e o espaço fica vazio.** "Pacientes ativos" era o mesmo número
+  de "atendimentos em curso", logo abaixo (ADR-103); "sessões esperando cadastro", posto no lugar dele, repetia a
+  primeira linha das pendências, ali ao lado — o usuário apontou na hora. Sobram "sessões no mês" e "receita do mês".
+  Espaço vazio é melhor que informação dita duas vezes (ADR-072). O link "ver pacientes" foi para o bloco de
+  atendimentos em curso.
+- **O número diz o que conta.** "14" sozinho não significava nada: passa a ser "14 pacientes ativos". Quando há
+  atendimento de casal ou família, os dois números divergem, e a tela explica ("em 13 atendimentos — casal e família
+  contam como um") em vez de escolher um e esconder o outro.
 - **A lista de pendências não rola para o lado.** Três coisas causavam isso, e as três foram corrigidas: `overflow-y`
   sozinho faz o eixo horizontal virar `auto` também; a coluna era estreita demais (as pendências passam a dividir a
   largura com a agenda de hoje, que sobrava espaço); e — a causa real do texto cortado — a **margem negativa de 6 px**

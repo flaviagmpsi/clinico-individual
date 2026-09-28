@@ -30,7 +30,12 @@ dia foram para a Agenda, que é onde se faz alguma coisa com eles.
         <div class="row align-items-center">
           <div class="col-5"><div style="height:150px"><canvas id="grafico-de-composicao"></canvas></div></div>
           <div class="col-7 small">
-            <div class="h4 mb-1">{{ retrato.composicao.total }}</div>
+            {% comment %}ADR-106: o número sozinho não dizia o que contava.{% endcomment %}
+            <div class="h4 mb-1">{{ retrato.pacientes_ativos }}
+              <span class="fs-6 fw-normal">paciente{{ retrato.pacientes_ativos|pluralize }} ativo{{ retrato.pacientes_ativos|pluralize }}</span></div>
+            {% if retrato.tem_atendimento_coletivo %}
+              <div class="text-muted">em {{ retrato.composicao.total }} atendimento{{ retrato.composicao.total|pluralize }} — casal e família contam como um</div>
+            {% endif %}
             <div><span class="fw-semibold">{{ retrato.composicao.semanais }}</span> semana{{ retrato.composicao.semanais|pluralize:"l,is" }}</div>
             <div><span class="fw-semibold">{{ retrato.composicao.quinzenais }}</span> quinzena{{ retrato.composicao.quinzenais|pluralize:"l,is" }}</div>
             <div><span class="fw-semibold">{{ retrato.composicao.avulsos }}</span> avulso{{ retrato.composicao.avulsos|pluralize }} <span class="text-muted">— marcam sem frequência fixa</span></div>

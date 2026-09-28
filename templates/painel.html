@@ -185,13 +185,9 @@ Primeiro o dia; depois as pendências, num bloco; por fim o resumo do mês.
     <div class="h3 mb-0">R$ {{ resumo.recebido|floatformat:2 }} <span class="fs-6 text-muted fw-normal">recebido</span></div>
     <div class="small text-muted">a receber R$ {{ resumo.a_receber|floatformat:2 }} (previsto)</div>
   </div></div></div>
-  {% comment %}ADR-106: "pacientes ativos" saiu daqui — é o mesmo número de "atendimentos em curso", logo abaixo,
-  e o painel não repete a mesma informação em dois lugares (ADR-072).{% endcomment %}
-  <div class="col-md-4"><div class="card h-100"><div class="card-body py-3">
-    <div class="rotulo">Sessões esperando cadastro</div>
-    <div class="h3 mb-0">{{ total_sessoes_pendentes }}</div>
-    <div class="small text-muted">das que já passaram</div>
-  </div></div></div>
+  {% comment %}ADR-106: eram três cards. "Pacientes ativos" saiu porque é o mesmo número de "atendimentos em curso",
+  logo abaixo; "sessões esperando cadastro" também, porque é a primeira linha das pendências, ali ao lado. O painel
+  não diz a mesma coisa duas vezes (ADR-072), e o espaço vazio é preferível à repetição.{% endcomment %}
 </div>
 
 {% comment %}ADR-084: aniversariantes do mês, entre os pacientes em atendimento. Fica por último: não é tarefa, é
