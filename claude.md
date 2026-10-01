@@ -35,7 +35,7 @@ O usuário não se perde. Herdado do Hamilton original (ADR-004).
 | Arquivos jurídicos | Bytes no Postgres (contrato, PDF, comprovante) |
 | Assinatura | Asaas — cartão e PIX Automático |
 | Cadastro | CRP obrigatório. Registro do CFP consultável em `cadastro.cfp.org.br` |
-| IA | Atrás de adaptador. O domínio não conhece provedor |
+| IA | OpenAI (Whisper + chat), atrás de adaptador: `prontuarios/ia.py` fala com o provedor, `prontuarios/redacao.py` fala com o domínio. Chave do Hamilton, em `OPENAI_API_KEY` |
 | Aviso crítico | WhatsApp (Meta Cloud API) — só para descarte de conta, nunca conteúdo clínico |
 
 ---
@@ -84,6 +84,21 @@ classes `.rotulo`, `.hora`, `.valor`, `.mono`; não declara cor, fonte, raio nem
 - **Ícone de navegação é SVG desenhado em `_barra.html`**, com traço de 1,7 e caixa de 24 — e não do Bootstrap
   Icons, cujas famílias não combinam entre si. Bootstrap Icons continua valendo para ícone solto dentro de tela.
 Exceções de propósito: a **folha** de documentos e prontuário (serifada — é papel) e as cores de situação da agenda.
+
+### 3.2c A IA nunca vê dado que identifica alguém (ADR-111)
+A escrita assistida do registro de sessão manda o relato do psicólogo para a OpenAI. Três regras, e nenhuma é
+negociável em código novo:
+- **Identificação é montada por código.** Nome, nome social, nascimento, CPF, RG, contatos, endereço, CRP e
+  assinatura saem do banco, nos templates de documento. Nada disso entra em prompt, e o prompt proíbe o modelo de
+  escrever bloco de identificação — o que não é enviado não pode ser vazado nem inventado.
+- **Anonimizar é trabalho do código, não pedido ao modelo.** `ia.anonimizar` troca por `[nome omitido]` todo nome
+  que o sistema conhece, **antes** de o texto sair. A instrução no prompt é a segunda camada, para o que o sistema
+  não conhece. Determinístico primeiro; modelo depois.
+- **Nada de matéria-prima guardada.** O áudio não toca o disco e a transcrição não é gravada (ADR-111 revoga a
+  R-14). Quem acrescentar um caminho de IA novo mantém isso.
+E duas de comportamento: o recurso **nasce desligado** por conta (`usa_ia_no_prontuario`), porque mandar conteúdo
+de sessão para fora é decisão de quem atende; e **falha de IA nunca derruba a tela** — o recado é em português, diz
+o que fazer, e o campo escrito à mão continua ali.
 
 ### 3.3 O prontuário é peça de defesa legal (ADR-005)
 A Res. CFP 001/2009, Art. 4º, §2º o define como meio de prova em processo disciplinar. Portanto:

@@ -62,9 +62,17 @@ class Prontuario(Auditado, TenantOwnedModel):
 
 
 class VersaoProntuario(Auditado, TenantOwnedModel):
+    class Origem(models.TextChoices):
+        MAO = "MAO", "Escrito à mão"
+        IA = "IA", "Rascunho gerado com apoio de IA"
+
     prontuario = models.ForeignKey(Prontuario, on_delete=models.PROTECT, related_name="versoes")
     numero = models.PositiveSmallIntegerField("Versão")
     texto = models.TextField("Registro da sessão")
+    # ADR-111: de onde veio o texto. Quem assina é o psicólogo nos dois casos — o prontuário é peça de defesa em
+    # processo disciplinar (ADR-005), e saber como o texto nasceu é informação que vale ter guardada. Não muda
+    # nada no documento impresso: é para quem escreveu, não para quem lê.
+    origem = models.CharField("Origem do texto", max_length=3, choices=Origem.choices, default=Origem.MAO)
     # Não é mais pedido (ADR-075). Fica para as versões gravadas antes disso, que o têm.
     motivo = models.TextField("Motivo da correção", blank=True)
     confirmada_em = models.DateTimeField("Confirmada em", null=True, blank=True)

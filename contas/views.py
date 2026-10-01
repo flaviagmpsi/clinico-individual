@@ -98,8 +98,7 @@ class Configuracoes(LoginRequiredMixin, TemplateView):
         formulario = DespesasForm(request.POST, instance=request.user)
         if formulario.is_valid():
             formulario.save()
-            messages.success(request, "Controle de despesas ligado." if request.user.usa_despesas
-                             else "Controle de despesas desligado. Nada foi apagado: religue quando quiser.")
+            messages.success(request, "Preferências salvas.")
             return redirect("contas:configuracoes")
         return self.render_to_response(self.get_context_data(despesas=formulario))
 

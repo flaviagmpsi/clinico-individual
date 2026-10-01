@@ -28,6 +28,22 @@ controlar despesas ou não, e trocar de pessoa física para jurídica (ou o cont
         Desligar <strong>não apaga</strong> nada: as despesas que você já cadastrou continuam guardadas e voltam
         assim que você religar.
       </div>
+      {% comment %}ADR-111: a escrita assistida manda o relato da sessão para fora, então nasce desligada e quem
+      liga, liga sabendo o que está ligando. O texto abaixo é o que essa pessoa precisa saber para decidir.{% endcomment %}
+      <hr class="my-3">
+      <div class="form-check">
+        {{ despesas.usa_ia_no_prontuario }}
+        <label class="form-check-label" for="{{ despesas.usa_ia_no_prontuario.id_for_label }}">
+          Escrever o registro de sessão com apoio de IA</label>
+      </div>
+      <div class="form-text small mt-2">
+        Ligado, a tela do registro de sessão ganha um bloco onde você grava um áudio contando como foi o
+        atendimento, e recebe de volta um rascunho no formato do CFP para revisar e assinar.
+        <strong>O relato passa por um serviço de fora (OpenAI)</strong> para ser transcrito e organizado — o
+        áudio não é guardado, e o sistema troca por código os nomes que ele conhece antes de mandar. Ainda
+        assim, mandar conteúdo de sessão para um terceiro é decisão sua, e precisa estar no que você combina
+        com o paciente. Desligado, o registro continua sendo escrito à mão, como sempre foi.
+      </div>
       <button type="submit" class="btn btn-primary btn-sm mt-3">Salvar</button>
     </div>
   </form>

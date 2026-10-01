@@ -18,11 +18,18 @@ _CONTROLE = {"class": "form-control"}
 _NUMERO = {"class": "form-control", "inputmode": "numeric"}
 
 
-class DespesasForm(forms.ModelForm):
+class PreferenciasForm(forms.ModelForm):
+    """Os interruptores de Configurações. Nasceu só com despesas (ADR-100); a IA entrou na ADR-111."""
+
     class Meta:
         model = Psicologo
-        fields = ["usa_despesas"]
-        widgets = {"usa_despesas": forms.CheckboxInput(attrs={"class": "form-check-input"})}
+        fields = ["usa_despesas", "usa_ia_no_prontuario"]
+        widgets = {"usa_despesas": forms.CheckboxInput(attrs={"class": "form-check-input"}),
+                   "usa_ia_no_prontuario": forms.CheckboxInput(attrs={"class": "form-check-input"})}
+
+
+# O nome antigo continua valendo enquanto houver quem o importe.
+DespesasForm = PreferenciasForm
 
 
 class RegimeNovoForm(forms.Form):

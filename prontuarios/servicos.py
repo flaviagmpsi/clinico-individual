@@ -93,8 +93,13 @@ def registro_de(consulta: Consulta, paciente: Paciente) -> Registro:
 
 
 @transaction.atomic
-def salvar_rascunho(consulta: Consulta, paciente: Paciente, *, texto: str, motivo: str = "") -> VersaoProntuario:
-    """Cria ou atualiza o rascunho. Havendo versão confirmada, o rascunho é a edição dela — versão nova (ADR-075)."""
+def salvar_rascunho(consulta: Consulta, paciente: Paciente, *, texto: str, motivo: str = "",
+                    origem: str | None = None) -> VersaoProntuario:
+    """Cria ou atualiza o rascunho. Havendo versão confirmada, o rascunho é a edição dela — versão nova (ADR-075).
+
+    `origem` só é gravada quando vem dita (ADR-111). Salvar por cima de um rascunho de IA **sem** dizer a origem
+    mantém a marca: o psicólogo editar o texto não faz dele um texto escrito do zero.
+    """
     prontuario = Prontuario.objects.filter(consulta=consulta, paciente=paciente).first()
     if prontuario is None:
         prontuario = Prontuario.objects.create(consulta=consulta, paciente=paciente)
@@ -104,15 +109,17 @@ def salvar_rascunho(consulta: Consulta, paciente: Paciente, *, texto: str, motiv
         rascunho = VersaoProntuario(prontuario=prontuario, numero=ultimo + 1)
     rascunho.texto = texto
     rascunho.motivo = motivo if rascunho.numero > 1 else ""
+    if origem is not None:
+        rascunho.origem = origem
     rascunho.save()
     return rascunho
 
 
 @transaction.atomic
 def confirmar(consulta: Consulta, paciente: Paciente, *, texto: str, motivo: str = "",
-              agora: datetime | None = None) -> VersaoProntuario:
+              origem: str | None = None, agora: datetime | None = None) -> VersaoProntuario:
     """Salva e confirma. Depois disto, a versão não muda mais (ADR-064)."""
-    versao = salvar_rascunho(consulta, paciente, texto=texto, motivo=motivo)
+    versao = salvar_rascunho(consulta, paciente, texto=texto, motivo=motivo, origem=origem)
     versao.confirmada_em = agora or timezone.now()
     versao.save()
     return versao

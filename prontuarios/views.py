@@ -4,9 +4,11 @@ Nenhuma view filtra por psicólogo: o `TenantManager` faz isso, e um id alheio n
 que existe entra na trilha de auditoria (ADR-057).
 """
 
+from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.exceptions import ValidationError
+from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect
 from django.views import View
 from django.views.generic import FormView, TemplateView
@@ -14,10 +16,9 @@ from django.views.generic import FormView, TemplateView
 from atendimentos.models import Consulta
 from core import auditoria
 from pacientes.models import Paciente
-from prontuarios import servicos
-from prontuarios import anamneses
+from prontuarios import anamneses, ia, redacao, servicos
 from prontuarios.forms import AnamneseForm, ProntuarioForm, TemaDeAnamneseForm
-from prontuarios.models import Anamnese, TemaDeAnamnese
+from prontuarios.models import Anamnese, TemaDeAnamnese, VersaoProntuario
 
 
 class ListaProntuarios(LoginRequiredMixin, TemplateView):
@@ -70,7 +71,11 @@ class EscreverProntuario(LoginRequiredMixin, _ComAlvo, FormView):
     def get_context_data(self, **kwargs):
         contexto = super().get_context_data(**kwargs)
         consulta, paciente = self.alvo()
-        contexto.update(registro=self.registro(), consulta=consulta, paciente=paciente)
+        contexto.update(registro=self.registro(), consulta=consulta, paciente=paciente,
+                        # ADR-111: o recurso só aparece com as duas chaves — a do servidor e a da psicóloga.
+                        ia_ligada=ia.disponivel() and self.request.user.usa_ia_no_prontuario,
+                        pontos=ia.PONTOS, aviso_de_sigilo=ia.AVISO_DE_SIGILO,
+                        ia_minutos_maximos=settings.IA_MINUTOS_MAXIMOS)
         return contexto
 
     def form_valid(self, form):
@@ -79,7 +84,7 @@ class EscreverProntuario(LoginRequiredMixin, _ComAlvo, FormView):
         confirmando = self.request.POST.get("acao") == "confirmar"
         acao = servicos.confirmar if confirmando else servicos.salvar_rascunho
         try:
-            acao(consulta, paciente, texto=dados["texto"])
+            acao(consulta, paciente, texto=dados["texto"])   # `origem` fica como estava (ADR-111)
         except ValidationError as erro:
             form.add_error(None, erro.messages[0])
             return self.form_invalid(form)
@@ -99,6 +104,54 @@ class DescartarRascunho(LoginRequiredMixin, _ComAlvo, View):
         else:
             messages.success(request, "Rascunho descartado.")
         return redirect("prontuarios:escrever", consulta_pk=consulta.pk, paciente_pk=paciente.pk)
+
+
+class _ComIA(LoginRequiredMixin, _ComAlvo, View):
+    """Base das duas chamadas de IA (ADR-111): as duas respondem JSON, e as duas recusam pelos mesmos motivos."""
+
+    http_method_names = ["post"]
+
+    def recusar(self, recado: str, status: int = 400) -> JsonResponse:
+        return JsonResponse({"erro": recado}, status=status)
+
+    def post(self, request, *args, **kwargs):
+        if not request.user.usa_ia_no_prontuario:
+            return self.recusar("A escrita assistida está desligada. Ligue em Configurações.", status=403)
+        if not ia.disponivel():
+            return self.recusar("Este servidor não tem chave de IA configurada.", status=503)
+        try:
+            return self.responder(request)
+        except ia.IAIndisponivel as erro:
+            # Falha de IA nunca derruba a tela: o registro escrito à mão continua ali, intacto.
+            return self.recusar(str(erro), status=502)
+
+
+class TranscreverRelato(_ComIA):
+    """Áudio → texto, já sem os nomes que o sistema conhece. O áudio **não** é guardado em lugar nenhum."""
+
+    def responder(self, request) -> JsonResponse:
+        audio = request.FILES.get("audio")
+        if audio is None:
+            return self.recusar("Nenhum áudio chegou.")
+        _, paciente = self.alvo()
+        texto = redacao.transcrever_sessao(audio, paciente, request.user, nome=audio.name or "sessao.webm")
+        if not texto:
+            return self.recusar("Não consegui entender o áudio. Grave de novo, mais perto do microfone.")
+        return JsonResponse({"texto": texto})
+
+
+class RedigirRegistro(_ComIA):
+    """Relato → corpo do registro de evolução, gravado como rascunho para o psicólogo revisar."""
+
+    def responder(self, request) -> JsonResponse:
+        relato = (request.POST.get("relato") or "").strip()
+        if not relato:
+            return self.recusar("Escreva ou grave o relato da sessão antes de gerar o registro.")
+        consulta, paciente = self.alvo()
+        texto = redacao.redigir(relato, consulta, paciente, request.user)
+        servicos.salvar_rascunho(consulta, paciente, texto=texto,
+                                 origem=VersaoProntuario.Origem.IA)
+        return JsonResponse({"texto": texto})
 
 
 class AnamneseDoPaciente(LoginRequiredMixin, FormView):

@@ -245,10 +245,10 @@ e a IA depois passa a preencher o mesmo rascunho. Avaliação do protótipo Exyo
 
 | # | História | Camada | Estado | Código | ADR |
 |---|---|---|---|---|---|
-| R-01 | Relato de origem em **áudio ditado** ou **texto escrito** — duas portas para o mesmo pipeline. O texto **não** passa por transcrição | 🎨⚙️ | ✅ | ⚪ | ADR-006, ADR-042 |
+| R-01 | Relato de origem em **áudio ditado** ou **texto escrito** — duas portas para o mesmo pipeline. O texto **não** passa por transcrição | 🎨⚙️ | ✅ | 🟢 | ADR-111, ADR-006, ADR-042 |
 | R-02 | A sessão **nunca** é gravada; o único falante é o psicólogo | 🔒 | ✅ | ⚪ | ADR-006 |
-| R-03 | IA estrutura o relato no formato do Art. 2º da Res. CFP 001/2009 | ⚙️ | ✅ | ⚪ | ADR-005 |
-| R-04 | **Rascunho obrigatório**: revisão e confirmação explícita antes de virar registro oficial | 🎨 | ✅ | 🟢 | ADR-005, ADR-064 |
+| R-03 | IA estrutura o relato no formato do Art. 2º da Res. CFP 001/2009 | ⚙️ | ✅ | 🟢 | ADR-111, ADR-005 |
+| R-04 | **Rascunho obrigatório**: revisão e confirmação explícita antes de virar registro oficial. O texto da IA nasce rascunho, e a versão guarda que nasceu de IA | 🎨 | ✅ | 🟢 | ADR-111, ADR-005, ADR-064 |
 | R-05 | Versão congelada na confirmação, com trilha de auditoria — é meio de prova em processo disciplinar. Imutável no model **e no banco** (gatilho) | ⚙️🔒 | ✅ | 🟢 | ADR-005, ADR-064 |
 | R-15 | Prontuário escrito à mão, **texto livre**, um por participante de cada sessão realizada; pendente calculado | 🎨⚙️ | ✅ | 🟢 | ADR-064 |
 | R-16 | **Editar** prontuário confirmado cria nova versão, em silêncio — sem motivo e sem falar em versão na tela; as anteriores ficam no histórico | 🎨⚙️ | ✅ | 🟢 | ADR-064, ADR-075 |
@@ -260,9 +260,9 @@ e a IA depois passa a preencher o mesmo rascunho. Avaliação do protótipo Exyo
 | R-06 | Sessão de casal: **um relato gravado por participante**; `Relato` é 1:1 com `Prontuario` | 🎨⚙️ | ✅ | ⚪ | ADR-041 |
 | R-07 | Risco de migração da fala entre prontuários: **eliminado por construção** | 🔒 | ✅ | ⚪ | ADR-041 |
 | R-08 | Exportação de uma sessão ou do histórico completo, em PDF ou DOC | 🎨⚙️ | ✅ | ⚪ | escopo |
-| R-09 | IA atrás de **adaptador**: o domínio não conhece provedor, modelo nem chave | ⚙️ | ✅ | ⚪ | §3.2 |
-| R-10 | **No caminho do áudio:** áudio → transcrição → prontuário. O áudio é apagado assim que transcrito | ⚙️🔒 | ✅ | ⚪ | ADR-042 |
-| R-14 | A **transcrição permanece** ligada ao prontuário, como insumo e prova de autoria | 🗄️🔒 | ✅ | ⚪ | ADR-042 |
+| R-09 | IA atrás de **adaptador**: o domínio não conhece provedor, modelo nem chave — `prontuarios/ia.py` fala com a OpenAI, `prontuarios/redacao.py` fala com o domínio | ⚙️ | ✅ | 🟢 | ADR-111, §3.2 |
+| R-10 | **No caminho do áudio:** áudio → transcrição → prontuário. O áudio é apagado assim que transcrito — aqui ele nem chega a ser gravado em disco | ⚙️🔒 | ✅ | 🟢 | ADR-111, ADR-042 |
+| R-14 | ~~A **transcrição permanece** ligada ao prontuário, como insumo e prova de autoria~~ — **revogada pela ADR-111**: nada de transcrição guardada. Perde-se a prova de autoria; ganha-se não manter segunda cópia de material clínico bruto | 🗄️🔒 | ❌ | ⚫ | ADR-111 revoga ADR-042 |
 | R-11 | Direito de acesso do paciente: obrigação **do psicólogo**, exercida fora do sistema | — | ❌ Fora | ⚪ | ADR-039 |
 | R-12 | Acesso do responsável legal: decidido pelo psicólogo, fora do sistema | — | ❌ Fora | ⚪ | ADR-039 |
 | R-13 | Sigilo do adolescente perante os pais: decisão clínica do psicólogo, não do software | — | ❌ Fora | ⚪ | ADR-039 |

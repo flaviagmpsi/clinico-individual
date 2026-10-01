@@ -13,6 +13,48 @@
 </div>
 
 {% comment %}
+ADR-111: a escrita assistida fica **antes** do campo de texto, porque é por onde se começa quando ela está
+ligada. Mas ela é um atalho, não um caminho obrigatório: o campo de baixo continua aceitando texto escrito do
+zero, e quem desliga o recurso em Configurações vê exatamente a tela de antes.
+{% endcomment %}
+{% if ia_ligada %}
+<details class="card mb-3 assistida" style="max-width:820px"{% if not registro.vigente %} open{% endif %}>
+  <summary class="card-header bg-white py-2 fw-semibold">
+    <i class="bi bi-mic"></i> Escrever com apoio de IA
+    <span class="text-muted fw-normal small">— grave um áudio ou escreva o relato, e revise o que voltar</span>
+  </summary>
+  <div class="card-body">
+    <p class="small mb-2">Responda a estes quatro pontos, num áudio só ou por escrito:</p>
+    <ol class="small ps-3 mb-2">
+      {% for titulo, pergunta in pontos %}
+        <li class="mb-1"><span class="fw-semibold">{{ titulo }}.</span> <span class="text-muted">{{ pergunta }}</span></li>
+      {% endfor %}
+    </ol>
+    <div class="alert alert-warning py-2 small mb-3"><i class="bi bi-lock"></i> <strong>Sigilo:</strong> {{ aviso_de_sigilo }}</div>
+
+    <div class="d-flex align-items-center gap-2 mb-2 flex-wrap">
+      <button type="button" class="btn btn-sm btn-outline-primary" data-gravar>
+        <i class="bi bi-mic-fill"></i> <span data-rotulo-gravar>Gravar relato</span></button>
+      <span class="small text-muted" data-estado></span>
+    </div>
+    <label class="form-label small mb-1" for="relato">Relato da sessão</label>
+    <textarea id="relato" class="form-control" rows="6"
+              placeholder="O texto do áudio aparece aqui — e você pode escrever ou corrigir à mão antes de gerar."></textarea>
+    <div class="d-flex align-items-center gap-2 mt-2 flex-wrap">
+      <button type="button" class="btn btn-sm btn-primary" data-redigir>
+        <i class="bi bi-stars"></i> Gerar o registro</button>
+      <span class="small text-muted">O texto volta no campo abaixo, para você revisar e salvar.</span>
+    </div>
+    <div class="alert alert-danger py-2 small mt-2 d-none" data-erro></div>
+    <p class="form-text small mt-2 mb-0">
+      O áudio é transcrito e <strong>descartado na hora</strong> — nada de áudio fica guardado. Antes de a síntese
+      ser pedida, o sistema troca por código os nomes que ele conhece. O texto que voltar é rascunho: quem assina
+      o prontuário é você.</p>
+  </div>
+</details>
+{% endif %}
+
+{% comment %}
 ADR-075: para o psicólogo, o prontuário salvo tem um botão — "Editar". Sem motivo, sem falar em versão. Por
 baixo, cada edição grava uma versão nova e a anterior fica guardada (ADR-064): o histórico aparece recolhido
 no fim da página, para quando for preciso mostrar o que o registro dizia numa data.
@@ -84,4 +126,106 @@ no fim da página, para quando for preciso mostrar o que o registro dizia numa d
   });
 })();
 </script>
+
+{% if ia_ligada %}
+<script>
+// ADR-111: gravar, transcrever e redigir. Sem biblioteca: MediaRecorder é do próprio navegador.
+// Nada aqui salva o áudio — ele vira um blob na memória, é enviado e descartado.
+(function () {
+  const bloco = document.querySelector('.assistida');
+  if (!bloco) return;
+  const botaoGravar = bloco.querySelector('[data-gravar]');
+  const rotulo = bloco.querySelector('[data-rotulo-gravar]');
+  const estado = bloco.querySelector('[data-estado]');
+  const erro = bloco.querySelector('[data-erro]');
+  const relato = bloco.querySelector('#relato');
+  const botaoRedigir = bloco.querySelector('[data-redigir]');
+  const csrf = document.querySelector('[name=csrfmiddlewaretoken]').value;
+  const MAXIMO_EM_MINUTOS = {{ ia_minutos_maximos|default:20 }};
+
+  let gravador = null, pedacos = [], desde = 0, relogio = null;
+
+  const avisar = (texto) => {
+    erro.textContent = texto || '';
+    erro.classList.toggle('d-none', !texto);
+  };
+  const ocupado = (ligado, texto) => {
+    botaoGravar.disabled = ligado;
+    botaoRedigir.disabled = ligado;
+    estado.textContent = texto || '';
+  };
+
+  botaoGravar.addEventListener('click', async () => {
+    if (gravador && gravador.state === 'recording') { gravador.stop(); return; }
+    avisar('');
+    try {
+      const fluxo = await navigator.mediaDevices.getUserMedia({ audio: true });
+      gravador = new MediaRecorder(fluxo);
+      pedacos = [];
+      gravador.ondataavailable = (e) => { if (e.data.size) pedacos.push(e.data); };
+      gravador.onstop = async () => {
+        clearInterval(relogio);
+        // Desliga o microfone de verdade: sem isto o navegador segue mostrando que está gravando.
+        fluxo.getTracks().forEach((t) => t.stop());
+        rotulo.textContent = 'Gravar relato';
+        botaoGravar.classList.replace('btn-danger', 'btn-outline-primary');
+        const audio = new Blob(pedacos, { type: gravador.mimeType || 'audio/webm' });
+        pedacos = [];
+        if (!audio.size) { avisar('A gravação saiu vazia.'); return; }
+        ocupado(true, 'Transcrevendo…');
+        const dados = new FormData();
+        dados.append('audio', audio, 'sessao.webm');
+        try {
+          const r = await fetch('{% url "prontuarios:transcrever" consulta.pk paciente.pk %}',
+                                { method: 'POST', body: dados, headers: { 'X-CSRFToken': csrf } });
+          const corpo = await r.json();
+          if (!r.ok) { avisar(corpo.erro || 'Não consegui transcrever.'); return; }
+          relato.value = relato.value ? relato.value + '\n\n' + corpo.texto : corpo.texto;
+        } catch (e) {
+          avisar('A transcrição não chegou ao servidor. Verifique a conexão.');
+        } finally {
+          ocupado(false, '');
+        }
+      };
+      gravador.start();
+      desde = Date.now();
+      rotulo.textContent = 'Parar';
+      botaoGravar.classList.replace('btn-outline-primary', 'btn-danger');
+      relogio = setInterval(() => {
+        const s = Math.floor((Date.now() - desde) / 1000);
+        estado.textContent = `Gravando… ${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
+        if (s >= MAXIMO_EM_MINUTOS * 60) { gravador.stop(); avisar(`A gravação parou no limite de ${MAXIMO_EM_MINUTOS} minutos.`); }
+      }, 500);
+    } catch (e) {
+      avisar('O navegador não deixou usar o microfone. Autorize o acesso e tente de novo — ou escreva o relato à mão.');
+    }
+  });
+
+  botaoRedigir.addEventListener('click', async () => {
+    if (!relato.value.trim()) { avisar('Grave ou escreva o relato antes de gerar.'); return; }
+    avisar('');
+    ocupado(true, 'Escrevendo o registro…');
+    const dados = new FormData();
+    dados.append('relato', relato.value);
+    try {
+      const r = await fetch('{% url "prontuarios:redigir" consulta.pk paciente.pk %}',
+                            { method: 'POST', body: dados, headers: { 'X-CSRFToken': csrf } });
+      const corpo = await r.json();
+      if (!r.ok) { avisar(corpo.erro || 'Não consegui escrever o registro.'); return; }
+      const campo = document.querySelector('#formulario textarea');
+      document.getElementById('formulario').hidden = false;
+      campo.value = corpo.texto;
+      campo.focus();
+      campo.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      estado.textContent = 'Pronto — revise o texto abaixo antes de salvar.';
+    } catch (e) {
+      avisar('O pedido não chegou ao servidor. Verifique a conexão.');
+    } finally {
+      botaoGravar.disabled = false;
+      botaoRedigir.disabled = false;
+    }
+  });
+})();
+</script>
+{% endif %}
 {% endblock %}

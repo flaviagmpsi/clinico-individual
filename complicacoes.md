@@ -3448,6 +3448,70 @@ diferenciar".
 - **O verde de "feita" ficou mais cheio.** Contra o azul da prevista, o verde lavado dava ΔE 11,1 e as duas
   competiam na mesma semana; agora dá 21,1, e o texto ainda lê a 6,77:1.
 
+## ADR-111 — A escrita assistida do registro de sessão (revoga a parte da ADR-042 que guardava a transcrição)
+
+**Status:** ✅ Aceita — Rodada 75. Encerra a espera da ADR-058, que deixou a IA por último.
+
+**Decisões do usuário:** "vamos começar agora a colocar a ia de prontuario na parte de escrita de prontuarios";
+"os dados do paciente (Nome, cpf e etc necessários pro prontuário) devem ser sintetizados ao prontuário no final
+com CÓDIGO, não com IA. A IA nunca deve ter acesso aos dados sensíveis do paciente"; "voce vai usar a API do
+Whisper da OpenAI"; e o texto do lembrete com os quatro pontos e o aviso de sigilo.
+
+**De onde veio:** do `prontuario-exyo`, de Arthur Pinho, usado com autorização dele. O repositório é um sistema
+inteiro — FastAPI, React, banco e login próprios —, e por isso **não foi embutido**: embutir significaria dois
+logins, dois bancos e dois cadastros do mesmo paciente. O que veio foi o conhecimento: o prompt ancorado nas
+Resoluções CFP 01/2009 e 06/2019 e no Manual Orientativo, e a ideia das perguntas pós-sessão.
+
+**Decisões de arquitetura:**
+- **É o registro de sessão, não o prontuário geral.** O texto da IA entra em `VersaoProntuario.texto`, que é um
+  por (sessão, paciente). A `FichaDoProntuario` — demanda, objetivos, encerramento — e a montagem do prontuário
+  geral continuam sendo escritas pelo psicólogo.
+- **Quatro pontos, não cinco.** O quinto do original — hipóteses e notas de supervisão — virou instrução do que
+  **não** dizer. Hipótese não compartilhada e contratransferência não pertencem ao prontuário; são registro
+  privativo, que o Hamilton ainda não tem (P-84). Enquanto não tiver, o certo é não coletá-las — e não coletá-las
+  para guardar no lugar errado.
+- **Um áudio só, e não um por pergunta.** O original pedia uma gravação por pergunta. Quem acabou de atender fala
+  corrido; picotar em cinco gravações acrescenta trabalho justamente onde o produto promete tirar.
+- **A identificação é montada por código, e a IA não a vê.** Nome, nascimento, CPF, CRP, data e assinatura já
+  eram renderizados do banco em `documentos/prontuario.html`. O bloco de identificação que o original pedia ao
+  modelo saiu do prompt: seria duplicata, e o que não é enviado não pode ser vazado nem inventado.
+- **A anonimização é feita por código, não pedida à IA.** O sistema sabe o nome do paciente, o nome social, o de
+  cada responsável legal e o do próprio psicólogo — então troca todos por `[nome omitido]` na transcrição,
+  **antes** de ela ir para a síntese. A instrução no prompt continua, como segunda camada, para o apelido ou o
+  nome de terceiro que o sistema não conhece. Determinístico primeiro; modelo depois.
+- **Nome de uma palavra só exige inicial maiúscula; nome composto, não.** Descoberto testando: muito nome
+  brasileiro também é substantivo comum — Vitória, Rosa, Campos, Leão, Pinto, Coelho. Ignorando a caixa, o relato
+  de uma paciente chamada Vitória chegava ao modelo como "contou uma [nome omitido] no trabalho", corrompido e em
+  silêncio, porque ninguém compara o antes com o depois. A inicial maiúscula separa o nome próprio do substantivo,
+  que é como a escrita já os separa; o nome composto continua saindo em qualquer caixa, porque "vitória campos"
+  em sequência não é frase de ninguém. Fica um buraco conhecido — o primeiro nome sozinho e em minúscula escapa —,
+  coberto pelo prompt e registrado na P-104. É a troca escolhida: melhor um buraco que o prompt cobre do que
+  corromper todo relato de quem se chama Rosa.
+- **O modelo inventa o que falta, se deixarem.** Num teste com relato que não mencionava próximos passos, ele
+  escreveu "planejada continuidade do treinamento de técnicas de manejo da ansiedade" — plausível, coerente e
+  falso, num documento que vale como prova. E, ao receber a abordagem como contexto, passou a afirmar que cada
+  técnica relatada pertencia a ela ("psicoeducação de acordo com os princípios da Gestalt-terapia", sendo
+  psicoeducação técnica de TCC). As duas coisas viraram regra explícita no prompt — com a frase exata a escrever
+  quando falta informação — e teste, com o caso real anotado no motivo.
+- ⚠️ **O áudio cru vai para a OpenAI.** Escolher a API do Whisper em vez de um modelo local significa que, se o
+  psicólogo escorregar e falar um nome, a OpenAI ouviu. A anonimização protege a síntese e o documento, não a
+  transcrição. Foi decidido assim com o custo em vista — modelo local exige máquina que o Render barato não tem —
+  e por isso precisa estar dito no aviso de privacidade, não só no código.
+- **Nasce desligada, e o interruptor é do psicólogo.** Mandar conteúdo de sessão para um terceiro é decisão de
+  sigilo de quem atende. Desligada, a tela é exatamente a de antes: escrever à mão nunca saiu do escopo (ADR-058).
+- **A versão guarda se nasceu de IA ou da mão** (`VersaoProntuario.origem`). Quem assina é o psicólogo nos dois
+  casos, mas o prontuário é peça de defesa em processo disciplinar (ADR-005), e como o texto nasceu é informação
+  que vale ter. Editar um rascunho de IA **não** apaga a marca: editar não é escrever do zero.
+- **Falha de IA nunca derruba a tela.** Sem crédito, sem chave ou com a OpenAI fora do ar, o recado é em português
+  e diz o que fazer; o campo escrito à mão continua ali, intacto.
+
+**O que esta ADR revoga, e o que isso custa:** a ADR-042 decidiu guardar a transcrição ligada ao prontuário, como
+**prova de autoria** — a resposta a "o psicólogo escreveu isso ou a máquina escreveu por ele?", se o CRP
+questionar um registro. O usuário decidiu o contrário: nada de áudio nem de transcrição guardados. O que se ganha
+é não manter uma segunda cópia de material clínico bruto e não revisado; o que se perde é exatamente aquela prova.
+A **R-14** sai do escopo por isso. Se a prova de autoria vier a pesar mais, voltar é barato: é um campo de texto
+ligado à versão, e a decisão fica registrada aqui para ser reaberta com o argumento à mão.
+
 ## Impeditivos
 
 | # | Impeditivo | Situação |

@@ -122,6 +122,11 @@ class Psicologo(ValidaAoSalvar, AbstractUser):
     # de caixa vira só a receita. Liga e desliga em Configurações; desligar **não apaga** nada.
     usa_despesas = models.BooleanField("Controlar despesas", default=True)
 
+    # ADR-111: a escrita assistida manda o relato da sessão para um serviço de fora (OpenAI). Isso é decisão de
+    # sigilo de quem atende, não nossa — então nasce **desligada**, e quem quiser liga sabendo. Desligada, a tela
+    # do registro de sessão é a de sempre: escrever à mão nunca saiu do escopo (ADR-058).
+    usa_ia_no_prontuario = models.BooleanField("Escrita assistida no registro de sessão", default=False)
+
     # Quando o quiz de cadastro foi concluído. Vazio: a conta existe, mas o sistema ainda não sabe o
     # bastante para propor nada — e manda o psicólogo terminar o cadastro antes de qualquer tela.
     quiz_concluido_em = models.DateTimeField("Cadastro concluído em", null=True, blank=True)

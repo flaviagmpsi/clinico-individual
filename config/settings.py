@@ -118,6 +118,16 @@ ASSINATURA_SIMULADA = DEBUG
 # O preço é decisão de negócio ainda em aberto (P-91). Vazio, a tela não inventa valor nenhum.
 ASSINATURA_VALOR_MENSAL = os.getenv("ASSINATURA_VALOR_MENSAL") or None
 
+# --- IA do registro de sessão (ADR-111) ---------------------------------------------------------
+# Uma chave só, do Hamilton, faz as duas coisas: transcrever o áudio e escrever a síntese. Vazia, a
+# tela não oferece o recurso — em vez de oferecer e falhar no clique.
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
+OPENAI_MODELO = os.getenv("OPENAI_MODELO", "gpt-4o")
+OPENAI_MODELO_DE_AUDIO = os.getenv("OPENAI_MODELO_DE_AUDIO", "whisper-1")
+# Teto por sessão, em minutos de áudio. Não é economia: é para um áudio esquecido gravando não virar
+# uma fatura sem que ninguém perceba.
+IA_MINUTOS_MAXIMOS = int(os.getenv("IA_MINUTOS_MAXIMOS", "20"))
+
 LOGIN_URL = "contas:entrar"
 LOGIN_REDIRECT_URL = "painel"
 LOGOUT_REDIRECT_URL = "contas:entrar"
