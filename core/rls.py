@@ -82,6 +82,30 @@ def ativar_rls_no_tenant_raiz(tabela: str, coluna_id: str = "id") -> str:
     """
 
 
+def ativar_rls_por_tabela_pai(tabela: str, pai: str, coluna_ligacao: str,
+                              coluna_dono: str = "psicologo_id") -> str:
+    """Tranca uma tabela que não tem coluna de dono, pelo dono da linha de que ela depende.
+
+    O caso é o conteúdo de arquivo (ADR-112): os bytes moram à parte do metadado para a listagem não os carregar,
+    e por isso a tabela não tem `psicologo_id`. A primeira versão da ADR-112 concluiu que ela dispensava RLS,
+    porque "nenhuma consulta chega aos bytes sem passar pelo metadado". Isso é verdade **do código** — e a razão
+    de existir desta camada é justamente valer quando o código erra (`.raw()`, `cursor.execute()`, shell, uma
+    view nova escrita às pressas). Duplicar a coluna do dono criaria duas fontes da verdade; perguntar ao pai,
+    não. A policy custa uma busca por chave primária, que é o índice que já existe.
+    """
+    dono_do_pai = (f"EXISTS (SELECT 1 FROM {pai} p "
+                   f"WHERE p.id = {tabela}.{coluna_ligacao} AND p.{coluna_dono} = {_DONO_DA_SESSAO})")
+    return f"""
+        ALTER TABLE {tabela} ENABLE ROW LEVEL SECURITY;
+        ALTER TABLE {tabela} FORCE ROW LEVEL SECURITY;
+
+        DROP POLICY IF EXISTS {_NOME_POLICY} ON {tabela};
+        CREATE POLICY {_NOME_POLICY} ON {tabela}
+            USING ({dono_do_pai})
+            WITH CHECK ({dono_do_pai});
+    """
+
+
 def desativar_rls(tabela: str) -> str:
     """Reverso de `ativar_rls`, para a migração poder voltar atrás."""
     return f"""

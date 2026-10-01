@@ -1,0 +1,26 @@
+{% extends "registration/_entrada.html" %}
+{% block titulo %}Nova senha{% endblock %}
+{% block corpo %}
+{% if validlink %}
+  <h1 class="h6 mb-2">Escolha uma senha nova</h1>
+  <form method="post">
+    {% csrf_token %}
+    {% if form.errors %}
+      <div class="alert alert-danger py-2 small">{% for campo in form %}{% for e in campo.errors %}{{ e }}<br>{% endfor %}{% endfor %}</div>
+    {% endif %}
+    <div class="mb-3">
+      <label class="form-label small" for="{{ form.new_password1.id_for_label }}">Nova senha</label>
+      {{ form.new_password1 }}
+      <div class="form-text small">{{ form.new_password1.help_text|safe }}</div>
+    </div>
+    <div class="mb-3">
+      <label class="form-label small" for="{{ form.new_password2.id_for_label }}">Repita a senha</label>
+      {{ form.new_password2 }}
+    </div>
+    <button type="submit" class="btn btn-primary w-100">Salvar e entrar</button>
+  </form>
+{% else %}
+  <h1 class="h6 mb-2">Este link não vale mais</h1>
+  <p class="small text-muted mb-0">Links de recuperação valem por pouco tempo e só uma vez. Peça outro na entrada.</p>
+{% endif %}
+{% endblock %}

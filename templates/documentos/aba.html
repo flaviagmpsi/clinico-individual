@@ -12,7 +12,11 @@ o que ele pode produzir vem depois, começando pelo prontuário geral, que deixo
 <div class="d-flex align-items-center mb-3">
   <div>
     <h1 class="h5 mb-0">{{ paciente.nome }}</h1>
-    <div class="text-muted small">Documentos · {{ documentos|length }} guardado{{ documentos|length|pluralize }}{% if rascunhos %} · {{ rascunhos }} em rascunho{% endif %}</div>
+    {% comment %}ADR-112: a aba passou a ter duas origens, e o contador precisa dizer as duas — senão ele mostra
+    "0 guardados" com arquivos guardados logo abaixo.{% endcomment %}
+    <div class="text-muted small">Documentos ·
+      {{ documentos|length }} produzido{{ documentos|length|pluralize }} aqui{% if rascunhos %}, {{ rascunhos }} em rascunho{% endif %}
+      · {{ arquivos|length }} guardado{{ arquivos|length|pluralize }} de fora</div>
   </div>
   <a href="{% url 'pacientes:detalhe' paciente.pk %}" class="btn btn-sm btn-outline-secondary ms-auto">Voltar à ficha</a>
 </div>
@@ -25,6 +29,82 @@ o que ele pode produzir vem depois, começando pelo prontuário geral, que deixo
   </div>
   {% include "documentos/_lista.html" %}
 </div>
+
+{% comment %}
+ADR-112: o que o psicólogo escreveu fora do sistema — contrato terapêutico, autorização, anexo de avaliação,
+encaminhamento de outro profissional. Fica **acima** dos modelos e logo abaixo do que o sistema produziu, porque
+a promessa é ter tudo num lugar só: quem abre esta aba procura o arquivo do paciente, não um formulário em branco.
+{% endcomment %}
+<div class="card mb-4">
+  <div class="card-header bg-white py-2 d-flex align-items-center flex-wrap gap-2">
+    <span class="fw-semibold"><i class="bi bi-paperclip"></i> Arquivos guardados</span>
+    <span class="text-muted fw-normal small">— o que você fez fora do sistema e quer ter aqui</span>
+    <button type="button" class="btn btn-sm btn-outline-primary ms-auto" data-abrir-upload>
+      <i class="bi bi-upload"></i> Guardar um arquivo</button>
+  </div>
+
+  <form method="post" action="{% url 'documentos:guardar_arquivo' paciente.pk %}" enctype="multipart/form-data"
+        class="card-body border-bottom" data-upload hidden>
+    {% csrf_token %}
+    <div class="row g-2 align-items-end">
+      <div class="col-md-5">{% include "components/_campo.html" with campo=form_arquivo.titulo %}</div>
+      <div class="col-md-4">{% include "components/_campo.html" with campo=form_arquivo.tipo %}</div>
+      <div class="col-md-3">{% include "components/_campo.html" with campo=form_arquivo.arquivo %}</div>
+    </div>
+    <div class="form-check mt-2">
+      {{ form_arquivo.restrito }}
+      <label class="form-check-label small" for="{{ form_arquivo.restrito.id_for_label }}">
+        Somente eu vejo — anexo de avaliação e material que não compõe o que o paciente pode solicitar
+        <span class="text-muted">(Res. CFP 01/2009, Art. 2º, V)</span></label>
+    </div>
+    <div class="form-text small mt-2">PDF, JPG ou PNG, até 10 MB. O arquivo fica guardado no banco, junto com o
+      resto do registro do paciente — não num disco que some no próximo deploy.</div>
+    <button type="submit" class="btn btn-primary btn-sm mt-3">Guardar</button>
+    <button type="button" class="btn btn-link btn-sm mt-3" data-fechar-upload>Cancelar</button>
+  </form>
+
+  {% if arquivos %}
+    <ul class="list-group list-group-flush">
+      {% for a in arquivos %}
+        <li class="list-group-item d-flex align-items-center gap-2 py-2">
+          <i class="bi {% if a.e_imagem %}bi-file-earmark-image{% else %}bi-file-earmark-pdf{% endif %} text-muted"></i>
+          <div class="flex-grow-1 min-w-0">
+            <a href="{% url 'documentos:baixar_arquivo' a.pk %}" class="fw-medium text-decoration-none">{{ a.titulo }}</a>
+            {% if a.restrito %}<span class="badge text-bg-warning ms-1" title="Não compõe o que o paciente pode solicitar">somente eu</span>{% endif %}
+            <div class="text-muted small">{{ a.get_tipo_display }} · {{ a.tamanho_legivel }} · guardado em {{ a.criado_em|date:"d/m/Y" }}</div>
+          </div>
+          <a href="{% url 'documentos:baixar_arquivo' a.pk %}" class="btn btn-sm btn-link p-1" title="Baixar">
+            <i class="bi bi-download"></i></a>
+          <form method="post" action="{% url 'documentos:excluir_arquivo' a.pk %}" class="d-inline"
+                onsubmit="return confirm('Excluir “{{ a.titulo|escapejs }}”? O arquivo é apagado do sistema; o original continua com você.');">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-sm btn-link p-1 text-danger" title="Excluir">
+              <i class="bi bi-trash"></i></button>
+          </form>
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <div class="card-body py-3 small text-muted">
+      Nada guardado ainda. É aqui que fica o <strong>contrato terapêutico</strong> assinado, a autorização do
+      responsável, o anexo de uma avaliação ou o encaminhamento que veio de outro profissional.
+    </div>
+  {% endif %}
+</div>
+
+<script>
+(function () {
+  const abrir = document.querySelector('[data-abrir-upload]');
+  const formulario = document.querySelector('[data-upload]');
+  if (!abrir || !formulario) return;
+  const mostrar = (ligado) => {
+    formulario.hidden = !ligado;
+    if (ligado) formulario.querySelector('input[type="text"]').focus();
+  };
+  abrir.addEventListener('click', () => mostrar(formulario.hidden));
+  formulario.querySelector('[data-fechar-upload]').addEventListener('click', () => mostrar(false));
+})();
+</script>
 
 <div class="d-flex align-items-center flex-wrap gap-2">
   <h2 class="h6 mb-0">Produzir um documento sobre {{ paciente.nome }}</h2>

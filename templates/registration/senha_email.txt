@@ -1,0 +1,12 @@
+Olá.
+
+Alguém pediu para trocar a senha da conta do Hamilton ligada a este e-mail.
+
+Para escolher uma senha nova, abra:
+{{ protocol }}://{{ domain }}{% url 'contas:senha_trocar' uidb64=uid token=token %}
+
+O link vale por pouco tempo e só pode ser usado uma vez.
+
+Se não foi você quem pediu, ignore esta mensagem: nada muda e a sua senha continua a mesma.
+
+— Hamilton

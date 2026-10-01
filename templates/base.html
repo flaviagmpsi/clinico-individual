@@ -54,6 +54,15 @@ Bootstrap via CDN, sem build, sem pipeline de assets, sem framework de front. A 
 {% if user.is_authenticated and not esconder_barra %}{% include "components/_barra.html" %}{% endif %}
 
 <main class="conteudo{% if esconder_barra %} sem-barra{% endif %}">
+  {% comment %}ADR-114: na rodada aberta de testes, a faixa diz isso em toda tela. É deliberado que ela não dê
+  para fechar: quem está testando precisa saber que está testando — e que o que escrever ali é de verdade.{% endcomment %}
+  {% if acesso_liberado and not esconder_barra %}
+    <div class="aviso-de-teste small d-flex align-items-center gap-2 mb-3">
+      <i class="bi bi-cone-striped"></i>
+      <span><strong>Rodada aberta de testes.</strong> O sistema está em construção e muda de uma semana para a
+        outra. O que você escrever aqui é guardado de verdade — e é sigiloso como qualquer prontuário.</span>
+    </div>
+  {% endif %}
   {% comment %}ADR-094: durante o teste grátis, o prazo fica à vista em toda tela — menos na da própria assinatura.{% endcomment %}
   {% if request.assinatura and request.assinatura.em_teste and request.resolver_match.namespace != "assinaturas" and not esconder_barra %}
     {% with dias=request.assinatura.dias_de_teste_restantes %}

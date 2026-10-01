@@ -69,6 +69,7 @@ TEMPLATES = [
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
+                "core.contexto_de_template.ambiente",
             ],
         },
     },
@@ -115,6 +116,10 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 # Enquanto a integração com o Asaas não existe (S-01), o pagamento é simulado. Nasce de `DEBUG` de propósito:
 # não há `.env` que ligue em produção um botão que ativa a assinatura sem cobrar.
 ASSINATURA_SIMULADA = DEBUG
+# ADR-114: a rodada aberta de testes. Ligado, o sistema não exige assinatura nem conta os 7 dias — o psicólogo
+# cria a conta, responde o quiz e usa. Nasce **desligado**: ligá-lo é ação explícita no ambiente, e a tela diz em
+# voz alta que aquilo é uma rodada de testes gratuita, para ninguém confundir com o produto cobrado.
+ACESSO_LIBERADO = os.getenv("ACESSO_LIBERADO", "False") == "True"
 # O preço é decisão de negócio ainda em aberto (P-91). Vazio, a tela não inventa valor nenhum.
 ASSINATURA_VALOR_MENSAL = os.getenv("ASSINATURA_VALOR_MENSAL") or None
 
@@ -127,6 +132,26 @@ OPENAI_MODELO_DE_AUDIO = os.getenv("OPENAI_MODELO_DE_AUDIO", "whisper-1")
 # Teto por sessão, em minutos de áudio. Não é economia: é para um áudio esquecido gravando não virar
 # uma fatura sem que ninguém perceba.
 IA_MINUTOS_MAXIMOS = int(os.getenv("IA_MINUTOS_MAXIMOS", "20"))
+# Teto mensal por conta (ADR-114). A chave é uma só, e quem paga é quem hospeda: sem teto, um laço acidental ou
+# um testador animado viram fatura que só aparece no fim do mês. Zero desliga o teto.
+IA_SINTESES_POR_MES = int(os.getenv("IA_SINTESES_POR_MES", "40"))
+
+# --- E-mail (ADR-114) ---------------------------------------------------------------------------
+# Hoje serve só à recuperação de senha. Sem `EMAIL_HOST`, as mensagens vão para o console — em
+# desenvolvimento é o que se quer, e em produção um envio silencioso que não chega seria pior que um
+# erro: a pessoa pediria o link e esperaria para sempre. Por isso `core/checks.py` avisa no deploy.
+EMAIL_HOST = os.getenv("EMAIL_HOST", "")
+if EMAIL_HOST:
+    EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+    EMAIL_PORT = int(os.getenv("EMAIL_PORT", "587"))
+    EMAIL_USE_TLS = os.getenv("EMAIL_USE_TLS", "True") == "True"
+    EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", "")
+    EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "")
+else:
+    EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "Hamilton <nao-responda@hamilton.local>")
+# O link da recuperação vale por pouco tempo: numa caixa de e-mail invadida, um link velho ainda abre a conta.
+PASSWORD_RESET_TIMEOUT = 60 * 60 * 2
 
 LOGIN_URL = "contas:entrar"
 LOGIN_REDIRECT_URL = "painel"

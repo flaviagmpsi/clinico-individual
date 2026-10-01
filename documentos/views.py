@@ -12,13 +12,15 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.exceptions import ValidationError
 from django.http import Http404, HttpResponse
 from django.shortcuts import get_object_or_404, redirect
+from django.urls import reverse
 from django.utils.text import slugify
 from django.views import View
 from django.views.generic import FormView, TemplateView
 
 from core import auditoria, exportacao
-from documentos import modelos, servicos
-from documentos.forms import DocumentoForm
+from documentos import guarda, modelos, servicos
+from documentos.arquivos import ArquivoGuardado
+from documentos.forms import ArquivoGuardadoForm, DocumentoForm
 from documentos.models import Documento
 from pacientes.models import Paciente
 from prontuarios import orientacoes as orientacoes_do_prontuario
@@ -46,6 +48,9 @@ class Aba(LoginRequiredMixin, TemplateView):
         paciente = _paciente_do_pedido(self.request.GET.get("paciente"))
         documentos = list(servicos.documentos(paciente=paciente))
         contexto.update(grupos=_grupos(), paciente=paciente, documentos=documentos,
+                        # ADR-112: o que veio de fora aparece na mesma aba — a promessa é "tudo num lugar só".
+                        arquivos=guarda.do_paciente(paciente) if paciente else [],
+                        form_arquivo=ArquivoGuardadoForm(),
                         rascunhos=sum(1 for d in documentos if d.rascunho),
                         versao_da_norma=modelos.VERSAO_DA_NORMA, manual=modelos.MANUAL_CFP,
                         resolucao=modelos.RESOLUCAO_06_2019)
@@ -306,3 +311,61 @@ class BaixarProntuario(LoginRequiredMixin, View):
         resposta = HttpResponse(gerar(folha), content_type=tipo)
         resposta["Content-Disposition"] = f'attachment; filename="{nome}.{self.kwargs["formato"]}"'
         return resposta
+
+
+class GuardarArquivo(LoginRequiredMixin, FormView):
+    """Sobe um arquivo feito fora do sistema e o prende ao paciente (ADR-112).
+
+    A tela de destino é a aba de Documentos dele, com ou sem erro: é lá que o arquivo aparece, e mandar para outro
+    lugar faria procurar o que acabou de guardar.
+    """
+
+    form_class = ArquivoGuardadoForm
+    template_name = "documentos/aba.html"
+
+    def paciente(self) -> Paciente:
+        if not hasattr(self, "_paciente"):
+            self._paciente = get_object_or_404(Paciente, pk=self.kwargs["paciente_pk"])
+        return self._paciente
+
+    def destino(self) -> str:
+        return f"{reverse('documentos:aba')}?paciente={self.paciente().pk}"
+
+    def form_valid(self, form):
+        dados = form.cleaned_data
+        try:
+            recebido = guarda.conferir(self.request.FILES.get("arquivo"))
+            guarda.guardar(self.paciente(), recebido, titulo=dados["titulo"], tipo=dados["tipo"],
+                           restrito=dados["restrito"])
+        except ValidationError as erro:
+            form.add_error("arquivo" if "arquivo" in str(erro.messages[0]).lower() else None, erro.messages[0])
+            return self.form_invalid(form)
+        messages.success(self.request, "Arquivo guardado.")
+        return redirect(self.destino())
+
+    def form_invalid(self, form):
+        # Sem `render_to_response` da própria view: a aba precisa do contexto dela inteiro para desenhar.
+        for erro in form.errors.values():
+            messages.error(self.request, erro[0])
+        return redirect(self.destino())
+
+
+class BaixarArquivo(LoginRequiredMixin, View):
+    """Devolve os bytes guardados. `Content-Disposition` com o nome já limpo em `guarda._nome_seguro`."""
+
+    def get(self, request, *args, **kwargs):
+        arquivo = get_object_or_404(ArquivoGuardado, pk=self.kwargs["pk"])
+        resposta = HttpResponse(guarda.conteudo(arquivo), content_type=arquivo.tipo_mime)
+        resposta["Content-Disposition"] = f'attachment; filename="{arquivo.nome_do_arquivo}"'
+        return resposta
+
+
+class ExcluirArquivo(LoginRequiredMixin, View):
+    http_method_names = ["post"]
+
+    def post(self, request, *args, **kwargs):
+        arquivo = get_object_or_404(ArquivoGuardado, pk=self.kwargs["pk"])
+        paciente_pk = arquivo.paciente_id
+        arquivo.delete()      # o conteúdo morre junto, por CASCADE
+        messages.success(request, "Arquivo excluído.")
+        return redirect(f"{reverse('documentos:aba')}?paciente={paciente_pk}")

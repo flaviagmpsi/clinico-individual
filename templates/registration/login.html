@@ -25,9 +25,11 @@
 
     <div class="card">
       <div class="card-body p-4">
-        {% if form.errors %}
+        {% comment %}ADR-114: a conta travada recebe a mesma recusa de quem errou a senha, mais o prazo. Dizer
+        "esta conta está travada" confirmaria ao atacante que o e-mail existe.{% endcomment %}
+        {% if form.errors or travado %}
           <div class="alert alert-danger py-2 small mb-3">
-            E-mail ou senha incorretos.
+            E-mail ou senha incorretos.{% if travado %} {{ recado_do_freio }}{% endif %}
           </div>
         {% endif %}
         <form method="post">
@@ -42,6 +44,9 @@
           </div>
           <button type="submit" class="btn btn-primary w-100">Entrar</button>
         </form>
+        <p class="text-center small mt-3 mb-0">
+          <a href="{% url 'contas:senha_pedir' %}" class="text-decoration-none">Esqueci a minha senha</a>
+        </p>
       </div>
     </div>
 

@@ -20,6 +20,11 @@ from core.models import TenantOwnedModel, exigir_mesmo_dono
 from documentos import modelos
 from pacientes.models import Paciente
 
+# O que o psicólogo **guarda** mas não foi feito aqui — contrato, autorização, anexo de avaliação (ADR-112).
+# Mora em `arquivos.py` porque tem outro ciclo de vida (lá está o porquê), e é importado aqui porque o Django só
+# descobre modelo que passe por `models.py`.
+from documentos.arquivos import ArquivoGuardado, ConteudoDeArquivo  # noqa: E402,F401  (importado pelo efeito)
+
 
 class DocumentoEmitido(Exception):
     """Tentativa de alterar ou apagar um documento já emitido."""

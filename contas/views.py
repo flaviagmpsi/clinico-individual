@@ -1,6 +1,7 @@
 """Entrada e saída do sistema, o quiz de cadastro e o perfil do psicólogo."""
 
 from django.contrib import messages
+from django.conf import settings
 from django.contrib.auth import login
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.views import LoginView, LogoutView
@@ -13,6 +14,7 @@ from django.utils import timezone
 from django.utils.decorators import method_decorator
 from django.views.generic import CreateView, TemplateView, UpdateView
 
+from contas import freio
 from contas.configuracoes import DespesasForm, RegimeNovoForm
 from contas.forms import (ClinicaForm, ComoAtendeForm, CriarContaForm, IdentificacaoForm, LoginForm, PerfilForm,
                           RegimeForm)
@@ -20,9 +22,40 @@ from core.escopo import dispensa_escopo
 
 
 class Entrar(LoginView):
+    """A entrada, com freio contra tentativa de senha em massa (ADR-114).
+
+    A conta travada recebe a **mesma** recusa de quem errou a senha, mais o recado do prazo: dizer "esta conta
+    está travada" confirmaria ao atacante que o e-mail existe.
+    """
+
     template_name = "registration/login.html"
     authentication_form = LoginForm
     redirect_authenticated_user = True
+
+    def _email(self) -> str:
+        return self.request.POST.get("username", "")
+
+    travado = False
+
+    def post(self, request, *args, **kwargs):
+        if freio.ligado() and freio.travado(request, self._email()):
+            self.travado = True
+            formulario = self.get_form()
+            formulario.is_valid()                      # para a tela desenhar o campo preenchido
+            return self.form_invalid(formulario)
+        return super().post(request, *args, **kwargs)
+
+    def form_valid(self, form):
+        freio.limpar(self.request, self._email())
+        return super().form_valid(form)
+
+    def form_invalid(self, form):
+        if freio.ligado() and not self.travado:
+            freio.registrar_erro(self.request, self._email())
+        return super().form_invalid(form)
+
+    def get_context_data(self, **kwargs):
+        return super().get_context_data(**kwargs) | {"travado": self.travado, "recado_do_freio": freio.recado()}
 
 
 @method_decorator(dispensa_escopo, name="dispatch")
@@ -151,6 +184,10 @@ class CriarConta(CreateView):
         return resposta
 
     def get_success_url(self):
+        # ADR-114: na rodada aberta não há plano para escolher — a conta recém-criada vai direto ao quiz, que é
+        # o que o sistema de fato precisa saber para propor as coisas certas.
+        if getattr(settings, "ACESSO_LIBERADO", False):
+            return reverse("contas:quiz", args=[1])
         return reverse("assinaturas:plano")
 
 

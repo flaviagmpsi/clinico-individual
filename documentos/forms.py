@@ -9,6 +9,7 @@ widget, para a tela mostrar a explicação do campo em foco.
 from django import forms
 
 from documentos import modelos
+from documentos.arquivos import ArquivoGuardado
 
 _FORA_DO_CORPO = ("Identificação", "Encerramento")
 
@@ -60,3 +61,21 @@ class DocumentoForm(forms.Form):
     def encerramento(self) -> dict:
         return {"local": self["local"], "data": self["data"],
                 "nome": self["psicologo_nome"], "crp": self["psicologo_crp"]}
+
+
+class ArquivoGuardadoForm(forms.Form):
+    """O que o psicólogo trouxe de fora (ADR-112). O arquivo em si é conferido em `guarda.conferir`."""
+
+    arquivo = forms.FileField(
+        label="Arquivo", widget=forms.ClearableFileInput(attrs={"class": "form-control",
+                                                                "accept": ".pdf,.jpg,.jpeg,.png"}))
+    titulo = forms.CharField(
+        label="Título", max_length=160,
+        widget=forms.TextInput(attrs={"class": "form-control",
+                                      "placeholder": "Ex.: contrato terapêutico assinado em março"}))
+    tipo = forms.ChoiceField(
+        label="Tipo", choices=ArquivoGuardado.Tipo.choices, initial=ArquivoGuardado.Tipo.CONTRATO,
+        widget=forms.Select(attrs={"class": "form-select"}))
+    restrito = forms.BooleanField(
+        label="Somente eu vejo", required=False,
+        widget=forms.CheckboxInput(attrs={"class": "form-check-input"}))

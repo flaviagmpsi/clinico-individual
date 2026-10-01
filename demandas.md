@@ -275,10 +275,10 @@ e a IA depois passa a preencher o mesmo rascunho. Avaliação do protótipo Exyo
 
 | # | História | Camada | Estado | Código | ADR |
 |---|---|---|---|---|---|
-| D-01 | `Documento` com arquivo, tipo, vigência, visibilidade e versões | 🗄️ | ✅ | ⚪ | ADR-021 |
-| D-02 | Guarda do **contrato terapêutico** escrito pelo psicólogo, para conferência | 🎨⚙️ | ✅ | ⚪ | ADR-015 |
-| D-03 | Alterar **cria versão**; apagar move para **lixeira**; exclusão definitiva só de dentro dela | 🎨⚙️ | ✅ | ⚪ | ADR-015 |
-| D-04 | Anexos de avaliação psicológica em **pasta de acesso exclusivo do psicólogo** (inciso V) | 🗄️🔒 | ✅ | ⚪ | ADR-021 |
+| D-01 | `ArquivoGuardado` com arquivo, tipo e visibilidade — bytes no Postgres, numa tabela à parte; sem vigência nem versões, que a ADR-112 adiou | 🗄️ | ✅ | 🟢 | ADR-112, ADR-021 |
+| D-02 | Guarda do **contrato terapêutico** escrito pelo psicólogo, para conferência — na mesma aba de Documentos do paciente | 🎨⚙️ | ✅ | 🟢 | ADR-112, ADR-015 |
+| D-03 | Alterar **cria versão**; apagar move para **lixeira**; exclusão definitiva só de dentro dela — **adiado pela ADR-112**: apagar é direto, e a trilha registra quem e quando | 🎨⚙️ | ✅ | ⚪ | ADR-112, ADR-015 |
+| D-04 | Anexos de avaliação psicológica em **acesso exclusivo do psicólogo** (inciso V) — marca no arquivo, não pasta separada | 🗄️🔒 | ✅ | 🟢 | ADR-112, ADR-021 |
 | D-05 | Cópias de documentos emitidos, com data, finalidade e destinatário (inciso VI) | 🗄️ | ✅ | 🟢 | ADR-021, ADR-076 |
 | D-06 | **IA gera Declaração** — sem acesso ao prontuário, proibida de citar sintomas | ⚙️🔒 | ✅ | ⚪ | ADR-032, ADR-034 |
 | D-07 | **IA gera Relatório Psicológico** — 5 itens: identificação, demanda, procedimento, análise, conclusão | ⚙️ | ✅ | ⚪ | ADR-032 |

@@ -147,6 +147,12 @@ class RedigirRegistro(_ComIA):
         relato = (request.POST.get("relato") or "").strip()
         if not relato:
             return self.recusar("Escreva ou grave o relato da sessão antes de gerar o registro.")
+        # ADR-114: teto mensal por conta. Fica aqui, e não na transcrição, porque é a síntese que custa caro —
+        # e porque recusar depois de a pessoa já ter gravado seria a pior hora de avisar.
+        if redacao.passou_do_teto():
+            return self.recusar(
+                f"Você chegou ao limite de {redacao.teto_do_mes()} registros com IA neste mês. "
+                "O registro escrito à mão continua funcionando, e o limite volta no dia 1º.", status=429)
         consulta, paciente = self.alvo()
         texto = redacao.redigir(relato, consulta, paciente, request.user)
         servicos.salvar_rascunho(consulta, paciente, texto=texto,

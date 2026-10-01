@@ -1,0 +1,16 @@
+{% extends "registration/_entrada.html" %}
+{% block titulo %}Recuperar senha{% endblock %}
+{% block corpo %}
+<h1 class="h6 mb-2">Esqueceu a senha?</h1>
+<p class="small text-muted">Escreva o e-mail da sua conta. Se houver conta com ele, enviamos um link para você
+  escolher uma senha nova.</p>
+<form method="post">
+  {% csrf_token %}
+  <div class="mb-3">
+    <label class="form-label small" for="{{ form.email.id_for_label }}">E-mail</label>
+    <input type="email" name="email" id="{{ form.email.id_for_label }}" class="form-control" required autofocus
+           autocomplete="email" placeholder="voce@exemplo.com">
+  </div>
+  <button type="submit" class="btn btn-primary w-100">Enviar o link</button>
+</form>
+{% endblock %}

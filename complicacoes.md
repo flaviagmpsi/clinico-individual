@@ -3512,6 +3512,113 @@ questionar um registro. O usuário decidiu o contrário: nada de áudio nem de t
 A **R-14** sai do escopo por isso. Se a prova de autoria vier a pesar mais, voltar é barato: é um campo de texto
 ligado à versão, e a decisão fica registrada aqui para ser reaberta com o argumento à mão.
 
+## ADR-112 — Guarda de arquivo feito fora do sistema (constrói a ADR-015 e a ADR-021)
+
+**Status:** ✅ Aceita — Rodada 76. Fecha D-01, D-02 e D-04, abertas desde a Rodada 9.
+
+**Decisão do usuário:** "na parte de documentos onde fica guardado os documentos produzidos de cada paciente quero
+que tenha como adicionar para armazenar documentos que nao foram feitos no sistema, um contrato terapeutico por
+exemplo, pra que o psicologo possa ter todos os documentos em um lugar só".
+
+**Nada aqui é decisão nova de produto** — é a construção do que três ADRs já tinham decidido e nunca foi feito: a
+ADR-015 ("o psicólogo escreve o próprio contrato fora do sistema; o Hamilton oferece um lugar para guardar"), a
+ADR-021 ("arquivo ligado a um paciente, com tipo e regra de quem vê; `contrato` é um tipo, não um app") e a
+ADR-019 (contrato guardado vai como **bytes no Postgres**, porque é pequeno, raro e tem valor de prova, e porque
+o disco do Render é efêmero — I-04).
+
+**Decisões de arquitetura:**
+- **Model separado do `Documento`, no mesmo app.** O `Documento` é o que o sistema **gera**: tem `dados` em JSON,
+  congela ao ser emitido e nunca se apaga (ADR-076). O arquivo guardado não tem nada disso — pode ser substituído
+  quando o contrato é renovado, e pode ser apagado. Na mesma tabela, quase todo campo ficaria opcional e quase
+  toda regra, condicional. Na tela os dois aparecem juntos, que é o que a promessa "tudo num lugar só" exige.
+- **Os bytes moram numa tabela à parte** (`ConteudoDeArquivo`). O Postgres guarda `bytea` fora da linha, mas a
+  consulta que lista arquivos ainda carregaria a coluna se ela estivesse junto — e listar é o que mais acontece.
+  Essa tabela **não tem RLS própria e não deve ter**: ela não tem coluna `psicologo` para a policy comparar, e
+  quem a protege é o metadado de que ela depende, por chave primária e `CASCADE`. Uma segunda cópia do dono seria
+  uma segunda fonte da verdade, e duas fontes discordam um dia.
+- **O formato é decidido pelos bytes, não pelo que o navegador diz.** O `content_type` do upload vem do cliente e
+  é forjável: basta renomear. Quem decide é a assinatura dos primeiros bytes (`%PDF-`, `\xff\xd8\xff`,
+  `\x89PNG`), que é o que os leitores de verdade olham. Um executável renomeado para `contrato.pdf` é recusado.
+- **O nome do arquivo é reescrito.** Ele vem do computador de quem envia e vai parar num cabeçalho
+  `Content-Disposition`: caminho, aspas e quebra de linha saem, e a extensão passa a ser a do formato que os bytes
+  provaram ser.
+- **PDF, JPG e PNG, até 10 MB.** Cobre contrato escaneado e foto de celular com folga. **Não** se aceita .docx: o
+  que se arquiva é o que foi assinado, e formato de edição convida a guardar a versão errada. O tamanho é conferido
+  duas vezes — no cabeçalho antes de ler, para não pagar o custo do ataque, e no que foi lido, porque o cabeçalho
+  pode mentir.
+- **Sem lixeira e sem versionamento, por enquanto** — a D-03 previa os dois. O caso da lixeira é o arrependimento,
+  que aqui é raro: o original está em papel ou no e-mail de quem guardou. A trilha de auditoria já registra quem
+  apagou e quando. Se o arrependimento aparecer no uso real, a lixeira entra junto com a dos pacientes (ADR-048).
+- **A marca "somente eu vejo" entra agora** (Res. CFP 01/2009, Art. 2º, inciso V). É uma caixa de marcar, não uma
+  pasta: pasta obrigaria a mover arquivo entre lugares. É o mesmo campo que a P-84 vai precisar para o registro
+  privativo — e deixá-lo para depois significaria migrar arquivos já guardados para dentro da regra.
+- **Este é o primeiro upload de arquivo do sistema**, e por isso a validação mora em `documentos.guarda`, não no
+  formulário: o comprovante de despesa (N-06) e os anexos de avaliação vão pedir a mesma peça.
+
+## ADR-113 — O conteúdo do arquivo também é trancado pelo banco (corrige a ADR-112)
+
+**Status:** ✅ Aceita — Rodada 77.
+
+**Como apareceu:** auditando o isolamento antes de abrir o sistema a testadores, a conferência contra o banco
+mostrou 25 tabelas com dono e RLS ligada — e uma sem: `documentos_conteudodearquivo`, criada na véspera.
+
+**O erro, e por que ele era convincente:** a ADR-112 argumentou que a tabela dispensava RLS porque "nenhuma
+consulta chega aos bytes sem passar pelo metadado", que é filtrado. Isso é verdade **do código**. E a razão de
+existir desta camada, escrita em `core/rls.py`, é justamente valer contra o código: `.raw()`, `cursor.execute()`,
+shell do Django, uma view nova escrita às pressas. Sem policy, um `SELECT * FROM documentos_conteudodearquivo`
+dentro de uma requisição autenticada devolvia o contrato terapêutico de **todos** os psicólogos.
+
+**Decisão:** a tabela continua sem coluna de dono — duplicá-la criaria duas fontes da verdade sobre de quem é o
+arquivo, e duas fontes discordam um dia. Em vez disso, a policy **pergunta ao pai**, por chave primária, que é o
+índice que já existe (`core.rls.ativar_rls_por_tabela_pai`). O teste que prova usa SQL cru de propósito: é o
+caminho que as duas primeiras camadas não cobrem, e ele confere os dois lados — a Ana não vê os bytes do Bruno, e
+o Bruno continua vendo os dele. Uma policy que nega tudo passaria na metade de cima do teste.
+
+**O que isso ensina para o próximo caso:** "o código garante" não é argumento para dispensar a terceira camada.
+Toda tabela nova que guarde dado de psicólogo entra com RLS — se ela não tem coluna de dono, a policy pergunta a
+quem tem.
+
+## ADR-114 — Rodada aberta de testes: cada pessoa na própria conta
+
+**Status:** ✅ Aceita — Rodada 77.
+
+**Decisão do usuário:** "quero que voce confira e faça o que falta para que as pessoas que vao testar o sistema
+consigam criar contas separadamente de forma segura, para que cada um teste na sua conta"; e, sobre o plano,
+"nao vai ter plano pago e nem teste de 7 dias, é um teste geral para essas pessoas irem usando e eu ir
+atualizando o sistema de acordo com o feedback".
+
+**Decisões de arquitetura:**
+- **`ACESSO_LIBERADO`, uma chave de ambiente que destranca a porta.** Sem plano e sem prazo, o psicólogo cria a
+  conta, responde o quiz e usa. Ela **nasce desligada**, e ligá-la é ação explícita no Render — o mesmo desenho do
+  pagamento simulado (ADR-094), pelo mesmo motivo: nenhum `.env` esquecido deve mudar o que o produto é.
+  A ADR-094 continua inteira por baixo; o que muda é que, com a chave ligada, nada daquilo roda.
+- **A faixa de "rodada aberta" não fecha.** Quem está testando precisa saber que está testando — e que o que
+  escreve ali é guardado de verdade e é sigiloso como qualquer prontuário. Um aviso que se fecha é um aviso que
+  não existe depois do primeiro clique.
+- **Recuperação de senha, que não existia.** Sem ela, quem esquecia a senha ficava trancado para sempre e só saía
+  com alguém mexendo no banco à mão — numa rodada em que cada pessoa cria a própria conta, isso basta para
+  desistir. As quatro telas rodam sob `hamilton_web`, sem escopo, como o login (ADR-046). **A resposta é a mesma
+  exista a conta ou não**: dizer "não há conta com este e-mail" entregaria a lista de quem usa o sistema, e num
+  sistema de psicólogos saber que alguém tem conta já é informação sobre essa pessoa. O link vale duas horas.
+- **Freio contra tentativa de senha em massa.** Conta por e-mail **e** por IP, e o que estourar primeiro trava:
+  só por IP puniria o consultório inteiro atrás de um roteador; só por e-mail deixaria passar quem varre muitos
+  e-mails com uma senha só, que é como a maioria dos ataques por lista funciona. Oito erros travam por quinze
+  minutos. A conta travada recebe a **mesma** recusa de quem errou a senha, mais o prazo — dizer "esta conta está
+  travada" confirmaria ao atacante que o e-mail existe. Fica no cache, não no banco: o dado é efêmero, e gravar
+  uma linha por tentativa daria ao atacante um jeito barato de encher o disco.
+- **Teto mensal de IA por conta.** A chave da OpenAI é uma só, e quem paga é quem hospeda. Sem teto, um laço
+  acidental ou um testador animado viram fatura que só aparece no fim do mês. O teto conta as **versões de
+  prontuário nascidas de IA** no mês, e não um contador próprio: contador é estado a mais para manter em
+  sincronia, e esta é a mesma informação. A recusa chega na síntese, não na transcrição — é a síntese que custa,
+  e recusar depois de a pessoa já ter gravado seria a pior hora de avisar.
+- **Implantação no Render, plano grátis.** Com o Whisper por API (ADR-111), não há modelo carregado na memória, e
+  a razão de pagar mais deixou de existir. O grátis hiberna após quinze minutos parado e a primeira visita
+  seguinte demora meio minuto; trocar para pago é uma linha no `render.yaml`. **O banco continua no Neon**: as
+  três camadas de isolamento vivem lá, e trocar significaria recriá-las.
+- **Duas `DATABASE_URL`, e a diferença é o ponto.** A aplicação atende com `hamilton_web`, sem BYPASSRLS; o papel
+  dono fica numa variável separada e só o `migrate` do build o usa. O `check --deploy` roda no build **com a URL
+  da aplicação**: se ela tiver BYPASSRLS, o RLS é decorativo e o deploy para ali (ADR-046).
+
 ## Impeditivos
 
 | # | Impeditivo | Situação |

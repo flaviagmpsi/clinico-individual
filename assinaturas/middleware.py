@@ -14,6 +14,7 @@ Vem **depois** do escopo (precisa do papel e do dono para ler a assinatura) e **
 plano acontece primeiro). Deixa `request.assinatura` para o aviso de teste do `base.html`.
 """
 
+from django.conf import settings
 from django.shortcuts import redirect
 from django.urls import Resolver404, resolve
 
@@ -38,6 +39,10 @@ class AssinaturaMiddleware:
             return self.get_response(request)
 
         assinatura = request.assinatura = Assinatura.objects.first()
+        # ADR-114: na rodada aberta de testes não há plano nem prazo — a porta fica destrancada para todo mundo.
+        # A verificação vem antes de qualquer conta de dias: com ela ligada, nada aqui redireciona.
+        if getattr(settings, "ACESSO_LIBERADO", False):
+            return self.get_response(request)
         precisa_escolher = assinatura is None and not usuario.cadastro_completo
         trancada = assinatura is not None and not assinatura.libera_o_sistema()
         if (precisa_escolher or trancada) and not self._liberada(request):

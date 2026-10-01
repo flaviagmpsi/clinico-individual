@@ -5,12 +5,14 @@ psicólogo. A separação é o que permite testar a anonimização e o contexto 
 que não se quer chamar num teste.
 """
 
+from django.conf import settings
 from django.utils import timezone
 
 from atendimentos.models import Consulta
 from contas import abordagens as catalogo
 from pacientes.models import Paciente
 from prontuarios import ia
+from prontuarios.models import VersaoProntuario
 
 
 def nomes_a_esconder(paciente: Paciente, psicologo=None) -> list[str]:
@@ -76,3 +78,27 @@ def rodape_de_origem(agora=None) -> str:
     """A linha que marca o texto como rascunho de IA, enquanto ele não foi revisado e confirmado."""
     quando = (agora or timezone.localtime()).strftime("%d/%m/%Y às %H:%M")
     return f"\n\n— Rascunho gerado com apoio de IA em {quando}, a partir do relato do profissional. Revise antes de confirmar."
+
+
+def quantas_sinteses_no_mes(agora=None) -> int:
+    """Quantas sínteses esta conta já pediu no mês corrente.
+
+    Conta pelas **versões de prontuário nascidas de IA**, e não por um contador próprio: contador é estado a
+    mais para manter em sincronia, e esta é a mesma informação. Versão apagada deixa de contar, o que é justo —
+    ela não existe mais.
+    """
+    agora = agora or timezone.localtime()
+    return VersaoProntuario.objects.filter(
+        origem=VersaoProntuario.Origem.IA,
+        criado_em__year=agora.year,
+        criado_em__month=agora.month,
+    ).count()
+
+
+def teto_do_mes() -> int:
+    return int(getattr(settings, "IA_SINTESES_POR_MES", 0) or 0)
+
+
+def passou_do_teto(agora=None) -> bool:
+    teto = teto_do_mes()
+    return bool(teto) and quantas_sinteses_no_mes(agora) >= teto

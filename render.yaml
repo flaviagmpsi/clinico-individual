@@ -1,0 +1,56 @@
+# Implantação no Render (ADR-114).
+#
+# O banco continua sendo o Neon, e não um Postgres do Render: as três camadas de isolamento da ADR-001 vivem lá —
+# papéis `hamilton_web`/`hamilton_app`, RLS e policies —, e trocar de banco significaria recriá-las.
+#
+# ⚠️ Duas `DATABASE_URL` diferentes, e a diferença é o ponto:
+#   - `DATABASE_URL`          → papel `hamilton_web`, **sem** BYPASSRLS. É com ela que a aplicação atende.
+#   - `DATABASE_URL_MIGRACAO` → papel dono, só para `migrate` no build.
+# `core/checks.py` recusa o arranque se a primeira tiver BYPASSRLS — por isso `check --deploy` está no build, e
+# não só na cabeça de quem configurou.
+#
+# Nenhum segredo neste arquivo: tudo o que é `sync: false` se digita no painel do Render, uma vez.
+
+services:
+  - type: web
+    name: hamilton
+    runtime: python
+    plan: free          # Com o Whisper por API (ADR-111), não há modelo carregado na memória: o grátis serve.
+                        # Ele hiberna após 15 min parado, e a primeira visita depois disso demora ~30 s.
+    region: oregon
+    branch: main
+    rootDir: clinico-individual
+    buildCommand: "./build.sh"
+    startCommand: "gunicorn config.wsgi:application --workers 2 --timeout 120"
+    # 120 s porque a síntese do prontuário espera a OpenAI responder, e o padrão de 30 s a cortaria pela metade.
+    healthCheckPath: /conta/entrar/
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.12.4"
+      - key: DEBUG
+        value: "False"
+      - key: SECRET_KEY
+        generateValue: true        # o Render gera e guarda; ninguém precisa inventar nem versionar
+      - key: ALLOWED_HOSTS
+        sync: false                # o domínio que o Render der, ex.: hamilton.onrender.com
+      - key: DATABASE_URL
+        sync: false                # Neon, papel hamilton_web
+      - key: DATABASE_URL_MIGRACAO
+        sync: false                # Neon, papel dono — usado só no build
+      # --- a rodada aberta de testes (ADR-114) ---
+      - key: ACESSO_LIBERADO
+        value: "True"              # sem assinatura e sem prazo enquanto durar a rodada
+      # --- IA do registro de sessão (ADR-111) ---
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: IA_SINTESES_POR_MES
+        value: "40"                # teto por conta; um laço acidental não vira fatura
+      # --- e-mail, para a recuperação de senha (ADR-114) ---
+      - key: EMAIL_HOST
+        sync: false
+      - key: EMAIL_HOST_USER
+        sync: false
+      - key: EMAIL_HOST_PASSWORD
+        sync: false
+      - key: DEFAULT_FROM_EMAIL
+        sync: false

@@ -1,0 +1,7 @@
+{% extends "registration/_entrada.html" %}
+{% block titulo %}Senha trocada{% endblock %}
+{% block corpo %}
+<h1 class="h6 mb-2">Senha trocada</h1>
+<p class="small text-muted">Agora é só entrar com ela.</p>
+<a href="{% url 'contas:entrar' %}" class="btn btn-primary w-100">Entrar</a>
+{% endblock %}

@@ -15,4 +15,8 @@ urlpatterns = [
     path("<int:pk>/baixar/<str:formato>/", views.Baixar.as_view(), name="baixar"),
     path("<int:pk>/excluir/", views.ExcluirRascunho.as_view(), name="excluir"),
     path("<int:pk>/duplicar/", views.Duplicar.as_view(), name="duplicar"),
+    # ADR-112: o que o psicólogo guarda mas não foi feito aqui — contrato, autorização, anexo.
+    path("guardar/<int:paciente_pk>/", views.GuardarArquivo.as_view(), name="guardar_arquivo"),
+    path("arquivo/<int:pk>/baixar/", views.BaixarArquivo.as_view(), name="baixar_arquivo"),
+    path("arquivo/<int:pk>/excluir/", views.ExcluirArquivo.as_view(), name="excluir_arquivo"),
 ]
