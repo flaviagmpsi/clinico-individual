@@ -33,6 +33,23 @@ _NOME_POLICY_AUTENTICACAO = "autenticacao"
 
 _DONO_DA_SESSAO = f"NULLIF(current_setting('{VARIAVEL_SESSAO}', true), '')::bigint"
 
+# ADR-115: a administradora da plataforma enxerga tudo. Quem responde "esta sessão é dela?" é uma **segunda
+# variável de sessão**, posta pelo mesmo middleware que põe o dono, na mesma transação e com o mesmo `is_local`.
+#
+# A primeira tentativa foi uma função `SECURITY DEFINER` que lia `is_superuser` da tabela. Dois problemas, e o
+# segundo só apareceu rodando: a função é uma porta de escalada de privilégio que precisa de cuidado para não
+# virar furo; e, por ser referenciada por `ativar_rls`, ela passou a ser exigida por **todas as migrações
+# antigas** — que rodam antes de ela existir, e aí nenhum banco novo subia. Variável de sessão não tem nenhum
+# dos dois problemas: `current_setting(..., true)` devolve NULL quando ninguém a definiu, a comparação falha, e
+# migração velha continua produzindo SQL que funciona.
+VARIAVEL_ADMINISTRADORA = "hamilton.administradora"
+_E_ADMINISTRADORA = f"current_setting('{VARIAVEL_ADMINISTRADORA}', true) = 'sim'"
+
+
+def _quem_ve(condicao_do_dono: str) -> str:
+    """A linha é visível para quem é dono dela — **ou** para a administradora da plataforma."""
+    return f"({condicao_do_dono} OR {_E_ADMINISTRADORA})"
+
 
 def ativar_rls(tabela: str, coluna_dono: str = "psicologo_id") -> str:
     """SQL que tranca uma tabela de domínio ao dono da sessão.
@@ -47,8 +64,8 @@ def ativar_rls(tabela: str, coluna_dono: str = "psicologo_id") -> str:
 
         DROP POLICY IF EXISTS {_NOME_POLICY} ON {tabela};
         CREATE POLICY {_NOME_POLICY} ON {tabela}
-            USING ({coluna_dono} = {_DONO_DA_SESSAO})
-            WITH CHECK ({coluna_dono} = {_DONO_DA_SESSAO});
+            USING {_quem_ve(f"{coluna_dono} = {_DONO_DA_SESSAO}")}
+            WITH CHECK {_quem_ve(f"{coluna_dono} = {_DONO_DA_SESSAO}")};
     """
 
 
@@ -71,8 +88,8 @@ def ativar_rls_no_tenant_raiz(tabela: str, coluna_id: str = "id") -> str:
         DROP POLICY IF EXISTS {_NOME_POLICY} ON {tabela};
         CREATE POLICY {_NOME_POLICY} ON {tabela}
             TO {PAPEL_APLICACAO}
-            USING ({coluna_id} = {_DONO_DA_SESSAO})
-            WITH CHECK ({coluna_id} = {_DONO_DA_SESSAO});
+            USING {_quem_ve(f"{coluna_id} = {_DONO_DA_SESSAO}")}
+            WITH CHECK {_quem_ve(f"{coluna_id} = {_DONO_DA_SESSAO}")};
 
         DROP POLICY IF EXISTS {_NOME_POLICY_AUTENTICACAO} ON {tabela};
         CREATE POLICY {_NOME_POLICY_AUTENTICACAO} ON {tabela}
@@ -93,8 +110,8 @@ def ativar_rls_por_tabela_pai(tabela: str, pai: str, coluna_ligacao: str,
     view nova escrita às pressas). Duplicar a coluna do dono criaria duas fontes da verdade; perguntar ao pai,
     não. A policy custa uma busca por chave primária, que é o índice que já existe.
     """
-    dono_do_pai = (f"EXISTS (SELECT 1 FROM {pai} p "
-                   f"WHERE p.id = {tabela}.{coluna_ligacao} AND p.{coluna_dono} = {_DONO_DA_SESSAO})")
+    dono_do_pai = _quem_ve(f"EXISTS (SELECT 1 FROM {pai} p "
+                           f"WHERE p.id = {tabela}.{coluna_ligacao} AND p.{coluna_dono} = {_DONO_DA_SESSAO})")
     return f"""
         ALTER TABLE {tabela} ENABLE ROW LEVEL SECURITY;
         ALTER TABLE {tabela} FORCE ROW LEVEL SECURITY;

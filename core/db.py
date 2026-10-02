@@ -20,7 +20,8 @@ de segurança justamente no cenário em que não fazia nada.)
 
 from django.db import connection
 
-from core.rls import PAPEL_APLICACAO, PAPEL_WEB, VARIAVEL_CONVITE, VARIAVEL_SESSAO
+from core.rls import (PAPEL_APLICACAO, PAPEL_WEB, VARIAVEL_ADMINISTRADORA, VARIAVEL_CONVITE,
+                      VARIAVEL_SESSAO)
 
 
 class ForaDeTransacao(RuntimeError):
@@ -71,13 +72,19 @@ def assumir_papel_da_web() -> None:
     _assumir(PAPEL_WEB)
 
 
-def aplicar_escopo(psicologo_id: int) -> None:
-    """Define o dono da sessão, válido só até o fim da transação corrente."""
+def aplicar_escopo(psicologo_id: int, *, administradora: bool = False) -> None:
+    """Define o dono da sessão, válido só até o fim da transação corrente.
+
+    `administradora` diz ao banco que esta sessão atravessa o isolamento (ADR-115). Vai **sempre**, inclusive
+    como "nao": sem isso, uma transação reaproveitada poderia herdar o "sim" da anterior — e `set_config` com
+    `is_local` só limpa no fim da transação, não no começo.
+    """
     _exigir_transacao("Aplicar o escopo do psicólogo")
     with connection.cursor() as cursor:
         cursor.execute(
-            "SELECT set_config(%s, %s, true)",
-            [VARIAVEL_SESSAO, str(psicologo_id)],
+            "SELECT set_config(%s, %s, true), set_config(%s, %s, true)",
+            [VARIAVEL_SESSAO, str(psicologo_id),
+             VARIAVEL_ADMINISTRADORA, "sim" if administradora else "nao"],
         )
 
 

@@ -58,7 +58,9 @@ class EscopoDoPsicologoMiddleware:
             # de quem é o dado. O contrário deixaria uma janela rodando privilegiada.
             db.assumir_papel_da_aplicacao()
             contexto.definir(psicologo_id)
-            db.aplicar_escopo(psicologo_id)
+            # ADR-115: a conta marcada como superusuária atravessa o isolamento. Quem decide é o Django, aqui;
+            # o banco só obedece ao que esta transação declarou.
+            db.aplicar_escopo(psicologo_id, administradora=bool(getattr(request.user, "is_superuser", False)))
             try:
                 return self.get_response(request)
             finally:

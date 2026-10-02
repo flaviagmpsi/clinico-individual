@@ -561,9 +561,9 @@ class Command(BaseCommand):
             assinatura = dados.pop("assinatura")
             psicologo = Psicologo.objects.create_user(
                 password=SENHA, telefone="31988887777", crp_regiao="04",
-                # `is_staff`/`is_superuser` só para o `/admin/` continuar servindo de conferência
-                # do passo 0. Nada no produto olha para essas flags.
-                is_staff=True, is_superuser=True,
+                # **Não** são superusuárias desde a ADR-115: a flag deixou de ser inofensiva. Agora ela
+                # atravessa o RLS em todas as tabelas, e a Ana passaria a enxergar os pacientes do Bruno —
+                # justamente o contrário do que estas duas contas existem para demonstrar.
                 # Contas de demonstração entram direto: o quiz de cadastro (ADR-071) já está respondido.
                 quiz_concluido_em=timezone.now(), atende_online=True, atende_presencial=True,
                 nome_clinica=f"Consultório de {modelo['nome_completo'].split()[0]}",
