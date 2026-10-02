@@ -35,6 +35,24 @@ numa injeção de SQL devolveria o banco inteiro, e o RLS seria decorativo (ADR-
 
 ### 1. Criar o serviço no Render
 
+⚠️ **Tem de ser `New → Blueprint`, não `New → Web Service`.** Só o Blueprint lê o `render.yaml`. No caminho de
+Web Service, o Render propõe `pip install -r requirements.txt` e `gunicorn app:app` — e os dois estão errados
+aqui: o primeiro pula o `collectstatic`, o `migrate` e o portão de segurança; o segundo aponta para um módulo que
+não existe neste projeto.
+
+Se você já criou como Web Service, apague o serviço e recrie como Blueprint, ou preencha à mão:
+
+| Campo | Valor |
+|---|---|
+| Build Command | `bash build.sh` |
+| Start Command | `gunicorn config.wsgi:application --workers 2 --timeout 120` |
+| Health Check Path | `/saude/` |
+| Region | Ohio |
+
+...e aí **todas** as variáveis abaixo precisam ser digitadas, inclusive as que o Blueprint preencheria sozinho
+(`PYTHON_VERSION=3.12.4`, `DEBUG=False`, `ACESSO_LIBERADO=True`, `IA_SINTESES_POR_MES=40`, `SECRET_KEY` e
+`ALLOWED_HOSTS`).
+
 1. Em [dashboard.render.com](https://dashboard.render.com), **New → Blueprint**.
 2. Conecte `github.com/PauloHenriqueL/clinico-individual`. Ele lê o `render.yaml` sozinho.
 3. Em **Environment**, cole os valores que o `render.yaml` marca como `sync: false`:

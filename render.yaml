@@ -19,7 +19,9 @@ services:
                         # Ele hiberna após 15 min parado, e a primeira visita depois disso demora ~30 s.
     region: ohio       # o banco Neon está em us-east-1; Oregon faria cada consulta atravessar o país
     branch: main
-    buildCommand: "./build.sh"
+    # `bash build.sh`, e não `./build.sh`: o Windows não guarda a marca de executável, e um clone sem ela
+    # daria "permission denied" no build. Chamar o interpretador explicitamente funciona nos dois casos.
+    buildCommand: "bash build.sh"
     startCommand: "gunicorn config.wsgi:application --workers 2 --timeout 120"
     # 120 s porque a síntese do prontuário espera a OpenAI responder, e o padrão de 30 s a cortaria pela metade.
     healthCheckPath: /saude/   # não toca o banco: Neon lento não pode parecer aplicação caída
