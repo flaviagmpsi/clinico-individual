@@ -22,6 +22,7 @@ from decimal import Decimal
 
 from django.utils import timezone
 
+from agenda import compromissos
 from atendimentos.models import Consulta
 from financeiro.despesas import Fluxo, fluxo_do_ano
 from indicadores.periodo import Periodo
@@ -112,6 +113,12 @@ class RetratoDaClinica:
         return self.pacientes_ativos != self.composicao.total
 
 
+
+def _horas(minutos: int) -> str:
+    """"6h30", "2h". Mesma escrita da grade da semana, para os dois números se lerem juntos."""
+    horas, resto = divmod(round(minutos), 60)
+    return f"{horas}h{resto:02d}" if resto else f"{horas}h"
+
 @dataclass
 class RetratoDaAgenda:
     """Agenda: quando a clínica acontece, e com que frequência (ADR-103)."""
@@ -120,6 +127,26 @@ class RetratoDaAgenda:
     horarios: list  # (rótulo, sessões), só das horas que tiveram sessão
     dias: list  # (dia da semana, sessões)
     composicao: Composicao
+    # ADR-122: minutos de trabalho no período, somando sessão realizada e compromisso fora da clínica. Separados
+    # para a tela poder dizer de onde vem cada parte — "22h, sendo 6h fora da clínica" explica; "28h" esconde.
+    minutos_de_sessao: int = 0
+    minutos_fora_da_clinica: int = 0
+
+    @property
+    def minutos_trabalhados(self) -> int:
+        return self.minutos_de_sessao + self.minutos_fora_da_clinica
+
+    @property
+    def horas_trabalhadas(self) -> str:
+        return _horas(self.minutos_trabalhados)
+
+    @property
+    def horas_fora_da_clinica(self) -> str:
+        return _horas(self.minutos_fora_da_clinica)
+
+    @property
+    def tem_trabalho_fora(self) -> bool:
+        return bool(self.minutos_fora_da_clinica)
 
     @property
     def horario_mais_usado(self):
@@ -198,16 +225,22 @@ def retrato_da_clinica(periodo: Periodo) -> RetratoDaClinica:
 def retrato_da_agenda(periodo: Periodo) -> RetratoDaAgenda:
     """Agenda (ADR-103): em que horas e em que dias as sessões aconteceram, e a frequência combinada."""
     horas, dias = Counter(), Counter()
-    for momento in _consultas(periodo).filter(estado=E.REALIZADA).values_list("inicio", flat=True):
+    minutos_de_sessao = 0
+    for momento, duracao in _consultas(periodo).filter(estado=E.REALIZADA).values_list("inicio", "duracao"):
         local = timezone.localtime(momento)
         horas[local.hour] += 1
         dias[local.weekday()] += 1
+        minutos_de_sessao += duracao
+    # ADR-122: o que o psicólogo faz e não é paciente particular conta nas horas, e em nenhuma outra conta.
+    fora = compromissos.do_periodo(periodo.primeiro_dia, periodo.ultimo_dia)
     return RetratoDaAgenda(
         periodo=periodo,
         horarios=[(f"{hora:02d}h", horas[hora]) for hora in sorted(horas)],
         # Sábado e domingo só aparecem quando houve sessão: a coluna vazia do fim de semana não diz nada.
         dias=[(_DIAS[dia], dias[dia]) for dia in range(7) if dia < 5 or dias[dia]],
         composicao=_composicao(),
+        minutos_de_sessao=minutos_de_sessao,
+        minutos_fora_da_clinica=sum(item.duracao for item in fora),
     )
 
 

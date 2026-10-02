@@ -83,7 +83,7 @@ def fichas(pacientes, presenca_por_paciente=None, hoje: date | None = None) -> l
     vencimento_por_caso: dict[int, date] = {}
     for cobranca in financeiro.cobrancas_em_aberto(hoje):
         chave = cobranca.caso.pk
-        if cobranca.pendente(hoje):
+        if cobranca.vencida(hoje):
             vencido_por_caso[chave] = vencido_por_caso.get(chave, Decimal("0")) + cobranca.saldo
         else:
             a_receber_por_caso[chave] = a_receber_por_caso.get(chave, Decimal("0")) + cobranca.saldo

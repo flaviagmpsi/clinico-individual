@@ -24,6 +24,7 @@ from django.db import transaction
 from django.db.models import Q
 from django.utils import timezone
 
+from agenda import compromissos
 from agenda.models import HorarioDisponivel, Recorrencia
 from atendimentos.models import Consulta, Desfecho
 from core import contexto
@@ -238,7 +239,23 @@ class DiaDoCalendario:
 
     @property
     def sessoes(self) -> list:
-        return [item for tipo, item, _ in self.cartoes if tipo != "livre"]
+        """Só atendimento. Fora o horário livre, fica de fora o **compromisso** (ADR-122): ele ocupa a agenda,
+        mas não é sessão, e contá-lo aqui estragaria a taxa de online, a presença e o faturamento."""
+        return [item for tipo, item, _ in self.cartoes if tipo not in ("livre", "compromisso")]
+
+    @property
+    def compromissos(self) -> list:
+        return [item for tipo, item, _ in self.cartoes if tipo == "compromisso"]
+
+    @property
+    def visiveis(self) -> list:
+        """Os cartões que a visão de mês realmente desenha — tudo menos o horário livre.
+
+        Devolve as triplas inteiras, e não só o item, porque é sobre elas que o laço do mês roda. Antes ele
+        percorria `cartoes` e pulava os livres por dentro do laço: o contador continuava subindo, e num dia com
+        quatro horários livres a primeira sessão de verdade já caía no "+1" e sumia da tela.
+        """
+        return [cartao for cartao in self.cartoes if cartao[0] != "livre"]
 
     @property
     def vazio(self) -> bool:
@@ -263,7 +280,10 @@ def calendario(de: date, ate: date, *, situacao: str = "", duracao: int = 50) ->
     if situacao in ("", PREVISTA):
         esperadas = ([("prevista", s) for s in sessoes_previstas(de, ate)]
                      + [("remarcada", s) for s in sessoes_remarcadas(de, ate)])
-    itens = [("consulta", c) for c in consultas] + esperadas
+    # ADR-122: compromisso fora da clínica aparece quando não há filtro de situação — ele não tem situação,
+    # e devolvê-lo numa busca por "faltas" seria ruído.
+    fora_da_clinica = [("compromisso", c) for c in compromissos.do_periodo(de, ate)] if not situacao else []
+    itens = [("consulta", c) for c in consultas] + esperadas + fora_da_clinica
 
     blocos_por_dia: dict[int, list] = {}
     if not situacao:
@@ -330,11 +350,16 @@ def definir_frequencia(
     duracao: int | None = None,
     a_partir_de: date | None = None,
     hoje: date | None = None,
+    primeira_sessao: date | None = None,
 ) -> Recorrencia | None:
     """Semanal, quinzenal ou avulso (ADR-053). Vale "desta data em diante" (ADR-022).
 
     Avulso não cria regra: encerra a vigente e deixa de prever sessões. Se a regra nova colidir com outra, nada é
     gravado — nem o encerramento da anterior.
+
+    `primeira_sessao` é a data que o psicólogo informou no cadastro do paciente (ADR-120). Ela só é guardada
+    quando **não** cai no dia da semana escolhido: caindo, a própria série semanal já a prevê, e gravá-la seria
+    uma segunda fonte da verdade para o mesmo dia.
     """
     _recusar_encerrado(caso)
     hoje = hoje or timezone.localdate()
@@ -350,9 +375,17 @@ def definir_frequencia(
     if dia_semana is None or hora is None:
         raise ValidationError("Semanal e quinzenal precisam de dia da semana e horário.")
 
+    # ADR-120: guardada só quando é exceção de verdade — dentro da vigência e fora do dia da semana escolhido.
+    # Caindo no dia certo, a série semanal já a prevê, e gravá-la criaria duas fontes para a mesma sessão.
+    excecao = (primeira_sessao
+               if primeira_sessao is not None
+               and primeira_sessao >= a_partir_de
+               and primeira_sessao.weekday() != dia_semana
+               else None)
     nova = Recorrencia.objects.create(
         caso=caso, frequencia=frequencia, dia_semana=dia_semana, hora=hora,
         duracao=duracao or _psicologo().duracao_sessao, inicio=a_partir_de,
+        primeira_sessao_em=excecao,
     )
     conflito = _conflito_da_regra(nova)
     if conflito:

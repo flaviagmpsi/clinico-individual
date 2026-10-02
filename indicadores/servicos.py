@@ -70,19 +70,20 @@ class Pendencias:
     `sessoes` são as de **dias anteriores**: a de hoje que já passou aparece na agenda do dia como
     "a cadastrar", e repeti-la aqui seria o ruído que a ADR-072 tira.
 
-    `pagamentos` são os **vencidos** — alerta. `a_receber` são os que existem e ainda vão vencer: decisão do
-    usuário (rodada 80) de que a mensalidade do mês entra no painel no dia 1º, porque o paciente tem até o
-    vencimento para pagá-la. Separados porque não pedem a mesma coisa: um é cobrar, o outro é esperar.
+    `vencidos` são os pagamentos que passaram da data — alerta. `pendentes` são os que existem e ainda têm
+    prazo: decisão do usuário (rodada 80) de que a mensalidade do mês entra no painel no dia 1º, porque o
+    paciente tem até o vencimento para pagá-la. Separados porque não pedem a mesma coisa: um é cobrar, o outro
+    é aguardar. Os nomes são os dele (ADR-121).
     """
 
     sessoes: list
-    pagamentos: list
+    pagamentos: list  # os vencidos — o nome do campo fica por compatibilidade com quem já o lê
     prontuarios: list
-    a_receber: list = field(default_factory=list)
+    pendentes: list = field(default_factory=list)
 
     @property
     def total(self) -> int:
-        return len(self.sessoes) + len(self.pagamentos) + len(self.prontuarios) + len(self.a_receber)
+        return len(self.sessoes) + len(self.pagamentos) + len(self.prontuarios) + len(self.pendentes)
 
 
 @dataclass
@@ -138,9 +139,9 @@ def montar_painel(agora: datetime | None = None) -> Painel:
     abertas = cobrancas_em_aberto(hoje)
     pendencias = Pendencias(
         sessoes=[s for s in sessoes_pendentes(agora) if timezone.localtime(s.inicio).date() < hoje],
-        pagamentos=[c for c in abertas if c.pendente(hoje)],
+        pagamentos=[c for c in abertas if c.vencida(hoje)],
         prontuarios=prontuarios_pendentes(),
-        a_receber=[c for c in abertas if c.a_receber(hoje)],
+        pendentes=[c for c in abertas if c.pendente(hoje)],
     )
     return Painel(hoje=hoje, mes=inicio, resumo=resumo, hoje_itens=_itens_de_hoje(agora, hoje),
                   pendencias=pendencias)

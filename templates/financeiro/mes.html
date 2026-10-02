@@ -37,8 +37,8 @@ tabela "Pagamentos recebidos" (data, observação e o desfazer) mora dentro da l
     <span class="fw-semibold">Cobranças do mês</span>
     <ul class="nav nav-pills ms-auto">
       <li class="nav-item"><a class="nav-link py-0{% if not filtro %} active{% endif %}" href="?mes={{ inicio|date:'Y-m' }}">Todas · {{ total_de_cobrancas }}</a></li>
+      <li class="nav-item"><a class="nav-link py-0{% if filtro == 'vencidas' %} active{% endif %}" href="?mes={{ inicio|date:'Y-m' }}&situacao=vencidas">Vencidas · {{ contagem.vencidas }}</a></li>
       <li class="nav-item"><a class="nav-link py-0{% if filtro == 'pendentes' %} active{% endif %}" href="?mes={{ inicio|date:'Y-m' }}&situacao=pendentes">Pendentes · {{ contagem.pendentes }}</a></li>
-      <li class="nav-item"><a class="nav-link py-0{% if filtro == 'a_vencer' %} active{% endif %}" href="?mes={{ inicio|date:'Y-m' }}&situacao=a_vencer">A vencer · {{ contagem.a_vencer }}</a></li>
       <li class="nav-item"><a class="nav-link py-0{% if filtro == 'pagas' %} active{% endif %}" href="?mes={{ inicio|date:'Y-m' }}&situacao=pagas">Pagas · {{ contagem.pagas }}</a></li>
     </ul>
   </div>
@@ -105,13 +105,13 @@ tabela "Pagamentos recebidos" (data, observação e o desfazer) mora dentro da l
 ADR-063 e ADR-074: o lembrete de pagamento vencido vive na tabela do mês ("Pendente"). O que ela não alcança é a
 cobrança de mês anterior ainda em aberto — e só essa aparece à parte, sem repetir o que já está na tela.
 {% endcomment %}
-{% if pendentes_anteriores %}
+{% if vencidas_anteriores %}
 <div class="card mb-3 border-warning-subtle">
   <div class="card-header bg-white py-2 fw-semibold">
-    Em aberto de meses anteriores <span class="badge text-bg-warning ms-1">{{ pendentes_anteriores|length }}</span>
+    Vencidas de meses anteriores <span class="badge text-bg-warning ms-1">{{ vencidas_anteriores|length }}</span>
   </div>
   <ul class="list-unstyled mb-0 card-body py-2 small">
-  {% for c in pendentes_anteriores %}
+  {% for c in vencidas_anteriores %}
     <li class="py-1"><a href="{{ c.url_pagar }}" class="text-decoration-none">{{ c.caso }} · {{ c.descricao }} · R$ {{ c.saldo|floatformat:2 }}</a>
       <span class="text-muted">· venceu {{ c.vencimento|date:"d/m/Y" }}</span></li>
   {% endfor %}

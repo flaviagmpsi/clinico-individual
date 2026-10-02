@@ -116,13 +116,13 @@ calendário, como cartão "pendente"; repetir em cima seria a mesma informação
           <div class="corpo{% if not dia %} bg-light{% endif %}">
             {% if dia %}
               <div class="numero{% if dia.dia == hoje %} hoje{% endif %}">{{ dia.dia|date:"j" }}</div>
-              {% for tipo, item, hora in dia.cartoes %}
-                {% if tipo != "livre" %}
-                  {% if forloop.counter <= 4 %}
-                    {% include "atendimentos/_cartao.html" with tipo=tipo item=item hora=hora %}
-                  {% elif forloop.counter == 5 %}
-                    <a href="{% url 'atendimentos:agenda' %}?visao=dia&data={{ dia.dia|date:'Y-m-d' }}" class="small text-decoration-none">+{{ dia.sessoes|length|add:"-4" }}</a>
-                  {% endif %}
+              {% comment %}`visiveis` já exclui o horário livre. Percorrer `cartoes` e pular por dentro fazia o
+              contador subir com o que não era desenhado, e escondia sessão de verdade atrás de um "+1".{% endcomment %}
+              {% for tipo, item, hora in dia.visiveis %}
+                {% if forloop.counter <= 4 %}
+                  {% include "atendimentos/_cartao.html" with tipo=tipo item=item hora=hora %}
+                {% elif forloop.counter == 5 %}
+                  <a href="{% url 'atendimentos:agenda' %}?visao=dia&data={{ dia.dia|date:'Y-m-d' }}" class="small text-decoration-none">+{{ dia.visiveis|length|add:"-4" }}</a>
                 {% endif %}
               {% endfor %}
             {% endif %}

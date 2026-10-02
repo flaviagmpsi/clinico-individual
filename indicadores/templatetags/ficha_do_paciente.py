@@ -27,22 +27,22 @@ def _soma(cobrancas) -> Decimal:
 
 @register.simple_tag
 def situacao_financeira(caso):
-    """Vencido, a receber, em dia ou sem cobrança combinada.
+    """Vencido, pendente, em dia ou sem cobrança combinada.
 
-    Quatro estados, e não dois (rodada 80): o que venceu e não entrou é alerta; o que existe e ainda tem prazo
-    — a mensalidade do mês corrente, desde o dia 1º — é informação. Quem tem os dois é "vencido", porque o
-    atraso é o que pede ação. Uma leitura só do banco para as duas listas.
+    Quatro estados, e não dois (rodada 80): o que passou da data e não entrou é alerta; o que existe e ainda tem
+    prazo — a mensalidade do mês corrente, desde o dia 1º — é pendente. Quem tem os dois aparece como vencido,
+    porque o atraso é o que pede ação. Uma leitura só do banco para as duas listas.
     """
-    vazio = {"estado": "sem_cobranca", "pendentes": [], "a_receber": [],
-             "total": Decimal("0"), "total_a_receber": Decimal("0")}
+    vazio = {"estado": "sem_cobranca", "vencidas": [], "pendentes": [],
+             "total": Decimal("0"), "total_pendente": Decimal("0")}
     if caso is None:
         return vazio
     abertas = cobrancas_em_aberto(caso=caso)
-    vencidas = [c for c in abertas if c.pendente()]
-    a_receber = [c for c in abertas if c.a_receber()]
-    if vencidas or a_receber:
-        return {"estado": "pendente" if vencidas else "a_receber",
-                "pendentes": vencidas, "a_receber": a_receber,
-                "total": _soma(vencidas), "total_a_receber": _soma(a_receber)}
+    vencidas = [c for c in abertas if c.vencida()]
+    pendentes = [c for c in abertas if c.pendente()]
+    if vencidas or pendentes:
+        return {"estado": "vencido" if vencidas else "pendente",
+                "vencidas": vencidas, "pendentes": pendentes,
+                "total": _soma(vencidas), "total_pendente": _soma(pendentes)}
     combinou = caso.condicoes.exists() or caso.pagamentos.exists()
     return {**vazio, "estado": "em_dia" if combinou else "sem_cobranca"}

@@ -159,19 +159,20 @@ Primeiro o dia; depois as pendências, num bloco; por fim o resumo do mês.
             </details>
           {% endif %}
 
-          {% comment %}Rodada 80: dois blocos, porque são duas coisas. O vencido é alerta — passou a data e não
-          entrou. O a receber existe desde o dia 1º do mês e ainda tem prazo; mostrar os dois no mesmo balaio
-          faria o psicólogo cobrar quem está em dia.{% endcomment %}
-          {% if pagamentos_pendentes %}
+          {% comment %}Rodada 80: dois blocos, porque são duas coisas, e com as palavras do usuário (ADR-121).
+          **Pendente** é o pagamento que o mês abriu e que ainda tem prazo — entra no dia 1º. **Vencido** é o que
+          passou da data sem entrar, e esse é alerta. Num balaio só, o psicólogo cobraria quem está em dia.
+          {% endcomment %}
+          {% if pagamentos_vencidos %}
             <details class="pendencia vencido" open>
               <summary>
-                <span class="quantas">{{ total_pagamentos_pendentes }}</span>
+                <span class="quantas">{{ total_pagamentos_vencidos }}</span>
                 <span class="rotulo-alerta"><i class="bi bi-exclamation-triangle-fill"></i>
-                  pagamento{{ total_pagamentos_pendentes|pluralize }} vencido{{ total_pagamentos_pendentes|pluralize }}</span>
+                  pagamento{{ total_pagamentos_vencidos|pluralize }} vencido{{ total_pagamentos_vencidos|pluralize }}</span>
                 <a href="{% url 'financeiro:mes' %}" class="ms-auto small text-decoration-none">financeiro</a>
               </summary>
               <ul class="list-unstyled small mb-2 mt-1">
-              {% for c in pagamentos_pendentes %}
+              {% for c in pagamentos_vencidos %}
                 <li><a href="{{ c.url_pagar }}" class="text-decoration-none fw-medium">{{ c.caso }}</a>
                   <span class="text-muted">{{ c.descricao|lower }} ·</span>
                   <span class="atraso">venceu {{ c.vencimento|date:"d/m" }}{% with dias=c.dias_de_atraso %}{% if dias %} · {{ dias }} dia{{ dias|pluralize }} de atraso{% endif %}{% endwith %}</span>
@@ -181,15 +182,15 @@ Primeiro o dia; depois as pendências, num bloco; por fim o resumo do mês.
             </details>
           {% endif %}
 
-          {% if pagamentos_a_receber %}
-            <details class="pendencia a-receber">
+          {% if pagamentos_pendentes %}
+            <details class="pendencia a-receber" open>
               <summary>
-                <span class="quantas">{{ total_pagamentos_a_receber }}</span>
-                pagamento{{ total_pagamentos_a_receber|pluralize }} a receber
+                <span class="quantas">{{ total_pagamentos_pendentes }}</span>
+                pagamento{{ total_pagamentos_pendentes|pluralize }} pendente{{ total_pagamentos_pendentes|pluralize }}
                 <a href="{% url 'financeiro:mes' %}" class="ms-auto small text-decoration-none">financeiro</a>
               </summary>
               <ul class="list-unstyled small mb-2 mt-1">
-              {% for c in pagamentos_a_receber %}
+              {% for c in pagamentos_pendentes %}
                 <li><a href="{{ c.url_pagar }}" class="text-decoration-none fw-medium">{{ c.caso }}</a>
                   <span class="text-muted">{{ c.descricao|lower }} · vence {{ c.vencimento|date:"d/m" }}{% with dias=c.dias_para_vencer %}{% if dias %} · em {{ dias }} dia{{ dias|pluralize }}{% else %} · hoje{% endif %}{% endwith %}</span>
                   <span class="valor ms-auto">R$ {{ c.saldo|floatformat:2 }}</span></li>

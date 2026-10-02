@@ -41,12 +41,13 @@ class MesFinanceiro(LoginRequiredMixin, TemplateView):
         fim = servicos.ultimo_dia(inicio.year, inicio.month)
 
         todas = servicos.cobrancas_do_mes(inicio.year, inicio.month)
-        # ADR-092: uma tabela só. Primeiro o que pede ação (pendente), depois o que ainda vai vencer, por fim o pago.
-        grupos = {"pendentes": [c for c in todas if c.pendente(hoje)],
-                  "a_vencer": [c for c in todas if not c.quitada and not c.pendente(hoje)],
+        # ADR-092: uma tabela só. Primeiro o que pede ação (vencida), depois o que tem prazo correndo, por fim o pago.
+        grupos = {"vencidas": [c for c in todas if c.vencida(hoje)],
+                  "pendentes": [c for c in todas if not c.quitada and not c.vencida(hoje)],
                   "pagas": [c for c in todas if c.quitada]}
         filtro = self.request.GET.get("situacao", "")
-        cobrancas = grupos.get(filtro) if filtro in grupos else grupos["pendentes"] + grupos["a_vencer"] + grupos["pagas"]
+        cobrancas = (grupos.get(filtro) if filtro in grupos
+                     else grupos["vencidas"] + grupos["pendentes"] + grupos["pagas"])
         # O que entrou neste mês mas é cobrança de outro: não repete a tabela, só avisa onde está.
         de_outros_meses: dict = {}
         recebidos = Pagamento.objects.filter(data__gte=inicio, data__lte=fim).select_related("consulta")
@@ -65,7 +66,7 @@ class MesFinanceiro(LoginRequiredMixin, TemplateView):
             de_outros_meses=sorted(de_outros_meses.items()),
             # ADR-074: a tabela do mês já marca o que está pendente nele. Só entra à parte o que ela não
             # alcança — cobrança vencida de mês anterior que ninguém quitou.
-            pendentes_anteriores=[c for c in servicos.pagamentos_pendentes(hoje) if c.vencimento < inicio],
+            vencidas_anteriores=[c for c in servicos.pagamentos_vencidos(hoje) if c.vencimento < inicio],
         )
         return contexto
 

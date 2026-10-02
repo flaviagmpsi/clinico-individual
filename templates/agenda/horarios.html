@@ -1,9 +1,24 @@
 {% extends "base.html" %}
-{% block titulo %}Meus horários{% endblock %}
+{% block titulo %}Meus horários
+<script>
+  // O compromisso de uma vez só não tem dia da semana nem data de término: quem manda é a data dele.
+  document.addEventListener("DOMContentLoaded", () => {
+    const escolha = document.querySelector('[data-frequencia]');
+    if (!escolha) return;
+    const ajustar = () => {
+      const unico = escolha.value === "UNICO";
+      document.querySelectorAll("[data-so-repete]").forEach((parte) => { parte.hidden = unico; });
+    };
+    escolha.addEventListener("change", ajustar);
+    ajustar();
+  });
+</script>
+{% endblock %}
 {% block secao %}Agenda{% endblock %}
 {% block pagina %}<span class="separa">›</span>Meus horários{% endblock %}
 
 {% block conteudo %}
+{% url 'agenda:compromisso_novo' as acao_padrao %}
 {% include "atendimentos/_abas.html" with aba="horarios" %}
 <div class="mb-3"></div>
 <div class="d-flex align-items-center mb-2">
@@ -50,7 +65,7 @@
                 {% else %}
                   <span class="badge text-bg-light border fw-normal">
                     {{ t.hora_inicio|time:"H:i" }}–{{ t.hora_fim|time:"H:i" }} ·
-                    {% for r in t.regras %}{{ r.caso }}{% if r.frequencia == 'QUINZENAL' %} (quinzenal){% endif %}{% if not forloop.last %}, {% endif %}{% endfor %}</span>
+                    {% for r in t.regras %}{{ r.rotulo }}{% if r.frequencia == 'QUINZENAL' %} (quinzenal){% endif %}{% if not forloop.last %}, {% endif %}{% endfor %}</span>
                 {% endif %}
               {% endfor %}
             </div>
@@ -89,6 +104,62 @@
       </div>
     </div>
 
+
+    {% comment %}ADR-122: o que o psicólogo faz fora da clínica — supervisão, ONG, aula, reunião. Mora aqui, na
+    tela de Horários, a pedido do usuário: é onde ele já declara o tempo dele. Ocupa a agenda e conta nas horas,
+    e não encosta em paciente, pagamento nem prontuário.{% endcomment %}
+    <div class="card mb-3">
+      <div class="card-header bg-white py-2 fw-semibold d-flex align-items-center flex-wrap gap-2">
+        <span>{% if editando %}Editando: {{ editando.titulo }}{% else %}Fora da clínica{% endif %}</span>
+        {% if editando %}
+          <a href="{% url 'agenda:horarios' %}" class="ms-auto small fw-normal text-decoration-none">cancelar</a>
+        {% else %}
+          <span class="text-muted fw-normal small">— supervisão, ONG, aula, reunião: ocupa a agenda e conta nas suas horas</span>
+        {% endif %}
+      </div>
+      <div class="card-body">
+        <form method="post" action="{{ acao_compromisso|default:acao_padrao }}" novalidate>
+          {% csrf_token %}
+          {% if compromisso.non_field_errors %}
+            <div class="alert alert-danger py-2 small">{{ compromisso.non_field_errors }}</div>
+          {% endif %}
+          <div class="mb-2">{% include "components/_campo.html" with campo=compromisso.titulo %}</div>
+          <div class="row g-2">
+            <div class="col-12">{% include "components/_campo.html" with campo=compromisso.frequencia %}</div>
+            <div class="col-12" data-so-repete>{% include "components/_campo.html" with campo=compromisso.dia_semana %}</div>
+            <div class="col-7">{% include "components/_campo.html" with campo=compromisso.inicio %}</div>
+            <div class="col-5">{% include "components/_campo.html" with campo=compromisso.hora %}</div>
+            <div class="col-5">{% include "components/_campo.html" with campo=compromisso.duracao %}</div>
+            <div class="col-7" data-so-repete>{% include "components/_campo.html" with campo=compromisso.fim %}</div>
+          </div>
+          <button type="submit" class="btn btn-outline-primary btn-sm mt-3">
+            {% if editando %}Salvar alterações{% else %}Adicionar compromisso{% endif %}</button>
+        </form>
+      </div>
+      {% if compromissos %}
+        <ul class="list-group list-group-flush small">
+          {% for c in compromissos %}
+          <li class="list-group-item d-flex align-items-center">
+            <span>
+              <a href="{% url 'agenda:compromisso_editar' c.pk %}" class="fw-semibold text-decoration-none"
+                 title="Editar">{{ c.titulo }}</a>
+              <span class="text-muted">· {% if c.unico %}{{ c.inicio|date:"d/m/Y" }}{% else %}{{ c.get_dia_semana_display }}{% endif %},
+                {{ c.hora|time:"H:i" }} · {{ c.duracao }} min{% if not c.unico %} · {{ c.get_frequencia_display|lower }}{% endif %}{% if c.fim %} · até {{ c.fim|date:"d/m/Y" }}{% endif %}</span>
+            </span>
+            <form method="post" action="{% url 'agenda:compromisso_excluir' c.pk %}" class="ms-auto m-0">
+              {% csrf_token %}
+              <button type="submit" class="btn btn-sm btn-link p-0 text-danger" title="Remover"><i class="bi bi-trash"></i></button>
+            </form>
+          </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <div class="card-body py-2 small text-muted border-top">
+          Nenhum. Dá para registrar aqui o que você faz e que não é paciente particular, só para a agenda ficar
+          fiel ao seu dia.
+        </div>
+      {% endif %}
+    </div>
     <div class="card">
       <div class="card-header bg-white py-2 fw-semibold">Grade declarada</div>
       {% if blocos %}

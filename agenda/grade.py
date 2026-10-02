@@ -10,6 +10,7 @@ Aritmética em minutos desde a meia-noite, sem `datetime`: a grade é semanal e 
 from dataclasses import dataclass, field
 from datetime import time
 
+from agenda import compromissos
 from agenda.models import HorarioDisponivel, Recorrencia
 
 # Quinzenal ocupa metade: na outra semana o horário está livre (ADR-056). Avulso não tem regra e não ocupa.
@@ -143,9 +144,11 @@ def mapa_da_semana() -> Mapa:
     a substitui é a que ocupa o horário daqui em diante; contar as duas mostraria o mesmo paciente duas vezes.
     """
     blocos = list(HorarioDisponivel.objects.all())
+    # ADR-122: o compromisso fora da clínica ocupa a semana-tipo como qualquer atendimento fixo. Entra aqui,
+    # e não numa lista à parte, porque a pergunta que o mapa responde é "quanto do meu tempo está tomado?".
     regras = list(
         Recorrencia.objects.filter(fim__isnull=True).select_related("caso").prefetch_related("caso__pacientes")
-    )
+    ) + compromissos.que_ocupam_a_grade()
     dias = []
     disponivel = 0
     ocupado = 0.0
@@ -195,7 +198,9 @@ def vagas_da_semana(duracao: int) -> list[DiaComVagas]:
     *qual* semana, e esse caso continua resolvido por "outro horário", onde a checagem de colisão decide.
     """
     blocos = list(HorarioDisponivel.objects.all())
-    regras = list(Recorrencia.objects.filter(fim__isnull=True))
+    # O compromisso ocupa a vaga: sem isto, a tela ofereceria a terça das 10h para um paciente novo por cima
+    # da supervisão (ADR-122).
+    regras = list(Recorrencia.objects.filter(fim__isnull=True)) + compromissos.que_ocupam_a_grade()
     dias = []
     for numero, nome in Recorrencia.DiaSemana.choices:
         ocupados = [(_minutos(r.hora), _minutos(r.hora) + r.duracao) for r in regras if r.dia_semana == numero]

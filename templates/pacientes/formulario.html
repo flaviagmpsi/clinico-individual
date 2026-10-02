@@ -112,9 +112,29 @@ dele — nada vira paciente antes deste "Salvar".{% endcomment %}
       <div class="row g-3">
         <div class="col-md-4">{% include "components/_campo.html" with campo=cobranca.modalidade %}</div>
         <div class="col-md-4">{% include "components/_campo.html" with campo=cobranca.valor %}</div>
-        <div class="col-md-4">{% include "components/_campo.html" with campo=cobranca.tipo_vencimento %}</div>
-        <div class="col-md-4">{% include "components/_campo.html" with campo=cobranca.dia_vencimento %}</div>
+        <div class="col-md-4" data-so-mensal>{% include "components/_campo.html" with campo=cobranca.tipo_vencimento %}</div>
+        <div class="col-md-4" data-so-mensal>{% include "components/_campo.html" with campo=cobranca.dia_vencimento %}</div>
       </div>
+      {% comment %}ADR-123: por sessão não escolhe vencimento — ele é o dia do atendimento. Sem JavaScript os
+      campos aparecem, e o texto abaixo continua explicando qual vale para quem.{% endcomment %}
+      <div class="form-text small mt-2" data-so-por-sessao>
+        Cobrança por sessão vence <strong>no dia do atendimento</strong>, e entra no financeiro quando você
+        registra que a sessão aconteceu. O alerta de vencido só aparece três dias depois, para registrar com
+        atraso não pintar de vermelho quem já pagou.
+      </div>
+      <script>
+        document.addEventListener("DOMContentLoaded", () => {
+          const modalidade = document.querySelector('[name="cobranca-modalidade"]');
+          if (!modalidade) return;
+          const ajustar = () => {
+            const mensal = modalidade.value === "MENSAL";
+            document.querySelectorAll("[data-so-mensal]").forEach((p) => { p.hidden = !mensal; });
+            document.querySelectorAll("[data-so-por-sessao]").forEach((p) => { p.hidden = mensal; });
+          };
+          modalidade.addEventListener("change", ajustar);
+          ajustar();
+        });
+      </script>
       <div class="form-text small mt-2">
         Quem paga é o próprio paciente. Se for outra pessoa — pai, cônjuge, empresa —, ajuste na ficha
         depois de salvar.</div>

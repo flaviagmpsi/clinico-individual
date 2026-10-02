@@ -256,26 +256,26 @@
         <div class="d-flex align-items-center mb-2">
           <span class="fw-semibold">Situação financeira</span>
           {% if fin.estado == "em_dia" %}<span class="badge text-bg-success ms-2"><i class="bi bi-check2"></i> Em dia</span>
-          {% elif fin.estado == "pendente" %}<span class="badge text-bg-danger ms-2"><i class="bi bi-exclamation-triangle-fill"></i> {{ fin.pendentes|length }} vencido{{ fin.pendentes|length|pluralize }} · R$ {{ fin.total|floatformat:2 }}</span>
-          {% elif fin.estado == "a_receber" %}<span class="badge text-bg-light border ms-2">A receber · R$ {{ fin.total_a_receber|floatformat:2 }}</span>
+          {% elif fin.estado == "vencido" %}<span class="badge text-bg-danger ms-2"><i class="bi bi-exclamation-triangle-fill"></i> {{ fin.vencidas|length }} vencido{{ fin.vencidas|length|pluralize }} · R$ {{ fin.total|floatformat:2 }}</span>
+          {% elif fin.estado == "pendente" %}<span class="badge text-bg-light border ms-2">Pendente · R$ {{ fin.total_pendente|floatformat:2 }}</span>
           {% else %}<span class="badge text-bg-light border ms-2">Sem cobrança combinada</span>{% endif %}
           <a href="{% url 'financeiro:mes' %}" class="ms-auto small text-decoration-none">financeiro</a>
         </div>
-        {% comment %}Rodada 80: vencido e a receber aparecem juntos e separados — o alerta primeiro, porque é o
-        que pede ação; embaixo, o que ainda tem prazo, com a data em que vence.{% endcomment %}
-        {% if fin.pendentes %}
+        {% comment %}Rodada 80: vencido e pendente aparecem juntos e separados — o alerta primeiro, porque é o
+        que pede ação; embaixo, o que ainda tem prazo, com a data em que vence (ADR-121).{% endcomment %}
+        {% if fin.vencidas %}
           <div class="alert alert-danger py-2 px-2 small mb-2">
             <ul class="list-unstyled mb-0">
-              {% for c in fin.pendentes %}
+              {% for c in fin.vencidas %}
                 <li class="py-1"><a href="{{ c.url_pagar }}" class="text-decoration-none fw-medium">{{ c.descricao }} · R$ {{ c.saldo|floatformat:2 }}</a>
                   <span>· venceu {{ c.vencimento|date:"d/m/Y" }}{% with dias=c.dias_de_atraso %}{% if dias %} · {{ dias }} dia{{ dias|pluralize }} de atraso{% endif %}{% endwith %}</span></li>
               {% endfor %}
             </ul>
           </div>
         {% endif %}
-        {% if fin.a_receber %}
+        {% if fin.pendentes %}
           <ul class="list-unstyled small mb-0">
-            {% for c in fin.a_receber %}
+            {% for c in fin.pendentes %}
               <li class="py-1"><a href="{{ c.url_pagar }}" class="text-decoration-none">{{ c.descricao }} · R$ {{ c.saldo|floatformat:2 }}</a>
                 <span class="text-muted">· vence {{ c.vencimento|date:"d/m/Y" }}{% with dias=c.dias_para_vencer %}{% if dias %} · em {{ dias }} dia{{ dias|pluralize }}{% else %} · hoje{% endif %}{% endwith %}</span></li>
             {% endfor %}

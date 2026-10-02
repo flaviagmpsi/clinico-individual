@@ -53,10 +53,13 @@ class CondicaoCobrancaForm(LimpaMascara, forms.Form):
         help_text="Opcional. Pode ser combinado depois.")
     tipo_vencimento = forms.ChoiceField(
         label="Vence em", required=False, choices=TipoDia.choices, initial=TipoDia.DIA_FIXO,
-        widget=forms.Select(attrs=_SELECT), help_text="Só para mensalidade.")
+        widget=forms.Select(attrs={**_SELECT, "data-so-mensal": ""}),
+        # ADR-123: por sessão não tem o que escolher — vence no dia do atendimento. O campo some na tela, em vez
+        # de ficar visível sem efeito, que foi o que fez o usuário perguntar para que ele servia.
+        help_text="Só para mensalidade.")
     dia_vencimento = forms.IntegerField(
         label="Dia do vencimento", required=False, min_value=1, max_value=31,
-        widget=forms.NumberInput(attrs={**_TEXTO, "placeholder": "10"}),
+        widget=forms.NumberInput(attrs={**_TEXTO, "placeholder": "10", "data-so-mensal": ""}),
         help_text="Só para mensalidade. Em mês mais curto, vale o último dia.")
 
     def __init__(self, *args, dia_vencimento_padrao: int | None = None, tipo_vencimento_padrao: str = "", **kwargs):

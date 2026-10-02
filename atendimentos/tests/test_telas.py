@@ -381,10 +381,14 @@ class FiltroDaAgenda(BaseTelasAgenda):
         self.assertContains(self.client.get(self.periodo(self.terca, self.terca, situacao="PREVISTA")),
                             "Maria Agenda")
 
-    def test_periodo_invertido_cai_na_semana_de_hoje(self):
+    def test_periodo_invertido_cai_na_visao_padrao(self):
+        """ADR-116: período impossível cai no padrão, que passou a ser "de hoje em diante" — e não mais a
+        semana do calendário, que começava antes de hoje e escondia o paciente recém-cadastrado."""
         self.entrar(self.ana)
         resposta = self.client.get(self.periodo(self.dia, self.dia - timedelta(days=5)))
-        self.assertContains(resposta, f"{self.hoje - timedelta(days=self.hoje.weekday()):%d/%m/%Y}")
+        self.assertEqual(resposta.context["visao"], "proximos")
+        self.assertEqual(resposta.context["de"], self.hoje)
+        self.assertContains(resposta, f"{self.hoje:%d/%m}")
 
 
 class CobrancaEModalidadePelaTela(BaseTelasAgenda):

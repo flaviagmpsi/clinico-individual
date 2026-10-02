@@ -79,9 +79,12 @@ class BlocoDeHorario:
             return
         hoje = timezone.localdate()
         # A regra vale da primeira sessão em diante; se ela já passou, de hoje — o passado não ganha previsão.
+        primeira = paciente.data_primeira_sessao
         regra = servicos.definir_frequencia(
             caso, frequencia=dados["frequencia"], dia_semana=dados["dia_semana"], hora=dados["hora"],
-            a_partir_de=max(hoje, paciente.data_primeira_sessao or hoje), hoje=hoje)
+            a_partir_de=max(hoje, primeira or hoje), hoje=hoje,
+            # ADR-120: só a partir de hoje — o passado não ganha sessão prevista (ADR-022).
+            primeira_sessao=primeira if primeira and primeira >= hoje else None)
         self._dizer_quando_comeca(paciente, regra)
 
     def _dizer_quando_comeca(self, paciente, regra) -> None:
@@ -93,7 +96,13 @@ class BlocoDeHorario:
         """
         if regra is None:
             return
-        primeira = regra.inicio + timedelta(days=(regra.dia_semana - regra.inicio.weekday()) % 7)
-        messages.info(self.request, f"Primeira sessão de {paciente.nome} na agenda: "
-                                    f"{primeira:%d/%m} ({Recorrencia.DiaSemana(regra.dia_semana).label}), "
-                                    f"{regra.hora:%H:%M}.")
+        primeira = regra.primeira_sessao_em or regra.primeira_ocorrencia
+        dia_da_semana = Recorrencia.DiaSemana(primeira.weekday()).label
+        recado = (f"Primeira sessão de {paciente.nome} na agenda: {primeira:%d/%m} ({dia_da_semana}), "
+                  f"{regra.hora:%H:%M}.")
+        if regra.primeira_sessao_em is not None:
+            # Dizer que a exceção foi entendida, e que o fixo continua valendo: sem isto, quem informou uma data
+            # fora do dia escolhido fica sem saber se o sistema guardou uma coisa ou as duas (ADR-120).
+            recado += (f" Dali em diante, toda {Recorrencia.DiaSemana(regra.dia_semana).label.lower()} "
+                       f"às {regra.hora:%H:%M}.")
+        messages.info(self.request, recado)

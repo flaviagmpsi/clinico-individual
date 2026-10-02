@@ -3,8 +3,12 @@ Um cartão do calendário (ADR-073, ADR-074): "Nome · 14h", na cor do que ele �
 - livre: faixa da grade sem sessão, em cinza; o link já abre o cadastro avulso.
 - consulta: cadastrada — muda de cor pela situação, e nunca fica amarela (amarelo é o que ainda vai acontecer).
 - prevista / remarcada: esperada; passou sem cadastro vira "pendente".
+- compromisso: trabalho fora da clínica (ADR-122). Não é consulta e não clica para cadastrar nada — só ocupa.
 {% endcomment %}
-{% if tipo == "livre" %}
+{% if tipo == "compromisso" %}
+  <span class="cartao compromisso" title="Fora da clínica · {{ item.duracao }} min">
+    {{ item.titulo }} · {{ hora }}</span>
+{% elif tipo == "livre" %}
   <a href="{% url 'atendimentos:nova' %}" class="cartao livre" title="Horário livre">livre · {{ hora }}</a>
 {% elif tipo == "consulta" %}
   <a href="{% url 'atendimentos:editar' item.pk %}"

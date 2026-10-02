@@ -9,18 +9,29 @@ outra: o calendário navega por semana, a estatística responde por mês ou por 
     <div class="ms-auto">{% include "indicadores/_periodo.html" %}</div>
   </div>
   <div class="card-body">
+    {% comment %}ADR-122: a primeira coluna é o tempo de trabalho, e não um número de sessões. Era o pedido do
+    usuário — "quantas horas eu gasto de verdade trabalhando" —, e por isso soma o que ele faz fora da clínica.
+    As duas partes aparecem separadas: "28h, sendo 6h fora da clínica" explica; "28h" esconde de onde vem.
+    {% endcomment %}
     <div class="row g-3 mb-3">
-      <div class="col-md-4 col-6">
+      <div class="col-md-3 col-6">
+        <div class="rotulo">Horas de trabalho</div>
+        <div class="h4 mb-0">{{ retrato.horas_trabalhadas }}</div>
+        <div class="small text-muted">
+          {% if retrato.tem_trabalho_fora %}sendo {{ retrato.horas_fora_da_clinica }} fora da clínica
+          {% else %}sessões realizadas no período{% endif %}</div>
+      </div>
+      <div class="col-md-3 col-6">
         <div class="rotulo">Horário mais usado</div>
         <div class="h4 mb-0">{{ retrato.horario_mais_usado.0|default:"—" }}</div>
         <div class="small text-muted">{% if retrato.horario_mais_usado %}{{ retrato.horario_mais_usado.1 }} sess{{ retrato.horario_mais_usado.1|pluralize:"ão,ões" }}{% else %}sem sessões no período{% endif %}</div>
       </div>
-      <div class="col-md-4 col-6">
+      <div class="col-md-3 col-6">
         <div class="rotulo">Dia com mais sessões</div>
         <div class="h4 mb-0">{{ retrato.dia_mais_cheio.0|default:"—" }}</div>
         <div class="small text-muted">{% if retrato.dia_mais_cheio %}{{ retrato.dia_mais_cheio.1 }} sess{{ retrato.dia_mais_cheio.1|pluralize:"ão,ões" }}{% else %}sem sessões no período{% endif %}</div>
       </div>
-      <div class="col-md-4 col-12">
+      <div class="col-md-3 col-6">
         <div class="rotulo">Atendimentos em curso</div>
         <div class="h4 mb-0">{{ retrato.composicao.total }}</div>
         <div class="small text-muted">{{ retrato.composicao.semanais }} semana{{ retrato.composicao.semanais|pluralize:"l,is" }} · {{ retrato.composicao.quinzenais }} quinzena{{ retrato.composicao.quinzenais|pluralize:"l,is" }} · {{ retrato.composicao.avulsos }} avulso{{ retrato.composicao.avulsos|pluralize }}</div>

@@ -4,9 +4,12 @@
 cobrada e do valor por sessão vigente na data dela. Só o pagamento é gravado — pelo psicólogo, sempre.
 
 **Três situações, não duas** (rodada 80): uma cobrança **existe** a partir de `desde` — o dia 1º, para a
-mensalidade; o dia da sessão, para a sessão. Dali até o vencimento ela está **a receber**; passado o
-vencimento e sem o pago cobrir o devido, está **vencida**, e é alerta (N-08). Paga antes do vencimento, nunca
-chega a vencer.
+mensalidade; o dia da sessão, para a sessão. Dali até virar alerta ela está **pendente**; sem o pago cobrir o
+devido, vira **vencida** (N-08). Paga antes, nunca chega a vencer. São as palavras do usuário, e valem no código
+e na tela (ADR-121).
+
+**Quando o alerta acende** é `alerta_em`, e nem sempre é o vencimento: a sessão ganha três dias de tolerância
+(ADR-123), porque ela nasce no registro e registrar com atraso é rotina do psicólogo, não dívida do paciente.
 """
 
 from calendar import monthrange
@@ -25,6 +28,12 @@ from pacientes.models import Caso, CondicaoCobranca
 
 MENSALIDADE = "MENSALIDADE"
 SESSAO = "SESSAO"
+
+# ADR-123: a cobrança de sessão vence no dia do atendimento, mas só vira **alerta** três dias depois. Ela nasce
+# no momento em que o psicólogo registra a sessão, e registrar com atraso é rotina — sem a tolerância, a sexta em
+# que ele lança a semana inteira pintaria de vermelho sessões que o paciente pode ter pago em dinheiro na hora.
+# A mensalidade não tem tolerância: a data dela foi combinada e é conhecida de véspera.
+TOLERANCIA_DA_SESSAO = timedelta(days=3)
 
 _MESES = ["janeiro", "fevereiro", "março", "abril", "maio", "junho",
           "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"]
@@ -86,17 +95,27 @@ class Cobranca:
         """Já existe, e o pago não cobre o devido. É a soma de "a receber" e "vencida"."""
         return not self.quitada and self.desde <= (hoje or timezone.localdate())
 
-    def pendente(self, hoje: date | None = None) -> bool:
-        """**Venceu** e o pago não cobre o devido. Pago antes do vencimento, nunca fica pendente.
+    @property
+    def alerta_em(self) -> date:
+        """O dia em que o atraso vira alerta vermelho.
 
-        É o alerta: o nome ficou como estava porque é isto que todas as telas chamam de pendente.
+        É o vencimento, mais a tolerância de três dias quando a cobrança é de sessão (ADR-123). O **vencimento**
+        continua sendo o dia do atendimento: é ele que a tela mostra e que o paciente combinou. A tolerância diz
+        só quando o sistema passa a gritar.
         """
-        return not self.quitada and self.vencimento <= (hoje or timezone.localdate())
+        return self.vencimento + (TOLERANCIA_DA_SESSAO if self.tipo == SESSAO else timedelta(0))
 
-    def a_receber(self, hoje: date | None = None) -> bool:
-        """Existe, não foi paga e **ainda não venceu** — o que o psicólogo espera receber, sem susto."""
+    def vencida(self, hoje: date | None = None) -> bool:
+        """Passou do prazo de alerta e o pago não cobre o devido. É o vermelho."""
+        return not self.quitada and self.alerta_em <= (hoje or timezone.localdate())
+
+    def pendente(self, hoje: date | None = None) -> bool:
+        """Existe, não foi paga e **ainda não é alerta** — o pagamento com prazo correndo.
+
+        É o que o usuário chama de pendente: "a partir do dia 1º já aparece o pagamento pendente" (ADR-121).
+        """
         hoje = hoje or timezone.localdate()
-        return self.em_aberto(hoje) and self.vencimento > hoje
+        return self.em_aberto(hoje) and not self.vencida(hoje)
 
     def dias_de_atraso(self, hoje: date | None = None) -> int:
         """Quantos dias passaram do vencimento. Zero quando não venceu — a tela usa para graduar o alerta."""
@@ -222,7 +241,7 @@ def cobrancas_em_aberto(hoje: date | None = None, *, caso: Caso | None = None) -
     """Tudo o que existe e não foi quitado, de qualquer mês: o que vai vencer **e** o que já venceu.
 
     Os dois juntos porque custam a mesma carga: separá-los em duas funções leria o banco duas vezes para
-    responder a mesma pergunta. Quem quer só um lado filtra por `pendente()` ou `a_receber()`.
+    responder a mesma pergunta. Quem quer só um lado filtra por `vencida()` ou `pendente()`.
     """
     hoje = hoje or timezone.localdate()
     carga = carregar(_DESDE_SEMPRE, hoje, caso=caso)
@@ -246,16 +265,16 @@ def cobrancas_em_aberto(hoje: date | None = None, *, caso: Caso | None = None) -
     return sorted(abertas, key=lambda c: (c.vencimento, str(c.caso)))
 
 
-def pagamentos_pendentes(hoje: date | None = None, *, caso: Caso | None = None) -> list[Cobranca]:
+def pagamentos_vencidos(hoje: date | None = None, *, caso: Caso | None = None) -> list[Cobranca]:
     """Só o que **venceu** e não foi quitado — o alerta."""
     hoje = hoje or timezone.localdate()
-    return [c for c in cobrancas_em_aberto(hoje, caso=caso) if c.pendente(hoje)]
+    return [c for c in cobrancas_em_aberto(hoje, caso=caso) if c.vencida(hoje)]
 
 
-def pagamentos_a_receber(hoje: date | None = None, *, caso: Caso | None = None) -> list[Cobranca]:
-    """Só o que existe e **ainda não venceu** — o que está por receber, em ordem de vencimento."""
+def pagamentos_pendentes(hoje: date | None = None, *, caso: Caso | None = None) -> list[Cobranca]:
+    """Só o que existe e **ainda não venceu** — o pagamento com prazo correndo, em ordem de vencimento."""
     hoje = hoje or timezone.localdate()
-    return [c for c in cobrancas_em_aberto(hoje, caso=caso) if c.a_receber(hoje)]
+    return [c for c in cobrancas_em_aberto(hoje, caso=caso) if c.pendente(hoje)]
 
 
 def _recusar_invalido(data: date, forma: str) -> None:

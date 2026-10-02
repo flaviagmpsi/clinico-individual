@@ -3768,6 +3768,122 @@ produziam o mesmo sintoma por caminhos parecidos, e a coincidência sustentou a 
   e uma grade de horários.
 
 
+## ADR-120 — A primeira sessão pode cair fora do dia da semana do horário fixo (constrói a ADR-095)
+
+**Status:** ✅ Aceita — Rodada 81.
+
+**O relato do usuário:** "a paciente nicolly nao está aparecendo na agenda do mes"; e, sobre a regra,
+"quando o psicologo cadastra um paciente o horario marcado de sessao dele ja passa a constar na agenda".
+
+**O que faltava.** O cadastro pergunta duas coisas que podem discordar: a **data da primeira sessão** e o
+**horário fixo semanal**. Combinar "começamos nesta sexta, depois é toda terça" é corriqueiro — e a sexta não
+existia para o sistema. A data da primeira sessão só servia para dizer a partir de quando a regra valia; a agenda
+desenhava a série semanal, e a sessão combinada sumia sem aviso. No caso real: paciente cadastrada numa sexta,
+primeira sessão naquele dia, horário fixo na terça às 09:00 — a agenda daquela sexta ficou vazia.
+
+**Decisões de arquitetura:**
+- **`Recorrencia.primeira_sessao_em`, um campo à parte e anulável.** À parte do dia da semana porque é o que ela
+  é: uma exceção, de uma vez só. Anulável porque toda regra que já existe continua idêntica — a migração não
+  preenche nada, e nenhuma sessão nova aparece retroativamente em agenda nenhuma (ADR-022).
+- **Só é guardada quando é exceção de verdade** — dentro da vigência e **fora** do dia da semana escolhido.
+  Caindo no dia certo, a série semanal já a prevê, e gravá-la criaria duas fontes para a mesma sessão.
+- **Não mexe na âncora da quinzenal.** `primeira_ocorrencia` continua sendo a primeira ocorrência do dia fixo, que
+  é o que define quais semanas são de atendimento. A exceção é uma sessão, não um recomeço da contagem.
+- **`ocorre_em` também a aceita**, e não só `ocorrencias`. Sem isso, a sessão apareceria na agenda e o clique nela
+  devolveria 404 — o pior dos mundos, porque parece funcionar até alguém tentar usar.
+- **O cadastro diz as duas coisas:** "Primeira sessão de Fulana na agenda: 02/10 (sexta-feira), 09:00. Dali em
+  diante, toda terça-feira às 09:00." Quem informou uma data fora do dia escolhido precisa saber que o sistema
+  guardou as duas, e não uma delas.
+
+## ADR-121 — O vocabulário da cobrança é o do usuário: pendente até vencer, vencido depois (renomeia a ADR-117)
+
+**Status:** ✅ Aceita — Rodada 81.
+
+**Decisão do usuário, nas palavras dele:** "a partir do dia 1 ja aparece o pagamento pendente, e so aparece o
+alerta de pagamento vencido depois da data de vencimento... enquanto estiver dentro desse intervalo, é pra estar
+com pagamento pendente".
+
+**O que aconteceu.** A ADR-117 criou a situação do meio e a chamou de **"a receber"**. O cálculo estava certo e
+a tela mostrava a cobrança — mas o usuário não a reconheceu, e relatou o mesmo defeito uma segunda vez. O nome
+era meu, não dele. Nomear é decisão de domínio, e nesta divisão de trabalho o domínio é dele.
+
+**Decisões:**
+- **Três palavras, e as mesmas no código e na tela:** uma cobrança nasce **pendente** no dia em que o mês abre,
+  vira **vencida** quando passa do vencimento sem pagamento, e some quando é **quitada**.
+- **A troca é de sentido, não de rótulo**, e por isso foi feita ponto a ponto: `Cobranca.pendente()` passou a
+  significar "ainda tem prazo" e o antigo sentido virou `Cobranca.vencida()`; `pagamentos_pendentes()` devolve o
+  que tem prazo correndo e `pagamentos_vencidos()` o que atrasou. Substituição em massa aqui trocaria o sentido de
+  chamadas que ninguém releu — inclusive `Resumo.a_receber`, do fluxo de caixa, que é outra coisa e não foi tocado.
+- **A tela do financeiro do mês acompanha:** a aba "Pendentes" passou a ser "Vencidas" e a "A vencer" passou a ser
+  "Pendentes". Duas telas com a mesma palavra significando coisas diferentes é como o relato nasceu.
+- **Lição, escrita porque custou duas rodadas:** quando o usuário descreve um comportamento com as palavras dele,
+  as palavras fazem parte do pedido. Entregar o cálculo certo com outro nome é entregar pela metade.
+
+
+## ADR-122 — O trabalho fora da clínica ocupa a agenda sem virar consulta
+
+**Status:** ✅ Aceita — Rodada 82.
+
+**Pedido do usuário:** "eu trabalho com os atendimentos particulares mas tambem dou supervisao e atendo pacientes
+de uma ong, que nao sao meus pacientes particulares... seria algo como horarios fora da clínica e cada horario
+teria como eu preencher o nome do que ele é, tipo 'supervisao do arthur'. mas seria apenas isso, nao é um horario
+que mexe em pagamentos nem em sessao a cadastrar nem em prontuario, é puramente visual pra minha agenda ficar mais
+fiel a quantidade de coisas que eu faço no meu trabalho mesmo".
+
+**O que faltava.** A agenda só enxergava paciente particular. Quem dá supervisão, atende em ONG, dá aula ou vai a
+reunião via uma agenda que mostrava metade do dia — e uma ocupação que dizia que havia espaço onde não havia.
+
+**Decisões de arquitetura:**
+- **Modelo próprio em `agenda`, e não uma `Consulta` de mentira.** O compromisso não tem paciente, caso, situação
+  nem cobrança. Enfiá-lo em `Consulta` com um marcador "não é clínico" espalharia um `if` por todo o app de
+  atendimentos, e um dia alguém esqueceria um. Em `agenda` ele é o que é — tempo ocupado — e **nenhum app clínico
+  precisa saber que ele existe**.
+- **Repete como o paciente repete**, porque supervisão e ONG têm horário fixo: semanal, quinzenal ou uma vez só,
+  com data de término. O de uma vez só não toma lugar na semana-tipo — uma reunião não pode bloquear aquele
+  horário para sempre.
+- **Ocupa o horário** (decisão do usuário): some das vagas oferecidas no cadastro de paciente novo e entra na
+  ocupação da semana. Sem isso o sistema proporia marcar um paciente por cima da supervisão.
+- **Conta nas horas, não nas sessões** (decisão do usuário): entra numa coluna nova, "Horas de trabalho", que diz
+  "28h, sendo 6h fora da clínica". Fica **fora** de sessões realizadas, presença, faturamento e prontuário —
+  contá-lo ali estragaria justamente os números que decidem preço e agenda.
+- **A tela mora em Agenda → Horários**, a pedido do usuário: é onde ele já declara o tempo dele.
+- **Edita, não versiona.** O oposto da frequência do paciente (ADR-022), e de propósito: aquela precisa explicar o
+  passado, porque uma sessão de março exige a regra que valia em março. Esta é lembrete visual do próprio
+  psicólogo, e guardar o histórico de uma supervisão que mudou de horário não serviria a ninguém.
+- **A prova é um par.** Um teste que só verificasse que o compromisso aparece na agenda passaria mesmo se ele
+  estivesse gerando cobrança e prontuário por baixo. Por isso três testes afirmam o que ele **não** faz.
+
+**Dúvida registrada, não resolvida:** se a supervisão e a ONG pagam, essa renda vai querer entrar no financeiro
+um dia — e aí o compromisso deixa de ser só visual. Construído agora só o visual, como pedido (P-112).
+
+
+## ADR-123 — A cobrança de sessão tem três dias de tolerância antes de virar alerta (refina a ADR-063 e a ADR-121)
+
+**Status:** ✅ Aceita — Rodada 82.
+
+**Decisão do usuário:** "o alerta aparece tres dias depois" — depois de observar que "pagamento de sessao a sessao
+tambem vence no dia do atendimento" e levantar a hipótese de o vencimento passar a ser "após cadastro de sessão".
+
+**O que a rodada anterior deixou à mostra.** A cobrança de sessão só existe depois que o psicólogo **registra**
+que a sessão aconteceu, e o vencimento dela é o dia do atendimento (ADR-063). Com o alerta vermelho da ADR-121,
+quem lança a semana inteira na sexta via a sessão de segunda nascer **já vencida**, com quatro dias de atraso —
+um aviso de inadimplência disparado pela rotina de digitação do psicólogo, sobre um paciente que pode ter pago em
+dinheiro na hora.
+
+**Decisões:**
+- **O vencimento continua sendo o dia do atendimento.** A alternativa levantada pelo usuário — vencer no dia do
+  registro — resolveria o alerta falso, mas faria a mesma sessão ter vencimentos diferentes conforme a rotina de
+  quem digita, e uma sessão lançada um mês depois cairia no mês errado do fechamento. A data do atendimento é o
+  que foi combinado com o paciente, e é o que a tela mostra.
+- **`alerta_em` é quem decide o vermelho**, e é o vencimento mais três dias **só para a sessão**. A mensalidade
+  não ganha tolerância: a data dela foi combinada e é conhecida de véspera.
+- **Os dias de atraso continuam contando do vencimento**, e não do alerta. O número que a tela mostra é o atraso
+  de verdade; a tolerância decide só quando mostrá-lo.
+- **Os campos de vencimento somem do cadastro quando a cobrança é por sessão**, com a regra escrita no lugar
+  deles. Eles nunca tiveram efeito ali — e um campo visível que não faz nada foi exatamente o que levou o usuário
+  a perguntar para que servia.
+
+
 ## Impeditivos
 
 | # | Impeditivo | Situação |

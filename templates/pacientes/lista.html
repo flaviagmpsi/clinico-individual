@@ -58,13 +58,13 @@ link não é HTML válido, e os dois cliques brigariam.
         </span>
       </a>
       <div class="dados">
-        {% comment %}Rodada 80: vencido é alerta; a receber é informação, com a data. Os dois podem aparecer
-        juntos — quem atrasou setembro e tem outubro a vencer.{% endcomment %}
+        {% comment %}Rodada 80: vencido é alerta; pendente é o que ainda tem prazo, com a data. Os dois podem
+        aparecer juntos — quem atrasou setembro e tem outubro pendente (ADR-121).{% endcomment %}
         {% if f.em_aberto %}
           <span class="badge text-bg-danger"><i class="bi bi-exclamation-triangle-fill"></i> R$ {{ f.em_aberto|floatformat:2 }} vencido</span>
         {% endif %}
         {% if f.a_receber %}
-          <span class="badge text-bg-light border">R$ {{ f.a_receber|floatformat:2 }} a receber{% if f.proximo_vencimento %} · vence {{ f.proximo_vencimento|date:"d/m" }}{% endif %}</span>
+          <span class="badge text-bg-light border">R$ {{ f.a_receber|floatformat:2 }} pendente{% if f.proximo_vencimento %} · vence {{ f.proximo_vencimento|date:"d/m" }}{% endif %}</span>
         {% elif f.em_dia %}
           <span class="badge text-bg-success">em dia</span>
         {% endif %}

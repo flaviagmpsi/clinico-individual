@@ -1,7 +1,7 @@
 """O financeiro por dentro: o que é devido, o que foi pago, e quando vira lembrete (ADR-062, ADR-063).
 
 - `Mensalidade` — vence no dia fixo ou no dia útil; é cheia; não existe com o mês inteiro encerrado.
-- `Lembrete` — pendente só a partir do vencimento; pago antes, nunca aparece; pagou menos, fica o resto.
+- `Lembrete` — **vencida** só a partir do vencimento (ADR-121); pago antes, nunca aparece; pagou menos, fica o resto.
 - `PorSessao` — cada sessão cobrada gera a sua pendência; remarcada não; quitar uma não quita outra.
 - `ValorDestaSessao` — ADR-070: a extra do mensalista e a de quem não tem valor combinado, cobradas à parte.
 - `Registro` — forma obrigatória, sem data futura, referência coerente com a modalidade.
@@ -69,8 +69,9 @@ class BaseFinanceiro(TestCase):
         return servicos.registrar_pagamento_mensalidade(
             self.caso_juliana, ano=2026, mes=9, valor=Decimal(valor), data=setembro(dia), forma=PIX)
 
-    def pendentes(self, dia, caso):
-        return servicos.pagamentos_pendentes(setembro(dia), caso=caso)
+    def vencidas(self, dia, caso):
+        """ADR-121: o que passou do vencimento. Era `pagamentos_pendentes`; o nome mudou, o sentido não."""
+        return servicos.pagamentos_vencidos(setembro(dia), caso=caso)
 
 
 class Mensalidade(BaseFinanceiro):
@@ -103,18 +104,18 @@ class Mensalidade(BaseFinanceiro):
 class Lembrete(BaseFinanceiro):
     def test_so_aparece_a_partir_do_vencimento(self):
         with contexto.como(self.ana.pk):
-            self.assertEqual(self.pendentes(7, self.caso_juliana), [])
-            self.assertEqual(len(self.pendentes(8, self.caso_juliana)), 1)
+            self.assertEqual(self.vencidas(7, self.caso_juliana), [])
+            self.assertEqual(len(self.vencidas(8, self.caso_juliana)), 1)
 
     def test_pago_antes_do_vencimento_nunca_aparece(self):
         with contexto.como(self.ana.pk):
             self.pagar_setembro("700", dia=2)
-            self.assertEqual(self.pendentes(30, self.caso_juliana), [])
+            self.assertEqual(self.vencidas(30, self.caso_juliana), [])
 
     def test_pagou_menos_fica_pendente_o_resto(self):
         with contexto.como(self.ana.pk):
             self.pagar_setembro("500")
-            [cobranca] = self.pendentes(30, self.caso_juliana)
+            [cobranca] = self.vencidas(30, self.caso_juliana)
         self.assertEqual(cobranca.saldo, Decimal("200"))
 
     def test_pagou_a_mais_e_so_mais_um_registro(self):
@@ -141,8 +142,8 @@ class PorSessao(BaseFinanceiro):
             primeira = self.sessao(self.caso_marcos, 3)
             self.sessao(self.caso_marcos, 4)
             servicos.registrar_pagamento_sessao(primeira, data=setembro(3), forma=PIX)
-            pendentes = self.pendentes(10, self.caso_marcos)
-        self.assertEqual([c.vencimento for c in pendentes], [setembro(4)])
+            vencidas = self.vencidas(10, self.caso_marcos)
+        self.assertEqual([c.vencimento for c in vencidas], [setembro(4)])
 
     def test_sem_valor_paga_o_que_falta(self):
         with contexto.como(self.ana.pk):
@@ -195,8 +196,8 @@ class ValorDestaSessao(BaseFinanceiro):
             consulta = self.sessao(self.caso_juliana, 5)
             agenda.alterar_situacao(consulta, REALIZADA, valor=Decimal("150"))
             servicos.registrar_pagamento_sessao(consulta, data=setembro(5), forma=PIX)
-            pendentes = [c.tipo for c in self.pendentes(30, self.caso_juliana)]
-        self.assertEqual(pendentes, [servicos.MENSALIDADE])  # a extra foi paga; a mensalidade continua
+            vencidas = [c.tipo for c in self.vencidas(30, self.caso_juliana)]
+        self.assertEqual(vencidas, [servicos.MENSALIDADE])  # a extra foi paga; a mensalidade continua
 
     def test_sessao_que_nao_cobra_nao_tem_valor(self):
         with contexto.como(self.ana.pk):
@@ -257,7 +258,7 @@ class Isolamento(BaseFinanceiro):
         with contexto.como(self.bruno.pk):
             self.sessao(self.caso_carla, 3)
         with contexto.como(self.ana.pk):
-            casos = {c.caso for c in servicos.pagamentos_pendentes(setembro(30))}
+            casos = {c.caso for c in servicos.pagamentos_vencidos(setembro(30))}
         self.assertNotIn(self.caso_carla, casos)
 
     def test_nao_paga_sessao_de_outro_psicologo(self):

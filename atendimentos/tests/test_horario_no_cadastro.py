@@ -172,3 +172,58 @@ class HorarioNoCadastro(Base):
     def test_sem_horario_fixo_ignora_dia_e_hora_que_ficaram_nos_campos(self):
         self.assertEqual(self.cadastrar(frequencia="AVULSO", dia_semana="1", hora="15:00").status_code, 302)
         self.assertIsNone(self.regra_de("Paula Nova"))
+
+
+class PrimeiraSessaoForaDoDiaFixo(Base):
+    """ADR-120: "começamos nesta sexta, depois é toda terça" — e as duas coisas aparecem na agenda.
+
+    O caso veio de uso real: a psicóloga cadastrou a paciente numa sexta, informou a primeira sessão naquele dia e
+    marcou o horário fixo na terça. A sexta não aparecia em lugar nenhum, e ela relatou a agenda como vazia.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.assertTrue(self.client.login(username=self.ana.email, password=SENHA))
+        # Um dia da semana que **não** é o do horário fixo, sempre no futuro para não esbarrar na ADR-022.
+        self.primeira = self.hoje + timedelta(days=1 if self.hoje.weekday() != TERCA - 1 else 2)
+        while self.primeira.weekday() == TERCA:
+            self.primeira += timedelta(days=1)
+
+    def regra_de(self, nome):
+        with contexto.como(self.ana.pk):
+            return Recorrencia.objects.filter(caso__pacientes__nome=nome).first()
+
+    def cadastrar_com_primeira_sessao(self, nome="Nicolly Nova"):
+        return self.client.post(reverse("pacientes:novo"), {
+            "nome": nome, "uf": "", "data_primeira_sessao": self.primeira.strftime("%d/%m/%Y"),
+            "horario-frequencia": SEMANAL, "horario-dia_semana": str(TERCA), "horario-hora": "16:00",
+        })
+
+    def test_a_data_informada_fica_guardada_na_regra(self):
+        self.assertEqual(self.cadastrar_com_primeira_sessao().status_code, 302)
+        regra = self.regra_de("Nicolly Nova")
+        self.assertEqual(regra.primeira_sessao_em, self.primeira)
+        self.assertEqual(regra.dia_semana, TERCA)
+
+    def test_a_sessao_do_dia_informado_aparece_na_agenda(self):
+        """O que a usuária não encontrava. A terça seguinte continua lá — é o par que prova."""
+        self.cadastrar_com_primeira_sessao()
+        with contexto.como(self.ana.pk):
+            previstas = servicos.sessoes_previstas(self.hoje, self.hoje + timedelta(days=30))
+        datas = [timezone.localtime(s.inicio).date() for s in previstas if str(s.caso) == "Nicolly Nova"]
+        self.assertIn(self.primeira, datas)
+        self.assertTrue([d for d in datas if d.weekday() == TERCA], "a série semanal sumiu")
+
+    def test_da_para_cadastrar_essa_sessao_pela_tela(self):
+        """Sem isto, a sessão apareceria na agenda e o clique nela devolveria 404."""
+        self.cadastrar_com_primeira_sessao()
+        regra = self.regra_de("Nicolly Nova")
+        rota = reverse("atendimentos:cadastrar_prevista", args=[regra.pk, self.primeira.isoformat()])
+        self.assertEqual(self.client.get(rota).status_code, 200)
+
+    def test_quem_nao_informa_data_continua_sem_excecao(self):
+        """A garantia de que nada muda para quem não usa isto."""
+        self.client.post(reverse("pacientes:novo"), {
+            "nome": "Sem Data", "uf": "",
+            "horario-frequencia": SEMANAL, "horario-dia_semana": str(TERCA), "horario-hora": "16:00"})
+        self.assertIsNone(self.regra_de("Sem Data").primeira_sessao_em)

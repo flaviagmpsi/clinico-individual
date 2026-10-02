@@ -146,11 +146,14 @@ class BlocosDoPeriodo(BaseEstatisticas):
 
 
 class SituacaoFinanceiraNaFicha(BaseEstatisticas):
-    def test_pendente_em_dia_e_sem_cobranca(self):
+    def test_vencido_em_dia_e_sem_cobranca(self):
         with contexto.como(self.ana.pk):
-            pendente = situacao_financeira(self.caso_marcos)
-            self.assertEqual((pendente["estado"], len(pendente["pendentes"]), pendente["total"]),
-                             ("pendente", 3, Decimal("600")))  # a falta sem aviso também é cobrada (ADR-065)
+            # ADR-121: as três sessões do Marcos já passaram da data, então o estado é **vencido**. "Pendente"
+            # passou a ser o que ainda tem prazo — aqui não há nenhuma nessa situação.
+            vencido = situacao_financeira(self.caso_marcos)
+            self.assertEqual((vencido["estado"], len(vencido["vencidas"]), vencido["total"]),
+                             ("vencido", 3, Decimal("600")))  # a falta sem aviso também é cobrada (ADR-065)
+            self.assertEqual(vencido["pendentes"], [])
             for consulta in self.sessoes_do_marcos:
                 financeiro.registrar_pagamento_sessao(consulta, data=date(2026, 9, 16), forma=Pagamento.Forma.PIX)
             self.assertEqual(situacao_financeira(self.caso_marcos)["estado"], "em_dia")

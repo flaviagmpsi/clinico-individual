@@ -359,6 +359,11 @@ Princípios da direção:
 
   /* ---------- avisos ---------- */
   .alert { border-radius: var(--raio); border: 1px solid var(--linha); border-left-width: 3px; font-size: .78125rem; padding: .5rem .75rem; color: var(--texto); background: var(--superficie); }
+  /* ADR-122: compromisso fora da clínica. Cinza-esverdeado, fora da família das situações de sessão — ele
+     não é atendimento, e a cor precisa dizer isso antes de o psicólogo ler o rótulo. Sem cursor de link:
+     não há o que clicar. */
+  .cartao.compromisso { background: #e6e9e2; border-color: #c3cab8; border-left-color: #6f7a63;
+                        color: #3f463a; cursor: default; }
   .alert-warning { background: var(--atencao-fundo); border-color: #ebd4a3; border-left-color: var(--atencao); }
   .alert-info { background: var(--tinta-fundo); border-color: #f1cdba; border-left-color: var(--tinta); }
   .alert-success { background: var(--ok-fundo); border-color: #bbd3b4; border-left-color: var(--ok); }
