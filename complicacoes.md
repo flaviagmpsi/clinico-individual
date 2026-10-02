@@ -3618,6 +3618,14 @@ atualizando o sistema de acordo com o feedback".
 - **Duas `DATABASE_URL`, e a diferença é o ponto.** A aplicação atende com `hamilton_web`, sem BYPASSRLS; o papel
   dono fica numa variável separada e só o `migrate` do build o usa. O `check --deploy` roda no build **com a URL
   da aplicação**: se ela tiver BYPASSRLS, o RLS é decorativo e o deploy para ali (ADR-046).
+- **Produção é um projeto Neon separado, não uma ramificação.** O banco de desenvolvimento tem as contas de
+  demonstração com senha conhecida, e ramificação do Neon copia os dados do pai — produção nasceria com elas
+  dentro, num endereço público. O projeto novo nasce vazio, e as migrações criam tabelas, papéis e políticas.
+- **A região do Render acompanha a do banco.** O Neon está em `us-east-1`; com o Render em Oregon, cada consulta
+  atravessaria o país, e numa tela que faz dezenas delas isso é a diferença entre instantâneo e lento.
+- **A verificação de saúde não toca o banco** e fica fora do redirecionamento para HTTPS. Tocando o banco, um Neon
+  hibernando pareceria aplicação caída e o Render a reiniciaria; sem a isenção, a verificação interna chega em
+  HTTP, recebe 301 e conclui o mesmo.
 
 ## Impeditivos
 

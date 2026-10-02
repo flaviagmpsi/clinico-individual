@@ -159,6 +159,9 @@ LOGOUT_REDIRECT_URL = "contas:entrar"
 
 if not DEBUG:
     SECURE_SSL_REDIRECT = True
+    # A verificação de saúde do Render chega pela rede interna, em HTTP. Sem esta isenção ela receberia 301 e
+    # concluiria que o serviço caiu — derrubando o deploy de uma aplicação que está de pé.
+    SECURE_REDIRECT_EXEMPT = [r"^saude/$"]
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
     SECURE_HSTS_SECONDS = 31536000

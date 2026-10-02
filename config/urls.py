@@ -3,11 +3,14 @@ from django.urls import include, path
 from django.views.generic import RedirectView
 
 from contas.views import Sair
+from core.saude import saude
 from indicadores.views import Painel
 from pacientes.views_convite import CadastroPeloPaciente
 
 urlpatterns = [
     path("", Painel.as_view(), name="painel"),
+    # ADR-114: a verificação de saúde do Render. Não toca o banco, de propósito.
+    path("saude/", saude, name="saude"),
     path("pacientes/", include("pacientes.urls")),
     # Pública e sem login: o link que o psicólogo manda ao paciente (ADR-081). Fora de `pacientes/` de
     # propósito — o endereço que o paciente vê não diz nada sobre a estrutura do sistema.

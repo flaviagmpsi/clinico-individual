@@ -1,6 +1,8 @@
 __pycache__/
 *.py[cod]
 .env
+# inclui o .env.producao, que carrega a senha do banco de produção
+.env.*
 venv/
 .venv/
 staticfiles/
