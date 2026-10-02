@@ -18,7 +18,14 @@ if not SECRET_KEY:
     if not DEBUG:
         raise RuntimeError("SECRET_KEY não definida. A aplicação não sobe sem ela.")
     SECRET_KEY = "inseguro-apenas-para-desenvolvimento-nao-use-com-DEBUG=False"
-ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
+ALLOWED_HOSTS = [h.strip() for h in os.getenv("ALLOWED_HOSTS", "localhost,127.0.0.1").split(",") if h.strip()]
+# O Render injeta `RENDER_EXTERNAL_HOSTNAME` com o domínio público do serviço. Sem isto, **todo** pedido volta
+# 400 (`DisallowedHost`) — inclusive o de saúde, e aí o deploy nunca fica no ar: o Render tenta em laço.
+# Não dá para resolver no `render.yaml` com `fromService`, que devolve o nome **interno** do serviço, e não o
+# domínio por onde as pessoas chegam. `.onrender.com` entra junto para o caso de o domínio mudar.
+_do_render = os.getenv("RENDER_EXTERNAL_HOSTNAME", "").strip()
+if _do_render:
+    ALLOWED_HOSTS += [_do_render, ".onrender.com"]
 
 INSTALLED_APPS = [
     "django.contrib.admin",

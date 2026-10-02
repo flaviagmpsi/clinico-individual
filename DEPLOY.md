@@ -96,7 +96,7 @@ aplicação caída e disparar um reinício.
 | `core.E001` no build | A `DATABASE_URL` aponta para um papel com `BYPASSRLS`. Use a do `hamilton_web`. |
 | `SECRET_KEY não definida` | Falta a variável. O `render.yaml` manda gerar; confira se ela existe no painel. |
 | `permission denied for table ...` | A `DATABASE_URL_MIGRACAO` não é a do papel dono. |
-| `DisallowedHost` | `ALLOWED_HOSTS` sem o domínio do serviço. |
+| `400` em tudo, inclusive `/saude/` | É `DisallowedHost`. O Render injeta `RENDER_EXTERNAL_HOSTNAME` e o `settings.py` o lê sozinho — se voltar a acontecer, confira se essa variável existe no painel. **Não** preencha `ALLOWED_HOSTS` com `fromService`: ele devolve o nome interno do serviço, não o domínio público. |
 
 ---
 

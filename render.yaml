@@ -32,11 +32,9 @@ services:
         value: "False"
       - key: SECRET_KEY
         generateValue: true        # o Render gera e guarda; ninguém precisa inventar nem versionar
-      - key: ALLOWED_HOSTS
-        fromService:               # o próprio domínio do serviço; nada para digitar
-          type: web
-          name: hamilton
-          property: host
+      # ALLOWED_HOSTS não está aqui de propósito: o Render injeta RENDER_EXTERNAL_HOSTNAME sozinho, e
+      # `config/settings.py` o lê. Um `fromService: property: host` devolveria o nome interno do serviço, e
+      # todo pedido pelo domínio público voltaria 400.
       - key: DATABASE_URL
         sync: false                # Neon, papel hamilton_web
       - key: DATABASE_URL_MIGRACAO
