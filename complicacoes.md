@@ -3663,10 +3663,15 @@ prontuário de todos os pacientes de todos os testadores. Antes, nem o roubo de 
 realizar no mes, a agenda ta vazia" e "quando cadastro horario de um paciente ele nao substitui o horario livre".
 
 **O que a investigação achou — e não foi o que parecia.** Os dois itens são o **mesmo** defeito, e nenhum dos dois
-estava na lógica. Reproduzindo os dados reais da produção: grade de segunda 10h–12h, paciente semanal na segunda
-às 10h, regra valendo de 01/10. A agenda abria na semana de 28/09 a 04/10, cuja única segunda era **28/09** —
-anterior ao dia em que a regra passou a valer, porque mudança de frequência vale de hoje em diante (ADR-022). Na
-tela que ele olhou: segunda 10h ainda "livre", e o paciente em lugar nenhum. Uma semana adiante, tudo correto.
+estava na lógica. O caso real, lido no banco que o site usa: paciente cadastrada na **sexta, 02/10**, com sessão
+semanal na **terça às 09:00**, e a regra valendo de 02/10 em diante. A agenda abria na semana de 28/09 a 04/10,
+cuja única terça era **29/09** — anterior ao dia em que a regra passou a valer, porque mudança de frequência vale
+de hoje em diante (ADR-022). Resultado: a paciente não aparecia em lugar nenhum. Com a janela nova, 02/10 a 08/10,
+a terça 06/10 entra e ela aparece.
+
+⚠️ A primeira versão desta ADR citava outro caso — "segunda 10h–12h, regra de 01/10" — lido de um banco Neon que
+**não era o que o site usa**, e que foi apagado depois (ver ADR-119). A conclusão era a mesma; os números é que
+eram de outro lugar.
 
 **Decisões de arquitetura:**
 - **A janela padrão começa hoje e vai a hoje + 6.** A semana do calendário começa na segunda, então quem abre a
@@ -3690,8 +3695,14 @@ que isso é um alerta".
 
 **O que estava errado:** uma cobrança só existia para o sistema **a partir do vencimento**. O psicólogo cadastrava
 um mensalista no dia 1º, abria o painel e não via nada a receber — e estava certo em estranhar. Faltava a situação
-do meio. Em produção, o caso real foi ainda mais simples: o paciente tinha sido cadastrado **sem valor**, então não
-havia cobrança alguma a mostrar, e a tela não dizia isso.
+do meio. O caso real, lido no banco que o site usa: paciente mensal de **R$ 260, vencendo todo dia 10**,
+cadastrada em 02/10. A cobrança de outubro existia, e não aparecia em canto nenhum — porque só venceria no dia 10,
+e o sistema só mostrava o que já tinha vencido. Com a mudança, ela aparece desde o dia do cadastro como
+"a receber · vence 10/10", e vira alerta se passar do dia 10 sem pagamento.
+
+⚠️ A primeira versão desta ADR dizia que o paciente real tinha sido cadastrado **sem valor**. Era falso: esse
+paciente estava noutro banco, que não é o da produção (ver ADR-119). O aviso de "paciente sem valor não gera
+cobrança" continua no cadastro, porque é verdadeiro e útil — só não foi o que aconteceu aqui.
 
 **Decisões de arquitetura:**
 - **`desde` responde "a partir de quando esta cobrança existe".** Dia 1º do mês, para a mensalidade; dia da sessão,
@@ -3729,6 +3740,32 @@ dois — `secure=True` e `enforce_csrf_checks=True` —, porque sem os dois ele 
 **Decisão:** `same-origin` entrega o que a proteção queria. Nada de token indo para fora, e o Referer continua
 chegando ao nosso próprio servidor — que já tem a URL inteira na linha de log do GET, portanto não há exposição
 nova. O teste de regressão afirma o cabeçalho **e** o envio por HTTPS sem `Origin`.
+
+
+## ADR-119 — A produção é o que a plataforma de deploy aponta, não o que um arquivo diz
+
+**Status:** ✅ Aceita — Rodada 80.
+
+**O que aconteceu.** O projeto tinha um arquivo `.env.producao` e um projeto Neon chamado
+`hamilton-individual-producao`. Nenhum dos dois era a produção. O serviço no Render apontava, nas suas variáveis
+de ambiente, para um **terceiro** banco — `neondb`, noutro projeto Neon e noutra região. Durante uma rodada
+inteira de diagnóstico, as consultas foram feitas no banco errado, e as conclusões foram apresentadas ao usuário
+como fatos da produção. Uma delas era falsa. Uma migração chegou a ser aplicada no banco errado.
+
+**Por que não foi percebido:** o banco errado tinha contas e paciente de aparência real, e os sintomas que ele
+explicava batiam com os relatados — agenda vazia, cobrança que não aparece. Bater não é ser: os dois bancos
+produziam o mesmo sintoma por caminhos parecidos, e a coincidência sustentou a conclusão errada.
+
+**Decisões:**
+- **A fonte da verdade sobre qual banco é a produção é a plataforma de deploy.** No Render, as variáveis de
+  ambiente do serviço. Nome de arquivo e nome de projeto são rótulo, e rótulo não é evidência.
+- **`.env.producao` passa a ser um espelho declarado**, com aviso no topo dizendo que o Render manda e que ele
+  deve ser conferido antes de cada uso. Um arquivo que mente sobre produção é pior que arquivo nenhum.
+- **Antes de afirmar qualquer coisa sobre produção, conferir a identidade do banco** — `current_database()`, as
+  contas que existem nele, e se batem com quem de fato usa o sistema.
+- O projeto `hamilton-individual-producao` foi **apagado** a pedido do usuário, depois de conferido que não tinha
+  nenhum prontuário, sessão registrada, documento ou arquivo — só duas contas, um paciente sem registro clínico
+  e uma grade de horários.
 
 
 ## Impeditivos
