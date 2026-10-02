@@ -5,8 +5,8 @@ o único que pode depender de todos. Em `pacientes` ela criaria uma dependência
 
 **Tudo em lote, nunca paciente a paciente.** A tela mostra dezenas de blocos; uma consulta por bloco seriam
 dezenas de idas ao banco, e o Neon é remoto — o custo é de rede, não de CPU. Então: uma consulta para as
-recorrências, uma carga só para as pendências (`financeiro.servicos.pagamentos_pendentes`, que já lê tudo de uma
-vez), e o resto sai do que a lista já trouxe.
+recorrências, uma carga só para o que está em aberto (`financeiro.servicos.cobrancas_em_aberto`, que já lê tudo de
+uma vez), e o resto sai do que a lista já trouxe.
 """
 
 from dataclasses import dataclass
@@ -35,6 +35,10 @@ class Ficha:
     hora: time | None
     em_aberto: Decimal
     presenca: object | None
+    # Rodada 80: a mensalidade do mês existe desde o dia 1º e ainda tem prazo. O bloco diz os dois números —
+    # "vencido" é alerta, "a receber" não é. Somar os dois num só faria paciente em dia parecer devedor.
+    a_receber: Decimal = Decimal("0")
+    proximo_vencimento: date | None = None
 
     @property
     def quando(self) -> str:
@@ -46,6 +50,7 @@ class Ficha:
 
     @property
     def em_dia(self) -> bool:
+        """Nada **vencido**. Quem tem mensalidade a vencer no fim do mês está em dia hoje."""
         return not self.em_aberto
 
 
@@ -73,9 +78,17 @@ def fichas(pacientes, presenca_por_paciente=None, hoje: date | None = None) -> l
             caso_do_paciente.setdefault(participacao.paciente_id, caso)
 
     # --- o que cada um deve: uma carga só, e não uma por paciente ------------------------------------------------
-    aberto_por_caso: dict[int, Decimal] = {}
-    for cobranca in financeiro.pagamentos_pendentes(hoje):
-        aberto_por_caso[cobranca.caso.pk] = aberto_por_caso.get(cobranca.caso.pk, Decimal("0")) + cobranca.saldo
+    vencido_por_caso: dict[int, Decimal] = {}
+    a_receber_por_caso: dict[int, Decimal] = {}
+    vencimento_por_caso: dict[int, date] = {}
+    for cobranca in financeiro.cobrancas_em_aberto(hoje):
+        chave = cobranca.caso.pk
+        if cobranca.pendente(hoje):
+            vencido_por_caso[chave] = vencido_por_caso.get(chave, Decimal("0")) + cobranca.saldo
+        else:
+            a_receber_por_caso[chave] = a_receber_por_caso.get(chave, Decimal("0")) + cobranca.saldo
+            # A lista vem ordenada por vencimento, então a primeira a chegar é a mais próxima.
+            vencimento_por_caso.setdefault(chave, cobranca.vencimento)
 
     presenca_por_caso = {caso.pk: p for caso, p in (presenca_por_paciente or [])}
 
@@ -88,7 +101,9 @@ def fichas(pacientes, presenca_por_paciente=None, hoje: date | None = None) -> l
             frequencia=regra.get_frequencia_display().lower() if regra else AVULSO,
             dia_semana=regra.dia_semana if regra else None,
             hora=regra.hora if regra else None,
-            em_aberto=aberto_por_caso.get(caso.pk, Decimal("0")) if caso else Decimal("0"),
+            em_aberto=vencido_por_caso.get(caso.pk, Decimal("0")) if caso else Decimal("0"),
             presenca=presenca_por_caso.get(caso.pk) if caso else None,
+            a_receber=a_receber_por_caso.get(caso.pk, Decimal("0")) if caso else Decimal("0"),
+            proximo_vencimento=vencimento_por_caso.get(caso.pk) if caso else None,
         ))
     return resultado

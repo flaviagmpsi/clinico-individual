@@ -224,7 +224,9 @@ class PainelPelaTela(TransactionTestCase):
         # ("3 sessões esperando cadastro"). Os títulos em maiúscula que este teste procurava sumiram com ela.
         # O trecho procurado é o que **não** muda com o singular e o plural, para a asserção não depender de
         # quantas pendências a semente gerou.
-        for texto in ["Hoje", "Pendências", "esperando cadastro", "pendente",
+        # ADR-117: o bloco de pagamento passou a se chamar "vencido", porque é o que ele é — e o que ainda tem
+        # prazo ganhou bloco próprio, "a receber", que este cenário não produz (tudo aqui já venceu).
+        for texto in ["Hoje", "Pendências", "esperando cadastro", "vencido",
                       "para escrever", "Marcos Painel"]:
             with self.subTest(texto=texto):
                 self.assertContains(resposta, texto)

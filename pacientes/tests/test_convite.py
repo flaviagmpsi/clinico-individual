@@ -8,12 +8,13 @@
 - `TelasDoPsicologo` — gerar, ver o link uma vez, revisar, cadastrar, cancelar; e o isolamento entre psicólogos.
 """
 
+import re
 from datetime import date, timedelta
 
 from django.core.exceptions import ValidationError
 from django.db import connection, transaction
 from django.db.utils import ProgrammingError
-from django.test import TestCase, TransactionTestCase
+from django.test import Client, TestCase, TransactionTestCase
 from django.urls import reverse
 from django.utils import timezone
 
@@ -277,9 +278,32 @@ class TelaPublica(BaseTelas):
         resposta = self.client.get(self.link())
         self.assertContains(resposta, "Ana Convida")
         self.assertContains(resposta, "Aviso de privacidade")
-        self.assertEqual(resposta["Referrer-Policy"], "no-referrer")
         self.assertEqual(resposta["Cache-Control"], "no-store")
         self.assertIn("noindex", resposta["X-Robots-Tag"])
+
+    def test_a_politica_de_referer_nao_pode_ser_no_referrer(self):
+        """Rodada 80: era `no-referrer`, e o envio morria em 403 nos navegadores que não mandam `Origin`.
+
+        Sob HTTPS o Django exige um dos dois — `Origin` ou `Referer` — e `no-referrer` tira o segundo de cena. Uma
+        paciente real preencheu o formulário inteiro e não conseguiu enviar. `same-origin` guarda o token de quem
+        é de fora, que era o objetivo, sem cortar o que o nosso próprio servidor precisa para validar o CSRF.
+        """
+        resposta = self.client.get(self.link())
+        self.assertEqual(resposta["Referrer-Policy"], "same-origin")
+
+    def test_envio_por_https_passa_sem_origin(self):
+        """O cenário que quebrou, reproduzido: HTTPS, CSRF de verdade, e nenhum `Origin` — só o Referer.
+
+        `enforce_csrf_checks=True` porque o cliente de teste desliga o CSRF por padrão, e era justamente o CSRF
+        que recusava. Sem `secure=True` o Django não faz a checagem de Referer, e o teste passaria sem provar nada.
+        """
+        cliente = Client(enforce_csrf_checks=True)
+        pagina = cliente.get(self.link(), secure=True)
+        token = re.search(r'name="csrfmiddlewaretoken" value="([^"]+)"',
+                          pagina.content.decode("utf-8")).group(1)
+        enviado = cliente.post(self.link(), {**FORMULARIO, "csrfmiddlewaretoken": token},
+                               secure=True, HTTP_REFERER=f"https://testserver{self.link()}")
+        self.assertContains(enviado, "Cadastro enviado")
 
     def test_enviar_guarda_a_resposta_sem_criar_paciente_e_mata_o_link(self):
         resposta = self.client.post(self.link(), FORMULARIO)

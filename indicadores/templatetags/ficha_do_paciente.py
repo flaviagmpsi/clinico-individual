@@ -9,7 +9,7 @@ from decimal import Decimal
 
 from django import template
 
-from financeiro.servicos import pagamentos_pendentes
+from financeiro.servicos import cobrancas_em_aberto
 from indicadores.estatisticas import presenca_do_paciente
 
 register = template.Library()
@@ -21,13 +21,28 @@ def frequencia_do_paciente(paciente):
     return presenca_do_paciente(paciente)
 
 
+def _soma(cobrancas) -> Decimal:
+    return sum((c.saldo for c in cobrancas), Decimal("0"))
+
+
 @register.simple_tag
 def situacao_financeira(caso):
-    """Em dia, com pendência ou sem cobrança combinada. Pendência é o que venceu e não foi quitado (N-08)."""
+    """Vencido, a receber, em dia ou sem cobrança combinada.
+
+    Quatro estados, e não dois (rodada 80): o que venceu e não entrou é alerta; o que existe e ainda tem prazo
+    — a mensalidade do mês corrente, desde o dia 1º — é informação. Quem tem os dois é "vencido", porque o
+    atraso é o que pede ação. Uma leitura só do banco para as duas listas.
+    """
+    vazio = {"estado": "sem_cobranca", "pendentes": [], "a_receber": [],
+             "total": Decimal("0"), "total_a_receber": Decimal("0")}
     if caso is None:
-        return {"estado": "sem_cobranca", "pendentes": [], "total": Decimal("0")}
-    pendentes = pagamentos_pendentes(caso=caso)
-    if pendentes:
-        return {"estado": "pendente", "pendentes": pendentes, "total": sum((c.saldo for c in pendentes), Decimal("0"))}
+        return vazio
+    abertas = cobrancas_em_aberto(caso=caso)
+    vencidas = [c for c in abertas if c.pendente()]
+    a_receber = [c for c in abertas if c.a_receber()]
+    if vencidas or a_receber:
+        return {"estado": "pendente" if vencidas else "a_receber",
+                "pendentes": vencidas, "a_receber": a_receber,
+                "total": _soma(vencidas), "total_a_receber": _soma(a_receber)}
     combinou = caso.condicoes.exists() or caso.pagamentos.exists()
-    return {"estado": "em_dia" if combinou else "sem_cobranca", "pendentes": [], "total": Decimal("0")}
+    return {**vazio, "estado": "em_dia" if combinou else "sem_cobranca"}

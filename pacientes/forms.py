@@ -39,7 +39,11 @@ class CondicaoCobrancaForm(LimpaMascara, forms.Form):
     modalidade = forms.ChoiceField(
         label="Forma de cobrança", choices=CondicaoCobranca.Modalidade.choices,
         initial=CondicaoCobranca.Modalidade.POR_SESSAO, required=False,
-        widget=forms.Select(attrs=_SELECT))
+        widget=forms.Select(attrs=_SELECT),
+        # Rodada 80: a diferença entre as duas decide **quando** a cobrança aparece no financeiro, e era
+        # invisível. Por sessão só cobra o que já foi registrado; mensal cobra o mês no dia 1º.
+        help_text="Por sessão cobra o que você registrar como realizado. Mensal cobra o mês no dia 1º, "
+                  "com vencimento no dia escolhido.")
     # `required=False` na forma de cobrança também: um POST que não traga o bloco de cobrança —
     # uma importação, um cliente antigo — tem de continuar cadastrando o paciente. Sem valor, a
     # forma não importa; com valor e sem forma, vale o padrão "por sessão".

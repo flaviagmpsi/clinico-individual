@@ -124,7 +124,11 @@ class RegistroPelaTela(BaseTelasFinanceiro):
 
     def test_painel_lembra_pagamento_pendente(self):
         self.entrar(self.ana)
-        self.assertContains(self.client.get(reverse("painel")), "pendente")  # ADR-104: "2 pagamentos pendentes"
+        # ADR-117: o bloco agora se chama "2 pagamentos vencidos", e o que ainda tem prazo fica em "a receber".
+        # Aqui tudo já venceu, então o que o painel mostra é o alerta.
+        painel = self.client.get(reverse("painel"))
+        self.assertContains(painel, "vencido")
+        self.assertContains(painel, "bi-exclamation-triangle-fill")
 
 
 class RLSNoFinanceiro(TransactionTestCase):

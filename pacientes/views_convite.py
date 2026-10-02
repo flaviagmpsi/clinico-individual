@@ -83,8 +83,18 @@ class CadastroPeloPaciente(FormView):
     def dispatch(self, request, *args, **kwargs):
         self.convite = convites.apresentar(self.kwargs["token"])
         resposta = self._fora_do_ar() or super().dispatch(request, *args, **kwargs)
-        # O token está na URL: nada de mandá-la como referência para CDN ou ViaCEP, nem de guardar a página.
-        resposta["Referrer-Policy"] = "no-referrer"
+        # O token está na URL: nada de mandá-la como referência para fora, nem de guardar a página.
+        #
+        # **`same-origin`, e não `no-referrer`** (rodada 80). Era `no-referrer`, e isso quebrava o envio do
+        # formulário em produção: sob HTTPS, o Django faz a checagem estrita de Referer sempre que o cabeçalho
+        # `Origin` não vem, e sem Referer ele responde 403 "Referer checking failed". Navegador moderno manda
+        # Origin em POST de formulário e passava; o navegador embutido do WhatsApp — por onde o link viaja, que
+        # é o que o `wa.me` desta mesma tela constrói — não necessariamente. O paciente preenchia tudo, enviava
+        # e levava um 403 sem explicação. Uma paciente real não conseguiu se cadastrar por isto.
+        #
+        # `same-origin` entrega o que a proteção queria: nada de token indo para CDN ou ViaCEP, e o Referer
+        # continua chegando ao nosso próprio servidor — que já tem a URL inteira na linha de log do GET.
+        resposta["Referrer-Policy"] = "same-origin"
         resposta["Cache-Control"] = "no-store"
         resposta["X-Robots-Tag"] = "noindex, nofollow"
         return resposta

@@ -11,7 +11,10 @@ Nada aqui é regra nova de agenda: o que se grava é a mesma frequência de semp
 com a mesma checagem de colisão. Muda só **onde** se pergunta.
 """
 
+from datetime import timedelta
+
 from django import forms
+from django.contrib import messages
 from django.utils import timezone
 
 from agenda.grade import vagas_da_semana
@@ -57,6 +60,7 @@ class BlocoDeHorario:
     template = "atendimentos/_horario_no_cadastro.html"
 
     def __init__(self, request, dados=None):
+        self.request = request
         self.duracao = request.user.duracao_sessao
         self.dias = vagas_da_semana(self.duracao)
         self.form = HorarioDoPacienteForm(dados, prefix="horario")
@@ -70,9 +74,26 @@ class BlocoDeHorario:
     def salvar(self, paciente, caso) -> None:
         dados = self.form.cleaned_data
         if dados["frequencia"] == servicos.AVULSO:
+            messages.info(self.request, f"{paciente.nome} ficou sem horário fixo, então não aparece na agenda "
+                                        "por frequência. Marque cada sessão dele em “Nova sessão”.")
             return
         hoje = timezone.localdate()
         # A regra vale da primeira sessão em diante; se ela já passou, de hoje — o passado não ganha previsão.
-        servicos.definir_frequencia(
+        regra = servicos.definir_frequencia(
             caso, frequencia=dados["frequencia"], dia_semana=dados["dia_semana"], hora=dados["hora"],
             a_partir_de=max(hoje, paciente.data_primeira_sessao or hoje), hoje=hoje)
+        self._dizer_quando_comeca(paciente, regra)
+
+    def _dizer_quando_comeca(self, paciente, regra) -> None:
+        """Diz a data da **primeira** sessão prevista — rodada 80.
+
+        A regra vale de hoje em diante, então o dia da semana que já passou nesta semana só volta na próxima. Era
+        a origem da queixa "cadastrei e a agenda ficou vazia": a sessão existia, só não naquela janela. Dizer a
+        data aqui fecha a dúvida no instante em que ela nasce, em vez de deixar o psicólogo procurar.
+        """
+        if regra is None:
+            return
+        primeira = regra.inicio + timedelta(days=(regra.dia_semana - regra.inicio.weekday()) % 7)
+        messages.info(self.request, f"Primeira sessão de {paciente.nome} na agenda: "
+                                    f"{primeira:%d/%m} ({Recorrencia.DiaSemana(regra.dia_semana).label}), "
+                                    f"{regra.hora:%H:%M}.")

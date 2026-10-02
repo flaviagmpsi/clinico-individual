@@ -31,6 +31,7 @@ class Painel(LoginRequiredMixin, TemplateView):
             # A lista é inteira: o bloco rola por dentro em vez de cortar (ADR-074).
             sessoes_pendentes=pendencias.sessoes, total_sessoes_pendentes=len(pendencias.sessoes),
             pagamentos_pendentes=pendencias.pagamentos, total_pagamentos_pendentes=len(pendencias.pagamentos),
+            pagamentos_a_receber=pendencias.a_receber, total_pagamentos_a_receber=len(pendencias.a_receber),
             prontuarios_pendentes=pendencias.prontuarios, total_prontuarios_pendentes=len(pendencias.prontuarios),
             aniversariantes=estatisticas.aniversariantes_do_mes(painel.hoje),
         )

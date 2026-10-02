@@ -528,12 +528,35 @@ class CalendarioPelaTela(BaseTelasAgenda):
     def rota(self, visao, data, situacao=""):
         return f"{reverse('atendimentos:agenda')}?visao={visao}&data={data:%Y-%m-%d}&situacao={situacao}"
 
-    def test_semana_e_o_padrao_com_uma_coluna_por_dia(self):
+    def test_a_semana_do_calendario_tem_uma_coluna_por_dia(self):
         self.entrar(self.ana)
         resposta = self.client.get(self.rota("semana", self.terca))
         for dia in ["Segunda-feira", "Terça-feira", "Sexta-feira"]:
             self.assertContains(resposta, dia)
         self.assertContains(resposta, "Maria Agenda · 14h")
+
+    def test_a_agenda_abre_nos_proximos_sete_dias_e_nao_na_semana_do_calendario(self):
+        """Rodada 80: a janela padrão começa **hoje**, e não na segunda-feira desta semana.
+
+        A semana do calendário é quase toda passado quando se abre a agenda numa sexta — e uma regra de
+        frequência criada hoje não produz sessão em dia que já passou (ADR-022). O resultado era um psicólogo
+        cadastrando paciente de segunda numa sexta, abrindo a agenda e não encontrando nem a sessão nem o
+        horário livre preenchido. Os dois estavam na semana seguinte.
+        """
+        self.entrar(self.ana)
+        resposta = self.client.get(reverse("atendimentos:agenda"))
+        self.assertEqual(resposta.context["visao"], "proximos")
+        self.assertEqual(resposta.context["de"], self.hoje)
+        self.assertEqual(resposta.context["ate"], self.hoje + timedelta(days=6))
+        # A Maria é de terça, e a próxima terça cabe sempre nesta janela — qualquer que seja o dia de hoje.
+        self.assertContains(resposta, "Maria Agenda · 14h")
+
+    def test_a_janela_padrao_nunca_mostra_dia_que_passou(self):
+        """É o que fazia o horário livre parecer não preenchido: a terça da semana passada ainda aparecia livre."""
+        self.grade(TERCA, 13, 16)
+        self.entrar(self.ana)
+        for dia in self.client.get(reverse("atendimentos:agenda")).context["colunas"]:
+            self.assertGreaterEqual(dia.dia, self.hoje)
 
     def test_livre_so_onde_ha_horario_cadastrado_e_nao_em_cima_de_sessao(self):
         """Grade de terça 13h–16h com a Maria às 14h: livre às 13h e às 15h, e em nenhum outro dia."""

@@ -12,7 +12,7 @@ Tudo é derivado — de consultas, frequências, condições de cobrança e paga
 `indicadores` depende de todos os apps, e nenhum depende dele (regra 2 de dependência).
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import date, datetime, time, timedelta
 from decimal import Decimal
 
@@ -21,7 +21,7 @@ from django.utils import timezone
 from atendimentos.models import Consulta
 from atendimentos.servicos import sessoes_pendentes, sessoes_previstas, sessoes_remarcadas
 from financeiro.despesas import previsto_por_mes
-from financeiro.servicos import carregar, cobrancas_do_mes, pagamentos_pendentes, ultimo_dia
+from financeiro.servicos import carregar, cobrancas_do_mes, cobrancas_em_aberto, ultimo_dia
 from pacientes.models import Paciente
 from pacientes.servicos import pacientes_ativos
 from prontuarios.servicos import prontuarios_pendentes
@@ -69,15 +69,20 @@ class Pendencias:
 
     `sessoes` são as de **dias anteriores**: a de hoje que já passou aparece na agenda do dia como
     "a cadastrar", e repeti-la aqui seria o ruído que a ADR-072 tira.
+
+    `pagamentos` são os **vencidos** — alerta. `a_receber` são os que existem e ainda vão vencer: decisão do
+    usuário (rodada 80) de que a mensalidade do mês entra no painel no dia 1º, porque o paciente tem até o
+    vencimento para pagá-la. Separados porque não pedem a mesma coisa: um é cobrar, o outro é esperar.
     """
 
     sessoes: list
     pagamentos: list
     prontuarios: list
+    a_receber: list = field(default_factory=list)
 
     @property
     def total(self) -> int:
-        return len(self.sessoes) + len(self.pagamentos) + len(self.prontuarios)
+        return len(self.sessoes) + len(self.pagamentos) + len(self.prontuarios) + len(self.a_receber)
 
 
 @dataclass
@@ -128,10 +133,14 @@ def montar_painel(agora: datetime | None = None) -> Painel:
         a_receber=sum((cobranca.saldo for cobranca in cobrancas), Decimal("0")) + previsto_por_sessao,
         pacientes_ativos=pacientes_ativos().count(),
     )
+    # Uma leitura só para as duas listas: `cobrancas_em_aberto` percorre todos os meses de uma vez (ADR-086),
+    # e pedir vencidas e a receber em chamadas separadas leria o banco duas vezes pela mesma resposta.
+    abertas = cobrancas_em_aberto(hoje)
     pendencias = Pendencias(
         sessoes=[s for s in sessoes_pendentes(agora) if timezone.localtime(s.inicio).date() < hoje],
-        pagamentos=pagamentos_pendentes(hoje),
+        pagamentos=[c for c in abertas if c.pendente(hoje)],
         prontuarios=prontuarios_pendentes(),
+        a_receber=[c for c in abertas if c.a_receber(hoje)],
     )
     return Painel(hoje=hoje, mes=inicio, resumo=resumo, hoje_itens=_itens_de_hoje(agora, hoje),
                   pendencias=pendencias)

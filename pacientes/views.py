@@ -37,7 +37,7 @@ from indicadores import estatisticas, fichas, periodo
 from pacientes import convites
 from pacientes.cadastro import blocos_registrados
 from pacientes.forms import GENEROS_SUGERIDOS
-from pacientes.models import Caso, ConviteDeCadastro, Paciente, ResponsavelLegal
+from pacientes.models import Caso, CondicaoCobranca, ConviteDeCadastro, Paciente, ResponsavelLegal
 from pacientes.servicos import (
     cadastrar_paciente,
     caso_individual_de,
@@ -163,6 +163,7 @@ class NovoPaciente(LoginRequiredMixin, CreateView):
         validos = [form.is_valid(), cobranca.is_valid()] + [bloco.is_valid() for bloco in blocos]
         if all(validos) and self.cadastrar(form, cobranca, blocos):
             messages.success(self.request, f"Paciente {self.object.nome} cadastrado.")
+            self._avisar_sobre_a_cobranca(cobranca)
             return redirect(self.get_success_url())
         return self.render_to_response(self.get_context_data(form=form, cobranca=cobranca, blocos=blocos))
 
@@ -187,6 +188,21 @@ class NovoPaciente(LoginRequiredMixin, CreateView):
             form.instance.pk = None
             return False
         return True
+
+    def _avisar_sobre_a_cobranca(self, cobranca) -> None:
+        """Diz na cara o que o cadastro **não** vai gerar — rodada 80.
+
+        Paciente salvo sem valor é permitido de propósito (ADR-012): combina-se o preço depois. O que faltava era
+        dizer isso. Um psicólogo real cadastrou paciente sem valor, foi ao painel e estranhou não ver cobrança
+        nenhuma — e estava certo em estranhar, porque a tela tinha deixado passar em silêncio.
+        """
+        dados = cobranca.cleaned_data
+        if dados.get("valor") is None:
+            messages.warning(self.request, "Este paciente ficou sem valor combinado, então não gera cobrança "
+                                           "nenhuma. Defina o valor em “Atendimento”, na ficha dele.")
+        elif dados.get("modalidade") == CondicaoCobranca.Modalidade.POR_SESSAO:
+            messages.info(self.request, "Cobrança por sessão: o valor entra no financeiro quando você registrar "
+                                        "que a sessão aconteceu. Quem paga por mês tem a cobrança no dia 1º.")
 
     def get_success_url(self):
         return reverse("pacientes:detalhe", args=[self.object.pk])

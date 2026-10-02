@@ -3,8 +3,10 @@
 **O devido é cálculo, não registro.** A mensalidade vem da condição de cobrança do mês; a sessão, da consulta
 cobrada e do valor por sessão vigente na data dela. Só o pagamento é gravado — pelo psicólogo, sempre.
 
-**Lembrete** (N-08): uma cobrança fica pendente **a partir do vencimento** e enquanto o pago não cobrir o
-devido. Paga antes do vencimento, nunca aparece.
+**Três situações, não duas** (rodada 80): uma cobrança **existe** a partir de `desde` — o dia 1º, para a
+mensalidade; o dia da sessão, para a sessão. Dali até o vencimento ela está **a receber**; passado o
+vencimento e sem o pago cobrir o devido, está **vencida**, e é alerta (N-08). Paga antes do vencimento, nunca
+chega a vencer.
 """
 
 from calendar import monthrange
@@ -69,9 +71,39 @@ class Cobranca:
     def quitada(self) -> bool:
         return self.pago >= self.devido
 
+    @property
+    def desde(self) -> date:
+        """A partir de quando esta cobrança **existe** para o psicólogo — e não de quando ela vence.
+
+        Decisão do usuário (rodada 80): a mensalidade de outubro já é um pagamento a receber no dia 1º, porque
+        o paciente tem o mês inteiro para pagá-la até o vencimento. Antes disso ela não existe: não se cobra em
+        setembro o mês que não começou. A sessão nasce no dia em que acontece, que é o próprio vencimento dela
+        (ADR-063) — por isso sessão nunca aparece como "a receber", só como vencida.
+        """
+        return self.mes if self.tipo == MENSALIDADE else self.vencimento
+
+    def em_aberto(self, hoje: date | None = None) -> bool:
+        """Já existe, e o pago não cobre o devido. É a soma de "a receber" e "vencida"."""
+        return not self.quitada and self.desde <= (hoje or timezone.localdate())
+
     def pendente(self, hoje: date | None = None) -> bool:
-        """O lembrete: venceu e o pago não cobre o devido. Pago antes do vencimento, nunca fica pendente."""
+        """**Venceu** e o pago não cobre o devido. Pago antes do vencimento, nunca fica pendente.
+
+        É o alerta: o nome ficou como estava porque é isto que todas as telas chamam de pendente.
+        """
         return not self.quitada and self.vencimento <= (hoje or timezone.localdate())
+
+    def a_receber(self, hoje: date | None = None) -> bool:
+        """Existe, não foi paga e **ainda não venceu** — o que o psicólogo espera receber, sem susto."""
+        hoje = hoje or timezone.localdate()
+        return self.em_aberto(hoje) and self.vencimento > hoje
+
+    def dias_de_atraso(self, hoje: date | None = None) -> int:
+        """Quantos dias passaram do vencimento. Zero quando não venceu — a tela usa para graduar o alerta."""
+        return max((hoje or timezone.localdate()) - self.vencimento, timedelta(0)).days
+
+    def dias_para_vencer(self, hoje: date | None = None) -> int:
+        return max(self.vencimento - (hoje or timezone.localdate()), timedelta(0)).days
 
     @property
     def formas(self) -> list[str]:
@@ -186,27 +218,44 @@ def cobrancas_do_mes(ano: int, mes: int, *, caso: Caso | None = None, carga: Car
     return sorted(cobrancas, key=lambda c: (c.vencimento, str(c.caso)))
 
 
-def pagamentos_pendentes(hoje: date | None = None, *, caso: Caso | None = None) -> list[Cobranca]:
-    """Tudo o que venceu e não foi quitado, de qualquer mês — o que o lembrete mostra."""
+def cobrancas_em_aberto(hoje: date | None = None, *, caso: Caso | None = None) -> list[Cobranca]:
+    """Tudo o que existe e não foi quitado, de qualquer mês: o que vai vencer **e** o que já venceu.
+
+    Os dois juntos porque custam a mesma carga: separá-los em duas funções leria o banco duas vezes para
+    responder a mesma pergunta. Quem quer só um lado filtra por `pendente()` ou `a_receber()`.
+    """
     hoje = hoje or timezone.localdate()
     carga = carregar(_DESDE_SEMPRE, hoje, caso=caso)
-    pendentes = []
+    abertas = []
     for item in carga.casos:
         mensais = [c for c in item.condicoes.all() if c.modalidade == CondicaoCobranca.Modalidade.MENSAL]
         if not mensais:
             continue
         primeira = min(condicao.vigente_desde for condicao in mensais)
         mes = date(primeira.year, primeira.month, 1)
+        # Até o mês corrente, inclusive: a mensalidade dele já existe no dia 1º, mesmo que vença depois.
         while mes <= hoje:
             cobranca = mensalidade(item, mes.year, mes.month, carga=carga)
-            if cobranca and cobranca.pendente(hoje):
-                pendentes.append(cobranca)
+            if cobranca and cobranca.em_aberto(hoje):
+                abertas.append(cobranca)
             mes = mes_seguinte(mes)
     for consulta in carga.consultas:
         cobranca = sessao(consulta)
-        if cobranca and cobranca.pendente(hoje):
-            pendentes.append(cobranca)
-    return sorted(pendentes, key=lambda c: (c.vencimento, str(c.caso)))
+        if cobranca and cobranca.em_aberto(hoje):
+            abertas.append(cobranca)
+    return sorted(abertas, key=lambda c: (c.vencimento, str(c.caso)))
+
+
+def pagamentos_pendentes(hoje: date | None = None, *, caso: Caso | None = None) -> list[Cobranca]:
+    """Só o que **venceu** e não foi quitado — o alerta."""
+    hoje = hoje or timezone.localdate()
+    return [c for c in cobrancas_em_aberto(hoje, caso=caso) if c.pendente(hoje)]
+
+
+def pagamentos_a_receber(hoje: date | None = None, *, caso: Caso | None = None) -> list[Cobranca]:
+    """Só o que existe e **ainda não venceu** — o que está por receber, em ordem de vencimento."""
+    hoje = hoje or timezone.localdate()
+    return [c for c in cobrancas_em_aberto(hoje, caso=caso) if c.a_receber(hoje)]
 
 
 def _recusar_invalido(data: date, forma: str) -> None:

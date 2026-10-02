@@ -3627,6 +3627,110 @@ atualizando o sistema de acordo com o feedback".
   hibernando pareceria aplicação caída e o Render a reiniciaria; sem a isenção, a verificação interna chega em
   HTTP, recebe 301 e conclui o mesmo.
 
+## ADR-115 — A administradora da plataforma enxerga e altera tudo
+
+**Status:** ✅ Aceita — Rodada 79.
+
+**Decisão do usuário:** "de acesso de super usuario a essa minha conta, eu quero poder fazer tudo na tela de
+administrador, quero ver tudo e alterar tudo, quero poder ter todas as funçoes de adminstrador com essa conta" —
+reafirmada depois de o custo ser apresentado duas vezes.
+
+**O que muda:** até aqui, nem conta superusuária via dado de outro psicólogo. Agora a conta marcada como
+`is_superuser` atravessa o isolamento em **todas** as tabelas, prontuário e documento incluídos.
+
+**O custo, escrito de propósito:** essa conta passa a ser a chave do sistema inteiro. Comprometida, ela abre o
+prontuário de todos os pacientes de todos os testadores. Antes, nem o roubo de uma sessão autenticada chegava lá.
+
+**Decisões de arquitetura:**
+- **Uma segunda variável de sessão, `hamilton.administradora`**, posta pelo middleware junto com o dono, na mesma
+  transação e com o mesmo `is_local` — morre com ela e não vaza pelo pool (I-01). Quem decide é o Django; o banco
+  só obedece ao que a transação declarou.
+- **A primeira tentativa foi uma função `SECURITY DEFINER` que lia `is_superuser` da tabela, e ela não serve.**
+  Dois problemas, e o segundo só apareceu rodando: a função é porta de escalada de privilégio que precisa de
+  cuidado para não virar furo; e, por ser referenciada por `ativar_rls`, passou a ser exigida por **todas as
+  migrações antigas** — que rodam antes de ela existir, e aí nenhum banco novo subia. `current_setting(..., true)`
+  devolve NULL quando ninguém definiu a variável, a comparação falha, e migração velha continua produzindo SQL
+  válido. É a razão de a solução ser variável, e não função.
+- **A declaração é a trava, não a conta.** Sem a variável, nem a superusuária atravessa — o que garante que uma
+  requisição anônima, que nunca chama `aplicar_escopo`, não ganhe nada aqui. O teste prova os dois lados: uma
+  policy que negasse tudo passaria num e falharia no outro, e vice-versa; é o par que prova.
+
+## ADR-116 — A agenda abre nos próximos sete dias, e não na semana do calendário (refina a ADR-073)
+
+**Status:** ✅ Aceita — Rodada 80.
+
+**O relato do usuário:** "quando eu cadastro o paciente nao aparece automaticamente todas as sessoes que ele vai
+realizar no mes, a agenda ta vazia" e "quando cadastro horario de um paciente ele nao substitui o horario livre".
+
+**O que a investigação achou — e não foi o que parecia.** Os dois itens são o **mesmo** defeito, e nenhum dos dois
+estava na lógica. Reproduzindo os dados reais da produção: grade de segunda 10h–12h, paciente semanal na segunda
+às 10h, regra valendo de 01/10. A agenda abria na semana de 28/09 a 04/10, cuja única segunda era **28/09** —
+anterior ao dia em que a regra passou a valer, porque mudança de frequência vale de hoje em diante (ADR-022). Na
+tela que ele olhou: segunda 10h ainda "livre", e o paciente em lugar nenhum. Uma semana adiante, tudo correto.
+
+**Decisões de arquitetura:**
+- **A janela padrão começa hoje e vai a hoje + 6.** A semana do calendário começa na segunda, então quem abre a
+  agenda numa sexta vê quatro dias de passado e um de futuro — e uma regra criada hoje não pode produzir sessão em
+  dia que já passou. A pergunta que a tela responde ao abrir é "o que vem agora?".
+- **A semana do calendário continua, num clique.** Ela é a grade em que o psicólogo pensa a rotina (ADR-073) e não
+  perde o lugar; só deixa de ser o que aparece sem ser pedido. O cabeçalho de cada coluna já diz o dia **e** a
+  data, então uma sexta seguida de uma segunda se lê sem esforço.
+- **O cadastro diz a data da primeira sessão.** "Primeira sessão de Maria na agenda: 05/10 (segunda-feira),
+  11:00" — fecha a dúvida no instante em que ela nasce, em vez de deixar o psicólogo procurar. É o aviso que
+  faltava, e corrigir a janela sem ele resolveria o sintoma e não a dúvida.
+
+## ADR-117 — Três situações para uma cobrança: a receber, vencida e quitada (refina a ADR-062, a ADR-063 e N-08)
+
+**Status:** ✅ Aceita — Rodada 80.
+
+**Decisão do usuário:** "pagamentos mensais, logo no inicio do mes ja aparece como pendente pois a pessoa precisa
+realizar o pagamento daquele mes até a data de vencimento"; e, sobre o alerta, "depois que passar a data de
+vencimento, tem que aparecer que o pagamento está vencido sem ser realizado e precisa aparecer algo que demonstre
+que isso é um alerta".
+
+**O que estava errado:** uma cobrança só existia para o sistema **a partir do vencimento**. O psicólogo cadastrava
+um mensalista no dia 1º, abria o painel e não via nada a receber — e estava certo em estranhar. Faltava a situação
+do meio. Em produção, o caso real foi ainda mais simples: o paciente tinha sido cadastrado **sem valor**, então não
+havia cobrança alguma a mostrar, e a tela não dizia isso.
+
+**Decisões de arquitetura:**
+- **`desde` responde "a partir de quando esta cobrança existe".** Dia 1º do mês, para a mensalidade; dia da sessão,
+  para a sessão (ADR-063). Antes disso ela não existe: não se cobra em setembro o mês que não começou. Como a
+  sessão nasce no próprio dia do vencimento, **sessão nunca passa por "a receber"** — e isso é consequência da
+  regra, não exceção escrita à mão.
+- **`pendente()` continua querendo dizer "venceu".** O nome ficou porque é o que todas as telas chamam de pendente,
+  e trocá-lo mudaria o sentido de uma dezena de lugares sem necessidade. O que entrou foi `a_receber()` ao lado.
+- **Uma leitura do banco para as duas listas.** `cobrancas_em_aberto` percorre todos os meses de uma vez (ADR-086);
+  pedir vencidas e a receber em chamadas separadas leria o banco duas vezes pela mesma resposta.
+- **Vencido e a receber nunca no mesmo balaio.** São blocos distintos no painel, e badges distintos na lista e na
+  ficha. Juntá-los faria o psicólogo cobrar quem está em dia — o oposto do que a tela serve para fazer.
+- **O cadastro diz o que não vai acontecer.** Paciente sem valor continua permitido (ADR-012), e agora avisa que
+  não gera cobrança nenhuma. Quem escolhe "por sessão" ouve que o valor entra quando a sessão for registrada.
+  Permitir em silêncio é o que produziu o relato.
+
+## ADR-118 — A página pública do convite manda `same-origin`, não `no-referrer` (corrige a ADR-081)
+
+**Status:** ✅ Aceita — Rodada 80.
+
+**O relato do usuário:** "o link de cadastro nao ta funcionando de verdade, o paciente nao conseguiu se cadastrar".
+
+**A causa era nossa.** A tela do convite mandava `Referrer-Policy: no-referrer`, porque o token está na URL e não
+deve viajar como referência para CDN nem para o ViaCEP. Só que, **sob HTTPS**, o Django exige um de dois cabeçalhos
+para validar o CSRF: `Origin` ou, na falta dele, `Referer` — e `no-referrer` tira o segundo de cena. O navegador que
+manda `Origin` em POST de formulário passava; o que não manda levava **403 "Referer checking failed"** depois de a
+pessoa preencher as doze obrigatórias. E o link viaja por WhatsApp — é o próprio `wa.me` que esta tela constrói —,
+cujo navegador embutido é exatamente o tipo de cliente em que isso falha. Em produção o convite ficou com
+`respondido_em` nulo, e nenhum erro apareceu para o psicólogo.
+
+**Por que não se viu antes:** em desenvolvimento a aplicação roda em HTTP, e o Django **não** faz a checagem de
+Referer fora de HTTPS; e o cliente de teste do Django desliga o CSRF por padrão. O teste que fecha isto liga os
+dois — `secure=True` e `enforce_csrf_checks=True` —, porque sem os dois ele passaria sem provar nada.
+
+**Decisão:** `same-origin` entrega o que a proteção queria. Nada de token indo para fora, e o Referer continua
+chegando ao nosso próprio servidor — que já tem a URL inteira na linha de log do GET, portanto não há exposição
+nova. O teste de regressão afirma o cabeçalho **e** o envio por HTTPS sem `Origin`.
+
+
 ## Impeditivos
 
 | # | Impeditivo | Situação |

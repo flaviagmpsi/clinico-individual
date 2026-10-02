@@ -58,11 +58,16 @@ sessão cadastrada muda de cor (presente verde, falta vermelha, cancelada cinza 
     <span class="text-muted fw-normal">
       {% if visao == "mes" %}{{ de|date:"F \d\e Y"|capfirst }}
       {% elif visao == "dia" %}{{ de|date:"l, d/m/Y"|capfirst }}
+      {% elif visao == "proximos" %}próximos 7 dias <span class="small">· {{ de|date:"d/m" }} a {{ ate|date:"d/m" }}</span>
       {% else %}{{ de|date:"d/m/Y" }} a {{ ate|date:"d/m/Y" }}{% endif %}
     </span>
   </h1>
+  {% comment %}Rodada 80: "Próximos" é a visão em que a agenda abre — de hoje para a frente. "Semana" continua
+  sendo a semana do calendário, de segunda a domingo, que é a grade da rotina (ADR-073).{% endcomment %}
   <div class="btn-group btn-group-sm ms-2" role="group" aria-label="Visão">
     <a href="{{ rota_dia }}" class="btn btn-outline-secondary{% if visao == 'dia' %} active{% endif %}">Dia</a>
+    <a href="{{ rota_proximos }}" class="btn btn-outline-secondary{% if visao == 'proximos' %} active{% endif %}"
+       title="De hoje em diante">Próximos</a>
     <a href="{{ rota_semana }}" class="btn btn-outline-secondary{% if visao == 'semana' or visao == 'periodo' %} active{% endif %}">Semana</a>
     <a href="{{ rota_mes }}" class="btn btn-outline-secondary{% if visao == 'mes' %} active{% endif %}">Mês</a>
   </div>

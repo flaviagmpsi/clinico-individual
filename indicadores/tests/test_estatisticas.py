@@ -244,7 +244,10 @@ class Telas(TransactionTestCase):
         self.entrar(self.ana)
         resposta = self.client.get(reverse("pacientes:detalhe", args=[self.marcos.pk]))
         self.assertContains(resposta, "50%</strong> de presença · 1 de 2")
-        self.assertContains(resposta, "2 pendências")
+        # ADR-117: o selo diz "vencido", e não "pendência" — e é vermelho, com triângulo. O atraso virou alerta
+        # a pedido do usuário, e é a redação que ele vai ler.
+        self.assertContains(resposta, "2 vencidos")
+        self.assertContains(resposta, "bi-exclamation-triangle-fill")
         self.assertContains(resposta, reverse("prontuarios:anamnese", args=[self.marcos.pk]))
         with contexto.como(self.ana.pk):
             for consulta in Consulta.objects.all():

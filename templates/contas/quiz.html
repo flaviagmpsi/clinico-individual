@@ -100,25 +100,44 @@
           </div>
 
         {% else %}
+          {% comment %}Rodada 80: a UF estava num `col-md-1` — um doze avos da linha para um menu que lista
+          "Rio Grande do Norte". Agora o endereço é desenhado em três linhas inteiras, cada campo com a largura
+          do que ele guarda: CEP curto, logradouro longo, número e complemento ao lado; cidade larga e UF com
+          espaço para o nome do estado aparecer.{% endcomment %}
           <div class="row g-3">
             <div class="col-md-7">{% include "components/_campo.html" with campo=form.nome_clinica %}</div>
             <div class="col-md-5">{% include "components/_campo.html" with campo=form.telefone_clinica %}</div>
-            <div class="col-md-3">{% include "components/_campo.html" with campo=form.cep %}</div>
-            <div class="col-md-7">{% include "components/_campo.html" with campo=form.logradouro %}</div>
-            <div class="col-md-2">{% include "components/_campo.html" with campo=form.numero %}</div>
-            <div class="col-md-4">{% include "components/_campo.html" with campo=form.complemento %}</div>
+          </div>
+          <div class="row g-3 mt-0">
+            <div class="col-md-4">{% include "components/_campo.html" with campo=form.cep %}</div>
+            <div class="col-md-8">{% include "components/_campo.html" with campo=form.logradouro %}</div>
+          </div>
+          <div class="row g-3 mt-0">
+            <div class="col-md-3">{% include "components/_campo.html" with campo=form.numero %}</div>
+            <div class="col-md-5">{% include "components/_campo.html" with campo=form.complemento %}</div>
             <div class="col-md-4">{% include "components/_campo.html" with campo=form.bairro %}</div>
-            <div class="col-md-3">{% include "components/_campo.html" with campo=form.cidade %}</div>
-            <div class="col-md-1">{% include "components/_campo.html" with campo=form.uf %}</div>
+          </div>
+          <div class="row g-3 mt-0">
+            <div class="col-md-7">{% include "components/_campo.html" with campo=form.cidade %}</div>
+            <div class="col-md-5">{% include "components/_campo.html" with campo=form.uf %}</div>
           </div>
           <div class="form-text small mt-2">O endereço do atendimento presencial. O CEP preenche o resto sozinho.</div>
         {% endif %}
       </div>
     </div>
 
-    <button type="submit" class="btn btn-primary mt-3">
-      {% if ultimo %}Concluir cadastro{% else %}Continuar{% endif %}
-    </button>
+    {% comment %}Rodada 80: faltava a volta. O `dispatch` já impede pular pergunta para a frente, mas voltar é
+    sempre permitido — e o link é um `<a>`, e não um `submit`, para que voltar nunca grave o que está na tela
+    pela metade. Na primeira pergunta não há de onde voltar, e aí o link não aparece.{% endcomment %}
+    <div class="d-flex align-items-center gap-2 mt-3">
+      {% if passo > 1 %}
+        <a href="{% url 'contas:quiz' passo|add:"-1" %}" class="btn btn-outline-secondary">
+          <i class="bi bi-arrow-left"></i> Voltar</a>
+      {% endif %}
+      <button type="submit" class="btn btn-primary">
+        {% if ultimo %}Concluir cadastro{% else %}Continuar{% endif %}
+      </button>
+    </div>
   </form>
 </div>
 {% endblock %}

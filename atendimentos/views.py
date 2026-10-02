@@ -84,7 +84,17 @@ class Agenda(LoginRequiredMixin, TemplateView):
     template_name = "atendimentos/agenda.html"
 
     def periodo(self) -> tuple[str, date, date, date]:
-        """(visão, data-âncora, de, até)."""
+        """(visão, data-âncora, de, até).
+
+        **A visão padrão são os próximos 7 dias, de hoje em diante** — e não a semana do calendário (rodada 80).
+        A semana começa na segunda, então quem abria a agenda numa sexta via quatro dias de passado e um de
+        futuro. Um psicólogo real cadastrou um paciente de segunda-feira numa sexta, abriu a agenda e não achou
+        nem a sessão dele nem o horário livre preenchido: a única segunda daquela semana era anterior ao dia em
+        que a regra passou a valer. Nada estava errado no cálculo — a janela é que era quase toda passado.
+
+        A semana do calendário continua a um clique, em `?visao=semana`, porque é a grade em que o psicólogo
+        pensa a rotina (ADR-073). Esta aqui responde outra pergunta: "o que vem agora?".
+        """
         pedido = self.request.GET
         hoje = timezone.localdate()
         de, ate = _data(pedido.get("de")), _data(pedido.get("ate"))
@@ -94,15 +104,17 @@ class Agenda(LoginRequiredMixin, TemplateView):
         if semana:
             segunda = _segunda(semana)
             return "semana", segunda, segunda, segunda + timedelta(days=6)
-        visao = pedido.get("visao", "semana")
+        visao = pedido.get("visao", "")
         data = _data(pedido.get("data")) or hoje
         if visao == "dia":
             return "dia", data, data, data
         if visao == "mes":
             primeiro = data.replace(day=1)
             return "mes", primeiro, primeiro, _mes_seguinte(primeiro) - timedelta(days=1)
-        segunda = _segunda(data)
-        return "semana", segunda, segunda, segunda + timedelta(days=6)
+        if visao == "semana":
+            segunda = _segunda(data)
+            return "semana", segunda, segunda, segunda + timedelta(days=6)
+        return "proximos", data, data, data + timedelta(days=6)
 
     @staticmethod
     def _rota(visao: str, data: date, situacao: str) -> str:
@@ -115,7 +127,8 @@ class Agenda(LoginRequiredMixin, TemplateView):
         situacao = self.request.GET.get("situacao", "")
         dias = servicos.calendario(de, ate, situacao=situacao, duracao=self.request.user.duracao_sessao)
 
-        # ADR-073: segunda a sexta; sábado e domingo só quando tiverem alguma coisa.
+        # ADR-073: segunda a sexta; sábado e domingo só quando tiverem alguma coisa. Vale igual na visão rolante
+        # — o cabeçalho de cada coluna diz o dia **e** a data, então uma sexta seguida de uma segunda se lê.
         fim_de_semana = any(not dia.vazio for dia in dias if dia.dia.weekday() >= 5)
         colunas = [dia for dia in dias if dia.dia.weekday() < 5 or not dia.vazio]
 
@@ -134,6 +147,7 @@ class Agenda(LoginRequiredMixin, TemplateView):
             passo = timedelta(days=(ate - de).days + 1)
             anterior, proxima = ancora - passo, ancora + passo
         visao_nav = "semana" if visao == "periodo" else visao
+        # Na visão rolante o "próximo" anda 7 dias a partir da âncora, que é o que `passo` já calcula.
 
         sessoes = [item for dia in dias for item in dia.sessoes]
         online = sum(1 for item in sessoes if item.modalidade == Paciente.Modalidade.ONLINE)
@@ -145,6 +159,7 @@ class Agenda(LoginRequiredMixin, TemplateView):
             rota_proxima=self._rota(visao_nav, proxima, situacao),
             rota_hoje=self._rota(visao_nav, hoje, situacao),
             rota_dia=self._rota("dia", ancora if visao != "mes" else hoje, situacao),
+            rota_proximos=self._rota("proximos", hoje, situacao),
             rota_semana=self._rota("semana", ancora, situacao),
             rota_mes=self._rota("mes", ancora, situacao),
             total_sessoes=len(sessoes), online=online, presenciais=len(sessoes) - online,

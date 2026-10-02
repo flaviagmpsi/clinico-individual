@@ -256,20 +256,34 @@
         <div class="d-flex align-items-center mb-2">
           <span class="fw-semibold">Situação financeira</span>
           {% if fin.estado == "em_dia" %}<span class="badge text-bg-success ms-2"><i class="bi bi-check2"></i> Em dia</span>
-          {% elif fin.estado == "pendente" %}<span class="badge text-bg-warning ms-2">{{ fin.pendentes|length }} pendência{{ fin.pendentes|length|pluralize }} · R$ {{ fin.total|floatformat:2 }}</span>
+          {% elif fin.estado == "pendente" %}<span class="badge text-bg-danger ms-2"><i class="bi bi-exclamation-triangle-fill"></i> {{ fin.pendentes|length }} vencido{{ fin.pendentes|length|pluralize }} · R$ {{ fin.total|floatformat:2 }}</span>
+          {% elif fin.estado == "a_receber" %}<span class="badge text-bg-light border ms-2">A receber · R$ {{ fin.total_a_receber|floatformat:2 }}</span>
           {% else %}<span class="badge text-bg-light border ms-2">Sem cobrança combinada</span>{% endif %}
           <a href="{% url 'financeiro:mes' %}" class="ms-auto small text-decoration-none">financeiro</a>
         </div>
-        {% if fin.estado == "pendente" %}
+        {% comment %}Rodada 80: vencido e a receber aparecem juntos e separados — o alerta primeiro, porque é o
+        que pede ação; embaixo, o que ainda tem prazo, com a data em que vence.{% endcomment %}
+        {% if fin.pendentes %}
+          <div class="alert alert-danger py-2 px-2 small mb-2">
+            <ul class="list-unstyled mb-0">
+              {% for c in fin.pendentes %}
+                <li class="py-1"><a href="{{ c.url_pagar }}" class="text-decoration-none fw-medium">{{ c.descricao }} · R$ {{ c.saldo|floatformat:2 }}</a>
+                  <span>· venceu {{ c.vencimento|date:"d/m/Y" }}{% with dias=c.dias_de_atraso %}{% if dias %} · {{ dias }} dia{{ dias|pluralize }} de atraso{% endif %}{% endwith %}</span></li>
+              {% endfor %}
+            </ul>
+          </div>
+        {% endif %}
+        {% if fin.a_receber %}
           <ul class="list-unstyled small mb-0">
-            {% for c in fin.pendentes %}
+            {% for c in fin.a_receber %}
               <li class="py-1"><a href="{{ c.url_pagar }}" class="text-decoration-none">{{ c.descricao }} · R$ {{ c.saldo|floatformat:2 }}</a>
-                <span class="text-muted">· venceu {{ c.vencimento|date:"d/m/Y" }}</span></li>
+                <span class="text-muted">· vence {{ c.vencimento|date:"d/m/Y" }}{% with dias=c.dias_para_vencer %}{% if dias %} · em {{ dias }} dia{{ dias|pluralize }}{% else %} · hoje{% endif %}{% endwith %}</span></li>
             {% endfor %}
           </ul>
-        {% elif fin.estado == "em_dia" %}
-          <div class="text-muted small">Nada vencido em aberto: tudo o que já venceu está quitado.</div>
-        {% else %}
+        {% endif %}
+        {% if fin.estado == "em_dia" %}
+          <div class="text-muted small">Nada em aberto: tudo o que já venceu está quitado.</div>
+        {% elif fin.estado == "sem_cobranca" %}
           <div class="text-muted small">Combine o valor e a forma de cobrança no card <em>Atendimento</em> para o financeiro acompanhar.</div>
         {% endif %}
 

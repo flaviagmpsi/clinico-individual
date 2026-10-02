@@ -39,6 +39,14 @@ Primeiro o dia; depois as pendências, num bloco; por fim o resumo do mês.
   .pendencia > summary:hover { color: var(--tinta-escura); }
   .pendencia .quantas { font-family: var(--f-num); font-variant-numeric: tabular-nums; font-weight: 600; font-size: 1.05rem; color: var(--atencao); }
   .pendencia[open] > summary { color: var(--texto); }
+  /* Rodada 80: pagamento vencido é alerta, e tem de se distinguir do resto da lista sem precisar abrir. O que
+     está a receber é o contrário — existe, não é susto, e fica em tom neutro. */
+  .pendencia.vencido > summary { background: var(--erro-fundo); border-left: 3px solid var(--erro);
+                                 padding-left: .5rem; border-radius: 4px 4px 0 0; }
+  .pendencia.vencido .quantas { color: var(--erro); }
+  .pendencia.vencido > summary .rotulo-alerta { color: var(--erro); font-weight: 600; }
+  .pendencia.vencido li .atraso { color: var(--erro); font-weight: 600; }
+  .pendencia.a-receber .quantas { color: var(--suave); }
 </style>
 <div class="row g-3 mb-3 align-items-start">
   {% comment %}ADR-106: a agenda de hoje costuma ter poucas linhas e sobrava espaço; as pendências, que são muitas,
@@ -50,7 +58,7 @@ Primeiro o dia; depois as pendências, num bloco; por fim o resumo do mês.
         <span class="text-muted small">
           {{ total_hoje }} sess{{ total_hoje|pluralize:"ão,ões" }}{% if online %} · {{ online }} online{% endif %}
         </span>
-        <a href="{% url 'atendimentos:agenda' %}" class="ms-auto small text-decoration-none">ver a semana</a>
+        <a href="{% url 'atendimentos:agenda' %}" class="ms-auto small text-decoration-none">ver a agenda</a>
       </div>
       {% if itens %}
         <div class="list-group list-group-flush">
@@ -151,17 +159,39 @@ Primeiro o dia; depois as pendências, num bloco; por fim o resumo do mês.
             </details>
           {% endif %}
 
+          {% comment %}Rodada 80: dois blocos, porque são duas coisas. O vencido é alerta — passou a data e não
+          entrou. O a receber existe desde o dia 1º do mês e ainda tem prazo; mostrar os dois no mesmo balaio
+          faria o psicólogo cobrar quem está em dia.{% endcomment %}
           {% if pagamentos_pendentes %}
-            <details class="pendencia">
+            <details class="pendencia vencido" open>
               <summary>
                 <span class="quantas">{{ total_pagamentos_pendentes }}</span>
-                pagamento{{ total_pagamentos_pendentes|pluralize }} pendente{{ total_pagamentos_pendentes|pluralize }}
+                <span class="rotulo-alerta"><i class="bi bi-exclamation-triangle-fill"></i>
+                  pagamento{{ total_pagamentos_pendentes|pluralize }} vencido{{ total_pagamentos_pendentes|pluralize }}</span>
                 <a href="{% url 'financeiro:mes' %}" class="ms-auto small text-decoration-none">financeiro</a>
               </summary>
               <ul class="list-unstyled small mb-2 mt-1">
               {% for c in pagamentos_pendentes %}
                 <li><a href="{{ c.url_pagar }}" class="text-decoration-none fw-medium">{{ c.caso }}</a>
-                  <span class="text-muted">{{ c.descricao|lower }} · venceu {{ c.vencimento|date:"d/m" }}</span>
+                  <span class="text-muted">{{ c.descricao|lower }} ·</span>
+                  <span class="atraso">venceu {{ c.vencimento|date:"d/m" }}{% with dias=c.dias_de_atraso %}{% if dias %} · {{ dias }} dia{{ dias|pluralize }} de atraso{% endif %}{% endwith %}</span>
+                  <span class="valor ms-auto">R$ {{ c.saldo|floatformat:2 }}</span></li>
+              {% endfor %}
+              </ul>
+            </details>
+          {% endif %}
+
+          {% if pagamentos_a_receber %}
+            <details class="pendencia a-receber">
+              <summary>
+                <span class="quantas">{{ total_pagamentos_a_receber }}</span>
+                pagamento{{ total_pagamentos_a_receber|pluralize }} a receber
+                <a href="{% url 'financeiro:mes' %}" class="ms-auto small text-decoration-none">financeiro</a>
+              </summary>
+              <ul class="list-unstyled small mb-2 mt-1">
+              {% for c in pagamentos_a_receber %}
+                <li><a href="{{ c.url_pagar }}" class="text-decoration-none fw-medium">{{ c.caso }}</a>
+                  <span class="text-muted">{{ c.descricao|lower }} · vence {{ c.vencimento|date:"d/m" }}{% with dias=c.dias_para_vencer %}{% if dias %} · em {{ dias }} dia{{ dias|pluralize }}{% else %} · hoje{% endif %}{% endwith %}</span>
                   <span class="valor ms-auto">R$ {{ c.saldo|floatformat:2 }}</span></li>
               {% endfor %}
               </ul>
