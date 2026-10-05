@@ -106,27 +106,36 @@ A senha do `hamilton_web` **não vive no repositório**. Para trocá-la, conecte
 `ALTER ROLE hamilton_web WITH LOGIN PASSWORD '...'`; depois atualize a `DATABASE_URL` no Render.
 
 
-## ⚠️ O deploy automático está desligado (desde 02/10/2026)
+## O deploy: automático, e como conferir
 
-**Empurrar para o `main` NÃO publica.** O Render tem `autoDeploy: yes` e aponta para o repositório certo, mas o
-GitHub deixou de avisá-lo: o aplicativo do Render está instalado na conta antiga (`PauloHenriqueL`), e a
-transferência do repositório para `flaviagmpsi` não levou a autorização junto. Não há erro em lugar nenhum — o
-Render simplesmente fica parado, e o que está no ar continua sendo o commit anterior.
+No Render, o serviço web **`hamilton`** vive dentro do projeto **POLARIS** (`srv-davgmavavr4c73bun6jg`), ligado a
+`github.com/flaviagmpsi/clinico-individual`, ramo `main`. Empurrar para o `main` publica.
 
-**Como confirmar o que está publicado de verdade**, antes de afirmar qualquer coisa:
+### Ele já ficou quebrado uma vez, e sem avisar
+
+Entre 02/10 e 05/10/2026 o `git push` **não publicava**. O repositório mudou de dono (de `PauloHenriqueL` para
+`flaviagmpsi`) e a autorização do aplicativo do Render ficou na conta antiga: o GitHub parou de avisar o Render,
+que não reclama — fica parado, e o ar continua no commit anterior. Dois envios passaram despercebidos, e houve
+quem concluísse que o deploy estava funcionando por ver um deploy recente no painel, que na verdade tinha sido
+disparado à mão.
+
+Resolvido instalando o aplicativo do Render na conta `flaviagmpsi`
+(`github.com/apps/render` → Install → `clinico-individual`). Exige navegador: não dá por API nem por CLI.
+
+### Nunca afirme que algo está no ar sem conferir
 
 ```
 curl -s -H "Authorization: Bearer $RENDER_API_KEY"   "https://api.render.com/v1/services/srv-davgmavavr4c73bun6jg/deploys?limit=3"
 ```
 
-**Como publicar depois do push:**
+O commit publicado vem na resposta. Se divergir do `git log`, o que está no ar é o da resposta.
+
+### Publicar à mão, se o automático falhar de novo
 
 ```
 curl -s -X POST -H "Authorization: Bearer $RENDER_API_KEY" -H "Content-Type: application/json"   -d '{"clearCache":"do_not_clear"}'   "https://api.render.com/v1/services/srv-davgmavavr4c73bun6jg/deploys"
 ```
 
-Ou, pelo painel: serviço **hamilton** → **Manual Deploy** → **Deploy latest commit**.
+Ou, no painel: projeto **POLARIS** → serviço **hamilton** → **Manual Deploy** → **Deploy latest commit**.
 
-**O conserto definitivo** é instalar o aplicativo do Render na conta `flaviagmpsi` (`github.com/apps/render` →
-Install → selecionar `clinico-individual`). Exige autorização no navegador, logado na conta — não dá para fazer
-por API nem por linha de comando.
+O build roda `migrate`: é o deploy que leva migração nova à produção.
