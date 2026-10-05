@@ -104,3 +104,29 @@ aplicação caída e disparar um reinício.
 
 A senha do `hamilton_web` **não vive no repositório**. Para trocá-la, conecte com o papel dono e rode
 `ALTER ROLE hamilton_web WITH LOGIN PASSWORD '...'`; depois atualize a `DATABASE_URL` no Render.
+
+
+## ⚠️ O deploy automático está desligado (desde 02/10/2026)
+
+**Empurrar para o `main` NÃO publica.** O Render tem `autoDeploy: yes` e aponta para o repositório certo, mas o
+GitHub deixou de avisá-lo: o aplicativo do Render está instalado na conta antiga (`PauloHenriqueL`), e a
+transferência do repositório para `flaviagmpsi` não levou a autorização junto. Não há erro em lugar nenhum — o
+Render simplesmente fica parado, e o que está no ar continua sendo o commit anterior.
+
+**Como confirmar o que está publicado de verdade**, antes de afirmar qualquer coisa:
+
+```
+curl -s -H "Authorization: Bearer $RENDER_API_KEY"   "https://api.render.com/v1/services/srv-davgmavavr4c73bun6jg/deploys?limit=3"
+```
+
+**Como publicar depois do push:**
+
+```
+curl -s -X POST -H "Authorization: Bearer $RENDER_API_KEY" -H "Content-Type: application/json"   -d '{"clearCache":"do_not_clear"}'   "https://api.render.com/v1/services/srv-davgmavavr4c73bun6jg/deploys"
+```
+
+Ou, pelo painel: serviço **hamilton** → **Manual Deploy** → **Deploy latest commit**.
+
+**O conserto definitivo** é instalar o aplicativo do Render na conta `flaviagmpsi` (`github.com/apps/render` →
+Install → selecionar `clinico-individual`). Exige autorização no navegador, logado na conta — não dá para fazer
+por API nem por linha de comando.
