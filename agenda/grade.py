@@ -1,5 +1,14 @@
 """A grade de horários: o que o psicólogo declarou, o que já tem paciente e o que sobrou (ADR-029, ADR-056).
 
+**A grade é a união de duas coisas** (ADR-124): os blocos que o psicólogo declarou **e** os horários em que ele
+já atende alguém toda semana. O segundo não precisa ser declarado — atender um paciente às quartas às 10h *é*
+trabalhar às quartas às 10h. Antes, só o declarado contava, e quem tinha declarado pouco via a própria agenda
+descrita como "fora da grade".
+
+O declarado continua mandando numa coisa só, e é a que importa para ele existir: **é só dentro dele que o
+sistema oferece horário livre** para um paciente novo. Ninguém quer que o sistema proponha encaixar gente às 7h
+da manhã só porque há um paciente às 8h.
+
 A ocupação é **derivada** das regras de frequência em vigor — nunca mantida à mão. Só olha regra, nunca
 consulta: `agenda` não conhece `atendimentos` (regra 5 de dependência), e a pergunta que a grade responde
 ("tenho vaga para paciente novo?") é sobre o compromisso fixo, não sobre a consulta cadastrada desta semana.
@@ -44,14 +53,54 @@ def _cabe(faixas, inicio: int, fim: int) -> bool:
     return any(a <= inicio and fim <= b for a, b in faixas)
 
 
+def _ocupados_do_dia(regras, dia_semana: int) -> list[tuple[int, int]]:
+    """As faixas que um atendimento fixo já ocupa naquele dia — grade por uso, e não por declaração."""
+    return [(_minutos(r.hora), _minutos(r.hora) + r.duracao) for r in regras if r.dia_semana == dia_semana]
+
+
+def faixas_da_grade(blocos, regras, dia_semana: int) -> list[tuple[int, int]]:
+    """A grade do dia: o que foi declarado **mais** o que já tem paciente fixo (ADR-124)."""
+    return _unir(_faixas_do_dia(blocos, dia_semana) + _ocupados_do_dia(regras, dia_semana))
+
+
+def regras_abertas() -> list:
+    """Os compromissos fixos que ainda valem — atendimento de paciente e trabalho fora da clínica."""
+    return (list(Recorrencia.objects.filter(fim__isnull=True)
+                 .select_related("caso").prefetch_related("caso__pacientes"))
+            + compromissos.que_ocupam_a_grade())
+
+
 def fora_da_grade(dia_semana: int, hora: time, duracao: int) -> bool:
-    """Se a sessão cai, no todo ou em parte, fora da grade declarada. **Sem grade, nunca** (ADR-056)."""
+    """Se a sessão cai, no todo ou em parte, fora da grade. **Sem grade, nunca** (ADR-056).
+
+    A grade inclui onde já há paciente fixo (ADR-124): marcar um segundo paciente no mesmo horário de sempre não
+    é "fora da grade", é a rotina. O aviso fica para o que é mesmo fora do expediente — e aí ele presta serviço.
+    """
     blocos = list(HorarioDisponivel.objects.all())
+    # **Sem grade declarada, nunca** (ADR-056) — e isto vem antes da união de propósito: quem escolheu não usar
+    # a grade não pode ser lembrado dela a cada cadastro só porque tem pacientes. A união da ADR-124 serve a
+    # quem declarou alguma coisa, e o que ela conserta é a acusação a quem declarou pouco.
     if not blocos:
         return False
     inicio = _minutos(hora)
-    return not _cabe(_faixas_do_dia(blocos, dia_semana), inicio, inicio + duracao)
+    return not _cabe(faixas_da_grade(blocos, regras_abertas(), dia_semana), inicio, inicio + duracao)
 
+
+
+@dataclass(frozen=True)
+class FaixaDeTrabalho:
+    """Um pedaço de grade que nasceu do uso, e não de declaração (ADR-124).
+
+    Tem a mesma cara de `HorarioDisponivel` para a tela desenhar os dois do mesmo jeito, e `declarado = False`
+    para ela não oferecer um botão de apagar o que não existe no banco.
+    """
+
+    inicio: time
+    fim: time
+    declarado: bool = False
+
+    def __str__(self) -> str:
+        return f"{self.inicio:%H:%M} às {self.fim:%H:%M}"
 
 @dataclass
 class Trecho:
@@ -146,29 +195,34 @@ def mapa_da_semana() -> Mapa:
     blocos = list(HorarioDisponivel.objects.all())
     # ADR-122: o compromisso fora da clínica ocupa a semana-tipo como qualquer atendimento fixo. Entra aqui,
     # e não numa lista à parte, porque a pergunta que o mapa responde é "quanto do meu tempo está tomado?".
-    regras = list(
-        Recorrencia.objects.filter(fim__isnull=True).select_related("caso").prefetch_related("caso__pacientes")
-    ) + compromissos.que_ocupam_a_grade()
+    regras = regras_abertas()
     dias = []
     disponivel = 0
     ocupado = 0.0
     for numero, nome in Recorrencia.DiaSemana.choices:
         do_dia = [r for r in regras if r.dia_semana == numero]
         dia = DiaDaGrade(numero, nome)
-        for bloco in (b for b in blocos if b.dia_semana == numero):
-            inicio, fim = _minutos(bloco.inicio), _minutos(bloco.fim)
+        declarados = {(b.inicio, b.fim): b for b in blocos if b.dia_semana == numero}
+        # ADR-124: a semana desenhada é a união — o declarado e o que já tem paciente. Onde a união nasce só de
+        # atendimento, o "bloco" não existe no banco e vira um `FaixaDeTrabalho`, que a tela desenha igual mas
+        # não oferece para apagar: não há o que apagar, há paciente marcado ali.
+        for inicio, fim in faixas_da_grade(blocos, do_dia, numero):
             trechos, ocupado_no_bloco = _trechos(inicio, fim, do_dia)
+            bloco = declarados.get((_hora(inicio), _hora(fim))) or FaixaDeTrabalho(_hora(inicio), _hora(fim))
             dia.blocos.append((bloco, trechos))
             disponivel += fim - inicio
             ocupado += ocupado_no_bloco
-        faixas = _faixas_do_dia(blocos, numero)
+        # Nada mais fica "fora": onde há atendimento, há grade. A lista continua existindo para o caso de uma
+        # regra que não caiba inteira na faixa — hoje impossível por construção, e barata de manter honesta.
         dia.fora = sorted(
-            (r for r in do_dia if not _cabe(faixas, _minutos(r.hora), _minutos(r.hora) + r.duracao)),
+            (r for r in do_dia
+             if not _cabe(faixas_da_grade(blocos, do_dia, numero), _minutos(r.hora), _minutos(r.hora) + r.duracao)),
             key=lambda r: r.hora,
         )
         if dia.blocos or dia.fora:
             dias.append(dia)
-    return Mapa(dias=dias, minutos_disponiveis=disponivel, minutos_ocupados=ocupado, tem_grade=bool(blocos))
+    return Mapa(dias=dias, minutos_disponiveis=disponivel, minutos_ocupados=ocupado,
+                tem_grade=bool(blocos or regras))
 
 
 @dataclass

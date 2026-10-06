@@ -58,6 +58,7 @@
           <div class="fw-semibold small mb-1">{{ dia.nome }}</div>
           {% for bloco, trechos in dia.blocos %}
             <div class="d-flex flex-wrap align-items-center gap-1 small mb-1">
+              {% if bloco.declarado is False %}<span class="text-muted" title="Faixa que existe porque você atende aqui — não precisa ser declarada"><i class="bi bi-dot"></i></span>{% endif %}
               {% for t in trechos %}
                 {% if t.livre %}
                   <span class="badge bg-success-subtle text-success-emphasis border border-success-subtle fw-normal">
@@ -70,17 +71,20 @@
               {% endfor %}
             </div>
           {% endfor %}
+          {% comment %}ADR-124: a grade é o declarado **mais** onde já há paciente fixo, então nada fica "fora"
+          por construção. A lista continua desenhada para o caso de uma regra que não caiba inteira numa faixa —
+          e, se um dia aparecer, é aviso de verdade e não acusação de quem declarou pouco.{% endcomment %}
           {% if dia.fora %}
-            <div class="small {% if mapa.tem_grade %}text-warning-emphasis{% else %}text-muted{% endif %}">
-              {% if mapa.tem_grade %}<i class="bi bi-exclamation-circle"></i> Fora da grade:{% else %}Sessões fixas:{% endif %}
-              {% for r in dia.fora %}{{ r.hora|time:"H:i" }} {{ r.caso }}{% if r.frequencia == 'QUINZENAL' %} (quinzenal){% endif %}{% if not forloop.last %} · {% endif %}{% endfor %}
+            <div class="small text-warning-emphasis">
+              <i class="bi bi-exclamation-circle"></i> Não cabe na faixa:
+              {% for r in dia.fora %}{{ r.hora|time:"H:i" }} {{ r.rotulo }}{% if r.frequencia == 'QUINZENAL' %} (quinzenal){% endif %}{% if not forloop.last %} · {% endif %}{% endfor %}
             </div>
           {% endif %}
         </div>
         {% endfor %}
       </div>
       {% else %}
-        <div class="card-body text-muted small">Nenhum horário declarado e nenhuma sessão fixa ainda.</div>
+        <div class="card-body text-muted small">Nenhum horário declarado e nenhum paciente com horário fixo ainda.</div>
       {% endif %}
     </div>
   </div>

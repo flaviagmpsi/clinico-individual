@@ -136,14 +136,38 @@ class MapaDaSemana(BaseGrade):
         self.assertEqual(mapa.minutos_ocupados, 30)
         self.assertEqual(mapa.horas_livres, "3h30")
 
-    def test_sessao_fixa_fora_da_grade_aparece_e_nao_conta(self):
+    def test_sessao_fixa_em_dia_nao_declarado_vira_grade(self):
+        """ADR-124: era "aparece fora da grade e não conta". Agora conta — e por um motivo de domínio.
+
+        Atender alguém toda quarta às 9h **é** trabalhar quarta às 9h, tenha ou não um bloco declarado para isso.
+        A versão anterior comparava o atendimento com o que fora declarado e escrevia "fora da grade", o que
+        descrevia o cadastro e não a semana de quem usa o sistema — e um psicólogo real viu os nove pacientes
+        dele acusados assim.
+        """
         with contexto.como(self.ana.pk):
             bloco(TERCA, 14, 18)
-            regra = self.frequencia(self.caso_joao, QUARTA, 9)
+            self.frequencia(self.caso_joao, QUARTA, 9)
             mapa = grade.mapa_da_semana()
         quarta = next(dia for dia in mapa.dias if dia.numero == QUARTA)
-        self.assertEqual(quarta.fora, [regra])
-        self.assertEqual(mapa.minutos_ocupados, 0)
+        self.assertEqual(quarta.fora, [])                 # nada mais é acusado de estar fora
+        self.assertEqual(len(quarta.blocos), 1)           # a quarta virou faixa de trabalho
+        faixa, trechos = quarta.blocos[0]
+        self.assertIs(faixa.declarado, False)             # nasceu do uso, e não oferece botão de apagar
+        self.assertEqual([t.livre for t in trechos], [False])
+        self.assertEqual(mapa.minutos_ocupados, 60)       # a sessão do João passa a contar
+
+    def test_o_declarado_continua_sendo_quem_oferece_vaga(self):
+        """O que o bloco declarado ainda decide sozinho, e que justifica ele existir (ADR-124).
+
+        Sem isto, a tela proporia encaixar paciente novo às 9h de quarta só porque há um atendimento ali — e a
+        grade deixaria de servir para dizer quando o psicólogo quer ser procurado.
+        """
+        with contexto.como(self.ana.pk):
+            bloco(TERCA, 14, 18)
+            self.frequencia(self.caso_joao, QUARTA, 9)
+            codigos = [v.codigo for dia in grade.vagas_da_semana(50) for v in dia.vagas]
+        self.assertTrue(all(c.startswith(f"{TERCA}-") for c in codigos), codigos)
+        self.assertEqual([c for c in codigos if c.startswith(f"{QUARTA}-")], [])
 
     def test_quem_virou_avulso_deixa_de_ocupar(self):
         with contexto.como(self.ana.pk):

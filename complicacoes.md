@@ -3884,6 +3884,39 @@ dinheiro na hora.
   a perguntar para que servia.
 
 
+## ADR-124 — A grade é o declarado **mais** onde já há paciente fixo (corrige a ADR-029 e a ADR-056)
+
+**Status:** ✅ Aceita — Rodada 83.
+
+**Relato do usuário:** "voce colocou todos os horarios de atendimento que eu cadastrei como fora da grade, quando
+na verdade está dentro da minha grade... é como se voce tivesse colocado só os horarios livres como estando na
+grade e o horario de atendimentos fora da grade, quando na verdade os dois estão na grade".
+
+**O que os dados mostravam.** Ela tinha declarado **um** bloco — terça, 17h às 18h — e tinha **nove** pacientes
+fixos em terça, quarta, quinta e sexta. A tela comparava os nove com aquele bloco e escrevia "⚠ Fora da grade"
+em todos. Verdade sobre o que foi declarado, falso sobre a semana de trabalho dela: **um horário em que se
+atende alguém toda semana é horário de trabalho, por definição**. Isso é fato, não declaração.
+
+A ADR-056 já previa que marcar fora da grade só gera aviso, e tinha a guarda "sem grade, nunca". A guarda não
+alcançava este caso: a grade *existia*, com uma hora só, e tudo o mais caía fora. O efeito era o sistema acusar
+o psicólogo de desorganização por ele não ter preenchido um cadastro que ninguém o obrigou a preencher.
+
+**Decisões de arquitetura:**
+- **A grade do dia é a união** das faixas declaradas com as faixas que já têm compromisso fixo — paciente ou
+  trabalho fora da clínica (ADR-122). `faixas_da_grade` responde isso num lugar só, e o mapa, o aviso e a
+  ocupação passam a ler dali.
+- **O bloco declarado continua mandando numa coisa, e é a que justifica ele existir: só dentro dele o sistema
+  oferece horário livre** para um paciente novo. Sem essa distinção, a tela proporia encaixar alguém às 7h da
+  manhã porque existe um paciente às 8h30 — o oposto de ajudar.
+- **A ocupação passa a significar algo.** Antes media nove pacientes contra uma hora declarada e dava um número
+  sem sentido; agora mede quanto do tempo efetivamente trabalhado está livre.
+- **O aviso de "fora da grade" não morre, muda de alvo.** Deixa de acusar quem declarou pouco e passa a disparar
+  só para o que é mesmo fora do expediente — marcar às 6h da manhã continua avisando.
+- **Faixa que nasce do uso não oferece botão de apagar.** `FaixaDeTrabalho` tem a mesma cara de
+  `HorarioDisponivel` para a tela desenhar igual, e `declarado = False` para ninguém ser convidado a remover
+  algo que não existe no banco — o que existe ali é um paciente marcado.
+
+
 ## Impeditivos
 
 | # | Impeditivo | Situação |
