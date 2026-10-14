@@ -27,8 +27,24 @@
         <div class="form-text small mt-2">O CRP vai impresso em todo documento que o sistema gerar, por isso é pedido já aqui.</div>
       </div>
     </div>
-    <button type="submit" class="btn btn-primary mt-3 w-100">Criar conta e continuar</button>
+    {% comment %}ADR-126: o botão se desarma no primeiro clique. Sem isto, o segundo envio cria a conta e
+    recebe de volta "e-mail já cadastrado" — verdade sobre o banco e mentira sobre o que aconteceu.{% endcomment %}
+    <button type="submit" class="btn btn-primary mt-3 w-100" data-criar>Criar conta e continuar</button>
   </form>
+  <script>
+    (function () {
+      const formulario = document.querySelector("form[method=post]");
+      const botao = document.querySelector("[data-criar]");
+      if (!formulario || !botao) return;
+      formulario.addEventListener("submit", () => {
+        if (botao.disabled) return;
+        botao.disabled = true;
+        botao.textContent = "Criando a sua conta…";
+        // O servidor gratuito hiberna e a primeira resposta pode demorar; sem este aviso, a espera parece travamento.
+        setTimeout(() => { botao.textContent = "Criando a sua conta… pode levar alguns segundos"; }, 4000);
+      });
+    })();
+  </script>
 
   <p class="text-center text-muted small mt-3 mb-0">
     Já tem conta? <a href="{% url 'contas:entrar' %}" class="text-decoration-none">Entrar</a>.

@@ -1,5 +1,7 @@
 """Entrada e saída do sistema, o quiz de cadastro e o perfil do psicólogo."""
 
+from datetime import timedelta
+
 from django.contrib import messages
 from django.conf import settings
 from django.contrib.auth import login
@@ -162,6 +164,11 @@ PASSOS = [
 
 
 @method_decorator(dispensa_escopo, name="dispatch")
+
+def _recem_criada(psicologo, agora=None) -> bool:
+    """Criada nos últimos minutos — a janela em que um duplo envio ainda é o mesmo gesto (ADR-126)."""
+    return (agora or timezone.now()) - psicologo.date_joined <= timedelta(minutes=5)
+
 class CriarConta(CreateView):
     """A porta de entrada (ADR-094): login e CRP. A conta passa a existir, o psicólogo já entra logado e vai
     escolher entre assinar e testar grátis; o quiz vem depois, já dentro do sistema.
@@ -182,6 +189,38 @@ class CriarConta(CreateView):
         resposta = super().form_valid(form)
         login(self.request, self.object)
         return resposta
+
+    def form_invalid(self, form):
+        """Resgata o envio repetido (ADR-126).
+
+        Dois cliques no botão criavam a conta no primeiro e devolviam "e-mail já cadastrado" no segundo — que
+        chega sem o cookie de sessão do primeiro, e por isso nem o atalho de "já está logado" o alcança. Se a
+        senha enviada é a da conta que ocupa aquele e-mail, quem está ali é o dono: em vez de recusar, entra.
+
+        Só vale para conta **recém-criada**: fora dessa janela isto viraria um login sem o freio contra tentativa
+        em massa (ADR-114), e o lugar de entrar é a tela de entrar.
+        """
+        if self._e_o_mesmo_envio(form):
+            login(self.request, form.conta_existente())
+            messages.info(self.request, "Sua conta já tinha sido criada — o botão foi clicado duas vezes. "
+                                        "Você já está dentro.")
+            return redirect(self.get_success_url())
+        return super().form_invalid(form)
+
+    def _e_o_mesmo_envio(self, form) -> bool:
+        """A assinatura exata de um duplo clique: **tudo** igual ao que já foi gravado.
+
+        E-mail, senha e CRP. O CRP entra porque sem ele a regra era larga demais: quem reenviasse com o CRP
+        corrigido seria logado na conta antiga, e a correção que ele acabara de digitar sumiria sem aviso. Foi um
+        teste de cadastro que mostrou isso — ele reenviava com outro CRP e esperava recusa, e estava certo.
+        """
+        conta = form.conta_existente()
+        if conta is None or not _recem_criada(conta):
+            return False
+        senha = self.request.POST.get("password1") or ""
+        mesmo_crp = ((self.request.POST.get("crp_regiao") or "").strip() == conta.crp_regiao
+                     and (self.request.POST.get("crp_numero") or "").strip() == conta.crp_numero)
+        return bool(senha) and mesmo_crp and conta.check_password(senha)
 
     def get_success_url(self):
         # ADR-114: na rodada aberta não há plano para escolher — a conta recém-criada vai direto ao quiz, que é

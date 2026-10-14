@@ -3917,6 +3917,83 @@ o psicólogo de desorganização por ele não ter preenchido um cadastro que nin
   algo que não existe no banco — o que existe ali é um paciente marcado.
 
 
+## ADR-126 — O duplo clique no cadastro deixa de dizer que deu errado
+
+**Status:** ✅ Aceita — Rodada 84.
+
+**Relato do usuário:** "quando a alice se cadastrou apareceu que o email dela ja tinha sido cadastrado e ela teve
+que se cadastrar usando a conta aliceguedon4@gmail.com. tem alguma coisa errada pq ela nunca se cadastrou antes.
+tava falando até que o crp ja tinha sido cadastrado, mas nao tinha."
+
+**O que o registro de acesso do servidor mostrou**, e que nenhuma inspeção do banco revelaria:
+
+```
+23:12:15  POST /conta/criar/   302   <- conta criada, com sucesso
+23:12:16  POST /conta/criar/   200   <- segundo envio: formulário de volta, com os dois erros
+23:12:45  GET  /               302   <- ela nem sabia que estava cadastrada
+23:12:52  POST /conta/entrar/  302   <- entrou pelo login, e funcionou
+```
+
+Um segundo entre os dois envios. **As duas mensagens eram verdadeiras e inúteis**: a conta e o CRP existiam
+porque ela mesma os criara um segundo antes. O banco estava íntegro — nenhuma conta fantasma, nenhum CRP
+duplicado, e o `aliceguedon4@gmail.com` nunca existiu. O defeito era inteiramente de percepção, e o custo foi uma
+testadora concluir que o sistema a rejeitara duas vezes.
+
+**Por que o atalho existente não a salvou:** `CriarConta.dispatch` manda para o painel quem já está logado, mas o
+segundo envio chega **sem o cookie de sessão** do primeiro — os dois partiram da mesma página, quase juntos.
+
+**Por que ela clicou duas vezes:** o plano gratuito do Render hiberna, e a primeira resposta pode levar meia
+hora de segundos. Quem não vê nada acontecer clica de novo. A causa raiz é a espera sem sinal.
+
+**Decisões, em três camadas porque uma só não cobre:**
+- **O botão se desarma no primeiro clique** e passa a dizer que está criando, avisando que pode demorar. Resolve
+  o caso comum, e ataca a causa — a espera silenciosa.
+- **As mensagens deixam de ser fato de banco e viram saída.** "Psicólogo com este E-mail já existe" virou "Este
+  e-mail já tem uma conta. Entre com ela — e, se não lembrar a senha, use Esqueci minha senha. **Se você acabou
+  de se cadastrar, deu certo: é só entrar.**" A do CRP ganhou o mesmo tratamento.
+- **O envio repetido idêntico entra, em vez de recusar.** Quem manda a senha correta da conta é o dono dela.
+  Vale só para conta criada nos últimos cinco minutos: fora dessa janela isto seria um login sem o freio contra
+  tentativa em massa (ADR-114), e o lugar de entrar é a tela de entrar.
+- **"Idêntico" inclui o CRP**, e isso foi aprendido com um teste que já existia. A primeira versão comparava só
+  e-mail e senha, e com ela quem reenviasse **corrigindo o CRP** seria logado na conta antiga — a correção que
+  ele acabara de digitar sumiria sem aviso. CRP diferente não é duplo clique: é outra intenção.
+
+**O teste reproduz o detalhe que importa** — um cliente **sem sessão** no segundo envio. Um teste que reusasse o
+mesmo cliente passaria pelo atalho do `dispatch` e não provaria nada.
+
+
+## ADR-127 — A escrita assistida se oferece onde serve, em vez de esperar ser procurada
+
+**Status:** ✅ Aceita — Rodada 85.
+
+**Pedido do usuário:** "quero que nao seja necessario em ir configuraçoes pra saber que a pessoa pode usar ia,
+quero que na tela dos prontuarios tenha algo no final da tela perguntando se a pessoa quer habilitar a ia... sem
+precisar ter tanta burocracia"; e, sobre o cadastro, "tem que ser perguntado se ela quer que habilite a ia de
+prontuario ou nao, para que ela possa escolher logo de inicio"; e "tem que ter um aviso depois de habilitado de
+que caso a pessoa queira desabilitar a ia ela tem que ir em configuraçoes, e a palavra configuraçoes é clicavel".
+
+**O que motivou.** De **três** testadoras reais, **duas** estavam sem a escrita assistida — e nenhuma havia
+decidido isso. O interruptor morava no fim de um cartão de Configurações, depois do controle de despesas, que
+não é lugar onde se procura algo de prontuário. Uma delas escreveu quatro prontuários à mão sem saber que o
+recurso existia. O custo não foi um defeito: foi o recurso central do produto não ser avaliado por quem foi
+convidado a avaliá-lo.
+
+**O que NÃO muda, e é o ponto:** a escrita assistida continua **nascendo desligada** (ADR-111). Ela manda
+conteúdo de sessão para um serviço de fora, e ninguém entra nisso sem marcar uma caixa. A mudança é de
+**descoberta**, não de consentimento — perguntar não é inscrever.
+
+**Decisões:**
+- **A pergunta entra no quiz de cadastro**, no mesmo passo das despesas, com o texto que diz para onde o relato
+  vai e o que é trocado por código antes. Desmarcada por padrão.
+- **Um convite no fim da tela de prontuários e da de escrever**, com um botão que liga em um clique. Aparece
+  **só para quem não tem** — quem já ligou não precisa ser convidado — e **só se o servidor tiver chave**:
+  oferecer o que não funcionaria no clique é pior que não oferecer.
+- **Ligar é POST, nunca link.** Isto muda a conta, e um link seria disparado por um prefetch do navegador.
+- **O caminho de volta vai como link, em dois lugares.** A mensagem de "ligada" traz **Configurações** clicável;
+  e o mesmo lembrete fica **dentro do bloco de gravação**, porque a mensagem passa e o bloco não — quem ligou
+  semanas atrás e quer desligar não deveria precisar procurar onde.
+
+
 ## Impeditivos
 
 | # | Impeditivo | Situação |

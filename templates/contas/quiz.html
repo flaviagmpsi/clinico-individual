@@ -70,6 +70,23 @@
               só o que entra. Muda quando quiser, em Configurações.
             </div>
           </div>
+          {% comment %}ADR-127: perguntada aqui, e não só escondida em Configurações. De três testadoras, duas
+          estavam sem o recurso por não saberem que ele existia. A marcação nasce desmarcada: a ADR-111 decidiu
+          que ninguém manda conteúdo de sessão para fora sem escolher, e perguntar não é inscrever.{% endcomment %}
+          <div class="mt-3 pt-3 border-top">
+            <div class="form-check">
+              {{ form.usa_ia_no_prontuario }}
+              <label class="form-check-label" for="{{ form.usa_ia_no_prontuario.id_for_label }}">
+                Quero escrever o prontuário falando, com apoio de IA</label>
+            </div>
+            <div class="form-text small">
+              Você grava um áudio contando como foi o atendimento e recebe um rascunho no formato do CFP, para
+              revisar e assinar. <strong>O relato passa por um serviço de fora (OpenAI)</strong> para ser
+              transcrito e organizado — o áudio não é guardado, e o sistema troca por código os nomes que conhece
+              antes de mandar. Mandar conteúdo de sessão para um terceiro precisa estar no que você combina com o
+              paciente. Pode ligar ou desligar depois, a qualquer momento.
+            </div>
+          </div>
           <script>
             document.addEventListener("DOMContentLoaded", () => {
               const so_pj = document.querySelector("[data-so-pj]"), opcoes = document.querySelectorAll('input[name="regime"]');

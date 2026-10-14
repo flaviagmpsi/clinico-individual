@@ -49,9 +49,14 @@ zero, e quem desliga o recurso em Configurações vê exatamente a tela de antes
     <p class="form-text small mt-2 mb-0">
       O áudio é transcrito e <strong>descartado na hora</strong> — nada de áudio fica guardado. Antes de a síntese
       ser pedida, o sistema troca por código os nomes que ele conhece. O texto que voltar é rascunho: quem assina
-      o prontuário é você.</p>
+      o prontuário é você.
+      {% comment %}ADR-127: a mensagem de "ligada" passa; este lembrete fica. Quem ligou semanas atrás e quer
+      desligar não deveria precisar procurar onde.{% endcomment %}
+      Para desligar, vá em <a href="{% url 'contas:configuracoes' %}">Configurações</a>.</p>
   </div>
 </details>
+{% else %}
+{% include "prontuarios/_convite_ia.html" %}
 {% endif %}
 
 {% comment %}

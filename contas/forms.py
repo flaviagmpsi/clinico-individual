@@ -189,8 +189,27 @@ class CriarContaForm(BaseUserCreationForm):
         # A unicidade do CRP é uma restrição de duas colunas; dita aqui, vira mensagem no campo em vez de erro solto.
         regiao, numero = dados.get("crp_regiao"), dados.get("crp_numero")
         if regiao and numero and Psicologo.objects.filter(crp_regiao=regiao, crp_numero=numero).exists():
-            self.add_error("crp_numero", "Já existe uma conta com este CRP. Se for a sua, entre com o seu e-mail.")
+            self.add_error("crp_numero", "Já existe uma conta com este CRP. Se for a sua, entre com o seu e-mail "
+                                         "— ou use “Esqueci minha senha” para recuperá-la.")
         return dados
+
+    def clean_email(self):
+        """ADR-126: a mensagem do e-mail repetido deixa de ser um fato de banco e vira uma saída.
+
+        "Psicólogo com este E-mail já existe" é verdade e não ajuda ninguém — principalmente quem acabou de criar
+        a conta com dois cliques e acha que falhou. A mensagem diz agora o que fazer.
+        """
+        email = (self.cleaned_data.get("email") or "").strip()
+        if email and Psicologo.objects.filter(email__iexact=email).exists():
+            raise forms.ValidationError(
+                "Este e-mail já tem uma conta. Entre com ela — e, se não lembrar a senha, use "
+                "“Esqueci minha senha”. Se você acabou de se cadastrar, deu certo: é só entrar.")
+        return email
+
+    def conta_existente(self):
+        """A conta que o e-mail enviado já ocupa, quando é o caso. A view usa para resgatar o duplo envio."""
+        email = (self.data.get("email") or "").strip()
+        return Psicologo.objects.filter(email__iexact=email).first() if email else None
 
 
 class IdentificacaoForm(_QuemEVoce, LimpaMascara, forms.ModelForm):
@@ -216,13 +235,15 @@ class RegimeForm(LimpaMascara, forms.ModelForm):
 
     class Meta:
         model = Psicologo
-        fields = ["regime", "cnpj", "razao_social", "usa_despesas"]
+        fields = ["regime", "cnpj", "razao_social", "usa_despesas", "usa_ia_no_prontuario"]
         widgets = {
             "regime": forms.RadioSelect(attrs=_MARCA),
             "cnpj": forms.TextInput(attrs={**_NUMERO, "data-mascara": "cnpj",
                                            "placeholder": "00.000.000/0000-00"}),
             "razao_social": forms.TextInput(attrs=_CONTROLE),
             "usa_despesas": forms.CheckboxInput(attrs=_MARCA),
+            # ADR-127: perguntada no cadastro, e não só escondida em Configurações.
+            "usa_ia_no_prontuario": forms.CheckboxInput(attrs=_MARCA),
         }
 
     def clean(self):

@@ -10,6 +10,8 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.exceptions import ValidationError
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect
+from django.urls import reverse
+from django.utils.html import format_html
 from django.views import View
 from django.views.generic import FormView, TemplateView
 
@@ -21,7 +23,15 @@ from prontuarios.forms import AnamneseForm, ProntuarioForm, TemaDeAnamneseForm
 from prontuarios.models import Anamnese, TemaDeAnamnese, VersaoProntuario
 
 
-class ListaProntuarios(LoginRequiredMixin, TemplateView):
+class _ComConviteDeIA:
+    """O que o convite da ADR-127 precisa saber: se o servidor tem chave e se esta conta já ligou."""
+
+    def contexto_da_ia(self) -> dict:
+        return {"ia_disponivel": ia.disponivel(),
+                "ia_ligada": ia.disponivel() and self.request.user.usa_ia_no_prontuario}
+
+
+class ListaProntuarios(_ComConviteDeIA, LoginRequiredMixin, TemplateView):
     """Sem filtro: os pendentes. Com `?paciente=`: todas as sessões realizadas daquele paciente."""
 
     template_name = "prontuarios/lista.html"
@@ -32,6 +42,7 @@ class ListaProntuarios(LoginRequiredMixin, TemplateView):
         paciente = get_object_or_404(Paciente, pk=int(codigo)) if codigo.isdigit() else None
         contexto.update(paciente=paciente, pacientes=Paciente.objects.order_by("nome"),
                         registros=servicos.registros(paciente=paciente, somente_pendentes=paciente is None))
+        contexto.update(self.contexto_da_ia())
         return contexto
 
 
@@ -45,7 +56,7 @@ class _ComAlvo:
         return self._alvo
 
 
-class EscreverProntuario(LoginRequiredMixin, _ComAlvo, FormView):
+class EscreverProntuario(_ComConviteDeIA, LoginRequiredMixin, _ComAlvo, FormView):
     form_class = ProntuarioForm
     template_name = "prontuarios/escrever.html"
 
@@ -73,7 +84,7 @@ class EscreverProntuario(LoginRequiredMixin, _ComAlvo, FormView):
         consulta, paciente = self.alvo()
         contexto.update(registro=self.registro(), consulta=consulta, paciente=paciente,
                         # ADR-111: o recurso só aparece com as duas chaves — a do servidor e a da psicóloga.
-                        ia_ligada=ia.disponivel() and self.request.user.usa_ia_no_prontuario,
+                        **self.contexto_da_ia(),
                         pontos=ia.PONTOS, aviso_de_sigilo=ia.AVISO_DE_SIGILO,
                         ia_minutos_maximos=settings.IA_MINUTOS_MAXIMOS)
         return contexto
@@ -232,3 +243,24 @@ class AnamneseDoPaciente(LoginRequiredMixin, FormView):
             messages.success(self.request, "Anamnese salva.")
         return redirect("prontuarios:anamnese", pk=self.paciente().pk)
 
+
+class AtivarEscritaAssistida(LoginRequiredMixin, View):
+    """Liga a escrita assistida na conta de quem pediu, e volta para onde estava (ADR-127).
+
+    POST, e não um link: isto muda a conta. A decisão de a IA nascer desligada (ADR-111) não muda — o que muda é
+    que a pergunta é feita onde ela importa, em vez de esperar que alguém a procure em Configurações.
+    """
+
+    http_method_names = ["post"]
+
+    def post(self, request, *args, **kwargs):
+        request.user.usa_ia_no_prontuario = True
+        request.user.save(update_fields=["usa_ia_no_prontuario"])
+        # ADR-127: quem ligou num clique precisa saber desligar no mesmo fôlego — e o caminho de volta vai
+        # como **link**, não como instrução escrita. `format_html` porque mensagem do Django é escapada por
+        # padrão, e é assim que se põe HTML nela sem abrir caminho para injeção.
+        messages.success(request, format_html(
+            "Escrita assistida ligada. O bloco de gravação aparece no registro de cada sessão realizada. "
+            "Para desligar, vá em <a href=\"{}\" class=\"alert-link\">Configurações</a>.",
+            reverse("contas:configuracoes")))
+        return redirect(request.POST.get("voltar") or "prontuarios:lista")
