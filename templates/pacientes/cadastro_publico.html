@@ -39,8 +39,6 @@ regra de verdade está no formulário, no servidor.
           <div class="col-12">{% include "components/_campo.html" with campo=form.nome %}</div>
           <div class="col-12" data-opcional="nome_social" data-rotulo-do-botao="Adicionar nome social">
             {% include "components/_campo.html" with campo=form.nome_social %}</div>
-          <div class="col-md-6" data-opcional="raca_cor" data-rotulo-do-botao="Adicionar raça/cor">
-            {% include "components/_campo.html" with campo=form.raca_cor %}</div>
           <div class="col-md-6">{% include "components/_campo.html" with campo=form.documento_tipo %}</div>
           <div class="col-md-6" data-so-para-documento="CPF">{% include "components/_campo.html" with campo=form.cpf %}</div>
           <div class="col-md-6" data-so-para-documento="ESTRANGEIRO">{% include "components/_campo.html" with campo=form.documento_estrangeiro %}</div>
@@ -127,11 +125,9 @@ regra de verdade está no formulário, no servidor.
       <div class="card-header bg-white py-2 fw-semibold">Perfil e saúde <span class="text-muted fw-normal small">— opcional</span></div>
       <div class="card-body">
         <div class="row g-3">
-          <div class="col-md-6">{% include "components/_campo.html" with campo=form.genero %}</div>
           <div class="col-md-6">{% include "components/_campo.html" with campo=form.profissao %}</div>
           <div class="col-12">{% include "components/_campo.html" with campo=form.medicamento %}</div>
         </div>
-        <datalist id="generos-sugeridos">{% for g in generos %}<option value="{{ g }}">{% endfor %}</datalist>
       </div>
     </div>
 

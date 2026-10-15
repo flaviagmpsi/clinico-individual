@@ -433,8 +433,8 @@ class TelasDoPsicologo(BaseTelas):
         resposta = self.client.post(revisar, dados)
         helena = Paciente.objetos_todos.get(nome="Helena Prado")
         self.assertRedirects(resposta, reverse("pacientes:detalhe", args=[helena.pk]), fetch_redirect_response=False)
-        self.assertEqual((helena.nome_social, helena.raca_cor, helena.profissao, helena.modalidade),
-                         ("Lena", "PARDA", "Engenheira", "ONLINE"))
+        self.assertEqual((helena.nome_social, helena.profissao, helena.modalidade),
+                         ("Lena", "Engenheira", "ONLINE"))
         with contexto.como(self.ana.pk):
             self.assertEqual([c.nome for c in helena.contatos_de_emergencia.all()], ["Rosa Prado"])
             self.assertEqual(caso_individual_de(helena).pagador_nome, "Rosa Prado")

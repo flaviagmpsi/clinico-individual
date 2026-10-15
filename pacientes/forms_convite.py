@@ -64,8 +64,6 @@ class CadastroPeloPacienteForm(LimpaMascara, forms.Form):
                                help_text="Quem preenche é o responsável. Abre os campos de quem responde pela criança.")
     nome = _texto("Nome completo", obrigatorio=True, autofocus=True)
     nome_social = _texto("Nome social", dica="Como prefere ser chamado(a), se for diferente")
-    raca_cor = forms.ChoiceField(label="Raça/cor", required=False, choices=_VAZIO + list(Paciente.RacaCor.choices),
-                                 widget=forms.Select(attrs=_SELECT))
     documento_tipo = forms.ChoiceField(
         label="Documento de identificação", required=False, initial="CPF",
         choices=[("CPF", "Brasileiro (CPF)"), ("ESTRANGEIRO", "Estrangeiro (passaporte ou RNM)")],
@@ -118,7 +116,6 @@ class CadastroPeloPacienteForm(LimpaMascara, forms.Form):
     estado_exterior = _texto("Estado ou província", tamanho=60)
 
     # --- Perfil e saúde ---
-    genero = _texto("Gênero", tamanho=60, list="generos-sugeridos")
     profissao = _texto("Profissão", tamanho=120)
     medicamento = forms.CharField(
         label="Medicamento em uso", required=False, max_length=1000,

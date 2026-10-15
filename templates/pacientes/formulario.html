@@ -69,11 +69,8 @@ dele — nada vira paciente antes deste "Salvar".{% endcomment %}
       Perfil <span class="text-muted fw-normal small">— opcional</span></div>
     <div class="card-body">
       <div class="row g-3">
-        <div class="col-md-4">{% include "components/_campo.html" with campo=form.genero %}</div>
-        <div class="col-md-4">{% include "components/_campo.html" with campo=form.raca_cor %}</div>
         <div class="col-md-4">{% include "components/_campo.html" with campo=form.profissao %}</div>
       </div>
-      <datalist id="generos-sugeridos">{% for g in generos %}<option value="{{ g }}">{% endfor %}</datalist>
     </div>
   </div>
 

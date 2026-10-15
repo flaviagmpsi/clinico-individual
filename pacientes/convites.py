@@ -24,9 +24,9 @@ VALIDADE = timedelta(days=7)
 # O que das respostas cai direto num campo do paciente. O resto — responsável, pagador, contatos de emergência —
 # tem destino próprio.
 CAMPOS_DO_PACIENTE = (
-    "nome", "nome_social", "raca_cor", "cpf", "documento_estrangeiro", "data_nascimento", "estado_civil",
+    "nome", "nome_social", "cpf", "documento_estrangeiro", "data_nascimento", "estado_civil",
     "telefone", "email", "pais", "cep", "logradouro", "numero", "complemento", "bairro", "cidade", "uf",
-    "estado_exterior", "genero", "profissao", "medicamento",
+    "estado_exterior", "profissao", "medicamento",
 )
 
 

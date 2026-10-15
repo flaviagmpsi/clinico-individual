@@ -62,14 +62,6 @@
           <dt class="col-5 fw-normal text-muted py-1">Profissão</dt>
           <dd class="col-7 py-1">{{ paciente.profissao }}</dd>
           {% endif %}
-          {% if paciente.genero %}
-          <dt class="col-5 fw-normal text-muted py-1">Gênero</dt>
-          <dd class="col-7 py-1">{{ paciente.genero }}</dd>
-          {% endif %}
-          {% if paciente.raca_cor %}
-          <dt class="col-5 fw-normal text-muted py-1">Raça/cor</dt>
-          <dd class="col-7 py-1">{{ paciente.get_raca_cor_display }}</dd>
-          {% endif %}
           <dt class="col-5 fw-normal text-muted py-1">Modalidade</dt>
           <dd class="col-7 py-1">{{ paciente.get_modalidade_display }}</dd>
           <dt class="col-5 fw-normal text-muted py-1">1ª sessão</dt>

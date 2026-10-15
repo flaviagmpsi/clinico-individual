@@ -220,8 +220,10 @@ class PacienteForm(LimpaMascara, forms.ModelForm):
 
     class Meta:
         model = Paciente
+        # Gênero e raça/cor saíram do cadastro a pedido do usuário (rodada 87). As colunas ficam no banco, mas
+        # não são mais coletadas nem exibidas.
         fields = ["nome", "nome_social", "cpf", "documento_estrangeiro", "data_nascimento", "telefone", "email",
-                  "estado_civil", "genero", "raca_cor", "profissao",
+                  "estado_civil", "profissao",
                   "pais", "cep", "logradouro", "numero", "complemento", "bairro", "cidade", "uf", "estado_exterior",
                   "medicamento", "modalidade", "data_primeira_sessao", "observacoes"]
         widgets = {
@@ -229,8 +231,6 @@ class PacienteForm(LimpaMascara, forms.ModelForm):
             "nome_social": forms.TextInput(attrs=_TEXTO),
             "documento_estrangeiro": forms.TextInput(attrs=_TEXTO),
             "estado_civil": forms.Select(attrs=_SELECT),
-            "genero": forms.TextInput(attrs={**_TEXTO, "list": "generos-sugeridos"}),
-            "raca_cor": forms.Select(attrs=_SELECT),
             "profissao": forms.TextInput(attrs=_TEXTO),
             "pais": forms.TextInput(attrs=_TEXTO),
             "estado_exterior": forms.TextInput(attrs=_TEXTO),
@@ -254,8 +254,6 @@ class PacienteForm(LimpaMascara, forms.ModelForm):
         help_texts = {
             "cpf": "Opcional. Quem nasceu antes de 2018 pode não ter.",
             "nome_social": "Opcional. Como a pessoa prefere ser chamada.",
-            "raca_cor": "Opcional. Dado sensível: só o que a pessoa declarar.",
-            "genero": "Opcional. Como a pessoa se identifica.",
             "medicamento": "Registro do relato do paciente — o psicólogo não prescreve.",
             "modalidade": "Proposta a cada sessão deste paciente, e ajustável sessão a sessão (ADR-065).",
         }
