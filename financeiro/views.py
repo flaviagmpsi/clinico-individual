@@ -118,7 +118,7 @@ class PagarMensalidade(_RegistrarPagamento):
         cobranca = self.cobranca()
         servicos.registrar_pagamento_mensalidade(
             cobranca.caso, ano=cobranca.mes.year, mes=cobranca.mes.month, valor=dados["valor"], data=dados["data"],
-            forma=dados["forma"], observacao=dados["observacao"])
+            forma=dados["forma"], observacao=dados["observacao"], recibo_emitido=dados["recibo_emitido"])
 
 
 class PagarSessao(_RegistrarPagamento):
@@ -134,7 +134,49 @@ class PagarSessao(_RegistrarPagamento):
     def registrar(self, dados):
         servicos.registrar_pagamento_sessao(
             self.cobranca().consulta, valor=dados["valor"], data=dados["data"], forma=dados["forma"],
-            observacao=dados["observacao"])
+            observacao=dados["observacao"], recibo_emitido=dados["recibo_emitido"])
+
+
+class EditarPagamento(LoginRequiredMixin, FormView):
+    """Corrigir um pagamento — e, sobretudo, marcar que o recibo foi emitido (ADR-132).
+
+    É aqui que o lembrete de "recibo a emitir" deságua: o psicólogo emite o recibo por fora, volta pelo lembrete,
+    marca "sim", e a pendência some. Os outros campos ficam editáveis porque "editar o pagamento" é o que o
+    usuário pediu, e corrigir um valor ou uma forma digitada errada é o mesmo gesto.
+    """
+
+    form_class = PagamentoForm
+    template_name = "financeiro/pagamento_form.html"
+
+    def pagamento(self) -> Pagamento:
+        if not hasattr(self, "_pagamento"):
+            self._pagamento = get_object_or_404(
+                Pagamento.objects.select_related("caso", "consulta").prefetch_related("caso__pacientes"),
+                pk=self.kwargs["pk"])
+        return self._pagamento
+
+    def get_initial(self):
+        p = self.pagamento()
+        return {"valor": p.valor, "data": p.data, "forma": p.forma, "observacao": p.observacao,
+                "recibo_emitido": "sim" if p.recibo_emitido else "nao"}
+
+    def get_context_data(self, **kwargs):
+        contexto = super().get_context_data(**kwargs)
+        contexto.update(pagamento=self.pagamento(), editando=True)
+        return contexto
+
+    def form_valid(self, form):
+        p = self.pagamento()
+        dados = form.cleaned_data
+        emitiu_agora = dados["recibo_emitido"] and not p.recibo_emitido
+        servicos.editar_pagamento(
+            p, valor=dados["valor"], data=dados["data"], forma=dados["forma"],
+            observacao=dados["observacao"], recibo_emitido=dados["recibo_emitido"])
+        messages.success(
+            self.request,
+            "Recibo marcado como emitido." if emitiu_agora else "Pagamento atualizado.")
+        mes = p.mes_referencia or timezone.localtime(p.consulta.inicio).date()
+        return redirect(_url_do_mes(mes))
 
 
 class ExcluirPagamento(LoginRequiredMixin, View):

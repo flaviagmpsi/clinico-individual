@@ -8,6 +8,7 @@ urlpatterns = [
     path("", views.MesFinanceiro.as_view(), name="mes"),
     path("mensalidade/<int:caso_pk>/<int:ano>/<int:mes>/", views.PagarMensalidade.as_view(), name="pagar_mensalidade"),
     path("sessao/<int:consulta_pk>/", views.PagarSessao.as_view(), name="pagar_sessao"),
+    path("pagamentos/<int:pk>/editar/", views.EditarPagamento.as_view(), name="editar_pagamento"),
     path("pagamentos/<int:pk>/excluir/", views.ExcluirPagamento.as_view(), name="excluir"),
     path("despesas/", views_despesas.Despesas.as_view(), name="despesas"),
     path("despesas/nova/", views_despesas.NovaDespesa.as_view(), name="despesa_nova"),

@@ -287,18 +287,20 @@ def _recusar_invalido(data: date, forma: str) -> None:
 @transaction.atomic
 def registrar_pagamento_mensalidade(
     caso: Caso, *, ano: int, mes: int, valor: Decimal, data: date, forma: str, observacao: str = "",
+    recibo_emitido: bool = True,
 ) -> Pagamento:
     """Pagamento da mensalidade de um mês. Pagou menos, o resto fica pendente; pagou a mais, fica registrado."""
     _recusar_invalido(data, forma)
     if mensalidade(caso, ano, mes) is None:
         raise ValidationError(f"Não há mensalidade de {mes:02d}/{ano} para este atendimento.")
     return Pagamento.objects.create(caso=caso, mes_referencia=date(ano, mes, 1), valor=valor, data=data,
-                                    forma=forma, observacao=observacao)
+                                    forma=forma, observacao=observacao, recibo_emitido=recibo_emitido)
 
 
 @transaction.atomic
 def registrar_pagamento_sessao(
     consulta: Consulta, *, data: date, forma: str, valor: Decimal | None = None, observacao: str = "",
+    recibo_emitido: bool = True,
 ) -> Pagamento:
     """Pagamento de uma sessão. Sem valor, vale o que falta pagar dela."""
     _recusar_invalido(data, forma)
@@ -310,7 +312,51 @@ def registrar_pagamento_sessao(
             raise ValidationError("Esta sessão já está paga.")
         valor = cobranca.saldo
     return Pagamento.objects.create(caso=consulta.caso, consulta=consulta, valor=valor, data=data,
-                                    forma=forma, observacao=observacao)
+                                    forma=forma, observacao=observacao, recibo_emitido=recibo_emitido)
+
+
+@dataclass
+class ReciboPendente:
+    """Um pagamento cujo recibo ainda não foi emitido — o que o lembrete mostra (ADR-132)."""
+
+    pagamento: Pagamento
+
+    @property
+    def caso(self) -> Caso:
+        return self.pagamento.caso
+
+    @property
+    def descricao(self) -> str:
+        p = self.pagamento
+        if p.mes_referencia:
+            return f"Mensalidade de {_MESES[p.mes_referencia.month - 1]}/{p.mes_referencia.year}"
+        return f"Sessão de {timezone.localtime(p.consulta.inicio):%d/%m/%Y}"
+
+    @property
+    def url_editar(self) -> str:
+        return reverse("financeiro:editar_pagamento", args=[self.pagamento.pk])
+
+
+def recibos_pendentes(*, caso: Caso | None = None) -> list[ReciboPendente]:
+    """Os pagamentos que esperam recibo, do mais recente para o mais antigo (ADR-132)."""
+    pagamentos = Pagamento.objects.filter(recibo_emitido=False).select_related("caso", "consulta")
+    if caso is not None:
+        pagamentos = pagamentos.filter(caso=caso)
+    return [ReciboPendente(p) for p in pagamentos.prefetch_related("caso__pacientes")]
+
+
+@transaction.atomic
+def editar_pagamento(pagamento: Pagamento, *, valor: Decimal, data: date, forma: str,
+                     observacao: str = "", recibo_emitido: bool = True) -> Pagamento:
+    """Corrige um pagamento e o estado do recibo (ADR-132). A referência — mês ou sessão — não muda."""
+    _recusar_invalido(data, forma)
+    pagamento.valor = valor
+    pagamento.data = data
+    pagamento.forma = forma
+    pagamento.observacao = observacao
+    pagamento.recibo_emitido = recibo_emitido
+    pagamento.save(update_fields=["valor", "data", "forma", "observacao", "recibo_emitido", "atualizado_em"])
+    return pagamento
 
 
 @transaction.atomic

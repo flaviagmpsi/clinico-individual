@@ -96,7 +96,7 @@ class RegistroPelaTela(BaseTelasFinanceiro):
     def test_registrar_pagamento_de_sessao(self):
         self.entrar(self.ana)
         resposta = self.client.post(reverse("financeiro:pagar_sessao", args=[self.consulta_marcos.pk]), {
-            "valor": "200", "data": "2026-09-03", "forma": "PIX", "observacao": ""})
+            "valor": "200", "data": "2026-09-03", "forma": "PIX", "observacao": "", "recibo_emitido": "sim"})
         self.assertEqual(resposta.status_code, 302)
         self.assertTrue(Pagamento.objetos_todos.filter(consulta=self.consulta_marcos).exists())
 
@@ -110,7 +110,7 @@ class RegistroPelaTela(BaseTelasFinanceiro):
     def test_registrar_mensalidade_e_excluir(self):
         self.entrar(self.ana)
         resposta = self.client.post(reverse("financeiro:pagar_mensalidade", args=[self.caso_juliana.pk, 2026, 9]), {
-            "valor": "700", "data": "2026-09-05", "forma": "TRANSFERENCIA", "observacao": "Adiantado."})
+            "valor": "700", "data": "2026-09-05", "forma": "TRANSFERENCIA", "observacao": "Adiantado.", "recibo_emitido": "sim"})
         self.assertEqual(resposta.status_code, 302)
         pagamento = Pagamento.objetos_todos.get(caso=self.caso_juliana)
         self.assertEqual(pagamento.mes_referencia, date(2026, 9, 1))

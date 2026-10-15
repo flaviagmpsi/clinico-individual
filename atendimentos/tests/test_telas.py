@@ -200,13 +200,14 @@ class CadastroPelaTela(BaseTelasAgenda):
         self.assertEqual(resposta.status_code, 302)
         self.assertTrue(Consulta.objetos_todos.filter(caso=self.caso_joao, recorrencia__isnull=True).exists())
 
-    def test_cadastro_no_futuro_volta_explicando(self):
+    def test_marcar_presente_no_futuro_volta_explicando(self):
+        """ADR-131: presença e falta ainda exigem que a sessão tenha acontecido — remarcar/cancelar, não."""
         self.entrar(self.ana)
         resposta = self.client.post(reverse("atendimentos:nova"), {
             "caso": self.caso_joao.pk, "estado": REALIZADA, "data": f"{self.terca:%Y-%m-%d}",
             "hora": "10:00", "duracao": "50"})
         self.assertEqual(resposta.status_code, 200)
-        self.assertContains(resposta, "já aconteceu")
+        self.assertContains(resposta, "só se cadastram depois")
         self.assertFalse(Consulta.objetos_todos.filter(caso=self.caso_joao).exists())
 
     def test_horario_ocupado_volta_explicando(self):

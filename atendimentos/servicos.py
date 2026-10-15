@@ -8,7 +8,8 @@ outra (regra 5 de dependência). Tudo aqui roda no escopo do psicólogo corrente
 - **Só o psicólogo cadastra** (ADR-052, ADR-060): presente, faltou sem avisar, cliente cancelou, profissional
   cancelou ou remarcada (ADR-065). Sessão prevista que passou sem cadastro é **pendente**, e é dada como
   confirmada até ele dizer o contrário.
-- **Só se cadastra o que já aconteceu.** Data e hora no futuro são recusadas.
+- **Presença e falta só se cadastram depois** (ADR-131): dependem de a sessão ter acontecido. Remarcação e
+  cancelamento são decisões da véspera e podem ser cadastrados antes — é como a remarcação acontece de verdade.
 - **Colisão bloqueia** (ADR-024) entre consultas que ocupam o horário e entre regras de frequência. Sessão
   prevista não bloqueia cadastro: previsão não é registro.
 
@@ -446,8 +447,13 @@ def modalidade_do_caso(caso: Caso) -> str:
 
 def _cadastrar(consulta: Consulta, agora: datetime | None) -> Consulta:
     _exigir_situacao(consulta.estado)
-    if consulta.inicio > (agora or timezone.now()):
-        raise ValidationError("Só se cadastra o que já aconteceu — esta sessão ainda não começou.")
+    # ADR-131: remarcação e cancelamento podem ser cadastrados antes da sessão — são decisões da véspera.
+    # Presença e falta, não: dependem de a sessão ter acontecido.
+    if (consulta.estado in Consulta.EXIGEM_TER_ACONTECIDO
+            and consulta.inicio > (agora or timezone.now())):
+        raise ValidationError(
+            "Presença e falta só se cadastram depois da sessão — ela ainda não começou. "
+            "Para uma remarcação ou um cancelamento combinados antes, escolha essa situação.")
     consulta.save()
     return consulta
 

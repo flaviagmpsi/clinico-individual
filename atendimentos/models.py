@@ -46,6 +46,12 @@ class Consulta(TenantOwnedModel):
     # Cancelamento libera o horário; presente e falta sem aviso o ocupam — foi guardado e perdido.
     OCUPAM_O_HORARIO = {Estado.REALIZADA, Estado.FALTOU}
 
+    # ADR-131: presença e falta só se sabem **depois** da sessão — essas duas exigem que ela já tenha acontecido.
+    # Remarcação e cancelamento são decisões tomadas **antes**: o paciente avisa na véspera que não pode. Antes,
+    # a regra "só se cadastra o que já aconteceu" barrava os cinco estados, e remarcar só era possível depois do
+    # horário passar — o contrário do que acontece na prática.
+    EXIGEM_TER_ACONTECIDO = {Estado.REALIZADA, Estado.FALTOU}
+
     # `PROTECT`, e não `CASCADE`: consulta registrada é histórico clínico e financeiro. Apagar o caso
     # não pode levá-la junto em silêncio — a exclusão de paciente trata isso explicitamente (ADR-048).
     caso = models.ForeignKey(Caso, on_delete=models.PROTECT, related_name="consultas")

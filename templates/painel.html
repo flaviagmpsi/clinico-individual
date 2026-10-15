@@ -214,6 +214,24 @@ Primeiro o dia; depois as pendências, num bloco; por fim o resumo do mês.
               </ul>
             </details>
           {% endif %}
+
+          {% comment %}ADR-132: recibos a emitir. Clicar abre o pagamento para editar; lá a pessoa marca que
+          emitiu e a pendência some.{% endcomment %}
+          {% if recibos_pendentes %}
+            <details class="pendencia">
+              <summary>
+                <span class="quantas">{{ total_recibos_pendentes }}</span>
+                recibo{{ total_recibos_pendentes|pluralize }} a emitir
+                <a href="{% url 'financeiro:mes' %}" class="ms-auto small text-decoration-none">financeiro</a>
+              </summary>
+              <ul class="list-unstyled small mb-1 mt-1">
+              {% for r in recibos_pendentes %}
+                <li><a href="{{ r.url_editar }}" class="text-decoration-none fw-medium">{{ r.caso }}</a>
+                  <span class="text-muted">{{ r.descricao|lower }} · pago {{ r.pagamento.data|date:"d/m" }} · R$ {{ r.pagamento.valor|floatformat:2 }}</span></li>
+              {% endfor %}
+              </ul>
+            </details>
+          {% endif %}
         </div>
       {% else %}
         <div class="card-body text-center text-muted py-4">Nada pendente.</div>

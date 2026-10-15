@@ -40,6 +40,10 @@ class Pagamento(TenantOwnedModel):
     data = models.DateField("Pago em")
     forma = models.CharField("Forma de pagamento", max_length=13, choices=Forma.choices)
     observacao = models.TextField("Observação", blank=True)
+    # ADR-132: emitir o recibo (Receita Saúde) é obrigação legal do psicólogo, e é fácil esquecer na correria. O
+    # registro do pagamento pergunta se o recibo já saiu; marcado "não", vira um lembrete que some quando ele
+    # voltar e disser que emitiu. `default=True` para os pagamentos que já existiam não nascerem como pendência.
+    recibo_emitido = models.BooleanField("Recibo emitido", default=True)
 
     class Meta:
         verbose_name = "Pagamento"

@@ -21,7 +21,8 @@ from django.utils import timezone
 from atendimentos.models import Consulta
 from atendimentos.servicos import sessoes_pendentes, sessoes_previstas, sessoes_remarcadas
 from financeiro.despesas import previsto_por_mes
-from financeiro.servicos import carregar, cobrancas_do_mes, cobrancas_em_aberto, ultimo_dia
+from financeiro.servicos import (carregar, cobrancas_do_mes, cobrancas_em_aberto, recibos_pendentes,
+                                 ultimo_dia)
 from pacientes.models import Paciente
 from pacientes.servicos import pacientes_ativos
 from prontuarios.servicos import prontuarios_pendentes
@@ -80,10 +81,12 @@ class Pendencias:
     pagamentos: list  # os vencidos — o nome do campo fica por compatibilidade com quem já o lê
     prontuarios: list
     pendentes: list = field(default_factory=list)
+    recibos: list = field(default_factory=list)  # pagamentos com recibo a emitir (ADR-132)
 
     @property
     def total(self) -> int:
-        return len(self.sessoes) + len(self.pagamentos) + len(self.prontuarios) + len(self.pendentes)
+        return (len(self.sessoes) + len(self.pagamentos) + len(self.prontuarios)
+                + len(self.pendentes) + len(self.recibos))
 
 
 @dataclass
@@ -142,6 +145,7 @@ def montar_painel(agora: datetime | None = None) -> Painel:
         pagamentos=[c for c in abertas if c.vencida(hoje)],
         prontuarios=prontuarios_pendentes(),
         pendentes=[c for c in abertas if c.pendente(hoje)],
+        recibos=recibos_pendentes(),
     )
     return Painel(hoje=hoje, mes=inicio, resumo=resumo, hoje_itens=_itens_de_hoje(agora, hoje),
                   pendencias=pendencias)

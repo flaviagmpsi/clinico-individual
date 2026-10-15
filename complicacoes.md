@@ -3994,6 +3994,78 @@ conteúdo de sessão para um serviço de fora, e ninguém entra nisso sem marcar
   semanas atrás e quer desligar não deveria precisar procurar onde.
 
 
+## ADR-128 — As horas de trabalho param no presente; o gráfico de horários não pula horas
+
+**Status:** ✅ Aceita — Rodada 86.
+
+**Relato do usuário (via testadora):** "alguns graficos estao bugados".
+
+**Dois defeitos, medidos na conta real dela em 14/10:**
+- **"Horas de trabalho" contava o futuro.** O cartão diz "como a sua agenda **funcionou**" — passado — mas somava
+  o compromisso fora da clínica (ADR-122) do período inteiro, enquanto a sessão só entra quando registrada como
+  realizada. Dois critérios no mesmo número: no mês, 23 dos 35 compromissos ainda não tinham acontecido (32h40
+  viravam 17h); no ano, contava até dezembro, embora ela tivesse começado em outubro. Agora conta **só até hoje**.
+- **O gráfico de horários pulava horas vazias.** `retrato_da_agenda` devolvia só as horas com sessão, e o gráfico
+  de barras desenhava "11h" colado em "18h" como vizinhos — a forma dizia "tarde cheia" com a tarde vazia.
+  `_faixa_de_horas` preenche de min a max, com zero no vão.
+
+## ADR-129 — O horário livre na agenda ganha cor
+
+**Status:** ✅ Aceita — Rodada 86.
+
+**Pedido do usuário:** "mude a cor dos horarios livres na agenda, o branco ta sem graça demais, escolha uma cor
+que orne com a agenda mas que seja mais vivida".
+
+O cartão de horário livre era transparente com borda tracejada fina — sumia na folha. Virou o verde-oliva lavado
+da paleta terrosa (o tom de `--ok`, rebaixado): diz "disponível" sem competir com a sessão. O tracejado fica, que
+é o que distingue um vago de um cartão com paciente dentro.
+
+## ADR-130 — Senha forte no cadastro
+
+**Status:** ✅ Aceita — Rodada 86.
+
+**Pedido do usuário:** "quero que precise fazer uma senha mais forte na hora do cadastro, o cadastro vai pedir uma
+senha com letra maiuscula, minuscula, simbolo e numeros".
+
+Um validador novo (`SenhaForteValidator`) entra na lista do Django, ao lado dos que já existiam. Vale em **todo**
+lugar que chama `validate_password` — cadastro, troca e recuperação —, e não num formulário só. A mensagem lista o
+que **falta** ("A senha precisa de uma letra maiúscula e um símbolo"), não o enunciado da regra: quem errou quer
+saber o que acrescentar.
+
+## ADR-131 — Remarcar e cancelar podem ser cadastrados antes da sessão
+
+**Status:** ✅ Aceita — Rodada 86.
+
+**Pedido do usuário:** "quero que seja possivel remarcar um atendimento antes dele acontecer, porque até entao só
+pode remarcar depois que passa do horario do atendimento, só que na maioria das vezes a remarcação é feita antes".
+
+A regra "só se cadastra o que já aconteceu" barrava os cinco estados no futuro. Faz sentido para **presença e
+falta** — não há como saber antes se o paciente veio. Não faz para **remarcação e cancelamento**, que são
+decisões da véspera: o paciente liga e desmarca. Agora `EXIGEM_TER_ACONTECIDO = {REALIZADA, FALTOU}`, e só esses
+dois são barrados no futuro. A sessão remarcada antes já aparece na agenda do destino, como sempre (ADR-068).
+
+## ADR-132 — O pagamento registra se o recibo foi emitido, e lembra quando não
+
+**Status:** ✅ Aceita — Rodada 86.
+
+**Pedido do usuário:** "na hora de registrar pagamentos, aparece nas informaçoes perguntando se a pessoa emitiu ou
+nao o recibo referente aquele pagamento... se ela tiver marcado nao, aparece nos lembretes o lembrete de que a
+pessoa tem um recibo a emitir, e aí depois de emitido ela volta nesse lembrete, clica nele e aparece o pagamento
+para ser editado, e entao a pessoa marca que ela emitiu, e aí some essa pendencia".
+
+Emitir o recibo (Receita Saúde) é obrigação legal do psicólogo, e fácil de esquecer na correria — então vale o
+sistema não deixar passar.
+
+**Decisões:**
+- **Campo `recibo_emitido` no pagamento, `default=True`.** O padrão é "emitido" para os pagamentos que já existiam
+  não nascerem como pendência falsa ao ligar o recurso — os 6 da produção não viram 6 lembretes.
+- **A pergunta no registro é obrigatória e sem opção marcada de saída.** "Sim, já emiti" ou "ainda não — me lembre
+  depois". É um clique a mais por pagamento, que é o custo do que foi pedido.
+- **Marcado "não", vira lembrete no painel**, ao lado dos outros. Clicar abre o pagamento para **editar** — tela
+  nova `EditarPagamento`, que faltava —, e lá a pessoa marca "sim" e a pendência some. O valor e a forma também
+  ficam editáveis ali, porque "editar o pagamento" é o que foi pedido e corrigir um valor é o mesmo gesto.
+
+
 ## Impeditivos
 
 | # | Impeditivo | Situação |

@@ -33,7 +33,12 @@ sessão cadastrada muda de cor (presente verde, falta vermelha, cancelada cinza 
      O verde do "realizada" também ficou mais cheio: contra o azul da prevista, o verde lavado dava dE 11,1 e as
      duas competiam na mesma semana. */
   .cartao { border-left-width: 5px; }
-  .cartao.livre { background: transparent; color: var(--suave); border-color: var(--linha-campo); border-style: dashed; border-left-width: 1px; font-weight: 500; }
+  /* ADR-129: era transparente com borda tracejada fina — sumia na folha e não parecia nada. Agora é o
+     verde-oliva lavado da paleta (o mesmo tom de `--ok`, rebaixado): diz "disponível" sem competir com a sessão.
+     O tracejado fica, porque é ele que distingue um horário vago de um cartão com gente dentro. */
+  .cartao.livre { background: #e3ecdd; color: #3d5637; border-color: #9fb897; border-style: dashed;
+                  border-left-width: 3px; border-left-color: #6d8a64; font-weight: 600; }
+  .cartao.livre:hover { background: #d7e4cf; }
   .cartao.esperada { background: #dee9eb; border-color: #b9d2d7; border-left-color: #3c6b79; color: #24444c; }
   .cartao.pendente { background: #f4c4a2; border-color: #de9463; border-left-color: var(--tinta-escura); color: #5e2a12; }
   .cartao.pendente small { color: #7a3a19; font-weight: 600; }

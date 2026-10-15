@@ -222,6 +222,18 @@ def retrato_da_clinica(periodo: Periodo) -> RetratoDaClinica:
                             pacientes_ativos=pacientes_ativos().count())
 
 
+def _faixa_de_horas(horas) -> list:
+    """As horas entre a primeira e a última com sessão, **sem buracos** (ADR-128).
+
+    Antes devolvia só as horas que tiveram sessão, e o gráfico desenhava "11h" colado em "18h" como se fossem
+    vizinhos — a forma dizia "a tarde é cheia" quando a tarde estava vazia. Preenchido com zero, o vão entre os
+    blocos de atendimento vira o que ele é.
+    """
+    if not horas:
+        return []
+    return [(f"{hora:02d}h", horas.get(hora, 0)) for hora in range(min(horas), max(horas) + 1)]
+
+
 def retrato_da_agenda(periodo: Periodo) -> RetratoDaAgenda:
     """Agenda (ADR-103): em que horas e em que dias as sessões aconteceram, e a frequência combinada."""
     horas, dias = Counter(), Counter()
@@ -232,10 +244,15 @@ def retrato_da_agenda(periodo: Periodo) -> RetratoDaAgenda:
         dias[local.weekday()] += 1
         minutos_de_sessao += duracao
     # ADR-122: o que o psicólogo faz e não é paciente particular conta nas horas, e em nenhuma outra conta.
-    fora = compromissos.do_periodo(periodo.primeiro_dia, periodo.ultimo_dia)
+    # ADR-128: **até hoje, nunca além**. Este cartão responde "como a sua agenda funcionou", no passado, e a
+    # sessão só entra quando registrada como realizada. Contar o compromisso do período inteiro punha futuro no
+    # mesmo número que passado — numa conta real, 23 dos 35 compromissos de outubro ainda não tinham acontecido,
+    # e o mês marcava 32h40 de trabalho no dia 14.
+    ate = min(periodo.ultimo_dia, timezone.localdate())
+    fora = compromissos.do_periodo(periodo.primeiro_dia, ate) if ate >= periodo.primeiro_dia else []
     return RetratoDaAgenda(
         periodo=periodo,
-        horarios=[(f"{hora:02d}h", horas[hora]) for hora in sorted(horas)],
+        horarios=_faixa_de_horas(horas),
         # Sábado e domingo só aparecem quando houve sessão: a coluna vazia do fim de semana não diz nada.
         dias=[(_DIAS[dia], dias[dia]) for dia in range(7) if dia < 5 or dias[dia]],
         composicao=_composicao(),

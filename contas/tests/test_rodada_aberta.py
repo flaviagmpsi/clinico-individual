@@ -14,7 +14,7 @@ from django.utils.http import urlsafe_base64_encode
 from contas import freio
 from contas.models import Psicologo
 
-SENHA = "hamilton-teste-123"
+SENHA = "Hamilton-Teste-123!"  # forte (ADR-130): usada em cadastro por formulário
 
 
 def criar(email="ana@t.com", crp="4001") -> Psicologo:
@@ -69,7 +69,7 @@ class RecuperarSenha(TransactionTestCase):
         token = default_token_generator.make_token(psicologo)
         # O Django troca o token da URL por `set-password` e redireciona; é esse endereço que aceita o POST.
         self.client.get(reverse("contas:senha_trocar", args=[uid, token]))
-        nova = "outra-senha-boa-456"
+        nova = "Outra-Senha-Boa-456!"  # forte: a recuperação valida a senha (ADR-130)
         self.client.post(reverse("contas:senha_trocar", args=[uid, "set-password"]),
                          {"new_password1": nova, "new_password2": nova})
         self.assertTrue(self.client.login(username="esqueceu@t.com", password=nova))

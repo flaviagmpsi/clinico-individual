@@ -16,8 +16,9 @@ SENHA = "senha-de-teste-123"
 
 
 def dados_da_conta(**ajustes):
+    # Senha forte (ADR-130): maiúscula, minúscula, número e símbolo — senão o cadastro a recusa.
     dados = {"email": "ana.quiz@exemplo.com", "crp_regiao": "04", "crp_numero": "123456",
-             "password1": "uma-senha-bem-longa-123", "password2": "uma-senha-bem-longa-123"}
+             "password1": "Uma-Senha-Longa-123!", "password2": "Uma-Senha-Longa-123!"}
     dados.update(ajustes)
     return dados
 
@@ -54,7 +55,7 @@ class CriarConta(TransactionTestCase):
         self.assertEqual(Psicologo.objects.filter(cpf__isnull=True).count(), 2)
 
     def test_senhas_diferentes_nao_criam_conta(self):
-        resposta = self.criar(password2="outra-senha-qualquer-123")
+        resposta = self.criar(password2="Outra-Senha-Diferente-123!")
         self.assertEqual(resposta.status_code, 200)
         self.assertFalse(Psicologo.objects.filter(email="ana.quiz@exemplo.com").exists())
 

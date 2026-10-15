@@ -103,6 +103,9 @@ AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator"},
     {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator"},
     {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
+    # ADR-130: maiúscula, minúscula, número e símbolo. Vale no cadastro, na troca e na recuperação — todo lugar
+    # que chama `validate_password`.
+    {"NAME": "contas.validacao_de_senha.SenhaForteValidator"},
 ]
 
 LANGUAGE_CODE = "pt-br"

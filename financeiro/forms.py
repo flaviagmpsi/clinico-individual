@@ -23,6 +23,14 @@ class PagamentoForm(forms.Form):
         widget=forms.RadioSelect(attrs={"class": "form-check-input"}))
     observacao = forms.CharField(
         label="Observação", required=False, widget=forms.Textarea(attrs={**_TEXTO, "rows": 2}))
+    # ADR-132: pergunta obrigatória, sem opção marcada de saída — o psicólogo decide a cada pagamento. Marcado
+    # "não", vira lembrete de recibo a emitir.
+    recibo_emitido = forms.TypedChoiceField(
+        label="Você já emitiu o recibo deste pagamento?",
+        choices=[("sim", "Sim, já emiti"), ("nao", "Ainda não — me lembre depois")],
+        coerce=lambda v: v == "sim", empty_value=None,
+        widget=forms.RadioSelect(attrs={"class": "form-check-input"}),
+        error_messages={"required": "Diga se o recibo já foi emitido — sim ou não."})
 
 
 class DespesaForm(LimpaMascara, forms.ModelForm):
