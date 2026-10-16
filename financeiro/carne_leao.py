@@ -102,6 +102,9 @@ CATEGORIAS: tuple[Categoria, ...] = (
     Categoria("SERVICOS_DE_TERCEIROS", "Serviços contratados para a atividade", "O trabalho", _D,
               "O que você paga a terceiros por causa do trabalho: contabilidade, informática, manutenção "
               "do equipamento que você usa para atender."),
+    Categoria("REPASSE_CLINICA", "Repasse para a clínica", "O trabalho", _D,
+              "A parte que a clínica fica dos seus atendimentos. Seja uma porcentagem ou um valor fixo, lance "
+              "aqui o total repassado no mês — é despesa da atividade e entra no carnê-leão."),
     Categoria("DIVULGACAO", "Divulgação profissional", "O trabalho", _D,
               "Propaganda da sua atuação: site, anúncio, cartão. A Receita aceita quando é da atividade."),
     Categoria("FORMACAO", "Congresso, curso e publicação da área", "O trabalho", _D,
