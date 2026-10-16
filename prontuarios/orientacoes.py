@@ -42,7 +42,7 @@ ORIENTACOES = (
         "Hipótese diagnóstica ainda não compartilhada, impressão pessoal e interpretação em elaboração pertencem ao "
         "registro documental de uso exclusivo da psicóloga, e não ao prontuário — porque o prontuário pode ser "
         "entregue à pessoa atendida. Protocolos e folhas de teste também ficam em pasta de acesso exclusivo "
-        "(Art. 2º, V). O Hamilton ainda não tem esse registro restrito: guarde-o à parte."),
+        "(Art. 2º, V). O Polaris ainda não tem esse registro restrito: guarde-o à parte."),
     Orientacao(
         "Linguagem",
         "Escrita formal, técnica e compreensível por quem não é da área. Escolha a forma pessoal ou a impessoal e "

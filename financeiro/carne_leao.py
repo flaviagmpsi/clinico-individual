@@ -94,7 +94,7 @@ CATEGORIAS: tuple[Categoria, ...] = (
     Categoria("MATERIAL", "Material de trabalho e de escritório", "O trabalho", _D,
               "Material de expediente e de consumo: papel, impressão, itens da sala, testes e protocolos de uso."),
     Categoria("SISTEMAS", "Sistemas e ferramentas de trabalho", "O trabalho", _D,
-              "Assinaturas que você usa para atender e para gerir a clínica — inclusive a do Hamilton e a "
+              "Assinaturas que você usa para atender e para gerir a clínica — inclusive a do Polaris e a "
               "plataforma de videochamada."),
     Categoria("PESSOAL", "Salário e encargos de funcionário", "O trabalho", _D,
               "Quem trabalha para você **com vínculo**: secretária, recepção, limpeza contratada. Entram o "

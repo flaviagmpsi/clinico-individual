@@ -159,7 +159,7 @@ if EMAIL_HOST:
     EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "")
 else:
     EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
-DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "Hamilton <nao-responda@hamilton.local>")
+DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "Polaris <nao-responda@polaris.local>")
 # O link da recuperação vale por pouco tempo: numa caixa de e-mail invadida, um link velho ainda abre a conta.
 PASSWORD_RESET_TIMEOUT = 60 * 60 * 2
 

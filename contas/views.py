@@ -280,7 +280,7 @@ class QuizDeCadastro(GravaSemRepetir, LoginRequiredMixin, UpdateView):
         if resposta.status_code == 302 and self.terminou():
             self.object.quiz_concluido_em = timezone.now()
             self.object.save()
-            messages.success(self.request, "Cadastro concluído. Bem-vindo ao Hamilton.")
+            messages.success(self.request, "Cadastro concluído. Bem-vindo ao Polaris.")
         return resposta
 
     def get_success_url(self):
