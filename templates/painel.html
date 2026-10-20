@@ -239,28 +239,52 @@ Primeiro o dia; depois as pendências, num bloco; por fim o resumo do mês.
     </div>
   </div>
 </div>
-{% comment %}ADR-084: aniversariantes do mês, entre os pacientes em atendimento. Fica por último: não é tarefa, é
-lembrança — e o painel é primeiro do que precisa ser feito (ADR-072).{% endcomment %}
-<div class="card mt-3">
-  <div class="card-header bg-white py-2 d-flex align-items-center">
-    <span class="fw-semibold"><i class="bi bi-cake2"></i> Aniversariantes de {{ hoje|date:"F"|lower }}</span>
-    {% if aniversariantes %}<span class="badge text-bg-light border ms-2">{{ aniversariantes|length }}</span>{% endif %}
-  </div>
-  {% if aniversariantes %}
-    <div class="card-body py-2 small d-flex flex-wrap gap-2">
-      {% for a in aniversariantes %}
-        <a href="{% url 'pacientes:detalhe' a.paciente.pk %}"
-           class="text-decoration-none border rounded px-2 py-1 {% if a.hoje %}border-success bg-success-subtle{% elif a.passou %}text-muted{% endif %}">
-          <span class="fw-semibold">dia {{ a.dia }}</span> · {{ a.paciente.nome_social|default:a.paciente.nome }}
-          <span class="text-muted">· {% if a.hoje %}faz {{ a.idade }} hoje 🎉{% elif a.passou %}fez {{ a.idade }}{% else %}faz {{ a.idade }}{% endif %}</span>
-        </a>
-      {% endfor %}
-    </div>
-  {% else %}
-    <div class="card-body py-3 small text-muted">Nenhum paciente em atendimento faz aniversário neste mês.</div>
-  {% endif %}
-</div>
-
 {% include "indicadores/_retrato_da_clinica.html" %}
 {% include "indicadores/_graficos.html" %}
+
+{% comment %}ADR-134: o aniversário saiu do card fixo do mês e virou pop-up do dia. Aparece ao abrir o sistema
+quando um paciente faz aniversário hoje, uma vez por dia — o "visto hoje" fica no navegador (localStorage), que
+é conveniência por dispositivo e não precisa do servidor. Sem JavaScript o modal não abre sozinho, mas o bloco
+fica acessível no rodapé, então a lembrança nunca some de vez.{% endcomment %}
+{% if aniversariantes_hoje %}
+<div class="modal fade" id="modalAniversario" tabindex="-1" aria-labelledby="tituloAniversario" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="tituloAniversario"><i class="bi bi-cake2 text-success"></i> Aniversário hoje 🎉</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+      </div>
+      <div class="modal-body">
+        <p class="small text-muted mb-2">
+          {% if aniversariantes_hoje|length == 1 %}Um paciente em atendimento faz aniversário hoje:{% else %}Pacientes em atendimento que fazem aniversário hoje:{% endif %}
+        </p>
+        <ul class="list-unstyled mb-0">
+          {% for a in aniversariantes_hoje %}
+          <li class="py-1">
+            <a href="{% url 'pacientes:detalhe' a.paciente.pk %}" class="text-decoration-none fw-semibold">{{ a.paciente.nome_social|default:a.paciente.nome }}</a>
+            <span class="text-muted">· faz {{ a.idade }} anos</span>
+          </li>
+          {% endfor %}
+        </ul>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-sm btn-primary" data-bs-dismiss="modal">Fechar</button>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+// O bundle do Bootstrap é carregado depois deste ponto no base.html; o "load" garante que ele já exista.
+window.addEventListener("load", function () {
+  var chave = "aniversario-visto-{{ hoje|date:'Y-m-d' }}";
+  try { if (localStorage.getItem(chave)) return; } catch (e) {}
+  var el = document.getElementById("modalAniversario");
+  if (!el || !window.bootstrap) return;
+  el.addEventListener("hide.bs.modal", function () {
+    try { localStorage.setItem(chave, "1"); } catch (e) {}
+  });
+  new bootstrap.Modal(el).show();
+});
+</script>
+{% endif %}
 {% endblock %}

@@ -109,6 +109,20 @@ class BlocosDoPeriodo(BaseEstatisticas):
                          [("Marcos", 67, 2, 3), ("Júlia", 100, 1, 1)])
         self.assertEqual((e.presenca.presentes, e.presenca.esperadas), (3, 4))
 
+    def test_presenca_total_por_caso_soma_todo_o_historico(self):
+        """ADR-135: a barrinha da lista é o total, não o mês — e vem em lote, uma consulta por todos os casos."""
+        with contexto.como(self.ana.pk):
+            por_caso = estatisticas.presenca_total_por_caso([self.caso_marcos.pk, self.caso_julia.pk])
+        marcos = por_caso[self.caso_marcos.pk]
+        self.assertEqual((marcos.presentes, marcos.faltas, marcos.canceladas_pelo_profissional,
+                          marcos.esperadas, marcos.percentual), (2, 1, 1, 3, 67))
+        julia = por_caso[self.caso_julia.pk]
+        self.assertEqual((julia.presentes, julia.esperadas, julia.percentual), (1, 1, 100))
+
+    def test_presenca_total_por_caso_sem_casos_e_vazio(self):
+        with contexto.como(self.ana.pk):
+            self.assertEqual(estatisticas.presenca_total_por_caso([]), {})
+
     def test_no_mes_quem_esta_em_atendimento_sem_sessao_aparece_por_ultimo(self):
         """ADR-087: "sem sessão no mês" é informação real da clínica; o Pedro, encerrado, não entra."""
         with contexto.como(self.ana.pk):
@@ -236,11 +250,17 @@ class Telas(TransactionTestCase):
         self.assertContains(resposta, "situacao=encerrados")
         self.assertIn("&situacao=encerrados", resposta.context["outros_parametros"])
 
-    def test_painel_mostra_os_aniversariantes_do_mes(self):
+    def test_painel_mostra_popup_de_aniversario_do_dia(self):
+        """ADR-134: o aniversário virou pop-up do dia. Só aparece quem faz aniversário **hoje**."""
+        hoje = timezone.localdate()
+        with contexto.como(self.ana.pk):
+            cadastrar_paciente(Paciente(nome="Rita do Dia", data_nascimento=date(1990, hoje.month, hoje.day)),
+                               valor=Decimal("200"), vigente_desde=date(2026, 1, 1))
         self.entrar(self.ana)
         resposta = self.client.get(reverse("painel"))
-        self.assertContains(resposta, "Aniversariantes de")
-        self.assertContains(resposta, "Marcos Aniversariante")
+        self.assertContains(resposta, "modalAniversario")
+        self.assertContains(resposta, "Aniversário hoje")
+        self.assertContains(resposta, "Rita do Dia")
         self.assertNotContains(resposta, "Carla Alheia")
 
     def test_ficha_mostra_frequencia_e_situacao_financeira(self):

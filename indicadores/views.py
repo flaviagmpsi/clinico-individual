@@ -34,7 +34,8 @@ class Painel(LoginRequiredMixin, TemplateView):
             pagamentos_pendentes=pendencias.pendentes, total_pagamentos_pendentes=len(pendencias.pendentes),
             recibos_pendentes=pendencias.recibos, total_recibos_pendentes=len(pendencias.recibos),
             prontuarios_pendentes=pendencias.prontuarios, total_prontuarios_pendentes=len(pendencias.prontuarios),
-            aniversariantes=estatisticas.aniversariantes_do_mes(painel.hoje),
+            # ADR-134: o aniversário saiu do card do mês e virou pop-up do dia.
+            aniversariantes_hoje=estatisticas.aniversariantes_de_hoje(painel.hoje),
         )
         # ADR-103: "como a clínica funcionou" mora aqui, e não numa aba à parte — responde pelo mês ou pelo ano.
         contexto.update(periodo.contexto_do_seletor(self.request, painel.hoje))

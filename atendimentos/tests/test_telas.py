@@ -43,8 +43,11 @@ def momento(dia, hora, minuto=0):
 
 
 def proxima(dia_semana):
-    amanha = timezone.localdate() + timedelta(days=1)
-    return amanha + timedelta(days=(dia_semana - amanha.weekday()) % 7)
+    # A partir de **hoje**, não de amanhã: assim a próxima ocorrência cai sempre em [hoje, hoje+6], a janela
+    # padrão da agenda — senão, num dia que é o próprio dia da semana pedido (ex.: terça), devolvia hoje+7 e a
+    # sessão saía da janela, quebrando o teste só às terças (o produto continua certo; era brittleness do teste).
+    hoje = timezone.localdate()
+    return hoje + timedelta(days=(dia_semana - hoje.weekday()) % 7)
 
 
 def criar_psicologo(email, cpf, crp):
@@ -186,6 +189,34 @@ class CadastroPelaTela(BaseTelasAgenda):
         self.assertRedirects(self.client.get(self.prevista_de_ontem(self.regra_joao)),
                              reverse("atendimentos:editar", args=[consulta.pk]), fetch_redirect_response=False)
 
+    def test_sessao_futura_nao_vem_com_presente_marcado(self):
+        """ADR-131 (adendo): numa sessão que ainda não aconteceu, o form não pré-seleciona "Presente" (que seria
+        recusado) e avisa que ali se registra remarcação ou cancelamento."""
+        self.entrar(self.ana)
+        with contexto.como(self.ana.pk):
+            regra = self.caso_maria.regra_aberta()  # semanal a partir da próxima terça — futuro
+            dia = regra.ocorrencias(self.hoje + timedelta(days=1), self.hoje + timedelta(days=21))[0]
+        rota = reverse("atendimentos:cadastrar_prevista", args=[regra.pk, dia.isoformat()])
+        resposta = self.client.get(rota)
+        self.assertTrue(resposta.context["futura"])
+        self.assertIsNone(resposta.context["form"].initial.get("estado"))
+        self.assertContains(resposta, "ainda não aconteceu")
+
+    def test_remarcar_sessao_futura_pela_tela(self):
+        """O objetivo do usuário: registrar a remarcação antes do horário, pela agenda."""
+        self.entrar(self.ana)
+        with contexto.como(self.ana.pk):
+            regra = self.caso_maria.regra_aberta()
+            dia = regra.ocorrencias(self.hoje + timedelta(days=1), self.hoje + timedelta(days=21))[0]
+        rota = reverse("atendimentos:cadastrar_prevista", args=[regra.pk, dia.isoformat()])
+        novo = dia + timedelta(days=2)
+        resposta = self.client.post(rota, {"estado": REMARCADA, "hora": "14:00", "duracao": "50",
+                                           "nova_data": novo.isoformat(), "nova_hora": "16:00"})
+        self.assertEqual(resposta.status_code, 302)
+        consulta = Consulta.objetos_todos.get(recorrencia=regra, data_prevista=dia)
+        self.assertEqual(consulta.estado, REMARCADA)
+        self.assertIsNotNone(consulta.remarcada_para)
+
     def test_data_que_nao_e_da_frequencia_da_404(self):
         self.entrar(self.ana)
         rota = reverse("atendimentos:cadastrar_prevista",
@@ -203,8 +234,10 @@ class CadastroPelaTela(BaseTelasAgenda):
     def test_marcar_presente_no_futuro_volta_explicando(self):
         """ADR-131: presença e falta ainda exigem que a sessão tenha acontecido — remarcar/cancelar, não."""
         self.entrar(self.ana)
+        # Data estritamente futura, independente do dia da semana de hoje (self.terca pode ser o próprio hoje).
+        amanha = self.hoje + timedelta(days=1)
         resposta = self.client.post(reverse("atendimentos:nova"), {
-            "caso": self.caso_joao.pk, "estado": REALIZADA, "data": f"{self.terca:%Y-%m-%d}",
+            "caso": self.caso_joao.pk, "estado": REALIZADA, "data": f"{amanha:%Y-%m-%d}",
             "hora": "10:00", "duracao": "50"})
         self.assertEqual(resposta.status_code, 200)
         self.assertContains(resposta, "só se cadastram depois")

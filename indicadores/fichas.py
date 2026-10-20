@@ -62,7 +62,7 @@ def _recorrencia_vigente(recorrencias, hoje: date) -> Recorrencia | None:
     return None
 
 
-def fichas(pacientes, presenca_por_paciente=None, hoje: date | None = None) -> list[Ficha]:
+def fichas(pacientes, hoje: date | None = None) -> list[Ficha]:
     """Uma ficha por paciente, na ordem em que os pacientes vieram."""
     hoje = hoje or timezone.localdate()
     pacientes = list(pacientes)
@@ -90,7 +90,10 @@ def fichas(pacientes, presenca_por_paciente=None, hoje: date | None = None) -> l
             # A lista vem ordenada por vencimento, então a primeira a chegar é a mais próxima.
             vencimento_por_caso.setdefault(chave, cobranca.vencimento)
 
-    presenca_por_caso = {caso.pk: p for caso, p in (presenca_por_paciente or [])}
+    # A barrinha do bloco é o total histórico do paciente (não só o mês): uma consulta agrupada para todos.
+    from indicadores.estatisticas import presenca_total_por_caso
+
+    presenca_por_caso = presenca_total_por_caso({caso.pk for caso in caso_do_paciente.values()})
 
     resultado = []
     for paciente in pacientes:

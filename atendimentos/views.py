@@ -329,9 +329,16 @@ class CadastrarPrevista(LoginRequiredMixin, FormView):
         return super().get(request, *args, **kwargs)
 
     def get_initial(self):
-        regra = self.prevista().regra
-        return {"estado": Consulta.Estado.REALIZADA, "hora": regra.hora, "duracao": regra.duracao,
-                "modalidade": servicos.modalidade_do_caso(regra.caso)}
+        prevista = self.prevista()
+        regra = prevista.regra
+        inicial = {"hora": regra.hora, "duracao": regra.duracao,
+                   "modalidade": servicos.modalidade_do_caso(regra.caso)}
+        # ADR-131: presença e falta só se cadastram depois. Numa sessão que ainda não aconteceu — inclusive
+        # mais tarde hoje — não pré-selecionamos "Presente": seria uma escolha que a tela vai recusar, e é o
+        # que fazia o psicólogo achar que "não dá para cadastrar". Sem padrão, ele escolhe remarcada/cancelada.
+        if prevista.pendente():
+            inicial["estado"] = Consulta.Estado.REALIZADA
+        return inicial
 
     def get_form(self, form_class=None):
         # ADR-093: sessão da frequência tem valor conhecido, por mensalidade ou por sessão. O campo é só da avulsa.
@@ -340,7 +347,7 @@ class CadastrarPrevista(LoginRequiredMixin, FormView):
     def get_context_data(self, **kwargs):
         contexto = super().get_context_data(**kwargs)
         prevista = self.prevista()
-        contexto.update(titulo="Cadastrar sessão", prevista=prevista,
+        contexto.update(titulo="Cadastrar sessão", prevista=prevista, futura=not prevista.pendente(),
                         cobranca_combinada=_cobranca_combinada(prevista.caso, prevista.data))
         return contexto
 

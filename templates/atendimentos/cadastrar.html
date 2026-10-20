@@ -23,6 +23,15 @@
   </div>
 {% endif %}
 
+{% comment %}ADR-131: cadastrar a remarcação/cancelamento antes da hora. Presença e falta só depois da sessão.{% endcomment %}
+{% if futura %}
+  <div class="alert alert-warning py-2 small" style="max-width:640px">
+    <i class="bi bi-clock-history"></i> Esta sessão ainda não aconteceu. Você pode registrar agora uma
+    <strong>remarcação</strong> ou um <strong>cancelamento</strong> combinados antes — presença e falta só depois
+    que a sessão passar.
+  </div>
+{% endif %}
+
 <form method="post" novalidate style="max-width:640px">
   {% csrf_token %}
   {% if form.non_field_errors %}

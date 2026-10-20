@@ -79,7 +79,8 @@ class ListaPacientes(LoginRequiredMixin, ListView):
         presenca = estatisticas.presenca_dos_pacientes(contexto["periodo"])
         # ADR-109: a lista virou blocos, e cada bloco mostra horário, frequência, o que está em aberto e a
         # presença. Tudo em **uma** carga (`indicadores.fichas`), e não uma consulta por paciente.
-        contexto["fichas"] = fichas.fichas(contexto["pacientes"], presenca.por_paciente)
+        # A barrinha de cada bloco é o total histórico do paciente; o gráfico/seletor ao lado é do período.
+        contexto["fichas"] = fichas.fichas(contexto["pacientes"])
         contexto.update(presenca=presenca, grafico={
             "presenca": [presenca.presenca.presentes, presenca.presenca.faltas,
                          presenca.presenca.canceladas_pelo_cliente],

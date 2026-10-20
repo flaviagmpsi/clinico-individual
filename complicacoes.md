@@ -4065,6 +4065,51 @@ sistema não deixar passar.
   nova `EditarPagamento`, que faltava —, e lá a pessoa marca "sim" e a pendência some. O valor e a forma também
   ficam editáveis ali, porque "editar o pagamento" é o que foi pedido e corrigir um valor é o mesmo gesto.
 
+## ADR-133 — Dar um mês de mensalidade como quitado à mão
+
+**Status:** ✅ Aceita — Rodada 86.
+
+**Pedido do usuário:** paciente que começou no meio do mês e, por combinação, paga só metade neste primeiro mês;
+registrou metade do valor e o sistema mostrava o restante como pendente — dívida que não existe.
+
+Em vez de acoplar isso ao cadastro do paciente, uma marca simples: tabela `financeiro.MensalidadeQuitada` (caso +
+`mes_referencia`, uma por caso/mês, com RLS própria). Quando existe, a cobrança daquele mês tem `saldo = 0` e
+`quitada = True`, mas **o que foi pago continua no faturamento** — a marca só zera a pendência, não apaga pagamento.
+Dá para reabrir (`reabrir_mensalidade`). Serviços `quitar_mensalidade_a_mao`/`reabrir_mensalidade`; só vale para mês
+que tem mensalidade combinada. A cobrança é derivada (ADR-062), então nada disso é um pagamento fantasma.
+
+## ADR-134 — O aniversário saiu do painel e virou pop-up do dia
+
+**Status:** ✅ Aceita — Rodada 87.
+
+**Pedido do usuário:** "quero que o aniversario do paciente saia do dashboard e se torne um pop up que aparece na
+tela no dia do aniversario do paciente".
+
+O card fixo de "Aniversariantes do mês" (ADR-084) saiu do painel. No lugar, `aniversariantes_de_hoje` traz quem faz
+aniversário **hoje**, e o painel abre um modal do Bootstrap com esses nomes ao carregar. Para não repetir a cada
+navegação, o "visto" do dia fica no `localStorage` (`aniversario-visto-AAAA-MM-DD`) — conveniência por dispositivo,
+que não precisa do servidor e segue a regra de envolver todo acesso a `localStorage` em try/catch. Sem JavaScript o
+modal não abre sozinho, mas o bloco continua no HTML, então a lembrança nunca some de vez. `aniversariantes_do_mes`
+fica no código (ainda tem teste), apenas deixou de alimentar o painel.
+
+## ADR-135 — A barrinha de frequência da lista é o total histórico, não o mês
+
+**Status:** ✅ Aceita — Rodada 87.
+
+**Pedido do usuário:** "a barra de frequencia do paciente tem que ser do total da frequencia do paciente, não só do
+mes. pra ficar mais real o quanto o paciente realmente vai".
+
+A barrinha de cada bloco da lista de pacientes vinha de `presenca_dos_pacientes(periodo)` — só o mês selecionado, o
+que num paciente que some há semanas dava um número enganoso. Agora vem de `presenca_total_por_caso`, que soma
+**todo o histórico** em **uma** consulta agrupada por caso e situação (nota de desempenho: telas em lote, nunca item
+a item). O gráfico/seletor de período ao lado continua respondendo "como foi este mês" — são duas perguntas
+diferentes, e cada uma tem a sua escala. A barra da ficha do paciente (`frequencia_do_paciente`) já era o total.
+
+**Adendo à ADR-131:** cadastrar remarcação/cancelamento antes do horário já funcionava; o que travava na prática era
+o formulário da sessão prevista vir com "Presente" pré-marcado — escolha que a tela recusa numa sessão futura. Agora,
+quando a sessão **ainda não aconteceu** (inclusive mais tarde hoje), o form não pré-seleciona estado e mostra um
+aviso de que ali se registra remarcação ou cancelamento; presença e falta, só depois.
+
 
 ## Impeditivos
 

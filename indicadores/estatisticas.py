@@ -87,6 +87,28 @@ def presenca_do_paciente(paciente) -> Presenca:
     return presenca_de(Consulta.objects.filter(caso__participacoes__paciente=paciente))
 
 
+def presenca_total_por_caso(caso_ids) -> dict:
+    """A frequência **de todo o histórico**, caso a caso, em uma consulta só (nota: consultas em lote).
+
+    Para a barrinha de cada bloco da lista de pacientes: ela mostra o quanto o paciente vem de verdade, e não só
+    no mês selecionado — "3 de 4 neste mês" engana num paciente que some há meses. Agrupa por caso e situação no
+    banco; o seletor de período ao lado continua sendo quem responde "como foi este mês".
+    """
+    from django.db.models import Count
+
+    caso_ids = list(caso_ids)
+    presencas: dict = {cid: Presenca() for cid in caso_ids}
+    if not caso_ids:
+        return presencas
+    linhas = (Consulta.objects.filter(caso_id__in=caso_ids)
+              .values("caso_id", "estado").annotate(n=Count("id")))
+    for linha in linhas:
+        presenca = presencas[linha["caso_id"]]
+        for _ in range(linha["n"]):
+            presenca.somar(linha["estado"])
+    return presencas
+
+
 @dataclass
 class Composicao:
     semanais: int = 0
@@ -293,4 +315,16 @@ def aniversariantes_do_mes(hoje: date | None = None) -> list:
           "hoje": p.data_nascimento.day == hoje.day, "passou": p.data_nascimento.day < hoje.day}
          for p in pacientes),
         key=lambda item: (item["dia"], item["paciente"].nome))
+
+
+def aniversariantes_de_hoje(hoje: date | None = None) -> list:
+    """Pacientes **em atendimento** que fazem aniversário **hoje**. Para o pop-up do painel (ADR-134).
+
+    A lembrança saiu do card fixo do mês e virou um aviso do dia: quem faz aniversário hoje aparece quando o
+    psicólogo abre o sistema, uma vez por dia (o "fechar" é guardado no navegador, não aqui)."""
+    hoje = hoje or timezone.localdate()
+    pacientes = pacientes_ativos().filter(data_nascimento__month=hoje.month, data_nascimento__day=hoje.day)
+    return sorted(
+        ({"paciente": p, "idade": hoje.year - p.data_nascimento.year} for p in pacientes),
+        key=lambda item: item["paciente"].nome)
 

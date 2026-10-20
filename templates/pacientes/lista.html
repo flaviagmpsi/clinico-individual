@@ -70,8 +70,8 @@ link não é HTML válido, e os dois cliques brigariam.
         {% endif %}
         <span class="badge text-bg-light border">{{ f.paciente.get_modalidade_display|lower }}</span>
       </div>
-      {% comment %}A presença só aparece para quem tinha sessão no período — "0%" para quem não tinha
-      nenhuma seria uma acusação falsa.{% endcomment %}
+      {% comment %}Presença = total histórico do paciente (não só o mês): mostra o quanto ele vem de verdade.
+      Só aparece para quem já teve sessão — "0%" para quem nunca teve seria uma acusação falsa.{% endcomment %}
       {% if f.presenca.esperadas %}
         <footer>
           <span>presença</span>
