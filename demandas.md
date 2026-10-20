@@ -428,6 +428,35 @@ cobrança de sessão futura. O gatilho é a consulta ficar `REALIZADA`, nunca o 
 
 ---
 
+## ⏸️ Em espera — não decidido (voltar depois)
+
+### Lembretes por WhatsApp
+**Status:** parado a pedido do Paulo — ainda não há decisão sobre fazer. Não iniciar implementação.
+
+**O que foi pedido (visão de produto):**
+- Número do remetente informado: **+55 31 8667-3359** (⚠️ parece faltar o 9º dígito do celular — provável **+55 31 9 8667-3359**; e precisa ser um número **dedicado** de WhatsApp Business, não o pessoal).
+- **Para o paciente:**
+  - Lembrete de **confirmação de presença** na sessão, com resposta **sim/não**.
+  - Lembrete de **vencimento de pagamento**.
+  - Ativação **por paciente**, no cadastro do paciente.
+- **Para o psicólogo:**
+  - Lembrete **semanal de pendências**.
+  - Lembrete **diário da agenda**.
+  - Ativável no cadastro (signup) e em **Configurações**.
+
+**Fatos que travam / encarecem (levantados por mim, confirmar com Paulo):**
+1. **Não dá para automatizar a partir de um número cru.** Precisa de **WhatsApp Business API** via Meta ou um BSP brasileiro (Twilio/Zenvia/Gupshup). Mensagens proativas usam **templates pré-aprovados** pela Meta; respostas interativas (o sim/não) exigem **webhook**. Há **custo por conversa**.
+2. **Agendamento reabre o impedimento I-05.** O Render (plano free) **não tem cron/worker**: os lembretes diário/semanal precisam de um agendador — ou **cron externo gratuito** (recomendado) ou **Render Cron ~US$1/mês**.
+3. **Consentimento LGPD do paciente** para receber mensagem no WhatsApp precisa ser coletado e registrado (quem ativa é o psicólogo, mas o dado é do paciente).
+
+**Perguntas em aberto (grill-me, sem resposta):**
+1. Aceitar a WhatsApp Business API + custo por conversa via BSP brasileiro (Zenvia/Gupshup) **ou** adiar e usar e-mail primeiro? ➡️ recomendado: BSP brasileiro quando for fazer.
+2. Agendador: **cron externo gratuito** ➡️ (recomendado) **ou** Render Cron (~US$1/mês)?
+3. Confirmar o número: **+55 31 9 8667-3359**, dedicado ao Business? ➡️ recomendado: número novo e dedicado.
+4. Tópicos ainda não definidos: textos exatos das mensagens; consentimento LGPD do paciente; o que fazer quando o paciente **não responde** o sim/não.
+
+---
+
 ## 🚧 Decisões abertas que bloqueiam trabalho
 
 Não decida sozinho — são do Paulo. Estão em [perguntas.md](perguntas.md).
