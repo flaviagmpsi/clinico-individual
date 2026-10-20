@@ -147,3 +147,35 @@ class BaixaDeDespesa(TenantOwnedModel):
         exigir_mesmo_dono(self, despesa=self.despesa if self.despesa_id else None)
         if self.mes and self.mes.day != 1:
             raise ValidationError({"mes": "O mês é guardado pelo primeiro dia."})
+
+
+class MensalidadeQuitada(TenantOwnedModel):
+    """Um mês de mensalidade dado como quitado à mão, mesmo sem o pagamento cobrir o valor cheio (ADR-133).
+
+    O caso: o paciente começou no meio do mês e, por combinação, paga só metade neste primeiro mês. O psicólogo
+    registra o que recebeu (R$ 150), e o sistema, que calcula a mensalidade cheia (R$ 300), mostraria R$ 150
+    pendentes — uma dívida que não existe. Este registro diz "este mês está resolvido": o saldo some, e o que já
+    foi pago continua no faturamento, intacto.
+
+    É derivado nada: a mensalidade continua sendo cálculo (ADR-062). Isto é só uma marca por mês, e some ao ser
+    reaberta — caso tenha sido dada como quitada por engano.
+    """
+
+    caso = models.ForeignKey(Caso, on_delete=models.CASCADE, related_name="mensalidades_quitadas")
+    mes_referencia = models.DateField("Mês", help_text="Primeiro dia do mês da mensalidade.")
+
+    class Meta:
+        verbose_name = "Mensalidade quitada à mão"
+        verbose_name_plural = "Mensalidades quitadas à mão"
+        constraints = [
+            models.UniqueConstraint(fields=["caso", "mes_referencia"], name="uma_quitacao_por_caso_por_mes"),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.caso} · {self.mes_referencia:%m/%Y} quitada à mão"
+
+    def clean(self):
+        super().clean()
+        exigir_mesmo_dono(self, caso=self.caso if self.caso_id else None)
+        if self.mes_referencia and self.mes_referencia.day != 1:
+            raise ValidationError({"mes_referencia": "O mês é guardado pelo primeiro dia."})

@@ -179,6 +179,37 @@ class EditarPagamento(LoginRequiredMixin, FormView):
         return redirect(_url_do_mes(mes))
 
 
+class _MensalidadeDoMes(LoginRequiredMixin, View):
+    """Base das duas ações de mês: quitar à mão e reabrir (ADR-133). Só por POST."""
+
+    http_method_names = ["post"]
+
+    def caso(self):
+        return get_object_or_404(Caso.objects.prefetch_related("pacientes"), pk=self.kwargs["caso_pk"])
+
+    def redirecionar(self):
+        return redirect(_url_do_mes(date(self.kwargs["ano"], self.kwargs["mes"], 1)))
+
+
+class QuitarMensalidade(_MensalidadeDoMes):
+    def post(self, request, *args, **kwargs):
+        try:
+            servicos.quitar_mensalidade_a_mao(self.caso(), self.kwargs["ano"], self.kwargs["mes"])
+        except ValidationError as erro:
+            messages.error(request, erro.messages[0])
+        else:
+            messages.success(request, "Mês dado como quitado. O saldo saiu da pendência; o que foi pago continua "
+                                      "no faturamento. Dá para reabrir se tiver sido engano.")
+        return self.redirecionar()
+
+
+class ReabrirMensalidade(_MensalidadeDoMes):
+    def post(self, request, *args, **kwargs):
+        servicos.reabrir_mensalidade(self.caso(), self.kwargs["ano"], self.kwargs["mes"])
+        messages.success(request, "Cobrança reaberta. O saldo volta a contar.")
+        return self.redirecionar()
+
+
 class ExcluirPagamento(LoginRequiredMixin, View):
     """Registro feito por engano. Só por POST."""
 

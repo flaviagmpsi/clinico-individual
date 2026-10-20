@@ -56,7 +56,8 @@ tabela "Pagamentos recebidos" (data, observação e o desfazer) mora dentro da l
           <td class="text-muted valor">{{ c.vencimento|date:"d/m" }}</td>
           <td class="text-end text-nowrap valor">R$ {{ c.pago|floatformat:2 }} / R$ {{ c.devido|floatformat:2 }}</td>
           <td>
-            {% if c.quitada %}<span class="badge text-bg-success">Pago</span>
+            {% if c.quitada_manualmente %}<span class="badge text-bg-success">Quitado à mão</span>
+            {% elif c.quitada %}<span class="badge text-bg-success">Pago</span>
             {% elif c.vencimento <= hoje %}<span class="badge text-bg-warning">Pendente</span>{% if c.pago %} <span class="text-muted">falta R$ {{ c.saldo|floatformat:2 }}</span>{% endif %}
             {% else %}<span class="badge text-bg-light border">A vencer</span>{% endif %}
           </td>
@@ -67,10 +68,21 @@ tabela "Pagamentos recebidos" (data, observação e o desfazer) mora dentro da l
           </td>
           <td class="text-end text-nowrap">
             {% if not c.quitada %}<a href="{{ c.url_pagar }}" class="text-decoration-none" data-principal>registrar pagamento</a>{% endif %}
-            {% if c.pagamentos %}
+            {% if c.pagamentos or c.e_mensalidade %}
             <div class="dropdown d-inline">
-              <button class="btn btn-sm btn-link text-muted py-0" data-bs-toggle="dropdown" aria-label="Pagamentos desta cobrança"><i class="bi bi-three-dots"></i></button>
+              <button class="btn btn-sm btn-link text-muted py-0" data-bs-toggle="dropdown" aria-label="Mais ações desta cobrança"><i class="bi bi-three-dots"></i></button>
               <ul class="dropdown-menu dropdown-menu-end">
+                {% comment %}ADR-133: dar o mês como quitado quando o saldo restante não é dívida (ex.: primeira
+                mensalidade pela metade). Some a pendência; o que foi pago continua no faturamento.{% endcomment %}
+                {% if c.e_mensalidade and c.quitada_manualmente %}
+                <li><form method="post" action="{{ c.url_reabrir }}" class="m-0">{% csrf_token %}
+                  <button type="submit" class="dropdown-item">Reabrir cobrança (o saldo volta a contar)</button></form></li>
+                {% elif c.e_mensalidade and not c.quitada %}
+                <li><form method="post" action="{{ c.url_quitar }}" class="m-0"
+                          onsubmit="return confirm('Dar {{ c.descricao|lower }} como quitada? O saldo de R$ {{ c.saldo|floatformat:2 }} sai da pendência e o que já foi pago continua no faturamento. Use quando o combinado deste mês já foi pago por inteiro.')">
+                  {% csrf_token %}
+                  <button type="submit" class="dropdown-item">Dar o mês como quitado</button></form></li>
+                {% endif %}
                 {% for p in c.pagamentos %}
                 <li><form method="post" action="{% url 'financeiro:excluir' p.pk %}" class="m-0"
                           onsubmit="return confirm('Excluir o pagamento de R$ {{ p.valor|floatformat:2 }} de {{ p.data|date:"d/m/Y" }}? A cobrança volta a ficar em aberto.')">

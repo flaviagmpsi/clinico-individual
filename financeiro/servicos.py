@@ -23,7 +23,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from atendimentos.models import Consulta
-from financeiro.models import Pagamento
+from financeiro.models import MensalidadeQuitada, Pagamento
 from pacientes.models import Caso, CondicaoCobranca
 
 MENSALIDADE = "MENSALIDADE"
@@ -67,6 +67,8 @@ class Cobranca:
     pagamentos: list = field(default_factory=list)
     mes: date | None = None
     consulta: Consulta | None = None
+    # ADR-133: mês dado como quitado à mão — o saldo restante não é dívida (ex.: primeira mensalidade pela metade).
+    quitada_manualmente: bool = False
 
     @property
     def pago(self) -> Decimal:
@@ -74,11 +76,13 @@ class Cobranca:
 
     @property
     def saldo(self) -> Decimal:
+        if self.quitada_manualmente:
+            return Decimal("0")
         return max(self.devido - self.pago, Decimal("0"))
 
     @property
     def quitada(self) -> bool:
-        return self.pago >= self.devido
+        return self.quitada_manualmente or self.pago >= self.devido
 
     @property
     def desde(self) -> date:
@@ -140,6 +144,19 @@ class Cobranca:
             return reverse("financeiro:pagar_mensalidade", args=[self.caso.pk, self.mes.year, self.mes.month])
         return reverse("financeiro:pagar_sessao", args=[self.consulta.pk])
 
+    @property
+    def e_mensalidade(self) -> bool:
+        return self.tipo == MENSALIDADE
+
+    @property
+    def url_quitar(self) -> str:
+        """Dar o mês como quitado à mão (ADR-133). Só mensalidade tem."""
+        return reverse("financeiro:quitar_mensalidade", args=[self.caso.pk, self.mes.year, self.mes.month])
+
+    @property
+    def url_reabrir(self) -> str:
+        return reverse("financeiro:reabrir_mensalidade", args=[self.caso.pk, self.mes.year, self.mes.month])
+
 
 def _encerrado_o_mes_inteiro(caso: Caso, inicio: date, fim: date) -> bool:
     return any(d.data < inicio and (d.retomado_em is None or d.retomado_em > fim) for d in caso.desfechos.all())
@@ -157,6 +174,7 @@ class Carga:
     casos: list
     consultas: list
     mensais: dict  # (caso_id, primeiro dia do mês) -> pagamentos daquela mensalidade
+    quitadas: set = field(default_factory=set)  # (caso_id, primeiro dia do mês) dados como quitados à mão (ADR-133)
 
     def caso(self, pk: int):
         return next((caso for caso in self.casos if caso.pk == pk), None)
@@ -180,7 +198,11 @@ def carregar(de: date, ate: date, *, caso: Caso | None = None) -> Carga:
     pagamentos = Pagamento.objects.filter(mes_referencia__gte=de.replace(day=1), mes_referencia__lte=ate)
     for pagamento in (pagamentos.filter(caso=caso) if caso is not None else pagamentos):
         mensais.setdefault((pagamento.caso_id, pagamento.mes_referencia), []).append(pagamento)
-    return Carga(casos=casos, consultas=consultas, mensais=mensais)
+    # ADR-133: as mensalidades dadas como quitadas à mão, para a cobrança saber que o saldo delas não é dívida.
+    quitadas_qs = MensalidadeQuitada.objects.filter(mes_referencia__gte=de.replace(day=1), mes_referencia__lte=ate)
+    quitadas = {(q.caso_id, q.mes_referencia)
+                for q in (quitadas_qs.filter(caso=caso) if caso is not None else quitadas_qs)}
+    return Carga(casos=casos, consultas=consultas, mensais=mensais, quitadas=quitadas)
 
 
 def mensalidade(caso: Caso, ano: int, mes: int, *, carga: Carga | None = None) -> Cobranca | None:
@@ -197,8 +219,10 @@ def mensalidade(caso: Caso, ano: int, mes: int, *, carga: Carga | None = None) -
         return None
     pagamentos = (carga.mensais.get((caso.pk, inicio), []) if carga is not None
                   else list(Pagamento.objects.filter(caso=caso, mes_referencia=inicio)))
+    quitada_manual = ((caso.pk, inicio) in carga.quitadas if carga is not None
+                      else MensalidadeQuitada.objects.filter(caso=caso, mes_referencia=inicio).exists())
     return Cobranca(caso=caso, tipo=MENSALIDADE, vencimento=condicao.vencimento_em(ano, mes), devido=condicao.valor,
-                    pagamentos=pagamentos, mes=inicio)
+                    pagamentos=pagamentos, mes=inicio, quitada_manualmente=quitada_manual)
 
 
 def sessao(consulta: Consulta) -> Cobranca | None:
@@ -357,6 +381,24 @@ def editar_pagamento(pagamento: Pagamento, *, valor: Decimal, data: date, forma:
     pagamento.recibo_emitido = recibo_emitido
     pagamento.save(update_fields=["valor", "data", "forma", "observacao", "recibo_emitido", "atualizado_em"])
     return pagamento
+
+
+@transaction.atomic
+def quitar_mensalidade_a_mao(caso: Caso, ano: int, mes: int) -> None:
+    """Dá o mês como quitado, mesmo sem o pago cobrir o valor cheio (ADR-133).
+
+    Para o primeiro mês pela metade e casos parecidos: o saldo some da pendência, e o que já foi pago continua no
+    faturamento. Só faz sentido numa mensalidade — e só se ela existir naquele mês.
+    """
+    if mensalidade(caso, ano, mes) is None:
+        raise ValidationError(f"Não há mensalidade de {mes:02d}/{ano} para dar como quitada.")
+    MensalidadeQuitada.objects.get_or_create(caso=caso, mes_referencia=date(ano, mes, 1))
+
+
+@transaction.atomic
+def reabrir_mensalidade(caso: Caso, ano: int, mes: int) -> None:
+    """Desfaz a quitação à mão — a cobrança volta a contar o saldo (ADR-133)."""
+    MensalidadeQuitada.objects.filter(caso=caso, mes_referencia=date(ano, mes, 1)).delete()
 
 
 @transaction.atomic
