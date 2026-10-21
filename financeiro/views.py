@@ -55,14 +55,26 @@ class MesFinanceiro(LoginRequiredMixin, TemplateView):
             referencia = pagamento.mes_referencia or timezone.localtime(pagamento.consulta.inicio).date().replace(day=1)
             if referencia != inicio:
                 de_outros_meses[referencia] = de_outros_meses.get(referencia, 0) + pagamento.valor
+        # ADR-136: os ganhos de fora da clínica (supervisão, ONG, CLT) também são receita do mês. A tabela abaixo
+        # continua só de pacientes; aqui em cima aparece o total do mês somando os dois, com o detalhamento.
+        from financeiro import receitas_externas
+        ganhos = receitas_externas.receitas_do_mes(inicio.year, inicio.month)
+        recebido_externo = sum((o.valor for o in ganhos if o.recebida), 0)
+        a_receber_externo = sum((o.valor for o in ganhos if not o.recebida), 0)
+        pago_clinica = sum((c.pago for c in todas), 0)
+        saldo_clinica = sum((c.saldo for c in todas), 0)
         contexto.update(
             inicio=inicio, hoje=hoje, aba="receitas",
             anterior=servicos.mes_anterior(inicio), proximo=servicos.mes_seguinte(inicio),
             este=date(hoje.year, hoje.month, 1),
             cobrancas=cobrancas, filtro=filtro if filtro in grupos else "",
             contagem={nome: len(lista) for nome, lista in grupos.items()}, total_de_cobrancas=len(todas),
-            devido=sum((c.devido for c in todas), 0), pago=sum((c.pago for c in todas), 0),
-            saldo=sum((c.saldo for c in todas), 0),
+            devido=sum((c.devido for c in todas), 0), pago=pago_clinica, saldo=saldo_clinica,
+            # Outros ganhos do mês e a receita total (clínica + fora).
+            recebido_externo=recebido_externo, a_receber_externo=a_receber_externo,
+            total_externo=recebido_externo + a_receber_externo,
+            recebido_total=pago_clinica + recebido_externo, a_receber_total=saldo_clinica + a_receber_externo,
+            receita_total_mes=pago_clinica + recebido_externo + saldo_clinica + a_receber_externo,
             de_outros_meses=sorted(de_outros_meses.items()),
             # ADR-074: a tabela do mês já marca o que está pendente nele. Só entra à parte o que ela não
             # alcança — cobrança vencida de mês anterior que ninguém quitou.

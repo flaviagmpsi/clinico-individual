@@ -27,6 +27,21 @@
   </div></div></div>
 </div>
 
+{% comment %}ADR-136: a receita do mês inclui os ganhos de fora da clínica. A tabela abaixo é só de pacientes;
+este resumo soma os dois. Só aparece para quem tem algum ganho de fora no mês.{% endcomment %}
+{% if total_externo %}
+<div class="card mb-3 border-success-subtle">
+  <div class="card-body py-2 d-flex flex-wrap align-items-center gap-3 small">
+    <span class="fw-semibold"><i class="bi bi-briefcase"></i> Outros ganhos do mês</span>
+    <span class="text-muted">recebido <span class="valor">R$ {{ recebido_externo|floatformat:2 }}</span> · a receber <span class="valor">R$ {{ a_receber_externo|floatformat:2 }}</span></span>
+    <a href="{% url 'financeiro:outros_ganhos' %}?mes={{ inicio|date:'Y-m' }}" class="text-decoration-none">ver</a>
+    <span class="ms-auto">Receita total do mês (clínica + fora):
+      <strong class="valor">R$ {{ receita_total_mes|floatformat:2 }}</strong>
+      <span class="text-muted">· recebido <span class="valor">R$ {{ recebido_total|floatformat:2 }}</span></span></span>
+  </div>
+</div>
+{% endif %}
+
 {% comment %}
 ADR-092: uma tabela só. Cada cobrança diz quanto, quando vence, se está paga — e, paga, quando e como foi. O que era a
 tabela "Pagamentos recebidos" (data, observação e o desfazer) mora dentro da linha. Pendente vem primeiro e tem filete
