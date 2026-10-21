@@ -2,6 +2,10 @@
 <ul class="nav nav-pills small mb-3">
   <li class="nav-item"><a class="nav-link py-1{% if aba == 'receitas' %} active{% endif %}"
       href="{% url 'financeiro:mes' %}?mes={{ inicio|date:'Y-m' }}"><i class="bi bi-arrow-down-circle"></i> Receitas</a></li>
+  {% comment %}ADR-136: ganhos fora da clínica (supervisão, ONG, CLT). Visível para todos — ganho não depende de
+  controlar despesas.{% endcomment %}
+  <li class="nav-item"><a class="nav-link py-1{% if aba == 'outros_ganhos' %} active{% endif %}"
+      href="{% url 'financeiro:outros_ganhos' %}?mes={{ inicio|date:'Y-m' }}"><i class="bi bi-briefcase"></i> Outros ganhos</a></li>
   {% comment %}ADR-100: quem não controla despesas não vê estas duas — o fluxo de caixa sem despesa seria a
   aba de receitas outra vez. Liga-se de novo em Configurações.{% endcomment %}
   {% if user.usa_despesas %}

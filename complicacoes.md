@@ -4110,6 +4110,38 @@ o formulário da sessão prevista vir com "Presente" pré-marcado — escolha qu
 quando a sessão **ainda não aconteceu** (inclusive mais tarde hoje), o form não pré-seleciona estado e mostra um
 aviso de que ali se registra remarcação ou cancelamento; presença e falta, só depois.
 
+## ADR-136 — O financeiro passa a abranger ganhos fora da clínica
+
+**Status:** ✅ Aceita — Rodada 88. Resolve a P-112.
+
+**Pedido do usuário:** "quero ampliar o financeiro e fazer com que o psicologo possa adicionar ganhos e pagamentos
+dele referente a trabalhos que nao sao da clinica... supervisao, ong, outro trabalho remunerado clt... esse
+pagamento nao estaria vinculado a pacientes... vai pedir de qual trabalho recebe, forma de pagamento, data prevista
+ou limite para receber, e vai contar como pendencia no mes... visao completa de quanto ele realmente ganha."
+
+Até aqui o financeiro era todo **derivado de paciente**: a cobrança é cálculo (ADR-062), e o `Pagamento` é sempre
+de um `caso`/`consulta`. Um ganho sem paciente não tinha onde entrar. A ADR-122 pôs a supervisão/ONG só na agenda,
+de propósito; a P-112 avisou que um dia o faturamento real ficaria maior que o mostrado. É esse dia.
+
+**Decisões (confirmadas pelo usuário):**
+- **Modelo próprio, espelho da `Despesa`.** `ReceitaExterna` (trabalho, valor, forma, `vencimento` = data prevista/
+  limite, `mensal`+`fim`, `entra_no_carne_leao`, observação) + `RecebimentoExterno` (a "baixa": mês, recebido_em,
+  valor). A ocorrência de cada mês é **cálculo** (`financeiro.receitas_externas`), como despesa e cobrança; gravado
+  é só a receita e o recebimento. Lançado à mão — o sistema não deriva isso de consulta nenhuma.
+- **Repete todo mês.** CLT e supervisão fixa são uma linha que aparece todo mês; o bico, avulso. Sem isso, o
+  psicólogo relançaria o salário todo mês.
+- **`entra_no_carne_leao` por lançamento.** Supervisão autônoma é tributável e entra; salário CLT já é tributado na
+  fonte e **não** entra. Não há cálculo de imposto ainda — o campo guarda a verdade para a previsão futura não
+  misturar regimes. (A P-95, do teto da dedução, segue aberta.)
+- **Soma na tela, com detalhamento.** No fluxo de caixa o total de receitas passa a incluir os externos, com duas
+  linhas "da clínica" × "outros ganhos"; `Fluxo` ganhou `externas_recebidas`/`externas_a_receber` e deixou
+  `receitas_recebidas`/`receitas_a_receber` como **só clínica**, para não mudar a semântica de quem já os lia.
+- **Pendência no mês.** O que ainda não caiu (do mês corrente para trás) vira pendência no painel —
+  `recebimentos_pendentes` —, e o "quanto ganhei no mês" do painel (`recebido`/`a_receber`) passa a incluir os
+  externos. Mês futuro não entra: o que ainda vai vencer é previsão, não pendência (mesma regra da cobrança).
+- **Tela própria, visível para todos.** Nova aba "Outros ganhos" no financeiro (espelho da de Despesas), **sem** o
+  gate `usa_despesas` (ADR-100): ganho é de todo mundo. RLS própria nas duas tabelas (migração 0010).
+
 
 ## Impeditivos
 

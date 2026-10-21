@@ -7,7 +7,7 @@ from django import forms
 
 from core.formularios import LimpaMascara
 from financeiro import carne_leao
-from financeiro.models import Despesa, Pagamento
+from financeiro.models import Despesa, Pagamento, ReceitaExterna
 
 _TEXTO = {"class": "form-control"}
 
@@ -68,6 +68,40 @@ class DespesaForm(LimpaMascara, forms.ModelForm):
         self.fields["categoria"].required = True
         # A tela precisa saber, para cada opção, o que a Receita diz dela — sem repetir o catálogo no template.
         self.categorias = carne_leao.por_grupo()
+
+    def clean(self):
+        dados = super().clean()
+        if not dados.get("mensal"):
+            dados["fim"] = None
+        return dados
+
+
+class ReceitaExternaForm(LimpaMascara, forms.ModelForm):
+    """Um ganho fora da clínica (ADR-136): supervisão, ONG, CLT, bico. Lançado à mão, sem vínculo com paciente."""
+
+    CAMPOS_DECIMAIS = ("valor",)
+
+    class Meta:
+        model = ReceitaExterna
+        fields = ["descricao", "valor", "forma", "vencimento", "mensal", "fim", "entra_no_carne_leao", "observacao"]
+        widgets = {
+            "descricao": forms.TextInput(attrs={**_TEXTO, "autofocus": True,
+                                                "placeholder": "Ex.: supervisão da Bete, ONG Acolher, CLT no hospital"}),
+            "valor": forms.TextInput(attrs={**_TEXTO, "inputmode": "numeric", "data-mascara": "valor",
+                                            "placeholder": "0,00"}),
+            "forma": forms.Select(attrs={"class": "form-select"}),
+            "vencimento": forms.DateInput(attrs={**_TEXTO, "type": "date"}, format="%Y-%m-%d"),
+            "mensal": forms.CheckboxInput(attrs={"class": "form-check-input"}),
+            "fim": forms.DateInput(attrs={**_TEXTO, "type": "date"}, format="%Y-%m-%d"),
+            "entra_no_carne_leao": forms.CheckboxInput(attrs={"class": "form-check-input"}),
+            "observacao": forms.Textarea(attrs={**_TEXTO, "rows": 2}),
+        }
+        help_texts = {
+            "vencimento": "A data prevista — ou o limite — para receber. No ganho que repete, vale o dia para os "
+                          "meses seguintes.",
+            "mensal": "Marque se ele cai todo mês — salário CLT, supervisão fixa.",
+            "fim": "Opcional. Só para ganho mensal que tem data para acabar.",
+        }
 
     def clean(self):
         dados = super().clean()

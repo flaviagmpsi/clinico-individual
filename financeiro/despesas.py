@@ -131,16 +131,37 @@ def excluir(despesa: Despesa) -> None:
 @dataclass
 class Fluxo:
     mes: date
+    # Da clínica (pacientes). As externas ficam à parte para a tela poder abrir o detalhamento clínica × outros.
     receitas_recebidas: Decimal
     receitas_a_receber: Decimal
     despesas_pagas: Decimal
     despesas_a_pagar: Decimal
     # Do "a receber", quanto é **previsão**: sessão que a frequência prevê e ainda não aconteceu (ADR-061).
     receitas_previstas: Decimal = ZERO
+    # ADR-136: ganhos fora da clínica (supervisão, ONG, CLT). Entram no total do mês, separados para a tela mostrar
+    # de onde vem cada parte.
+    externas_recebidas: Decimal = ZERO
+    externas_a_receber: Decimal = ZERO
+
+    @property
+    def recebidas_total(self) -> Decimal:
+        return self.receitas_recebidas + self.externas_recebidas
+
+    @property
+    def a_receber_total(self) -> Decimal:
+        return self.receitas_a_receber + self.externas_a_receber
+
+    @property
+    def total_externas(self) -> Decimal:
+        return self.externas_recebidas + self.externas_a_receber
+
+    @property
+    def total_clinica(self) -> Decimal:
+        return self.receitas_recebidas + self.receitas_a_receber
 
     @property
     def total_receitas(self) -> Decimal:
-        return self.receitas_recebidas + self.receitas_a_receber
+        return self.total_clinica + self.total_externas
 
     @property
     def total_despesas(self) -> Decimal:
@@ -153,8 +174,8 @@ class Fluxo:
 
     @property
     def resultado_realizado(self) -> Decimal:
-        """O que já aconteceu de fato: o recebido menos o pago."""
-        return self.receitas_recebidas - self.despesas_pagas
+        """O que já aconteceu de fato: o recebido (clínica + fora) menos o pago."""
+        return self.recebidas_total - self.despesas_pagas
 
 
 def previsto_por_mes(de: date, ate: date, agora, carga: Carga) -> dict:
@@ -178,7 +199,10 @@ def previsto_por_mes(de: date, ate: date, agora, carga: Carga) -> dict:
 
 
 def fluxo_de_caixa(ano: int, mes: int, agora=None, *, carga: Carga | None = None,
-                   despesas: CargaDeDespesas | None = None, previstos: dict | None = None) -> Fluxo:
+                   despesas: CargaDeDespesas | None = None, previstos: dict | None = None,
+                   receitas_ext: "CargaDeReceitas | None" = None) -> Fluxo:
+    from financeiro import receitas_externas
+
     agora = agora or timezone.now()
     hoje = timezone.localdate(agora)
     inicio, fim = date(ano, mes, 1), ultimo_dia(ano, mes)
@@ -188,22 +212,29 @@ def fluxo_de_caixa(ano: int, mes: int, agora=None, *, carga: Carga | None = None
     previsto = previstos.get(inicio, ZERO)
     cobrancas = cobrancas_do_mes(ano, mes, carga=carga)
     ocorrencias = despesas_do_mes(ano, mes, carga=despesas)
+    ganhos = receitas_externas.receitas_do_mes(ano, mes, carga=receitas_ext)
     return Fluxo(
         mes=inicio,
         receitas_recebidas=sum((c.pago for c in cobrancas), ZERO),
         receitas_a_receber=sum((c.saldo for c in cobrancas), ZERO) + previsto,
         receitas_previstas=previsto,
+        externas_recebidas=sum((o.valor for o in ganhos if o.recebida), ZERO),
+        externas_a_receber=sum((o.valor for o in ganhos if not o.recebida), ZERO),
         despesas_pagas=sum((o.valor for o in ocorrencias if o.paga), ZERO),
         despesas_a_pagar=sum((o.valor for o in ocorrencias if not o.paga), ZERO),
     )
 
 
 def fluxo_do_ano(ano: int, agora=None) -> list[Fluxo]:
-    """Os doze meses, para o gráfico de resultado previsto do ano (I-12). Três cargas, e não doze vezes três."""
+    """Os doze meses, para o gráfico de resultado previsto do ano (I-12). Quatro cargas, e não doze vezes quatro."""
+    from financeiro import receitas_externas
+
     agora = agora or timezone.now()
     hoje = timezone.localdate(agora)
     de, ate = date(ano, 1, 1), date(ano, 12, 31)
     carga, despesas = carregar(de, ate), carregar_despesas(de, ate)
+    receitas_ext = receitas_externas.carregar_receitas(de, ate)
     previstos = previsto_por_mes(max(de, hoje), ate, agora, carga)
-    return [fluxo_de_caixa(ano, mes, agora, carga=carga, despesas=despesas, previstos=previstos)
+    return [fluxo_de_caixa(ano, mes, agora, carga=carga, despesas=despesas, previstos=previstos,
+                           receitas_ext=receitas_ext)
             for mes in range(1, 13)]

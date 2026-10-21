@@ -149,6 +149,78 @@ class BaixaDeDespesa(TenantOwnedModel):
             raise ValidationError({"mes": "O mês é guardado pelo primeiro dia."})
 
 
+class ReceitaExterna(TenantOwnedModel):
+    """Um ganho do psicólogo que **não** vem da clínica particular (ADR-136): supervisão, ONG, CLT, outro bico.
+
+    Não é cálculo como a cobrança do paciente — é lançado à mão, porque o sistema não tem como derivá-lo de
+    consulta nenhuma. Espelha a `Despesa` do outro lado do caixa: uma renda mensal (salário CLT, supervisão fixa)
+    é **uma linha** que aparece todo mês; o que ela rende em cada mês é calculado (`financeiro.receitas_externas`),
+    e gravado é só o `RecebimentoExterno` ("recebi") de cada mês.
+
+    `entra_no_carne_leao` separa o que é tributável como autônomo (supervisão) do que já foi tributado na fonte
+    (CLT) — para a previsão de imposto não misturar rendas de regimes diferentes. Não há cálculo de imposto ainda;
+    o campo guarda a verdade para quando houver.
+    """
+
+    descricao = models.CharField("Trabalho", max_length=120,
+                                 help_text="De onde vem o ganho: supervisão, a ONG, o emprego CLT, um bico.")
+    valor = models.DecimalField("Valor", max_digits=10, decimal_places=2,
+                                validators=[MinValueValidator(Decimal("0.01"))])
+    forma = models.CharField("Forma de recebimento", max_length=13, choices=Pagamento.Forma.choices)
+    # Data prevista/limite para receber. Na renda mensal, é o **primeiro** recebimento previsto: o dia vale para
+    # os meses seguintes (em mês mais curto, o último dia). Mesma semântica de `Despesa.vencimento`.
+    vencimento = models.DateField("Previsto para receber em")
+    mensal = models.BooleanField("Repete todo mês", default=False)
+    fim = models.DateField("Último mês", null=True, blank=True,
+                           help_text="Só para ganho mensal que acabou: o último mês em que ele aparece.")
+    entra_no_carne_leao = models.BooleanField(
+        "Entra no carnê-leão", default=True,
+        help_text="Marque se é renda de autônomo (supervisão, bico). Desmarque o que já é tributado na fonte, "
+                  "como salário CLT.")
+    observacao = models.TextField("Observação", blank=True)
+
+    class Meta:
+        verbose_name = "Receita externa"
+        verbose_name_plural = "Receitas externas"
+        ordering = ["vencimento", "descricao"]
+
+    def __str__(self) -> str:
+        return f"{self.descricao} · R$ {self.valor}"
+
+    def clean(self):
+        super().clean()
+        if self.fim and not self.mensal:
+            raise ValidationError({"fim": "Só ganho mensal tem último mês."})
+        if self.fim and self.vencimento and self.fim < self.vencimento.replace(day=1):
+            raise ValidationError({"fim": "O último mês não pode ser anterior ao primeiro recebimento."})
+
+
+class RecebimentoExterno(TenantOwnedModel):
+    """"Recebi": a receita externa de um mês, marcada como recebida. O valor fica aqui — é o que entrou no caixa."""
+
+    receita = models.ForeignKey(ReceitaExterna, on_delete=models.PROTECT, related_name="recebimentos")
+    mes = models.DateField("Mês", help_text="Primeiro dia do mês da ocorrência.")
+    recebido_em = models.DateField("Recebido em")
+    valor = models.DecimalField("Valor recebido", max_digits=10, decimal_places=2,
+                                validators=[MinValueValidator(Decimal("0.01"))])
+
+    class Meta:
+        verbose_name = "Recebimento externo"
+        verbose_name_plural = "Recebimentos externos"
+        constraints = [
+            models.UniqueConstraint(fields=["receita", "mes"], name="um_recebimento_por_receita_por_mes"),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.receita.descricao} · {self.mes:%m/%Y} · recebido em {self.recebido_em:%d/%m/%Y}"
+
+    def clean(self):
+        super().clean()
+        exigir_mesmo_dono(self, receita=self.receita if self.receita_id else None)
+        if self.mes and self.mes.day != 1:
+            raise ValidationError({"mes": "O mês é guardado pelo primeiro dia."})
+
+
 class MensalidadeQuitada(TenantOwnedModel):
     """Um mês de mensalidade dado como quitado à mão, mesmo sem o pagamento cobrir o valor cheio (ADR-133).
 

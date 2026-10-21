@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% block titulo %}{% if object %}Editar{% else %}Novo{% endif %} ganho{% endblock %}
+{% block secao %}Financeiro{% endblock %}
+{% block pagina %}<span class="separa">›</span>{% if object %}Editar ganho{% else %}Novo ganho{% endif %}{% endblock %}
+
+{% block conteudo %}
+<div style="max-width:620px">
+  <div class="d-flex align-items-center mb-3">
+    <h1 class="h5 mb-0">{% if object %}Editar ganho{% else %}Novo ganho{% endif %}</h1>
+    <a href="{% url 'financeiro:outros_ganhos' %}" class="btn btn-sm btn-outline-secondary ms-auto">Cancelar</a>
+  </div>
+
+  <p class="text-muted small">Um ganho fora da clínica — supervisão, ONG, emprego CLT, um bico. Não fica ligado a
+  nenhum paciente, e conta como pendência até você marcar que recebeu.</p>
+
+  <form method="post" novalidate>
+    {% csrf_token %}
+    {% if form.non_field_errors %}<div class="alert alert-danger py-2 small">{{ form.non_field_errors }}</div>{% endif %}
+    <div class="card mb-3">
+      <div class="card-body">
+        <div class="row g-3">
+          <div class="col-12">{% include "components/_campo.html" with campo=form.descricao %}</div>
+          <div class="col-md-5">{% include "components/_campo.html" with campo=form.valor %}</div>
+          <div class="col-md-7">{% include "components/_campo.html" with campo=form.forma %}</div>
+          <div class="col-md-7">{% include "components/_campo.html" with campo=form.vencimento %}</div>
+          <div class="col-12">
+            <div class="form-check">
+              {{ form.mensal }}
+              <label class="form-check-label" for="{{ form.mensal.id_for_label }}">{{ form.mensal.label }}</label>
+              <div class="form-text small">{{ form.mensal.help_text }}</div>
+            </div>
+          </div>
+          {% comment %}ADR-074: o último mês só faz sentido para quem marcou que o ganho repete.{% endcomment %}
+          <div class="col-md-7" data-so-mensal>{% include "components/_campo.html" with campo=form.fim %}</div>
+          <div class="col-12">
+            <div class="form-check">
+              {{ form.entra_no_carne_leao }}
+              <label class="form-check-label" for="{{ form.entra_no_carne_leao.id_for_label }}">{{ form.entra_no_carne_leao.label }}</label>
+              <div class="form-text small">{{ form.entra_no_carne_leao.help_text }}</div>
+            </div>
+          </div>
+          <div class="col-12">{% include "components/_campo.html" with campo=form.observacao %}</div>
+        </div>
+        {% if object and object.recebimentos.exists %}
+          <div class="form-text small mt-3">Os meses já marcados como recebidos guardam o valor que entrou: mudar o
+            valor aqui muda só os meses em aberto.</div>
+        {% endif %}
+      </div>
+    </div>
+    <button type="submit" class="btn btn-primary">Salvar</button>
+    <a href="{% url 'financeiro:outros_ganhos' %}" class="btn btn-link text-muted">Cancelar</a>
+  </form>
+</div>
+
+<script>
+(function () {
+  const mensal = document.querySelector('[name="mensal"]');
+  const bloco = document.querySelector('[data-so-mensal]');
+  const alternar = () => bloco.classList.toggle('d-none', !mensal.checked);
+  mensal.addEventListener('change', alternar);
+  alternar();
+})();
+</script>
+{% endblock %}

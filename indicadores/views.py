@@ -33,6 +33,7 @@ class Painel(LoginRequiredMixin, TemplateView):
             pagamentos_vencidos=pendencias.pagamentos, total_pagamentos_vencidos=len(pendencias.pagamentos),
             pagamentos_pendentes=pendencias.pendentes, total_pagamentos_pendentes=len(pendencias.pendentes),
             recibos_pendentes=pendencias.recibos, total_recibos_pendentes=len(pendencias.recibos),
+            ganhos_externos=pendencias.ganhos_externos, total_ganhos_externos=len(pendencias.ganhos_externos),
             prontuarios_pendentes=pendencias.prontuarios, total_prontuarios_pendentes=len(pendencias.prontuarios),
             # ADR-134: o aniversário saiu do card do mês e virou pop-up do dia.
             aniversariantes_hoje=estatisticas.aniversariantes_de_hoje(painel.hoje),

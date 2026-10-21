@@ -21,6 +21,7 @@ from django.utils import timezone
 from atendimentos.models import Consulta
 from atendimentos.servicos import sessoes_pendentes, sessoes_previstas, sessoes_remarcadas
 from financeiro.despesas import previsto_por_mes
+from financeiro.receitas_externas import receitas_do_mes, recebimentos_pendentes
 from financeiro.servicos import (carregar, cobrancas_do_mes, cobrancas_em_aberto, recibos_pendentes,
                                  ultimo_dia)
 from pacientes.models import Paciente
@@ -82,11 +83,12 @@ class Pendencias:
     prontuarios: list
     pendentes: list = field(default_factory=list)
     recibos: list = field(default_factory=list)  # pagamentos com recibo a emitir (ADR-132)
+    ganhos_externos: list = field(default_factory=list)  # receitas fora da clínica a receber (ADR-136)
 
     @property
     def total(self) -> int:
         return (len(self.sessoes) + len(self.pagamentos) + len(self.prontuarios)
-                + len(self.pendentes) + len(self.recibos))
+                + len(self.pendentes) + len(self.recibos) + len(self.ganhos_externos))
 
 
 @dataclass
@@ -130,11 +132,17 @@ def montar_painel(agora: datetime | None = None) -> Painel:
         estado=Consulta.Estado.REALIZADA,
         inicio__gte=_meia_noite(inicio), inicio__lt=_meia_noite(fim + timedelta(days=1))).count()
 
+    # ADR-136: o "quanto ganhei no mês" é completo — clínica mais os ganhos de fora (supervisão, ONG, CLT).
+    ganhos = receitas_do_mes(hoje.year, hoje.month)
+    recebido_externo = sum((o.valor for o in ganhos if o.recebida), Decimal("0"))
+    a_receber_externo = sum((o.valor for o in ganhos if not o.recebida), Decimal("0"))
+
     resumo = Resumo(
         sessoes_feitas=feitas,
         sessoes_faltam=len(futuras),
-        recebido=sum((cobranca.pago for cobranca in cobrancas), Decimal("0")),
-        a_receber=sum((cobranca.saldo for cobranca in cobrancas), Decimal("0")) + previsto_por_sessao,
+        recebido=sum((cobranca.pago for cobranca in cobrancas), Decimal("0")) + recebido_externo,
+        a_receber=sum((cobranca.saldo for cobranca in cobrancas), Decimal("0")) + previsto_por_sessao
+                  + a_receber_externo,
         pacientes_ativos=pacientes_ativos().count(),
     )
     # Uma leitura só para as duas listas: `cobrancas_em_aberto` percorre todos os meses de uma vez (ADR-086),
@@ -146,6 +154,7 @@ def montar_painel(agora: datetime | None = None) -> Painel:
         prontuarios=prontuarios_pendentes(),
         pendentes=[c for c in abertas if c.pendente(hoje)],
         recibos=recibos_pendentes(),
+        ganhos_externos=recebimentos_pendentes(hoje),
     )
     return Painel(hoje=hoje, mes=inicio, resumo=resumo, hoje_itens=_itens_de_hoje(agora, hoje),
                   pendencias=pendencias)

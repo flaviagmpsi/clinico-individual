@@ -161,8 +161,8 @@ class FluxoDeCaixa(_ExigeDespesas, TemplateView):
         previsto = estatisticas.resultado_previsto(contexto["periodo"])
         contexto.update(previsto=previsto, grafico={
             "meses": estatisticas.MESES, "mes_em_foco": contexto["periodo"].mes,
-            "receitas_recebidas": [float(f.receitas_recebidas) for f in previsto.fluxos],
-            "receitas_a_receber": [float(f.receitas_a_receber) for f in previsto.fluxos],
+            "receitas_recebidas": [float(f.recebidas_total) for f in previsto.fluxos],
+            "receitas_a_receber": [float(f.a_receber_total) for f in previsto.fluxos],
             "despesas_pagas": [float(f.despesas_pagas) for f in previsto.fluxos],
             "despesas_a_pagar": [float(f.despesas_a_pagar) for f in previsto.fluxos],
             "resultado": [float(f.resultado) for f in previsto.fluxos],

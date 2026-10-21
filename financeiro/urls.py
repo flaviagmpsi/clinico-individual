@@ -1,6 +1,6 @@
 from django.urls import path
 
-from financeiro import views, views_despesas
+from financeiro import views, views_despesas, views_receitas
 
 app_name = "financeiro"
 
@@ -20,4 +20,11 @@ urlpatterns = [
     path("despesas/<int:pk>/encerrar/", views_despesas.EncerrarDespesa.as_view(), name="despesa_encerrar"),
     path("despesas/<int:pk>/excluir/", views_despesas.ExcluirDespesa.as_view(), name="despesa_excluir"),
     path("fluxo/", views_despesas.FluxoDeCaixa.as_view(), name="fluxo"),
+    path("outros-ganhos/", views_receitas.OutrosGanhos.as_view(), name="outros_ganhos"),
+    path("outros-ganhos/novo/", views_receitas.NovaReceita.as_view(), name="receita_nova"),
+    path("outros-ganhos/<int:pk>/editar/", views_receitas.EditarReceita.as_view(), name="receita_editar"),
+    path("outros-ganhos/<int:pk>/receber/", views_receitas.ReceberReceita.as_view(), name="receita_receber"),
+    path("outros-ganhos/<int:pk>/desfazer/", views_receitas.DesfazerRecebimento.as_view(), name="receita_desfazer"),
+    path("outros-ganhos/<int:pk>/encerrar/", views_receitas.EncerrarReceita.as_view(), name="receita_encerrar"),
+    path("outros-ganhos/<int:pk>/excluir/", views_receitas.ExcluirReceita.as_view(), name="receita_excluir"),
 ]

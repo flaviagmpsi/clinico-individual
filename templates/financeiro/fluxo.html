@@ -17,14 +17,19 @@ das cobranças dele, recebida ou não. "A receber" inclui previsão — a tela d
       <div class="card-header bg-white py-2 fw-semibold text-success"><i class="bi bi-arrow-down-circle"></i> Receitas</div>
       <div class="card-body py-2">
         <table class="table table-sm table-borderless mb-0">
-          <tr><td>Receitas recebidas</td><td class="text-end text-nowrap">R$ {{ fluxo.receitas_recebidas|floatformat:2 }}</td></tr>
-          <tr><td>Receitas a receber
+          <tr><td>Recebidas</td><td class="text-end text-nowrap">R$ {{ fluxo.recebidas_total|floatformat:2 }}</td></tr>
+          <tr><td>A receber
               {% if fluxo.receitas_previstas %}<div class="small text-muted">inclui R$ {{ fluxo.receitas_previstas|floatformat:2 }} de sessões previstas, ainda não realizadas</div>{% endif %}</td>
-            <td class="text-end text-nowrap">R$ {{ fluxo.receitas_a_receber|floatformat:2 }}</td></tr>
+            <td class="text-end text-nowrap">R$ {{ fluxo.a_receber_total|floatformat:2 }}</td></tr>
           <tr class="border-top fw-semibold"><td>Total de receitas</td><td class="text-end text-nowrap">R$ {{ fluxo.total_receitas|floatformat:2 }}</td></tr>
+          {% comment %}ADR-136: a soma aparece acima; aqui o detalhamento de onde ela vem — clínica × fora.{% endcomment %}
+          {% if fluxo.total_externas %}
+          <tr class="border-top"><td class="text-muted small ps-3">· da clínica (pacientes)</td><td class="text-end text-nowrap text-muted small">R$ {{ fluxo.total_clinica|floatformat:2 }}</td></tr>
+          <tr><td class="text-muted small ps-3">· outros ganhos (fora da clínica)</td><td class="text-end text-nowrap text-muted small">R$ {{ fluxo.total_externas|floatformat:2 }}</td></tr>
+          {% endif %}
         </table>
       </div>
-      <div class="card-footer bg-white small"><a href="{% url 'financeiro:mes' %}?mes={{ inicio|date:'Y-m' }}" class="text-decoration-none">ver as cobranças do mês</a></div>
+      <div class="card-footer bg-white small"><a href="{% url 'financeiro:mes' %}?mes={{ inicio|date:'Y-m' }}" class="text-decoration-none">cobranças</a> · <a href="{% url 'financeiro:outros_ganhos' %}?mes={{ inicio|date:'Y-m' }}" class="text-decoration-none">outros ganhos</a></div>
     </div>
   </div>
   <div class="col-lg-6">

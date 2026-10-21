@@ -232,6 +232,25 @@ Primeiro o dia; depois as pendências, num bloco; por fim o resumo do mês.
               </ul>
             </details>
           {% endif %}
+
+          {% comment %}ADR-136: ganhos fora da clínica ainda a receber — supervisão, ONG, CLT. Clicar leva a
+          Outros ganhos, onde se marca "recebi".{% endcomment %}
+          {% if ganhos_externos %}
+            <details class="pendencia">
+              <summary>
+                <span class="quantas">{{ total_ganhos_externos }}</span>
+                ganho{{ total_ganhos_externos|pluralize }} a receber (fora da clínica)
+                <a href="{% url 'financeiro:outros_ganhos' %}" class="ms-auto small text-decoration-none">outros ganhos</a>
+              </summary>
+              <ul class="list-unstyled small mb-1 mt-1">
+              {% for o in ganhos_externos %}
+                <li class="d-flex"><a href="{% url 'financeiro:outros_ganhos' %}?mes={{ o.mes|date:'Y-m' }}" class="text-decoration-none fw-medium">{{ o.receita.descricao }}</a>
+                  <span class="text-muted ms-1">{% if o.atrasada %}venceu {{ o.vencimento|date:"d/m" }}{% else %}até {{ o.vencimento|date:"d/m" }}{% endif %}</span>
+                  <span class="valor ms-auto">R$ {{ o.valor|floatformat:2 }}</span></li>
+              {% endfor %}
+              </ul>
+            </details>
+          {% endif %}
         </div>
       {% else %}
         <div class="card-body text-center text-muted py-4">Nada pendente.</div>
