@@ -4143,6 +4143,32 @@ de propósito; a P-112 avisou que um dia o faturamento real ficaria maior que o 
   gate `usa_despesas` (ADR-100): ganho é de todo mundo. RLS própria nas duas tabelas (migração 0010).
 
 
+## ADR-137 — A IA escreve a evolução em texto corrido, sem títulos (como o modelo do CFP)
+
+**Status:** ✅ Aceita — Rodada 89.
+
+**Pedido do usuário:** conferir, contra o Manual Orientativo do CFP (2025), se a IA de prontuário monta o texto do
+jeito certo — em especial se cada tópico precisa de título.
+
+**O que o manual pede.** A estrutura mínima (Res. CFP nº 001/2009, Art. 2º) tem quatro **seções do documento**:
+identificação; avaliação da demanda e objetivos; **evolução do trabalho e procedimentos**; encaminhamento/
+encerramento. A evolução é descrita como "a **data do encontro** e, logo em seguida, a **síntese** da prestação de
+serviço", e o **modelo de prontuário do Anexo** (pág. 56) mostra cada sessão como um único registro corrido —
+"Data/horário + (registro do atendimento realizado e dos procedimentos utilizados)", **sem subtítulos**.
+
+**O que a IA fazia de errado.** O prompt (`prontuarios/ia.py`) obrigava **quatro títulos em negrito** dentro da
+evolução de **uma** sessão — e dois deles ("Avaliação da demanda e enquadre", "Encaminhamentos... continuidade")
+**repetiam seções do documento** que o manual põe à parte e que a `FichaDoProntuario` já guarda (demanda e
+encerramento). Pior: o prontuário impresso mostra `data — {{ texto }}` **sem render de Markdown**, então os `**`
+apareciam literais no documento final.
+
+**Correção.** O prompt passou a pedir a evolução como **síntese em texto corrido, de um a três parágrafos, sem
+títulos/subtítulos/marcadores/negrito**, descrevendo de forma integrada: tema trabalhado → procedimentos e
+intervenções → evolução e resposta do paciente → intercorrências/combinados/continuidade. Mantidas intactas as
+salvaguardas (não identificar, não inventar — "Sem registro sobre este ponto nesta sessão." —, não atribuir
+técnica a escola teórica). Os quatro **PONTOS de entrada** (o que se pede ao psicólogo no áudio) não mudaram — são
+roteiro de fala, não formato de saída. Teste novo trava o texto corrido e impede os títulos de voltarem.
+
 ## Impeditivos
 
 | # | Impeditivo | Situação |

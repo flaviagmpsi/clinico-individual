@@ -133,6 +133,16 @@ class PromptDoSistema(SimpleTestCase):
         self.assertIn("Sem registro sobre este ponto nesta sessão.", prompt)
         self.assertIn("ausência de menção não é negação", prompt)
 
+    def test_pede_evolucao_em_texto_corrido_sem_titulos(self):
+        """ADR-137: o modelo de prontuário do CFP (2025) pede a evolução como síntese datada em texto corrido,
+        sem subtítulos. O prompt não pode voltar a impor os quatro títulos em negrito dentro de uma sessão."""
+        prompt = ia.PROMPT_DO_SISTEMA
+        self.assertIn("texto corrido", prompt.lower())
+        self.assertIn("NÃO use títulos", prompt)
+        # Os antigos rótulos de seção não voltam como estrutura obrigatória da resposta.
+        self.assertNotIn("**Avaliação da demanda e enquadre", prompt)
+        self.assertNotIn("**Procedimentos técnico-científicos e interven", prompt)
+
     def test_proibe_atribuir_tecnica_a_escola_teorica(self):
         """Outro achado real: o modelo escreveu "psicoeducação de acordo com os princípios da Gestalt-terapia".
 

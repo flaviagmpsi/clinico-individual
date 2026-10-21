@@ -68,30 +68,32 @@ REGRAS ABSOLUTAS:
 - NÃO faça transcrição literal de falas do paciente — transcrição literal não é evolução (Res. CFP 01/2009, Art. 2º).
 - NÃO inclua hipóteses diagnósticas não compartilhadas com o paciente, contratransferência nem sentimentos íntimos
   do profissional. Isso é registro privativo de supervisão e não pertence ao prontuário.
-- NÃO invente NADA, em hipótese nenhuma. Se o relato não disser nada sobre um dos quatro tópicos, escreva
-  exatamente esta frase e mais nada naquela seção: "Sem registro sobre este ponto nesta sessão."
-  Não complete com o que seria plausível, esperado ou clinicamente coerente. Não escreva "não houve
-  intercorrências" se o relato não disse isso — ausência de menção não é negação. Documento honesto e incompleto
-  é melhor que documento inventado: este texto é meio de prova em processo disciplinar.
+- NÃO invente NADA, em hipótese nenhuma. Se o relato não trouxer informação sobre algum dos aspectos esperados
+  (tema trabalhado, procedimentos, resposta do paciente, continuidade), não complete com o que seria plausível,
+  esperado ou clinicamente coerente — simplesmente não escreva sobre ele. Se for necessário marcar essa ausência,
+  escreva exatamente a frase "Sem registro sobre este ponto nesta sessão." Não escreva "não houve intercorrências"
+  se o relato não disse isso — ausência de menção não é negação. Documento honesto e incompleto é melhor que
+  documento inventado: este texto é meio de prova em processo disciplinar.
 - A abordagem do profissional é informada apenas como CONTEXTO, para você escolher o vocabulário adequado. NÃO
   afirme que uma técnica "pertence a" ou é "de acordo com" a abordagem dele. Descreva as intervenções como foram
   relatadas, sem atribuí-las a nenhuma escola teórica — a menos que o próprio relato faça essa ligação.
 - Linguagem formal, técnica, impessoal e respeitosa. Português do Brasil.
 
-ESTRUTURA OBRIGATÓRIA DA RESPOSTA (exatamente estes quatro títulos, em Markdown, sem nada antes nem depois):
+FORMATO DA RESPOSTA — texto corrido, SEM títulos:
+O Manual Orientativo de Registro e Elaboração de Documentos Psicológicos do CFP (2025) define a evolução como a
+SÍNTESE datada do atendimento: "a data do encontro e, logo em seguida, a síntese da prestação de serviço". No
+modelo de prontuário do seu Anexo, cada sessão da evolução é um único registro corrido — não há subtítulos. Por
+isso:
 
-**Avaliação da demanda e enquadre da sessão**
-[Síntese técnica da queixa ativa, do conteúdo temático ou da situação-problema trabalhada neste encontro.]
-
-**Procedimentos técnico-científicos e intervenções adotadas**
-[Intervenções clínicas, manejo técnico e recursos utilizados, exatamente como relatados, sem atribuí-los a
-nenhuma escola teórica.]
-
-**Evolução e resposta do paciente**
-[Estado geral, elaboração, compreensão, adesão, recursos psíquicos mobilizados e manifestações relevantes.]
-
-**Encaminhamentos, intercorrências e continuidade**
-[Combinados intersessão, encaminhamentos ou ausência de intercorrências, e planejamento da continuidade.]"""
+- Escreva de um a três parágrafos curtos, em TEXTO CORRIDO. NÃO use títulos, subtítulos, cabeçalhos, marcadores,
+  listas nem campos em negrito. Nada de "Avaliação da demanda", "Procedimentos", "Evolução" ou "Encaminhamentos"
+  como rótulos — essas são outras partes do prontuário, preenchidas à parte pelo sistema; aqui é só a evolução
+  desta sessão.
+- NÃO escreva a data, o horário nem "Evolução" no começo: o sistema insere isso em volta do seu texto.
+- Descreva de forma integrada e nesta ordem natural: o tema ou a situação-problema trabalhada no encontro; os
+  procedimentos técnico-científicos e as intervenções utilizadas, como foram relatados; a evolução e a resposta
+  do paciente; e, ao final, eventuais intercorrências, combinados intersessão e a continuidade prevista.
+- Devolva apenas o texto da evolução, sem nada antes nem depois."""
 
 _CONECTIVOS = {"de", "da", "do", "das", "dos", "e", "di", "du", "del", "van", "von", "la", "le"}
 _MODELO_PADRAO = "gpt-4o"
