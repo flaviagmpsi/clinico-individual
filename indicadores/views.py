@@ -9,6 +9,7 @@ from django.views.generic import TemplateView
 
 from django.utils import timezone
 
+from contas.boas_vindas import PASSOS as PASSOS_BOAS_VINDAS
 from indicadores import estatisticas, periodo
 from indicadores.servicos import montar_painel
 
@@ -37,6 +38,8 @@ class Painel(LoginRequiredMixin, TemplateView):
             prontuarios_pendentes=pendencias.prontuarios, total_prontuarios_pendentes=len(pendencias.prontuarios),
             # ADR-134: o aniversário saiu do card do mês e virou pop-up do dia.
             aniversariantes_hoje=estatisticas.aniversariantes_de_hoje(painel.hoje),
+            # ADR-138: o tour de boas-vindas aparece uma vez, no primeiro painel depois do cadastro.
+            boas_vindas=PASSOS_BOAS_VINDAS if self.request.user.boas_vindas_vistas_em is None else None,
         )
         # ADR-103: "como a clínica funcionou" mora aqui, e não numa aba à parte — responde pelo mês ou pelo ano.
         contexto.update(periodo.contexto_do_seletor(self.request, painel.hoje))

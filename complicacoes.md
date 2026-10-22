@@ -4169,6 +4169,30 @@ salvaguardas (não identificar, não inventar — "Sem registro sobre este ponto
 técnica a escola teórica). Os quatro **PONTOS de entrada** (o que se pede ao psicólogo no áudio) não mudaram — são
 roteiro de fala, não formato de saída. Teste novo trava o texto corrido e impede os títulos de voltarem.
 
+## ADR-138 — Tour de boas-vindas no primeiro painel
+
+**Status:** ✅ Aceita — Rodada 90.
+
+**Pedido do usuário:** um pop-up de boas-vindas depois do cadastro, mostrando todas as funções do sistema, com
+explicação e imagens.
+
+**Decisões (confirmadas):**
+- **Aparece uma vez, e não é reabrível.** Novo campo `Psicologo.boas_vindas_vistas_em` (data). Nulo = ainda não
+  viu; o painel mostra o tour no primeiro acesso depois do cadastro. Ao fechar, o front faz um POST
+  (`contas:boas_vindas_vistas`) que grava a data, e o tour não volta. Sem link para reabrir (decisão do usuário).
+- **Modal em passos**, por cima do painel (não tira a pessoa do lugar): avançar/voltar/pular, progresso "n / N",
+  e no último passo "Começar a usar". Tem prioridade sobre o pop-up de aniversário no primeiro acesso.
+- **Ilustração por ícone agora; screenshot depois.** Cada passo mora em `contas/boas_vindas.py` (lista de `Passo`)
+  e mostra um ícone do Bootstrap. O template marca, em comentário, onde trocar o bloco do ícone por um
+  `<img src="{% static 'img/tour/<chave>.png' %}">` quando houver print real — um arquivo por passo. Não uso
+  `{% static %}` ainda porque o `ManifestStaticFilesStorage` quebra com arquivo inexistente.
+- **Passos:** bem-vindo · painel · pendências · agenda · meus horários · pacientes e convite · prontuário por IA ·
+  financeiro · recibos e carnê-leão · outros ganhos · documentos · aniversário · pronto. (Os três últimos pedidos
+  do usuário — aniversário, como funcionam as pendências, meus horários — incluídos.)
+
+**Nota:** as 3 contas que já existem em produção têm o campo nulo, então verão o tour uma vez no próximo painel —
+inofensivo e até informativo; não vale backfill.
+
 ## Impeditivos
 
 | # | Impeditivo | Situação |

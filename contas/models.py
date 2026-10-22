@@ -131,6 +131,10 @@ class Psicologo(ValidaAoSalvar, AbstractUser):
     # bastante para propor nada — e manda o psicólogo terminar o cadastro antes de qualquer tela.
     quiz_concluido_em = models.DateTimeField("Cadastro concluído em", null=True, blank=True)
 
+    # ADR-138: o tour de boas-vindas aparece uma vez, no primeiro painel depois do cadastro, e não volta. Vazio =
+    # ainda não viu; preenchido = já viu (não é reabrível, decisão do usuário).
+    boas_vindas_vistas_em = models.DateTimeField("Boas-vindas vistas em", null=True, blank=True)
+
     # --- Clínica ou consultório (C-11) -----------------------------------------------------------
     # Onde o psicólogo atende. Hoje serve à identificação do profissional na tela; é também o endereço
     # que o recibo e o documento com timbre vão pedir quando existirem (ADR-008, ADR-030).

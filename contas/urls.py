@@ -11,6 +11,7 @@ urlpatterns = [
     path("sair/", views.Sair.as_view(), name="sair"),
     path("perfil/", views.Perfil.as_view(), name="perfil"),
     path("configuracoes/", views.Configuracoes.as_view(), name="configuracoes"),
+    path("boas-vindas/vistas/", views.MarcarBoasVindasVistas.as_view(), name="boas_vindas_vistas"),
     # ADR-114: recuperação de senha. Sem ela, quem esquece fica trancado para sempre.
     path("senha/", senha.Pedir.as_view(), name="senha_pedir"),
     path("senha/enviada/", senha.Enviada.as_view(), name="senha_enviada"),

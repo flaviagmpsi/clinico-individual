@@ -295,6 +295,8 @@ fica acessível no rodapé, então a lembrança nunca some de vez.{% endcomment 
 <script>
 // O bundle do Bootstrap é carregado depois deste ponto no base.html; o "load" garante que ele já exista.
 window.addEventListener("load", function () {
+  // ADR-138: o tour de boas-vindas tem prioridade no primeiro acesso — não empilha com o aniversário.
+  if (document.getElementById("modalBoasVindas")) return;
   var chave = "aniversario-visto-{{ hoje|date:'Y-m-d' }}";
   try { if (localStorage.getItem(chave)) return; } catch (e) {}
   var el = document.getElementById("modalAniversario");
@@ -303,6 +305,73 @@ window.addEventListener("load", function () {
     try { localStorage.setItem(chave, "1"); } catch (e) {}
   });
   new bootstrap.Modal(el).show();
+});
+</script>
+{% endif %}
+
+{% comment %}ADR-138: tour de boas-vindas. Aparece uma vez, no primeiro painel depois do cadastro; ao fechar,
+marca no banco e não volta (não é reabrível). A ilustração é por ícone — o espaço para um screenshot real de cada
+tela está marcado abaixo. Sem JavaScript o modal não abre, mas também não trava nada: a pessoa segue para o painel.
+{% endcomment %}
+{% if boas_vindas %}
+<style>
+  #modalBoasVindas .bv-ilustra { height: 150px; display: flex; align-items: center; justify-content: center;
+    background: var(--tinta-fundo, #f3eee9); border: 1px solid var(--linha, #e4dcd3); border-radius: var(--raio, 10px); }
+  #modalBoasVindas .bv-ilustra i { font-size: 4rem; color: var(--tinta, #7a5c43); }
+</style>
+<div class="modal fade" id="modalBoasVindas" tabindex="-1" aria-labelledby="tituloBoasVindas" aria-hidden="true"
+     data-bs-backdrop="static">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="tituloBoasVindas"><i class="bi bi-stars text-warning"></i> Boas-vindas ao Polaris</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+      </div>
+      <div class="modal-body">
+        {% csrf_token %}
+        {% for p in boas_vindas %}
+          <div class="bv-passo text-center" data-passo="{{ forloop.counter0 }}"{% if not forloop.first %} hidden{% endif %}>
+            {% comment %}Para usar um screenshot real desta tela, troque o bloco .bv-ilustra por:
+            <div class="bv-ilustra"><img src="{% templatetag openblock %} static 'img/tour/{{ p.chave }}.png' {% templatetag closeblock %}" alt="{{ p.titulo }}" class="img-fluid rounded"></div>{% endcomment %}
+            <div class="bv-ilustra mb-3"><i class="bi {{ p.icone }}"></i></div>
+            <h4 class="h5 mb-2">{{ p.titulo }}</h4>
+            <p class="text-muted mb-0">{{ p.texto }}</p>
+          </div>
+        {% endfor %}
+      </div>
+      <div class="modal-footer d-flex align-items-center">
+        <span class="small text-muted me-auto" id="bvProgresso">1 / {{ boas_vindas|length }}</span>
+        <button type="button" class="btn btn-sm btn-link text-muted" data-bs-dismiss="modal">Pular</button>
+        <button type="button" class="btn btn-sm btn-outline-secondary" id="bvVoltar" disabled>Voltar</button>
+        <button type="button" class="btn btn-sm btn-primary" id="bvAvancar">Avançar</button>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+window.addEventListener("load", function () {
+  var el = document.getElementById("modalBoasVindas");
+  if (!el || !window.bootstrap) return;
+  var passos = el.querySelectorAll(".bv-passo");
+  var total = passos.length, i = 0;
+  var voltar = el.querySelector("#bvVoltar"), avancar = el.querySelector("#bvAvancar"), prog = el.querySelector("#bvProgresso");
+  var token = (el.querySelector("[name=csrfmiddlewaretoken]") || {}).value;
+  var modal = new bootstrap.Modal(el);
+  function mostrar(n) {
+    passos.forEach(function (p, idx) { p.hidden = idx !== n; });
+    voltar.disabled = n === 0;
+    avancar.textContent = n === total - 1 ? "Começar a usar" : "Avançar";
+    prog.textContent = (n + 1) + " / " + total;
+  }
+  voltar.addEventListener("click", function () { if (i > 0) { i--; mostrar(i); } });
+  avancar.addEventListener("click", function () { if (i < total - 1) { i++; mostrar(i); } else { modal.hide(); } });
+  var marcado = false;
+  el.addEventListener("hide.bs.modal", function () {
+    if (marcado) return; marcado = true;
+    try { fetch("{% url 'contas:boas_vindas_vistas' %}", { method: "POST", headers: { "X-CSRFToken": token }, keepalive: true }); } catch (e) {}
+  });
+  mostrar(0);
+  modal.show();
 });
 </script>
 {% endif %}

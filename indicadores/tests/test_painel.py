@@ -232,3 +232,20 @@ class PainelPelaTela(TransactionTestCase):
                 self.assertContains(resposta, texto)
         self.assertNotContains(resposta, "Carla Painel")
         self.assertNotContains(resposta, "sem sessão")
+
+    def test_tour_de_boas_vindas_aparece_uma_vez_e_nao_volta(self):
+        """ADR-138: no primeiro painel depois do cadastro aparece o tour; fechado, marca no banco e some."""
+        self.assertTrue(self.client.login(username=self.ana.email, password=SENHA))
+        primeira = self.client.get(reverse("painel"))
+        self.assertContains(primeira, "modalBoasVindas")
+        self.assertContains(primeira, "Boas-vindas ao Polaris")
+        # Fecha o tour: o front manda este POST.
+        self.assertEqual(self.client.post(reverse("contas:boas_vindas_vistas")).status_code, 204)
+        self.ana.refresh_from_db()
+        self.assertIsNotNone(self.ana.boas_vindas_vistas_em)
+        # Não volta.
+        self.assertNotContains(self.client.get(reverse("painel")), "modalBoasVindas")
+
+    def test_marcar_boas_vindas_so_por_post(self):
+        self.assertTrue(self.client.login(username=self.ana.email, password=SENHA))
+        self.assertEqual(self.client.get(reverse("contas:boas_vindas_vistas")).status_code, 405)

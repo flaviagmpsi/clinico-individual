@@ -9,11 +9,12 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.views import LoginView, LogoutView
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
-from django.http import Http404
+from django.http import Http404, HttpResponse
 from django.shortcuts import redirect
 from django.urls import reverse, reverse_lazy
 from django.utils import timezone
 from django.utils.decorators import method_decorator
+from django.views import View
 from django.views.generic import CreateView, TemplateView, UpdateView
 
 from contas import freio
@@ -287,3 +288,19 @@ class QuizDeCadastro(GravaSemRepetir, LoginRequiredMixin, UpdateView):
         if self.terminou():
             return reverse("painel")
         return reverse("contas:quiz", args=[self.passo + 1])
+
+
+class MarcarBoasVindasVistas(LoginRequiredMixin, View):
+    """ADR-138: o tour de boas-vindas foi fechado — marca para não aparecer de novo. Só por POST.
+
+    Idempotente: grava a data só na primeira vez. Não é reabrível (decisão do usuário), então não há caminho de
+    volta a zero pela tela.
+    """
+
+    http_method_names = ["post"]
+
+    def post(self, request, *args, **kwargs):
+        if request.user.boas_vindas_vistas_em is None:
+            request.user.boas_vindas_vistas_em = timezone.now()
+            request.user.save(update_fields=["boas_vindas_vistas_em"])
+        return HttpResponse(status=204)
