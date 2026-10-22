@@ -1,0 +1,98 @@
+{% comment %}
+ADR-138: o tour de boas-vindas. Cada passo mostra um "print" estilizado da tela — uma conta fictícia desenhada em
+HTML/CSS (não é screenshot real), com uma marcação circulada (`.bv-hot`) e uma legenda com seta (`.bv-call`). Os
+mocks moram em `contas/tour/<chave>.html`, um por passo, incluídos pela chave. O texto e a ordem vêm de
+`contas/boas_vindas.py`. Sem JavaScript o modal não abre; nada trava, a pessoa segue para o painel.
+{% endcomment %}
+<style>
+  #modalBoasVindas .modal-body { background: var(--fundo, #faf6f1); }
+  #modalBoasVindas .bv-stage { max-width: 540px; margin: 0 auto; }
+  #modalBoasVindas .bv-mock { border: 1px solid var(--linha, #e4dcd3); border-radius: 10px; overflow: hidden;
+    background: #fff; box-shadow: 0 6px 20px rgba(58, 44, 38, .12); text-align: left; }
+  #modalBoasVindas .bv-bar { display: flex; align-items: center; gap: 5px; padding: 6px 10px;
+    background: var(--tinta-fundo, #f3eee9); border-bottom: 1px solid var(--linha, #e4dcd3);
+    font-size: .72rem; color: var(--suave, #8a7a6c); }
+  #modalBoasVindas .bv-bar span { width: 8px; height: 8px; border-radius: 50%; background: #d9ccbe; display: inline-block; }
+  #modalBoasVindas .bv-bar b { margin-left: 6px; font-weight: 600; color: var(--texto, #3a2c26); }
+  #modalBoasVindas .bv-screen { padding: 12px; display: flex; flex-direction: column; gap: 8px; min-height: 170px; }
+  #modalBoasVindas .bv-card { border: 1px solid var(--linha, #e9e2d9); border-radius: 8px; padding: 8px 10px; background: #fff; }
+  #modalBoasVindas .bv-row { display: flex; align-items: center; gap: 8px; }
+  #modalBoasVindas .bv-grow { flex: 1; min-width: 0; }
+  #modalBoasVindas .bv-k { font-size: .62rem; text-transform: uppercase; letter-spacing: .04em; color: var(--suave, #8a7a6c); }
+  #modalBoasVindas .bv-v { font-weight: 700; color: var(--texto, #3a2c26); }
+  #modalBoasVindas .bv-sm { font-size: .72rem; color: var(--suave, #8a7a6c); }
+  #modalBoasVindas .bv-chip { font-size: .66rem; padding: 1px 8px; border-radius: 999px; border: 1px solid var(--linha, #e4dcd3);
+    color: var(--suave, #8a7a6c); white-space: nowrap; background: #fff; }
+  #modalBoasVindas .bv-chip.ok { background: #ddeccb; border-color: #bcd69e; color: #3f5a2a; }
+  #modalBoasVindas .bv-chip.warn { background: #f6e0c4; border-color: #e6c38c; color: #7a521c; }
+  #modalBoasVindas .bv-chip.err { background: #f6cbc6; border-color: #dda49d; color: #7a2a24; }
+  #modalBoasVindas .bv-line { height: 7px; border-radius: 4px; background: #efe8df; }
+  #modalBoasVindas .bv-dot { width: 26px; height: 26px; border-radius: 50%; background: var(--tinta-fundo, #f3eee9);
+    display: inline-flex; align-items: center; justify-content: center; color: var(--tinta, #7a5c43); flex: none; }
+  /* a "coisa circulada" */
+  #modalBoasVindas .bv-hot { outline: 2.5px dashed #c0392b; outline-offset: 3px; border-radius: 12px; }
+  /* a legenda com a seta apontando para o que foi circulado */
+  #modalBoasVindas .bv-call { margin: 14px auto 0; max-width: 480px; display: flex; align-items: flex-start; gap: 7px;
+    background: #fbe9e3; color: #8a2e18; border: 1px solid #f0c3b4; border-radius: 8px; padding: 7px 11px; font-size: .82rem; }
+  #modalBoasVindas .bv-call .bi { color: #c0392b; font-size: 1.05rem; line-height: 1.2; flex: none; }
+  #modalBoasVindas .bv-illu { height: 150px; display: flex; align-items: center; justify-content: center;
+    background: var(--tinta-fundo, #f3eee9); border: 1px solid var(--linha, #e4dcd3); border-radius: 10px; }
+  #modalBoasVindas .bv-illu i { font-size: 4rem; color: var(--tinta, #7a5c43); }
+</style>
+<div class="modal fade" id="modalBoasVindas" tabindex="-1" aria-labelledby="tituloBoasVindas" aria-hidden="true"
+     data-bs-backdrop="static">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="tituloBoasVindas"><i class="bi bi-stars text-warning"></i> Boas-vindas ao Polaris</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+      </div>
+      <div class="modal-body">
+        {% csrf_token %}
+        {% for p in boas_vindas %}
+          <div class="bv-passo" data-passo="{{ forloop.counter0 }}"{% if not forloop.first %} hidden{% endif %}>
+            <div class="bv-stage">
+              {% include "contas/tour/"|add:p.chave|add:".html" %}
+            </div>
+            <div class="text-center mt-3">
+              <h4 class="h5 mb-2">{{ p.titulo }}</h4>
+              <p class="text-muted mb-0">{{ p.texto }}</p>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+      <div class="modal-footer d-flex align-items-center">
+        <span class="small text-muted me-auto" id="bvProgresso">1 / {{ boas_vindas|length }}</span>
+        <button type="button" class="btn btn-sm btn-link text-muted" data-bs-dismiss="modal">Pular</button>
+        <button type="button" class="btn btn-sm btn-outline-secondary" id="bvVoltar" disabled>Voltar</button>
+        <button type="button" class="btn btn-sm btn-primary" id="bvAvancar">Avançar</button>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+window.addEventListener("load", function () {
+  var el = document.getElementById("modalBoasVindas");
+  if (!el || !window.bootstrap) return;
+  var passos = el.querySelectorAll(".bv-passo");
+  var total = passos.length, i = 0;
+  var voltar = el.querySelector("#bvVoltar"), avancar = el.querySelector("#bvAvancar"), prog = el.querySelector("#bvProgresso");
+  var token = (el.querySelector("[name=csrfmiddlewaretoken]") || {}).value;
+  var modal = new bootstrap.Modal(el);
+  function mostrar(n) {
+    passos.forEach(function (p, idx) { p.hidden = idx !== n; });
+    voltar.disabled = n === 0;
+    avancar.textContent = n === total - 1 ? "Começar a usar" : "Avançar";
+    prog.textContent = (n + 1) + " / " + total;
+  }
+  voltar.addEventListener("click", function () { if (i > 0) { i--; mostrar(i); } });
+  avancar.addEventListener("click", function () { if (i < total - 1) { i++; mostrar(i); } else { modal.hide(); } });
+  var marcado = false;
+  el.addEventListener("hide.bs.modal", function () {
+    if (marcado) return; marcado = true;
+    try { fetch("{% url 'contas:boas_vindas_vistas' %}", { method: "POST", headers: { "X-CSRFToken": token }, keepalive: true }); } catch (e) {}
+  });
+  mostrar(0);
+  modal.show();
+});
+</script>
