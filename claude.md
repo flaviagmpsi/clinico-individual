@@ -67,23 +67,48 @@ corre sob `hamilton_web` e só alcança a linha do próprio convite (`core.db.ap
 mostra dado de paciente nem toca tabela clínica; quem um dia escrever ali uma consulta a `Paciente` recebe
 `permission denied`, e é para ser assim.
 
-### 3.2b A aparência mora num lugar só (ADR-108)
-Direção **terrosa**, em `templates/components/_tema.html`: fundo pêssego, acento terracota, tipografia **Bitter**.
-**Variável primeiro, componente depois, tela nunca:** tela nova usa os componentes do Bootstrap já ajustados e as
-classes `.rotulo`, `.hora`, `.valor`, `.mono`; não declara cor, fonte, raio nem sombra.
-- **Não há fonte monoespaçada.** Hora, data e dinheiro saem da própria Bitter, cujos dígitos já têm largura igual;
-  o que alinha a coluna é `font-variant-numeric: tabular-nums`, não uma família à parte. O ponto de troca, se um
-  dia mudar, é `--f-num`.
-- **Toda cor nova é medida antes de entrar**: 4,5:1 para texto normal, 3:1 para borda e elemento de interface. E
-  quando duas cores precisam ser distinguidas entre si — estados da agenda, frequência do paciente —, o que vale é
-  a distância perceptual (ΔE em Lab): abaixo de ~10 o olho não separa de relance (ADR-110).
-- **Cor só onde há significado** (situação) ou ação; em lista, o nome é tinta e só a ação é terracota. Sombra não
-  separa blocos; **brilho é resposta a gesto** e marca a ação principal (ADR-090). Toda ação clicável responde ao
-  mouse — quem cria componente novo herda isso de `.btn`, `.list-group-item`, `.nav-link` e `.cartao`.
-- **Caixa alta só em `.rotulo`.** Com serifa, em corpo pequeno, ela cansa e lê mais devagar.
-- **Ícone de navegação é SVG desenhado em `_barra.html`**, com traço de 1,7 e caixa de 24 — e não do Bootstrap
-  Icons, cujas famílias não combinam entre si. Bootstrap Icons continua valendo para ícone solto dentro de tela.
-Exceções de propósito: a **folha** de documentos e prontuário (serifada — é papel) e as cores de situação da agenda.
+### 3.2b A aparência mora num lugar só (ADR-140, redesign; revoga a ADR-108)
+Direção **céu claro com luz índigo**: fundo em degradê lavanda com luz índigo no topo (`--ceu`), cartões brancos
+com sombra suave e grão por cima, acento **índigo `--tinta` #544CE8**, tipografia **Figtree** (interface) e
+**Newsreader** (título de página/seção grande e o que a psicóloga escreve). A Bitter saiu. A fonte da verdade do
+visual é `design/POLARIS_DESIGN.md` e os valores em `design/tokens.css`, mesclados no `:root` de
+`templates/components/_tema.html`. **Durante a migração**, a referência de cada tela é a seção 10 do guia + o canvas;
+**depois dela**, a vitrine interna `/vitrine/` (seção 13 do guia).
+**Variável primeiro, componente depois, tela nunca:** tela nova monta os componentes do `_tema.html` (botão, campo,
+cartão, selo, lista, painel lateral, aviso) e **não declara cor, fonte, raio nem sombra**. Componente que faltar
+nasce no `_tema.html`, entra na vitrine e ganha uma linha aqui, na mesma etapa.
+- **Dois lugares, duas faixas de largura, um template.** Toda tela entrega computador e celular no mesmo HTML, com
+  CSS por faixa: **até 767px é celular** (dock embaixo, cadastro em folha que sobe, agenda um dia por vez, alvo de
+  toque ≥44px, campo com 16px, nada que dependa de passar o mouse); de 768px em diante, computador (dock na lateral).
+- **Índigo é a marca.** Cor forte só em ação (botão principal, item ativo) ou significado (situação da sessão, do
+  pagamento, do prontuário; frequência do paciente). O resto é tinta (`--texto`) e cinza azulado (`--suave`).
+  **Situação sempre com ícone E palavra, nunca só cor.**
+- **Toda cor nova é medida antes de entrar**: 4,5:1 para texto, 3:1 para borda e elemento de interface (por isso a
+  borda de campo é `#8E8CA4`, não `#D6D5E6`), e **ΔE ≥ 10 em Lab** entre estados que precisam se distinguir de
+  relance — agenda, frequência (ADR-110 continua valendo; a barra lateral de 5px da cor do estado saiu).
+- **Número em tabular.** Hora, data e dinheiro em Figtree com `font-variant-numeric: tabular-nums` (`--f-num`); não
+  há família monoespaçada.
+- **Cadastrar e registrar é painel lateral** (folha que sobe no celular), por cima da tela onde a pessoa está. **Ao
+  salvar, a pessoa continua na mesma tela**, com um **aviso no canto e Desfazer** — o sistema nunca muda de tela
+  sozinho. Sem JavaScript, o formulário continua como página e **volta para a origem** (nunca redireciona para outra
+  tela). No cadastro de sessão **nenhuma opção vem pré-marcada** ("Escolha como foi a sessão") e não há atalho de
+  presença: todo registro passa pelo painel.
+- **Cantos** (ADR-097, revista): campo e botão 10px, cartão 14px, painel/modal 18px, dock 22px, selo pílula.
+  **Sombra** agora separa o cartão do céu (ADR-090, revista): cartão leve, o que flutua (painel, modal, menu, aviso)
+  forte, botão principal própria; borda de 1px continua em todo cartão. **Brilho é resposta a gesto** e a única
+  celebração é a estrela em "tudo em dia".
+- **Tema e densidade moram na conta** (Configurações > Aparência): Claro / Noturno / **Seguir o computador**
+  (padrão) via `data-bs-theme` no `<html>` **vindo do servidor** para não piscar; **Confortável** (padrão) /
+  Compacta via `data-densidade`. O tema todo em rem.
+- **Sem caixa alta na interface**: a `.rotulo` (caixa alta) não se usa nas telas novas; rótulo é frase normal 13px.
+  **Cuidado:** o balão com o nome do ícone do dock usa `.dock-nome`, não `.rotulo`.
+- **Moldura:** dock flutuante que **não expande** (nome num balão ao passar o mouse/focar), 5 entradas (ADR-105);
+  topo com o caminho (ADR-088) e a conta, e o **CRP sempre vem da conta**, nunca fixo; faixa da rodada de testes
+  (ADR-114). No celular o dock deita embaixo, com o nome sempre visível. A barra da ADR-088 foi revista aqui.
+- **Movimento** curto, com a curva única `cubic-bezier(.2,.8,.2,1)`, sem quique nem pisca; `prefers-reduced-motion`
+  vira tudo em troca imediata.
+- **Ícones:** os do dock e a estrela são SVG em `_barra.html`; Bootstrap Icons para ícone solto dentro de tela.
+Exceções de propósito: a **folha** de documentos e prontuário (serifada — é papel).
 
 ### 3.2c A IA nunca vê dado que identifica alguém (ADR-111)
 A escrita assistida do registro de sessão manda o relato do psicólogo para a OpenAI. Três regras, e nenhuma é

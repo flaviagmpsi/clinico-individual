@@ -4218,6 +4218,52 @@ antes (ADR-131) e o adendo da ADR-135 não cobriam isso; o usuário tinha razão
   passada "Presente" — só sugestão, respeita a escolha manual. Mensagem do bloqueio de presente/falta no futuro
   agora aponta "Agendada" como o caminho.
 
+## ADR-140 — Redesign Polaris: céu índigo, cartões brancos, Figtree/Newsreader (revoga a ADR-108)
+
+**Status:** ✅ Aceita — Rodada 92. Planejamento; implementação no ramo `redesign`, fora do ar até a usuária aprovar
+o conjunto. Fonte da verdade do visual: `design/POLARIS_DESIGN.md` e `design/tokens.css`.
+
+**Pedido da usuária:** aplicar o redesign fechado fora do sistema (guia + tokens), no computador e no celular, com o
+design acompanhando as atualizações futuras pela seção 3.2b do `claude.md` e, depois, pela vitrine de componentes.
+
+**Nova direção.** Fundo "céu" em degradê lavanda com luz índigo no topo, cartões brancos com sombra suave e grão por
+cima; acento **índigo #544CE8**; **Figtree** na interface e **Newsreader** em título de página/seção e texto clínico;
+**Claro, Noturno e Seguir o computador** por `data-bs-theme` no `<html>` (vindo do servidor), e densidade
+**Confortável/Compacta** por `data-densidade` — as duas preferências na conta. Mantida a regra "variável primeiro,
+componente depois, tela nunca". Tudo no mesmo template, com CSS por faixa de largura (≤767px celular).
+
+**O que muda nas decisões em vigor** (seção 12 do guia):
+1. **ADR-108 (direção terrosa) revogada.** Pêssego/terracota/Bitter saem.
+2. **ADR-088, a parte da barra, revista.** A barra vira **dock flutuante que não expande** (nome em balão); o topo
+   com o caminho e as sub-abas do paciente continuam. No celular o dock vai para baixo, com o nome sempre visível.
+3. **ADR-097 (cantos) com novos valores:** controle 10px, cartão 14px, painel 18px, dock 22px.
+4. **ADR-090 revista:** sombra passa a separar o cartão do céu (cartão leve; flutuante forte; botão principal); o
+   brilho como resposta a gesto continua, e a única celebração é a estrela em "tudo em dia".
+5. **ADR-110, em parte:** a regra de medir ΔE ≥ 10 entre estados continua e as cores novas passam (guia §2.2). Saem
+   a barra lateral de 5px com a cor cheia do estado e o "só a cadastrar tem preenchimento" — os estados se separam
+   por fundo, borda, ícone e palavra.
+6. **Tema deixa de ser "um só":** Noturno, Seguir o computador e densidade Compacta entram como preferências da conta.
+7. **Caixa alta sai da interface** (a `.rotulo` não se usa nas telas novas).
+8. **Cadastrar sessão e Novo paciente viram painel lateral** e, ao salvar, a pessoa continua onde estava — hoje
+   `atendimentos/views.py` redireciona para a semana (`_semana_de`); muda. Sem JS, vira página que volta à origem.
+9. **No cadastro de sessão nada vem pré-marcado** (hoje `CadastrarPrevista.get_initial` deixa "Presente"): a escolha
+   é sempre um gesto, pela regra de não haver atalho de presença.
+10. **ADR-138 (tour) ganha visual novo** e ajustes de texto em `contas/boas_vindas.py` (guia §15); o comportamento
+    (uma vez, sem reabrir, prioridade sobre o aniversário) não muda.
+
+**Decisões da usuária nesta rodada:** borda de campo **`#8E8CA4`** (cumpre 3:1, em vez do `#D6D5E6` do tokens, que
+dá 1,45:1); padrões da conta nova **tema "Seguir o computador"** e **densidade "Confortável"**. E, já decididas
+antes: a barra lateral de estado da ADR-110 sai; no cadastro de sessão nada vem pré-marcado; os formulários curtos
+sem prancheta (frequência, cobrança, quem paga, responsável) seguem páginas no visual novo, voltando à ficha.
+
+**Intacto:** regra de negócio, modelo de dados, segurança, a ADR-039 (o sistema não fala com paciente) e a ADR-111
+(o que a IA vê). O redesign é visual e de fluxo de tela.
+
+**Comportamentos novos que o redesign introduz** (trabalho das etapas, não só CSS): **Desfazer** no aviso (liga aos
+`excluir_*` já existentes); **painel lateral que mantém a pessoa na tela ao salvar** (muda o redirect da view, com
+origem no POST e fallback sem JS); **tema e densidade como campos da conta**; a **vitrine `/vitrine/`**. O `grao.png`
+não veio no pacote — é gerado como ruído 256×256 de alfa baixo e servido como estático (whitenoise), na etapa 1.
+
 ## Impeditivos
 
 | # | Impeditivo | Situação |

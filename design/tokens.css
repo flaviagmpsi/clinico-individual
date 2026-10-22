@@ -1,0 +1,245 @@
+/*
+  Polaris · tokens do redesign (outubro de 2026)
+
+  Proposta para substituir o bloco :root de templates/components/_tema.html (ADR-108, direção terrosa).
+  Os nomes seguem os do tema atual sempre que o papel é o mesmo (--fundo, --superficie, --texto, --tinta...),
+  para que os componentes já ajustados continuem lendo as mesmas variáveis. Os outros nomes são novos.
+  Mesclar com o :root atual, não trocar às cegas: o fim do bloco :root traz os valores novos das variáveis antigas
+  que o tema ainda usa (--escuro*, --ok-brilho, --erro-brilho), até a moldura nova deixar de usá-las.
+
+  Atenção a uma troca de sentido herdada do tema atual: aqui, como lá, --tinta é o ACENTO (o índigo da marca),
+  e não a cor do texto. A cor do texto é --texto.
+
+  Fontes (no lugar da Bitter):
+  <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600&family=Newsreader:opsz,wght@6..72,400;6..72,500&display=swap" rel="stylesheet">
+*/
+
+:root {
+  /* ---------- moldura ---------- */
+  --barra: 64px;                 /* largura do dock flutuante (era 52px) */
+  --barra-margem: 16px;          /* novo: distância do dock até a borda da janela */
+  --barra-aberta: 64px;          /* o dock não abre mais; mantido só para não quebrar quem lê a variável */
+  --topo: 48px;
+  --largura-max: 1240px;         /* novo: largura máxima do conteúdo */
+
+  /* ---------- fundo: céu claro com luz índigo no topo ---------- */
+  --ceu:                         /* novo: fundo de toda tela logada, rola junto com a página */
+    radial-gradient(ellipse 1100px 360px at 46% -150px, rgba(84,76,232,.30), rgba(84,76,232,0) 70%),
+    radial-gradient(ellipse 700px 300px at 88% -120px, rgba(150,110,235,.22), rgba(150,110,235,0) 70%),
+    linear-gradient(180deg, #E9EBFF 0%, #F0F0FD 32%, #F7F6FC 70%, #FBFAFD 100%);
+  --grao-opacidade: .12;         /* novo: textura design/assets/grao.png por cima do céu */
+  --fundo: #F7F6FC;              /* cor sólida de reserva, para quem não pinta o céu */
+  --superficie: #FFFFFF;         /* cartão */
+  --superficie-2: #F8F8FC;       /* cabeçalho de tabela, faixa de rodapé do cartão */
+  --veu: rgba(21,18,63,.18);     /* novo: o véu atrás do painel lateral e do modal */
+
+  /* ---------- texto ---------- */
+  --texto: #15123F;              /* nomes, títulos, valores (17,6:1 sobre o cartão) */
+  --texto-corrido: #2A2750;      /* novo: parágrafo longo, texto clínico (14,0:1) */
+  --suave: #5E617A;              /* meta, legenda, rótulo (6,1:1 sobre o cartão, 5,1:1 no topo do céu) */
+  --placeholder: #6B6D85;        /* novo (5,1:1) */
+
+  /* ---------- linhas ---------- */
+  --linha: #E3E2EF;              /* borda de cartão */
+  --linha-fina: #EEEDF6;         /* divisória entre linhas de lista */
+  --linha-forte: #C4C2D6;        /* novo: borda de botão secundário em foco, pontilhado */
+  --linha-campo: #D6D5E6;        /* novo: borda de campo, de botão secundário e de selo neutro */
+  --linha-livre: #CFCDE0;        /* novo: tracejado do horário livre */
+
+  /* ---------- acento (índigo) ---------- */
+  --tinta: #544CE8;              /* ação principal, item ativo, foco (texto branco sobre ele: 5,9:1) */
+  --tinta-hover: #4A42DA;        /* novo */
+  --tinta-escura: #3F37C4;       /* pressionado; texto índigo sobre fundo claro */
+  --tinta-clara: #6C65EC;        /* carregando */
+  --tinta-fundo: #F0F0FF;        /* lavado: seleção, linha em foco, aviso informativo */
+  --tinta-fundo-leve: color-mix(in srgb, var(--tinta) 6%, var(--superficie));  /* hover de linha */
+  --tinta-brilho: rgba(84,76,232,.25);
+  --link: #450CB0;               /* novo: link de texto (10,9:1) */
+  --link-hover: #001191;
+
+  /* ---------- situação (só onde há significado) ---------- */
+  --ok: #2C5A3C;          --ok-fundo: #DDEFE2;                          /* presente, pago, ativa (6,7:1) */
+  --ok-forte: #2B7A4B;                                                  /* novo: barra de presença, gráfico */
+  --atencao: #7A3A0C;     --atencao-fundo: #FFE9D6;  --atencao-borda: #F0C29C;  --atencao-icone: #C2581A;  /* a cadastrar, pendente (7,3:1) */
+  --erro: #A8281E;        --erro-fundo: #FDECEA;     --erro-texto: #8A2D2D;     /* vencido, erro de campo, excluir */
+  --falta: #8A2D2D;       --falta-fundo: #FAD9DA;    --falta-borda: #F3CACA;    /* novo: faltou (6,4:1) */
+  --nao-escrito: #5C4209; --nao-escrito-fundo: #FBEFC9; --nao-escrito-borda: #EBCF86;  /* novo: prontuário não escrito (8,2:1) */
+  --cancelada: #66647A;                                                 /* novo: texto riscado (5,7:1) */
+  --compromisso: #4A4760; --compromisso-fundo: #E0DFE8;                 /* novo: outro compromisso na agenda (6,7:1) */
+  --remarcada-borda: #DCDDF3;                                           /* novo */
+  --agendada: #18507F;    --agendada-fundo: #C9E1F7; --agendada-borda: #9EC5EC;   /* ADR-139 (6,3:1) */
+  --desligado: #ECE9F2;   --desligado-texto: #8E8BA3;                   /* novo: botão desativado */
+
+  /* ---------- frequência do paciente (ADR-109) ---------- */
+  --f-semanal: #3F37C4;   --f-semanal-fundo: #ECEBFD;   --f-semanal-traco: #544CE8;
+  --f-quinzenal: #7A5410; --f-quinzenal-fundo: #FBF0DC; --f-quinzenal-traco: #C98A2B;
+  --f-avulso: #1F5F96;    --f-avulso-fundo: #E6F1FB;    --f-avulso-traco: #3E8FD9;
+
+  /* ---------- gráficos ---------- */
+  --g-1: #544CE8; --g-2: #C98A2B; --g-3: #3E8FD9;          /* categórico, nesta ordem */
+  --g-ok: #2B7A4B; --g-neutro: #9A948A; --g-erro: #DA4A3D; /* presente, cancelada, falta */
+  --g-trilho: #EEEDF6;                                      /* fundo da barra */
+
+  /* ---------- dock (a barra lateral) ---------- */
+  --dock: linear-gradient(180deg, #2C2386 0%, #231B71 55%, #1B1560 100%);
+  --dock-desfoque: none;
+  --dock-ativo: #3A30A8;
+  --dock-texto: #CFCBF5;          /* ícone em repouso (9,2:1) */
+  --dock-separador: rgba(207,203,245,.18);
+  --dock-borda: rgba(255,255,255,.10);
+  --dock-sombra: 0 2px 6px rgba(35,27,113,.20), 0 18px 40px rgba(35,27,113,.30);
+  --dica-fundo: #15123F;          /* balão com o nome do ícone, e dica do "Meu perfil" */
+  --dica-texto: #FFFFFF;
+  --estrela-clara: #EEEBFF; --estrela-escura: #9C95FF;
+  --ouro: #F2CB83; --ouro-escuro: #B07A20;  /* só a estrela e o brilho de "tudo em dia" */
+
+  /* ---------- avisos flutuantes ---------- */
+  --toast: #15123F; --toast-texto: #FFFFFF; --toast-link: #BAB9F9;
+  --aviso-fundo: #F0F0FF; --aviso-borda: #E1E0F5;  /* faixa "Rodada aberta de testes" e avisos informativos */
+
+  /* ---------- profundidade ---------- */
+  --sombra: 0 1px 2px rgba(40,30,120,.06), 0 6px 18px rgba(40,30,120,.06);           /* cartão */
+  --sombra-hover: 0 2px 4px rgba(21,18,63,.07), 0 12px 28px rgba(21,18,63,.10);       /* cartão clicável sob o mouse */
+  --sombra-flutuante: 0 6px 14px rgba(21,18,63,.10), 0 28px 60px rgba(21,18,63,.22);  /* painel lateral, modal, menu */
+  --sombra-botao: 0 1px 2px rgba(21,18,63,.14), 0 4px 10px rgba(84,76,232,.25);       /* só o botão principal */
+  --sombra-campo: inset 0 1px 2px rgba(21,18,63,.05);
+  --anel-foco: 0 0 0 4px rgba(84,76,232,.14);
+
+  /* ---------- cantos (ADR-097, escala revista) ---------- */
+  --raio-pequeno: 8px;     /* novo: chip de horário, botão dentro de aviso */
+  --raio-controle: 10px;   /* campo, botão, segmentado, item de lista clicável (era 6px) */
+  --raio-medio: 12px;      /* novo: aviso, faixa, cartão interno */
+  --raio: 14px;            /* cartão (era 10px) */
+  --raio-grande: 18px;     /* painel lateral, modal (era 14px) */
+  --raio-dock: 22px;       /* novo */
+  --raio-pilula: 999px;    /* selo, chip de filtro */
+
+  /* ---------- movimento ---------- */
+  --curva: cubic-bezier(.2,.8,.2,1);   /* novo: a única curva com aceleração; sem quique */
+  --rapido: 120ms ease;                /* hover, cor, dica */
+  --t-linha: 130ms ease-out;
+  --t-cartao: 180ms ease-out;
+  --t-entrada: 220ms ease-out;
+  --t-painel: 280ms;                   /* novo: entrada do painel lateral e do aviso (com --curva) */
+
+  /* ---------- letra ---------- */
+  --f-texto: "Figtree", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-num: "Figtree", system-ui, sans-serif;           /* mesma letra, com tabular-nums */
+  --f-titulo: "Newsreader", Georgia, serif;           /* novo: título de página e de seção grande */
+  --f-clinico: "Newsreader", Georgia, serif;          /* novo: o que o psicólogo escreve (prontuário, anamnese, folha) */
+
+  /* ---------- o Bootstrap lê daqui ---------- */
+  --bs-body-font-family: var(--f-texto);
+  --bs-body-font-size: .9375rem;       /* 15px (era 13,5px) */
+  --bs-body-line-height: 1.5;
+  --bs-body-color: var(--texto);
+  --bs-body-bg: var(--fundo);
+  --bs-secondary-color: var(--suave);
+  --bs-tertiary-color: #8E8BA3;
+  --bs-emphasis-color: var(--texto);
+  --bs-border-color: var(--linha);
+  --bs-border-radius: var(--raio-controle);
+  --bs-border-radius-sm: var(--raio-pequeno);
+  --bs-border-radius-lg: var(--raio);
+  --bs-border-radius-xl: var(--raio-grande);
+  --bs-border-radius-pill: 999px;
+  --bs-primary: #544CE8;  --bs-primary-rgb: 84, 76, 232;
+  --bs-link-color: #450CB0; --bs-link-color-rgb: 69, 12, 176;
+  --bs-link-hover-color: #001191; --bs-link-hover-color-rgb: 0, 17, 145;
+  --bs-success: #2C5A3C;  --bs-success-rgb: 44, 90, 60;
+  --bs-danger: #A8281E;   --bs-danger-rgb: 168, 40, 30;
+  --bs-warning: #7A3A0C;  --bs-warning-rgb: 122, 58, 12;
+  --bs-focus-ring-color: rgba(84,76,232,.35);
+
+  /* variáveis antigas que o tema ainda usa (topo e barra atuais, brilho de botão), com os valores novos */
+  --escuro: #231B71; --escuro-2: #2C2386; --escuro-3: #3A30A8; --escuro-linha: rgba(207,203,245,.18);
+  --ok-brilho: rgba(44,90,60,.30); --erro-brilho: rgba(168,40,30,.30);
+}
+
+/* ---------- Noturno ----------
+   Ligado por Configurações > Aparência. "Seguir o computador" aplica o mesmo atributo a partir de
+   prefers-color-scheme. Usar o atributo do próprio Bootstrap 5.3 faz os componentes dele virarem junto. */
+:root[data-bs-theme="dark"] {
+  --ceu:
+    radial-gradient(ellipse 1100px 360px at 46% -150px, rgba(120,110,245,.22), rgba(120,110,245,0) 70%),
+    radial-gradient(1100px 520px at 62% 118%, rgba(122,98,214,.30), rgba(122,98,214,0) 70%),
+    radial-gradient(800px 420px at 12% 108%, rgba(70,104,206,.18), rgba(70,104,206,0) 70%),
+    linear-gradient(180deg, #06070D 0%, #0A0C18 52%, #15122A 100%);   /* fixo: background-attachment: fixed */
+  --grao-opacidade: .55;
+  --fundo: #0A0C18;
+  --superficie: rgba(18,21,31,.74);          /* cartão fosco: usar com backdrop-filter: blur(16px) saturate(115%) */
+  --superficie-2: rgba(255,255,255,.025);
+  --veu: rgba(0,0,0,.35);
+  --texto: #E8EBF2;  --texto-corrido: #D5D8E4;  --suave: #ABB1C2;  --placeholder: #8A90A3;
+  --linha: rgba(255,255,255,.07);  --linha-fina: rgba(255,255,255,.05);  --linha-forte: rgba(255,255,255,.22);
+  --linha-campo: rgba(255,255,255,.10);  --linha-livre: rgba(255,255,255,.22);
+  --tinta: #929BF5;  --tinta-hover: #A3AAF7;  --tinta-escura: #BAB9F9;  --tinta-clara: #A3AAF7;
+  --tinta-fundo: rgba(146,155,245,.09);  --tinta-brilho: rgba(146,155,245,.22);
+  --link: #BAB9F9;  --link-hover: #D6D5FC;
+  --ok: #A1E3B7;  --ok-fundo: rgba(80,170,110,.16);  --ok-forte: #3D9C5E;
+  --atencao: #FFC9A0;  --atencao-fundo: rgba(240,140,70,.16);  --atencao-borda: rgba(240,140,70,.45);  --atencao-icone: #F29A5E;
+  --erro: #F5B1B1;  --erro-fundo: rgba(230,100,100,.14);  --erro-texto: #F5B1B1;
+  --falta: #F5B1B1;  --falta-fundo: rgba(230,90,120,.20);  --falta-borda: rgba(230,100,100,.40);
+  --nao-escrito: #F2CB83;  --nao-escrito-fundo: rgba(242,203,131,.14);  --nao-escrito-borda: rgba(242,203,131,.40);
+  --cancelada: #9EA3B5;
+  --compromisso: #C9CDDA;  --compromisso-fundo: rgba(255,255,255,.14);
+  --remarcada-borda: rgba(146,155,245,.35);
+  --agendada: #8CC8EE;  --agendada-fundo: rgba(60,150,230,.22);  --agendada-borda: rgba(60,150,230,.45);
+  --desligado: rgba(255,255,255,.08);  --desligado-texto: #7D8296;
+  --f-semanal: #BAB9F9;  --f-semanal-fundo: rgba(116,122,237,.18);  --f-semanal-traco: #747AED;
+  --f-quinzenal: #F2CB83; --f-quinzenal-fundo: rgba(192,133,31,.18); --f-quinzenal-traco: #C0851F;
+  --f-avulso: #8CC8EE;   --f-avulso-fundo: rgba(36,143,204,.18);   --f-avulso-traco: #248FCC;
+  --g-1: #747AED; --g-2: #C0851F; --g-3: #248FCC;
+  --g-ok: #3D9C5E; --g-neutro: #67635C; --g-erro: #E06255;
+  --g-trilho: rgba(255,255,255,.08);
+  --dock: rgba(35,27,113,.38);  --dock-desfoque: blur(18px);
+  --dock-ativo: rgba(146,155,245,.16);  --dock-texto: #ABB1C2;
+  --dock-separador: rgba(255,255,255,.08);  --dock-borda: rgba(255,255,255,.08);
+  --dock-sombra: 0 2px 6px rgba(0,0,0,.40), 0 18px 44px rgba(0,0,0,.45);
+  --dica-fundo: #E8EBF2;  --dica-texto: #0E1024;
+  --estrela-clara: #E8EBF2; --estrela-escura: #8C9BD6;
+  --toast: #E8EBF2; --toast-texto: #0E1024; --toast-link: #3F37C4;
+  --aviso-fundo: rgba(146,155,245,.10); --aviso-borda: rgba(146,155,245,.22);
+  --sombra: 0 1px 2px rgba(0,0,0,.35), 0 12px 32px rgba(0,0,0,.30);
+  --sombra-hover: 0 2px 4px rgba(0,0,0,.40), 0 18px 40px rgba(0,0,0,.40);
+  --sombra-flutuante: 0 4px 10px rgba(0,0,0,.45), 0 24px 52px rgba(0,0,0,.50);
+  --sombra-botao: 0 4px 14px rgba(146,155,245,.22);
+  --sombra-campo: none;
+  --anel-foco: 0 0 0 4px rgba(146,155,245,.22);
+
+  --bs-body-color: var(--texto);  --bs-body-bg: var(--fundo);
+  --bs-secondary-color: var(--suave);  --bs-tertiary-color: #7D8296;  --bs-emphasis-color: var(--texto);
+  --bs-border-color: rgba(255,255,255,.10);
+  --bs-primary: #929BF5;  --bs-primary-rgb: 146, 155, 245;
+  --bs-link-color: #BAB9F9; --bs-link-color-rgb: 186, 185, 249;
+  --bs-link-hover-color: #D6D5FC; --bs-link-hover-color-rgb: 214, 213, 252;
+  --bs-success: #A1E3B7;  --bs-success-rgb: 161, 227, 183;
+  --bs-danger: #F5B1B1;   --bs-danger-rgb: 245, 177, 177;
+  --bs-warning: #FFC9A0;  --bs-warning-rgb: 255, 201, 160;
+  --bs-focus-ring-color: rgba(146,155,245,.35);
+}
+/* No Noturno, o botão principal tem texto escuro: */
+:root[data-bs-theme="dark"] { --sobre-tinta: #0E1024; }
+:root { --sobre-tinta: #FFFFFF; }
+
+/* Painel lateral e modal no Noturno: fundo quase opaco, para o formulário não brigar com o que está atrás. */
+:root { --painel: #FFFFFF; --painel-desfoque: none; }
+:root[data-bs-theme="dark"] { --painel: rgba(20,23,34,.94); --painel-desfoque: blur(20px); }
+
+/* ---------- Densidade (Configurações > Aparência) ----------
+   Compacta reduz tudo em 10%. Funciona sozinha se o tema inteiro estiver em rem. */
+:root[data-densidade="compacta"] { font-size: 90%; }
+
+/* ---------- O céu e o grão ---------- */
+body { background: var(--ceu); background-color: var(--fundo); min-height: 100vh; }
+:root[data-bs-theme="dark"] body { background-attachment: fixed; }
+body::before {
+  content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 0;
+  background: url("grao.png") repeat;   /* o PNG não veio nesta mensagem: gere um ruído de 256x256 em pontos neutros com alfa baixo, salve como arquivo estático e aponte para ele */
+  opacity: var(--grao-opacidade);
+}
+
+/* ---------- Movimento reduzido ---------- */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition-duration: 0ms !important; animation: none !important; }
+}
