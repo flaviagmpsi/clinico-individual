@@ -46,6 +46,8 @@ sessão cadastrada muda de cor (presente verde, falta vermelha, cancelada cinza 
   .cartao.faltou { background: #f6cbc6; border-color: #dda49d; border-left-color: var(--erro); color: #7a2a24; }
   .cartao.cancelada { background: var(--linha-fina); border-color: var(--linha); color: var(--suave); text-decoration: line-through; }
   .cartao.remarcada { background: #e6dcef; border-color: #c1aed1; border-left-color: #6b5296; color: #3f2f5c; }
+  /* ADR-139: a agendada que ainda vai acontecer — azul calmo, distinta da prevista (petróleo) e da remarcada (lilás). */
+  .cartao.agendada { background: #dde4f0; border-color: #b9c6e0; border-left-color: #3c5a8a; color: #243a5c; }
   .cartao { transition: transform var(--rapido), box-shadow var(--rapido), filter var(--rapido); }
   .cartao:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(58, 44, 38, .18); filter: saturate(1.1); color: inherit; }
   .cartao:active { transform: scale(.98); }
@@ -104,6 +106,7 @@ calendário, como cartão "pendente"; repetir em cima seria a mesma informação
   {% endif %}
   {% if not situacao %}
     <span class="ms-auto"><span class="cartao esperada d-inline-block py-0 px-2">prevista</span> ainda vai acontecer ·
+      <span class="cartao agendada d-inline-block py-0 px-2">agendada</span> marcada à mão ·
       <span class="cartao pendente d-inline-block py-0 px-2">pendente</span> passou e falta cadastrar ·
       <span class="cartao realizada d-inline-block py-0 px-2">presente</span> cadastrada ·
       <span class="cartao livre d-inline-block py-0 px-2">livre</span> horário da grade sem sessão</span>

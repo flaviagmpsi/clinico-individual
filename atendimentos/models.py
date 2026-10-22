@@ -27,14 +27,17 @@ DURACAO_MAXIMA = 240
 
 class Consulta(TenantOwnedModel):
     class Estado(models.TextChoices):
+        AGENDADA = "AGENDADA", "Agendada"       # ADR-139: marcada, ainda vai acontecer
         REALIZADA = "REALIZADA", "Presente"
         FALTOU = "FALTOU", "Faltou sem avisar"
         CANCELADA_CLIENTE = "CANCELADA_CLIENTE", "Cliente cancelou"
         CANCELADA_PROFISSIONAL = "CANCELADA_PROFISSIONAL", "Profissional cancelou"
         REMARCADA = "REMARCADA", "Remarcada"
 
-    # A cobrança decorre da situação (ADR-065): nas quatro primeiras é consequência, não pergunta.
+    # A cobrança decorre da situação (ADR-065): nas quatro primeiras é consequência, não pergunta. A agendada não
+    # cobra — a sessão ainda não aconteceu (ADR-139).
     COBRA_POR_PADRAO = {
+        Estado.AGENDADA: False,
         Estado.REALIZADA: True,
         Estado.FALTOU: True,
         Estado.CANCELADA_CLIENTE: True,
@@ -43,13 +46,14 @@ class Consulta(TenantOwnedModel):
     }
     # A única situação em que o psicólogo escolhe se cobra, na hora do cadastro.
     ESCOLHE_SE_COBRA = {Estado.CANCELADA_CLIENTE}
-    # Cancelamento libera o horário; presente e falta sem aviso o ocupam — foi guardado e perdido.
-    OCUPAM_O_HORARIO = {Estado.REALIZADA, Estado.FALTOU}
+    # Cancelamento libera o horário; presente, falta sem aviso e **agendada** o ocupam. A agendada é compromisso
+    # marcado (ADR-139): reserva o horário e some das vagas livres, como uma sessão de verdade.
+    OCUPAM_O_HORARIO = {Estado.AGENDADA, Estado.REALIZADA, Estado.FALTOU}
 
     # ADR-131: presença e falta só se sabem **depois** da sessão — essas duas exigem que ela já tenha acontecido.
-    # Remarcação e cancelamento são decisões tomadas **antes**: o paciente avisa na véspera que não pode. Antes,
-    # a regra "só se cadastra o que já aconteceu" barrava os cinco estados, e remarcar só era possível depois do
-    # horário passar — o contrário do que acontece na prática.
+    # Remarcação, cancelamento e **agendamento** são decisões tomadas **antes**: o paciente avisa na véspera que
+    # não pode, ou a sessão fica marcada para acontecer. Antes, a regra "só se cadastra o que já aconteceu" barrava
+    # todos os estados, e não havia como pôr na agenda uma sessão avulsa futura (ADR-139).
     EXIGEM_TER_ACONTECIDO = {Estado.REALIZADA, Estado.FALTOU}
 
     # `PROTECT`, e não `CASCADE`: consulta registrada é histórico clínico e financeiro. Apagar o caso
@@ -110,6 +114,11 @@ class Consulta(TenantOwnedModel):
     @property
     def avulsa(self) -> bool:
         return self.recorrencia_id is None
+
+    @property
+    def ja_passou(self) -> bool:
+        """O horário da sessão já ficou para trás. Usado na agenda para a agendada vencida pedir atualização."""
+        return self.inicio <= timezone.now()
 
     @property
     def ocupa_horario(self) -> bool:

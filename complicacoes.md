@@ -4193,6 +4193,31 @@ explicação e imagens.
 **Nota:** as 3 contas que já existem em produção têm o campo nulo, então verão o tour uma vez no próximo painel —
 inofensivo e até informativo; não vale backfill.
 
+## ADR-139 — Estado "Agendada": a sessão avulsa que ainda vai acontecer
+
+**Status:** ✅ Aceita — Rodada 91.
+
+**Pedido do usuário:** "o site nao deixa marcar consulta avulsa antes dela ter acontecido... é necessario marcar uma
+consulta avulsa antes do horario dela pra que a agenda fique fiel ao que a pessoa marca."
+
+**O buraco.** A consulta tinha cinco estados, todos "o que aconteceu"; a avulsa nascia como "Presente", barrada no
+futuro (ADR-131, correto). Para paciente recorrente a sessão futura aparece sozinha (prevista pela frequência), mas
+a avulsa nova — primeira sessão, sessão extra — não tinha como entrar na agenda antes de acontecer. A remarcação-
+antes (ADR-131) e o adendo da ADR-135 não cobriam isso; o usuário tinha razão.
+
+**Decisões (ambas as recomendações, confirmadas):**
+- **Sexto estado `AGENDADA` ("Agendada").** Marcada, ainda vai acontecer. `COBRA_POR_PADRAO[AGENDADA] = False` (não
+  cobra), fora de `EXIGEM_TER_ACONTECIDO` (aceita no futuro), e **dentro de `OCUPAM_O_HORARIO`**: reserva o horário
+  e some das vagas livres, como uma sessão de verdade.
+- **Não conta presença.** `Presenca.somar` ignora `AGENDADA` (não aconteceu) — `.get` no lugar do acesso direto.
+- **Agendada que passou vira pendência.** `agendadas_vencidas()` traz as `AGENDADA` com `inicio <= agora`; entram no
+  painel como "sessões agendadas para atualizar", com link para a consulta dizer o que aconteceu. Ao editar para
+  presente/falta/cancelada, some da pendência. (É consulta gravada, diferente da prevista, que é cálculo.)
+- **Agenda.** Cartão azul calmo "agendada" (distinto da prevista petróleo e da remarcada lilás); passado o horário
+  sem atualizar, fica âmbar "agendada · atualizar". No cadastro avulso, data futura **sugere** "Agendada" e data
+  passada "Presente" — só sugestão, respeita a escolha manual. Mensagem do bloqueio de presente/falta no futuro
+  agora aponta "Agendada" como o caminho.
+
 ## Impeditivos
 
 | # | Impeditivo | Situação |

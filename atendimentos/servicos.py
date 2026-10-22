@@ -188,6 +188,21 @@ def sessoes_pendentes(agora: datetime | None = None,
                   key=lambda sessao: sessao.inicio)
 
 
+def agendadas_vencidas(agora: datetime | None = None, *, caso: Caso | None = None) -> list[Consulta]:
+    """Sessões **agendadas** cujo horário já passou e que ninguém atualizou (ADR-139).
+
+    Diferente da sessão prevista pela frequência (que é cálculo), a agendada é uma consulta gravada: o psicólogo
+    marcou que ela aconteceria. Passado o horário sem virar presente/falta/cancelada, ela pede atualização — é a
+    pendência "atualize o que aconteceu".
+    """
+    agora = agora or timezone.now()
+    consultas = (Consulta.objects.filter(estado=Consulta.Estado.AGENDADA, inicio__lte=agora)
+                 .select_related("caso").prefetch_related("caso__pacientes"))
+    if caso is not None:
+        consultas = consultas.filter(caso=caso)
+    return list(consultas.order_by("inicio"))
+
+
 # --- Calendário (ADR-073) ------------------------------------------------------------------------------------
 
 PREVISTA = "PREVISTA"  # o "filtro de situação" das sessões esperadas, que não têm situação ainda
@@ -453,7 +468,8 @@ def _cadastrar(consulta: Consulta, agora: datetime | None) -> Consulta:
             and consulta.inicio > (agora or timezone.now())):
         raise ValidationError(
             "Presença e falta só se cadastram depois da sessão — ela ainda não começou. "
-            "Para uma remarcação ou um cancelamento combinados antes, escolha essa situação.")
+            "Para uma sessão que ainda vai acontecer, marque “Agendada”; para uma remarcação ou um "
+            "cancelamento combinados antes, escolha essa situação.")
     consulta.save()
     return consulta
 

@@ -159,6 +159,25 @@ Primeiro o dia; depois as pendências, num bloco; por fim o resumo do mês.
             </details>
           {% endif %}
 
+          {% comment %}ADR-139: sessão agendada (marcada à mão) cujo horário já passou e ninguém atualizou. Clicar
+          abre a consulta para dizer o que aconteceu — presente, falta, cancelamento.{% endcomment %}
+          {% if agendadas_vencidas %}
+            <details class="pendencia">
+              <summary>
+                <span class="quantas">{{ total_agendadas_vencidas }}</span>
+                sess{{ total_agendadas_vencidas|pluralize:"ão agendada,ões agendadas" }} para atualizar
+                <a href="{% url 'atendimentos:agenda' %}" class="ms-auto small text-decoration-none">agenda</a>
+              </summary>
+              <ul class="list-unstyled small mb-2 mt-1">
+              {% for c in agendadas_vencidas %}
+                <li><a href="{% url 'atendimentos:editar' c.pk %}" class="text-decoration-none">
+                  <span class="hora text-muted me-1">{{ c.inicio|date:"d/m H:i" }}</span> {{ c.caso }}</a>
+                  <span class="text-muted">· diga o que aconteceu</span></li>
+              {% endfor %}
+              </ul>
+            </details>
+          {% endif %}
+
           {% comment %}Rodada 80: dois blocos, porque são duas coisas, e com as palavras do usuário (ADR-121).
           **Pendente** é o pagamento que o mês abriu e que ainda tem prazo — entra no dia 1º. **Vencido** é o que
           passou da data sem entrar, e esse é alerta. Num balaio só, o psicólogo cobraria quem está em dia.

@@ -19,7 +19,8 @@ from decimal import Decimal
 from django.utils import timezone
 
 from atendimentos.models import Consulta
-from atendimentos.servicos import sessoes_pendentes, sessoes_previstas, sessoes_remarcadas
+from atendimentos.servicos import (agendadas_vencidas, sessoes_pendentes, sessoes_previstas,
+                                   sessoes_remarcadas)
 from financeiro.despesas import previsto_por_mes
 from financeiro.receitas_externas import receitas_do_mes, recebimentos_pendentes
 from financeiro.servicos import (carregar, cobrancas_do_mes, cobrancas_em_aberto, recibos_pendentes,
@@ -84,11 +85,13 @@ class Pendencias:
     pendentes: list = field(default_factory=list)
     recibos: list = field(default_factory=list)  # pagamentos com recibo a emitir (ADR-132)
     ganhos_externos: list = field(default_factory=list)  # receitas fora da clínica a receber (ADR-136)
+    agendadas: list = field(default_factory=list)  # sessões agendadas que já passaram sem atualização (ADR-139)
 
     @property
     def total(self) -> int:
         return (len(self.sessoes) + len(self.pagamentos) + len(self.prontuarios)
-                + len(self.pendentes) + len(self.recibos) + len(self.ganhos_externos))
+                + len(self.pendentes) + len(self.recibos) + len(self.ganhos_externos)
+                + len(self.agendadas))
 
 
 @dataclass
@@ -155,6 +158,7 @@ def montar_painel(agora: datetime | None = None) -> Painel:
         pendentes=[c for c in abertas if c.pendente(hoje)],
         recibos=recibos_pendentes(),
         ganhos_externos=recebimentos_pendentes(hoje),
+        agendadas=agendadas_vencidas(agora),
     )
     return Painel(hoje=hoje, mes=inicio, resumo=resumo, hoje_itens=_itens_de_hoje(agora, hoje),
                   pendencias=pendencias)

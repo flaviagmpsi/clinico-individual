@@ -70,9 +70,11 @@ class Presenca:
         return round(100 * self.presentes / self.esperadas) if self.esperadas else None
 
     def somar(self, estado: str) -> None:
+        # A agendada (ADR-139) ainda não aconteceu: não entra em presença nenhuma. `get` a ignora sem erro.
         campo = {E.REALIZADA: "presentes", E.FALTOU: "faltas", E.CANCELADA_CLIENTE: "canceladas_pelo_cliente",
-                 E.CANCELADA_PROFISSIONAL: "canceladas_pelo_profissional", E.REMARCADA: "remarcadas"}[estado]
-        setattr(self, campo, getattr(self, campo) + 1)
+                 E.CANCELADA_PROFISSIONAL: "canceladas_pelo_profissional", E.REMARCADA: "remarcadas"}.get(estado)
+        if campo:
+            setattr(self, campo, getattr(self, campo) + 1)
 
 
 def presenca_de(consultas) -> Presenca:
