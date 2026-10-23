@@ -13,7 +13,23 @@ def ambiente(request) -> dict:
     return {
         "acesso_liberado": bool(getattr(settings, "ACESSO_LIBERADO", False)),
         **aparencia(request),
+        **desfazer(request),
     }
+
+
+def desfazer(request) -> dict:
+    """O aviso flutuante com "Desfazer" (ADR-140). A ação de cadastro guarda na sessão o que dá para desfazer; a
+    primeira tela renderizada depois mostra e **consome** — some sozinho e não volta num refresh posterior."""
+    import time
+
+    sessao = getattr(request, "session", None)
+    dado = sessao.get("desfazer") if sessao is not None else None
+    if not dado:
+        return {"desfazer": None}
+    sessao.pop("desfazer", None)
+    if dado.get("ate", 0) < time.time():
+        return {"desfazer": None}
+    return {"desfazer": {"url": dado.get("url", ""), "texto": dado.get("texto", "")}}
 
 
 def aparencia(request) -> dict:

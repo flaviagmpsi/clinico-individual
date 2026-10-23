@@ -224,6 +224,17 @@ class CadastroPelaTela(BaseTelasAgenda):
                                     {"estado": FALTOU, "hora": "09:00", "duracao": "50", "origem": "/?mes=2026-09"})
         self.assertRedirects(resposta, "/?mes=2026-09", fetch_redirect_response=False)
 
+    def test_salvar_oferece_desfazer_e_consome(self):
+        """ADR-140: ao cadastrar, a tela de origem mostra o aviso com Desfazer; ele some depois de mostrado uma vez."""
+        self.entrar(self.ana)
+        self.client.post(self.prevista_de_ontem(self.regra_joao),
+                         {"estado": FALTOU, "hora": "09:00", "duracao": "50", "origem": "/"})
+        consulta = Consulta.objetos_todos.get(recorrencia=self.regra_joao, data_prevista=self.ontem)
+        primeira = self.client.get("/")
+        self.assertContains(primeira, "avisoDesfazer")
+        self.assertContains(primeira, reverse("atendimentos:excluir", args=[consulta.pk]))
+        self.assertNotContains(self.client.get("/"), "avisoDesfazer")
+
     def test_origem_de_fora_e_ignorada(self):
         """Proteção contra redirecionamento aberto: origem que não é caminho local cai no padrão."""
         self.entrar(self.ana)

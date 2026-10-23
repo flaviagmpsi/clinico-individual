@@ -69,6 +69,19 @@ def _origem_de(request) -> str:
     return request.POST.get("origem") or request.GET.get("origem") or ""
 
 
+def _armar_desfazer(request, consulta, texto: str) -> None:
+    """ADR-140: guarda, na sessão, o que o aviso flutuante da próxima tela oferece desfazer. O desfazer é um POST
+    real para excluir a consulta recém-criada — funciona sem JavaScript. Dura pouco: a tela que o mostra o consome,
+    e um prazo evita que um refresh muito depois reabra a oferta."""
+    import time
+
+    request.session["desfazer"] = {
+        "url": reverse("atendimentos:excluir", args=[consulta.pk]),
+        "texto": texto,
+        "ate": time.time() + 30,
+    }
+
+
 def _ficha_do_caso(caso: Caso):
     """O atendimento individual não tem tela própria (ADR-026): volta para a ficha do paciente."""
     if caso.individual:
@@ -232,7 +245,8 @@ class CadastrarAvulsa(LoginRequiredMixin, FormView):
         except ValidationError as erro:
             form.add_error(None, erro.messages[0])
             return self.form_invalid(form)
-        messages.success(self.request, f"Consulta cadastrada: {consulta.get_estado_display().lower()}.")
+        _armar_desfazer(self.request, consulta,
+                        f"Sessão de {consulta.caso} cadastrada: {consulta.get_estado_display().lower()}.")
         local = timezone.localtime(consulta.inicio)
         _avisar_se_fora_da_grade(self.request, local.weekday(), local.time(), consulta.duracao)
         return redirect(_origem(self.request) or _semana_de(local.date()))
@@ -288,7 +302,8 @@ class CadastrarRemarcada(LoginRequiredMixin, FormView):
         except ValidationError as erro:
             form.add_error(None, erro.messages[0])
             return self.form_invalid(form)
-        messages.success(self.request, f"Sessão remarcada cadastrada: {consulta.get_estado_display().lower()}.")
+        _armar_desfazer(self.request, consulta,
+                        f"Sessão remarcada de {consulta.caso} cadastrada: {consulta.get_estado_display().lower()}.")
         return redirect(_origem(self.request) or _semana_de(timezone.localtime(consulta.inicio).date()))
 
 
@@ -381,7 +396,8 @@ class CadastrarPrevista(LoginRequiredMixin, FormView):
         except ValidationError as erro:
             form.add_error(None, erro.messages[0])
             return self.form_invalid(form)
-        messages.success(self.request, f"Sessão cadastrada: {consulta.get_estado_display().lower()}.")
+        _armar_desfazer(self.request, consulta,
+                        f"Sessão de {consulta.caso} cadastrada: {consulta.get_estado_display().lower()}.")
         return redirect(_origem(self.request) or _semana_de(prevista.data))
 
 
@@ -457,8 +473,8 @@ class ExcluirConsulta(LoginRequiredMixin, _ComConsulta, View):
             messages.error(request, erro.messages[0])
             return redirect("atendimentos:editar", pk=consulta.pk)
         aviso = " A sessão volta a aparecer como pendente." if da_frequencia else ""
-        messages.success(request, f"Cadastro excluído.{aviso}")
-        return redirect(_semana_de(dia))
+        messages.success(request, f"Cadastro desfeito.{aviso}")
+        return redirect(_origem(request) or _semana_de(dia))
 
 
 class _ComCaso:
