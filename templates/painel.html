@@ -88,11 +88,11 @@ Primeiro o dia; depois as pendências, num bloco; por fim o resumo do mês.
               sessão" (ação principal); a futura, "Remarcar ou cancelar"; a já cadastrada, "Corrigir".{% endcomment %}
               <span class="ms-auto">
                 {% if item.cadastrada %}
-                  <a href="{% url 'atendimentos:editar' item.consulta.pk %}" class="text-decoration-none">Corrigir</a>
+                  <a href="{% url 'atendimentos:editar' item.consulta.pk %}?origem={{ request.get_full_path|urlencode }}" class="text-decoration-none">Corrigir</a>
                 {% elif item.espera.origem %}
-                  <a href="{% url 'atendimentos:cadastrar_remarcada' item.espera.origem.pk %}" class="{% if item.situacao == 'a cadastrar' %}btn btn-sm btn-primary{% else %}text-decoration-none{% endif %}">{% if item.situacao == 'a cadastrar' %}Cadastrar sessão{% else %}Remarcar ou cancelar{% endif %}</a>
+                  <a href="{% url 'atendimentos:cadastrar_remarcada' item.espera.origem.pk %}?origem={{ request.get_full_path|urlencode }}" class="{% if item.situacao == 'a cadastrar' %}btn btn-sm btn-primary{% else %}text-decoration-none{% endif %}">{% if item.situacao == 'a cadastrar' %}Cadastrar sessão{% else %}Remarcar ou cancelar{% endif %}</a>
                 {% else %}
-                  <a href="{% url 'atendimentos:cadastrar_prevista' item.espera.regra.pk item.espera.data_iso %}" class="{% if item.situacao == 'a cadastrar' %}btn btn-sm btn-primary{% else %}text-decoration-none{% endif %}">{% if item.situacao == 'a cadastrar' %}Cadastrar sessão{% else %}Remarcar ou cancelar{% endif %}</a>
+                  <a href="{% url 'atendimentos:cadastrar_prevista' item.espera.regra.pk item.espera.data_iso %}?origem={{ request.get_full_path|urlencode }}" class="{% if item.situacao == 'a cadastrar' %}btn btn-sm btn-primary{% else %}text-decoration-none{% endif %}">{% if item.situacao == 'a cadastrar' %}Cadastrar sessão{% else %}Remarcar ou cancelar{% endif %}</a>
                 {% endif %}
               </span>
             </div>
@@ -155,7 +155,7 @@ Primeiro o dia; depois as pendências, num bloco; por fim o resumo do mês.
               <ul class="list-unstyled small mb-2 mt-1">
               {% for s in sessoes_pendentes %}
                 <li>
-                  <a href="{% if s.origem %}{% url 'atendimentos:cadastrar_remarcada' s.origem.pk %}{% else %}{% url 'atendimentos:cadastrar_prevista' s.regra.pk s.data_iso %}{% endif %}"
+                  <a href="{% if s.origem %}{% url 'atendimentos:cadastrar_remarcada' s.origem.pk %}{% else %}{% url 'atendimentos:cadastrar_prevista' s.regra.pk s.data_iso %}{% endif %}?origem={{ request.get_full_path|urlencode }}"
                      class="text-decoration-none"><span class="hora text-muted me-1">{{ s.inicio|date:"d/m H:i" }}</span> {{ s.caso }}</a>
                   {% if s.origem %}<span class="text-muted">· remarcada</span>{% endif %}
                 </li>
@@ -175,7 +175,7 @@ Primeiro o dia; depois as pendências, num bloco; por fim o resumo do mês.
               </summary>
               <ul class="list-unstyled small mb-2 mt-1">
               {% for c in agendadas_vencidas %}
-                <li><a href="{% url 'atendimentos:editar' c.pk %}" class="text-decoration-none">
+                <li><a href="{% url 'atendimentos:editar' c.pk %}?origem={{ request.get_full_path|urlencode }}" class="text-decoration-none">
                   <span class="hora text-muted me-1">{{ c.inicio|date:"d/m H:i" }}</span> {{ c.caso }}</a>
                   <span class="text-muted">· diga o que aconteceu</span></li>
               {% endfor %}

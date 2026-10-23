@@ -217,6 +217,21 @@ class CadastroPelaTela(BaseTelasAgenda):
         self.assertEqual(consulta.estado, REMARCADA)
         self.assertIsNotNone(consulta.remarcada_para)
 
+    def test_salvar_volta_para_a_origem(self):
+        """ADR-140: ao salvar, a pessoa volta para onde estava (o painel, p.ex.), não para a semana da sessão."""
+        self.entrar(self.ana)
+        resposta = self.client.post(self.prevista_de_ontem(self.regra_joao),
+                                    {"estado": FALTOU, "hora": "09:00", "duracao": "50", "origem": "/?mes=2026-09"})
+        self.assertRedirects(resposta, "/?mes=2026-09", fetch_redirect_response=False)
+
+    def test_origem_de_fora_e_ignorada(self):
+        """Proteção contra redirecionamento aberto: origem que não é caminho local cai no padrão."""
+        self.entrar(self.ana)
+        resposta = self.client.post(self.prevista_de_ontem(self.regra_joao),
+                                    {"estado": FALTOU, "hora": "09:00", "duracao": "50", "origem": "https://fora.example/x"})
+        self.assertEqual(resposta.status_code, 302)
+        self.assertNotIn("fora.example", resposta["Location"])
+
     def test_data_que_nao_e_da_frequencia_da_404(self):
         self.entrar(self.ana)
         rota = reverse("atendimentos:cadastrar_prevista",

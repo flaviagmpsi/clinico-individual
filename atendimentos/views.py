@@ -19,6 +19,7 @@ from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse
 from django.utils import timezone
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.views import View
 from django.views.generic import FormView, TemplateView
 
@@ -50,6 +51,22 @@ def _data(valor: str | None) -> date | None:
 
 def _semana_de(dia: date) -> str:
     return f"{reverse('atendimentos:agenda')}?semana={_segunda(dia):%Y-%m-%d}"
+
+
+def _origem(request) -> str:
+    """ADR-140: ao salvar, a pessoa volta para **onde estava** (painel, agenda, ficha), não para a semana da
+    sessão. A origem viaja num campo escondido do formulário; só é aceita se for um caminho local, nunca um
+    endereço de fora (proteção contra redirecionamento aberto)."""
+    alvo = request.POST.get("origem") or request.GET.get("origem") or ""
+    if alvo and url_has_allowed_host_and_scheme(alvo, allowed_hosts=None):
+        return alvo
+    return ""
+
+
+def _origem_de(request) -> str:
+    """O valor para o campo escondido, montado na renderização: o POST tem prioridade (re-render com erro),
+    senão o `?origem=` do link que abriu a tela."""
+    return request.POST.get("origem") or request.GET.get("origem") or ""
 
 
 def _ficha_do_caso(caso: Caso):
@@ -202,6 +219,7 @@ class CadastrarAvulsa(LoginRequiredMixin, FormView):
     def get_context_data(self, **kwargs):
         contexto = super().get_context_data(**kwargs)
         contexto["titulo"] = "Cadastrar consulta avulsa"
+        contexto["origem_url"] = _origem_de(self.request)
         return contexto
 
     def form_valid(self, form):
@@ -217,7 +235,7 @@ class CadastrarAvulsa(LoginRequiredMixin, FormView):
         messages.success(self.request, f"Consulta cadastrada: {consulta.get_estado_display().lower()}.")
         local = timezone.localtime(consulta.inicio)
         _avisar_se_fora_da_grade(self.request, local.weekday(), local.time(), consulta.duracao)
-        return redirect(_semana_de(local.date()))
+        return redirect(_origem(self.request) or _semana_de(local.date()))
 
 
 class CadastrarRemarcada(LoginRequiredMixin, FormView):
@@ -256,7 +274,7 @@ class CadastrarRemarcada(LoginRequiredMixin, FormView):
     def get_context_data(self, **kwargs):
         contexto = super().get_context_data(**kwargs)
         origem = self.origem()
-        contexto.update(titulo="Cadastrar sessão remarcada", origem=origem,
+        contexto.update(titulo="Cadastrar sessão remarcada", origem=origem, origem_url=_origem_de(self.request),
                         cobranca_combinada=_cobranca_combinada(origem.caso, timezone.localtime(origem.remarcada_para).date()))
         return contexto
 
@@ -271,7 +289,7 @@ class CadastrarRemarcada(LoginRequiredMixin, FormView):
             form.add_error(None, erro.messages[0])
             return self.form_invalid(form)
         messages.success(self.request, f"Sessão remarcada cadastrada: {consulta.get_estado_display().lower()}.")
-        return redirect(_semana_de(timezone.localtime(consulta.inicio).date()))
+        return redirect(_origem(self.request) or _semana_de(timezone.localtime(consulta.inicio).date()))
 
 
 def _sem_valor(form):
@@ -348,6 +366,7 @@ class CadastrarPrevista(LoginRequiredMixin, FormView):
         contexto = super().get_context_data(**kwargs)
         prevista = self.prevista()
         contexto.update(titulo="Cadastrar sessão", prevista=prevista, futura=not prevista.pendente(),
+                        origem_url=_origem_de(self.request),
                         cobranca_combinada=_cobranca_combinada(prevista.caso, prevista.data))
         return contexto
 
@@ -363,7 +382,7 @@ class CadastrarPrevista(LoginRequiredMixin, FormView):
             form.add_error(None, erro.messages[0])
             return self.form_invalid(form)
         messages.success(self.request, f"Sessão cadastrada: {consulta.get_estado_display().lower()}.")
-        return redirect(_semana_de(prevista.data))
+        return redirect(_origem(self.request) or _semana_de(prevista.data))
 
 
 class _ComConsulta:
@@ -404,6 +423,7 @@ class EditarConsulta(LoginRequiredMixin, _ComConsulta, FormView):
         contexto = super().get_context_data(**kwargs)
         consulta = self.consulta()
         contexto["consulta"] = consulta
+        contexto["origem_url"] = _origem_de(self.request)
         if self.combinada():
             contexto["cobranca_combinada"] = _cobranca_combinada(consulta.caso, timezone.localtime(consulta.inicio).date())
         return contexto
@@ -419,7 +439,7 @@ class EditarConsulta(LoginRequiredMixin, _ComConsulta, FormView):
             form.add_error(None, erro.messages[0])
             return self.form_invalid(form)
         messages.success(self.request, f"Situação corrigida: {consulta.get_estado_display().lower()}.")
-        return redirect(_semana_de(timezone.localtime(consulta.inicio).date()))
+        return redirect(_origem(self.request) or _semana_de(timezone.localtime(consulta.inicio).date()))
 
 
 class ExcluirConsulta(LoginRequiredMixin, _ComConsulta, View):
