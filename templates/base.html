@@ -226,5 +226,88 @@ modificadora, nem o gesto de selecionar texto.
   });
 })();
 </script>
+
+{% comment %}
+ADR-140: painel lateral (sobreposição). Conforto, sobre o fluxo que já funciona sem JavaScript: um link marcado
+com `data-painel` abre o formulário numa folha por cima da tela, em vez de navegar. Ao salvar com sucesso, o
+servidor redireciona para a origem e a página de origem recarrega (mostrando o aviso com Desfazer). Com erro de
+validação, o formulário volta dentro da folha. Sem JS, o link navega como sempre.
+{% endcomment %}
+<script>
+(function () {
+  if (!window.fetch || !window.DOMParser || !window.history) return;
+
+  function fecharPainel() {
+    var p = document.getElementById("painelLateral");
+    if (p) p.remove();
+    document.removeEventListener("keydown", aoEsc);
+  }
+  function aoEsc(e) { if (e.key === "Escape") fecharPainel(); }
+
+  function montar(conteudoHTML, urlDaTela) {
+    fecharPainel();
+    var wrap = document.createElement("div");
+    wrap.className = "painel-lateral";
+    wrap.id = "painelLateral";
+    wrap.setAttribute("role", "dialog");
+    wrap.setAttribute("aria-modal", "true");
+    wrap.innerHTML = '<div class="veu"></div><div class="folha" role="document">'
+      + '<div class="corpo"></div></div>';
+    wrap.querySelector(".corpo").innerHTML = conteudoHTML;
+    document.body.appendChild(wrap);
+    wrap.querySelector(".veu").addEventListener("click", fecharPainel);
+    document.addEventListener("keydown", aoEsc);
+    ligarForm(wrap, urlDaTela);
+    // Fechar pelos "Cancelar" (links que voltam à agenda/origem): dentro do painel, só fecham.
+    wrap.querySelectorAll('a.btn, a[href]').forEach(function (a) {
+      var txt = (a.textContent || "").trim().toLowerCase();
+      if (txt === "cancelar") a.addEventListener("click", function (e) { e.preventDefault(); fecharPainel(); });
+    });
+    var foco = wrap.querySelector("input, select, textarea, button");
+    if (foco) foco.focus();
+  }
+
+  function ligarForm(wrap, urlDaTela) {
+    var form = wrap.querySelector("form");
+    if (!form) return;
+    form.addEventListener("submit", function (e) {
+      e.preventDefault();
+      var dados = new FormData(form);
+      var botao = form.querySelector('button[type="submit"]');
+      if (botao) { botao.disabled = true; }
+      fetch(form.getAttribute("action") || urlDaTela, {
+        method: "POST", body: dados, headers: { "X-Requested-With": "fetch" }, redirect: "follow",
+      }).then(function (resp) {
+        if (resp.redirected) { window.location = resp.url; return null; }
+        return resp.text();
+      }).then(function (html) {
+        if (html === null) return;
+        var doc = new DOMParser().parseFromString(html, "text/html");
+        var novo = doc.querySelector("main.conteudo");
+        wrap.querySelector(".corpo").innerHTML = novo ? novo.innerHTML : html;
+        ligarForm(wrap, urlDaTela);
+        var foco = wrap.querySelector(".is-invalid, .alert-danger, input, select, textarea");
+        if (foco && foco.focus) foco.focus();
+      }).catch(function () { if (botao) botao.disabled = false; });
+    });
+  }
+
+  document.addEventListener("click", function (e) {
+    if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    var link = e.target.closest("a[data-painel]");
+    if (!link) return;
+    e.preventDefault();
+    var url = link.getAttribute("href");
+    fetch(url, { headers: { "X-Requested-With": "fetch" } })
+      .then(function (r) { return r.text(); })
+      .then(function (html) {
+        var doc = new DOMParser().parseFromString(html, "text/html");
+        var conteudo = doc.querySelector("main.conteudo");
+        if (!conteudo) { window.location = url; return; }
+        montar(conteudo.innerHTML, url);
+      }).catch(function () { window.location = url; });
+  });
+})();
+</script>
 </body>
 </html>
