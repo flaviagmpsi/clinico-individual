@@ -127,6 +127,22 @@ class Psicologo(ValidaAoSalvar, AbstractUser):
     # do registro de sessão é a de sempre: escrever à mão nunca saiu do escopo (ADR-058).
     usa_ia_no_prontuario = models.BooleanField("Escrita assistida no registro de sessão", default=False)
 
+    # ADR-140: aparência, escolhida em Configurações. O tema vai para o <html> já do servidor, para o Noturno não
+    # piscar; "Seguir o computador" é resolvido no navegador por prefers-color-scheme. Densidade Compacta reduz
+    # tudo em 10%. Padrões: seguir o computador e Confortável.
+    class Tema(models.TextChoices):
+        SISTEMA = "sistema", "Seguir o computador"
+        CLARO = "claro", "Claro"
+        NOTURNO = "noturno", "Noturno"
+
+    class Densidade(models.TextChoices):
+        CONFORTAVEL = "confortavel", "Confortável"
+        COMPACTA = "compacta", "Compacta"
+
+    tema = models.CharField("Tema", max_length=10, choices=Tema.choices, default=Tema.SISTEMA)
+    densidade = models.CharField("Densidade", max_length=11, choices=Densidade.choices,
+                                 default=Densidade.CONFORTAVEL)
+
     # Quando o quiz de cadastro foi concluído. Vazio: a conta existe, mas o sistema ainda não sabe o
     # bastante para propor nada — e manda o psicólogo terminar o cadastro antes de qualquer tela.
     quiz_concluido_em = models.DateTimeField("Cadastro concluído em", null=True, blank=True)
