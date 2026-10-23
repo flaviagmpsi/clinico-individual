@@ -1,0 +1,137 @@
+{% comment %}
+ADR-140 (guia §13): as amostras da vitrine. Um bloco por componente, com as mesmas classes do `_tema.html` e texto
+fictício. Incluído duas vezes na vitrine — num envólucro claro e noutro escuro —, para os dois temas ficarem lado a
+lado. Quando um componente mudar no tema, muda aqui junto. CRP e nomes são fictícios (marcador).
+{% endcomment %}
+<div class="d-flex flex-column gap-4">
+
+  <section>
+    <div class="rotulo mb-2">Botões</div>
+    <div class="d-flex flex-wrap gap-2 align-items-center">
+      <button class="btn btn-primary">Salvar</button>
+      <button class="btn btn-outline-secondary">Cancelar</button>
+      <button class="btn btn-link">Ver agenda</button>
+      <button class="btn btn-outline-danger">Excluir</button>
+      <button class="btn btn-primary" disabled>Salvando…</button>
+      <button class="btn btn-sm btn-outline-secondary">Botão pequeno</button>
+    </div>
+  </section>
+
+  <section>
+    <div class="rotulo mb-2">Campos</div>
+    <div class="row g-3">
+      <div class="col-sm-6">
+        <label class="form-label">Nome completo</label>
+        <input class="form-control" value="Otávio Siqueira Melo">
+      </div>
+      <div class="col-sm-6">
+        <label class="form-label">Forma de recebimento</label>
+        <select class="form-select"><option>Pix</option><option>Cartão</option></select>
+      </div>
+      <div class="col-sm-6">
+        <label class="form-label">Telefone <span class="text-muted">(opcional)</span></label>
+        <input class="form-control" placeholder="(31) 90000-0000">
+      </div>
+      <div class="col-sm-6">
+        <label class="form-label">CPF</label>
+        <input class="form-control is-invalid" value="123.456.789">
+        <div class="text-danger small mt-1"><i class="bi bi-exclamation-circle"></i> O CPF tem 11 números. Faltou um.</div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="rotulo mb-2">Escolhas</div>
+    <div class="d-flex flex-wrap gap-4 align-items-center">
+      <div class="form-check"><input class="form-check-input" type="checkbox" checked id="v1"><label class="form-check-label" for="v1">Cobrar esta sessão</label></div>
+      <div class="form-check"><input class="form-check-input" type="radio" checked name="vr" id="v2"><label class="form-check-label" for="v2">Online</label></div>
+      <div class="form-check form-switch"><input class="form-check-input" type="checkbox" checked id="v3"><label class="form-check-label" for="v3">Controlar despesas</label></div>
+      <div class="segmentado"><button class="ativo">Mês</button><button>Ano</button></div>
+    </div>
+  </section>
+
+  <section>
+    <div class="rotulo mb-2">Selos de situação</div>
+    <div class="d-flex flex-wrap gap-2">
+      <span class="badge text-bg-success"><i class="bi bi-check-lg"></i> Pago</span>
+      <span class="badge text-bg-warning"><i class="bi bi-clock"></i> Pendente</span>
+      <span class="badge text-bg-danger"><i class="bi bi-exclamation-triangle"></i> Vencido</span>
+      <span class="badge text-bg-info">A vencer</span>
+      <span class="badge text-bg-light border">Sem cobrança</span>
+    </div>
+  </section>
+
+  <section>
+    <div class="rotulo mb-2">Agenda — cartões de situação</div>
+    <div class="d-flex flex-wrap gap-2" style="max-width:640px">
+      <span class="cartao esperada">Otávio · 14h<small>prevista</small></span>
+      <span class="cartao pendente">Clara · 15h<small>pendente · cadastrar</small></span>
+      <span class="cartao realizada">Marina · 16h<small>presente</small></span>
+      <span class="cartao faltou">Bruno · 17h<small>faltou</small></span>
+      <span class="cartao agendada">Rita · 18h<small>agendada</small></span>
+      <span class="cartao remarcada">Pedro · 9h<small>remarcada de 02/10</small></span>
+      <span class="cartao cancelada">Ana · 10h<small>cancelada</small></span>
+      <span class="cartao compromisso">Supervisão · 19h<small>fora da clínica</small></span>
+      <span class="cartao livre">livre · 11h</span>
+    </div>
+  </section>
+
+  <section>
+    <div class="rotulo mb-2">Cartão</div>
+    <div class="card" style="max-width:420px">
+      <div class="card-header d-flex align-items-center">Hoje <a href="#" class="ms-auto small text-decoration-none" onclick="return false">Ver agenda</a></div>
+      <div class="card-body">
+        <div class="h3 numero mb-0">R$ 6.880,00</div>
+        <div class="text-muted small">recebido de outubro</div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="rotulo mb-2">Lista</div>
+    <ul class="list-group" style="max-width:420px">
+      <li class="list-group-item proxima"><span class="hora me-2">14:00</span> Otávio Siqueira <span class="ms-auto badge text-bg-info">próxima</span></li>
+      <li class="list-group-item"><span class="hora me-2">16:00</span> Clara Vidal Prado</li>
+      <li class="list-group-item feita"><span class="hora me-2">09:00</span> Marina Alves <span class="ms-auto badge text-bg-success">presente</span></li>
+    </ul>
+  </section>
+
+  <section>
+    <div class="rotulo mb-2">Pacientes em blocos (frequência)</div>
+    <div class="blocos">
+      <a href="#" class="paciente semanal" onclick="return false">
+        <div class="cabeca"><span class="inicial">OM</span><div><div class="nome">Otávio Melo</div><div class="quando">Terça, 14h · semanal</div></div></div>
+        <footer><span>presença</span><span class="barrinha"><i style="width:87%"></i></span><b class="valor">87%</b></footer>
+      </a>
+      <a href="#" class="paciente quinzenal" onclick="return false">
+        <div class="cabeca"><span class="inicial">CV</span><div><div class="nome">Clara Vidal</div><div class="quando">Quinta, 10h · quinzenal</div></div></div>
+        <footer><span>presença</span><span class="barrinha baixa"><i style="width:60%"></i></span><b class="valor">60%</b></footer>
+      </a>
+      <a href="#" class="paciente avulso" onclick="return false">
+        <div class="cabeca"><span class="inicial">MA</span><div><div class="nome">Marina Alves</div><div class="quando">sem horário fixo · avulso</div></div></div>
+        <footer><span class="text-muted">em dia</span></footer>
+      </a>
+    </div>
+  </section>
+
+  <section>
+    <div class="rotulo mb-2">Avisos</div>
+    <div class="d-flex flex-column gap-2" style="max-width:520px">
+      <div class="alert alert-info mb-0">Mensalidade de R$ 300: esta sessão já está na mensalidade do mês.</div>
+      <div class="alert alert-success mb-0">Pagamento registrado: mensalidade de outubro · Otávio.</div>
+      <div class="alert alert-warning mb-0">Esta sessão ainda não aconteceu.</div>
+      <div class="alert alert-danger mb-0">A sessão tem prontuário e não pode ser excluída.</div>
+      <div class="aviso-de-teste small d-flex align-items-center gap-2"><i class="bi bi-cone-striped"></i> <span><strong>Rodada aberta de testes.</strong> O que você escrever aqui é guardado de verdade.</span></div>
+    </div>
+  </section>
+
+  <section>
+    <div class="rotulo mb-2">Aviso flutuante (Desfazer)</div>
+    <div class="aviso-flutuante" style="position:static; max-width:420px">
+      <i class="bi bi-check-circle"></i>
+      <span>Sessão de Otávio cadastrada: presente.</span>
+      <button class="desfazer ms-auto" type="button" onclick="return false">Desfazer</button>
+    </div>
+  </section>
+
+</div>

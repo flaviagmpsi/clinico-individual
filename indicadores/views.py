@@ -14,6 +14,14 @@ from indicadores import estatisticas, periodo
 from indicadores.servicos import montar_painel
 
 
+class Vitrine(LoginRequiredMixin, TemplateView):
+    """A vitrine de componentes (ADR-140, guia §13): cada peça do tema, nos dois temas e densidades, com texto
+    fictício. Depois da migração, é a referência visual — e, como usa as mesmas classes do `_tema.html`, muda junto
+    com elas. Só para conta logada."""
+
+    template_name = "vitrine.html"
+
+
 class Painel(LoginRequiredMixin, TemplateView):
     template_name = "painel.html"
 

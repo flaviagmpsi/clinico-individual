@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block titulo %}Vitrine{% endblock %}
+{% block secao %}Vitrine{% endblock %}
+
+{% comment %}
+ADR-140 (guia §13): a vitrine de componentes. Cada peça do `_tema.html` com texto fictício, nos dois temas lado a
+lado (envólucros com `data-bs-theme`) e uma amostra em Compacta. É a referência visual depois da migração; como usa
+as mesmas classes do tema, muda junto. Só conta logada (a view exige login).
+{% endcomment %}
+{% block conteudo %}
+<style>
+  .vitrine-painel { border: 1px solid var(--linha); border-radius: var(--raio); padding: 20px; }
+  .vitrine-claro { background: #F0F0FD; }
+  .vitrine-escuro { background: #0A0C18; }
+  .vitrine-compacta { font-size: 90%; }
+  .vitrine-cabeca { font-family: var(--f-titulo); font-size: .95rem; color: var(--suave); margin-bottom: 10px; }
+</style>
+
+<h1 class="mb-1">Vitrine de componentes</h1>
+<p class="text-muted" style="max-width:720px">Cada peça do tema, nos dois temas lado a lado. É a referência do visual
+do Polaris (ADR-140): muda junto com o <code>_tema.html</code>. Textos, nomes e valores são fictícios. O CRP sai
+sempre da conta — "CRP 00/00000" é só marcador.</p>
+
+<div class="row g-4 mt-1">
+  <div class="col-xl-6">
+    <div class="vitrine-painel vitrine-claro" data-bs-theme="light">
+      <div class="vitrine-cabeca">☀️ Claro</div>
+      {% include "vitrine/_amostras.html" %}
+    </div>
+  </div>
+  <div class="col-xl-6">
+    <div class="vitrine-painel vitrine-escuro" data-bs-theme="dark">
+      <div class="vitrine-cabeca" style="color:#ABB1C2">🌙 Noturno</div>
+      {% include "vitrine/_amostras.html" %}
+    </div>
+  </div>
+</div>
+
+<h2 class="mt-4 mb-2">Densidade Compacta</h2>
+<p class="text-muted">A Compacta reduz tudo em 10% (na conta inteira, por <code>data-densidade="compacta"</code> no
+<code>&lt;html&gt;</code>). Aqui, uma amostra reduzida para conferência.</p>
+<div class="vitrine-painel vitrine-claro vitrine-compacta" data-bs-theme="light">
+  <div class="d-flex flex-wrap gap-2 align-items-center">
+    <button class="btn btn-primary">Salvar</button>
+    <button class="btn btn-outline-secondary">Cancelar</button>
+    <span class="badge text-bg-success"><i class="bi bi-check-lg"></i> Pago</span>
+    <span class="cartao realizada" style="width:auto">Marina · 16h<small>presente</small></span>
+  </div>
+</div>
+{% endblock %}

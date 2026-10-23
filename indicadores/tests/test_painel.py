@@ -249,3 +249,11 @@ class PainelPelaTela(TransactionTestCase):
     def test_marcar_boas_vindas_so_por_post(self):
         self.assertTrue(self.client.login(username=self.ana.email, password=SENHA))
         self.assertEqual(self.client.get(reverse("contas:boas_vindas_vistas")).status_code, 405)
+
+    def test_vitrine_exige_login_e_abre(self):
+        """ADR-140: a vitrine de componentes é só para conta logada e precisa renderizar nos dois temas."""
+        self.assertEqual(self.client.get(reverse("vitrine")).status_code, 302)
+        self.assertTrue(self.client.login(username=self.ana.email, password=SENHA))
+        resposta = self.client.get(reverse("vitrine"))
+        self.assertContains(resposta, "Vitrine de componentes")
+        self.assertContains(resposta, 'data-bs-theme="dark"')
