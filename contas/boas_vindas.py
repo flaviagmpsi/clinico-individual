@@ -17,8 +17,8 @@ class Passo:
 
 
 PASSOS: tuple[Passo, ...] = (
-    Passo("bem_vindo", "bi-stars", "Bem-vindo ao Polaris",
-          "Este é um tour rápido pelo que você pode fazer aqui. São poucos passos — no fim, é só começar a usar. "
+    Passo("bem_vindo", "bi-stars", "Boas-vindas ao Polaris",
+          "Este é um tour rápido pelo que você pode fazer aqui. São poucos passos. No fim, é só começar a usar. "
           "Ele aparece só desta vez."),
     Passo("painel", "bi-speedometer2", "O painel responde “o que eu faço agora”",
           "Ao entrar, você vê a agenda de hoje e um bloco de pendências. É o seu ponto de partida todo dia."),
@@ -27,8 +27,8 @@ PASSOS: tuple[Passo, ...] = (
           "a receber, recibo a emitir, prontuário por escrever e ganho de fora a receber. Cada linha abre e leva "
           "direto para resolver."),
     Passo("agenda", "bi-calendar-week", "Agenda",
-          "Suas sessões em formato de calendário. Você registra o que aconteceu em cada uma — presente, falta, "
-          "cancelamento ou remarcação — e pode cadastrar a remarcação antes mesmo do horário."),
+          "Suas sessões em formato de calendário. Em cada uma, você registra se foi presença, falta, cancelamento "
+          "ou remarcação. E a remarcação pode ser cadastrada antes mesmo do horário."),
     Passo("horarios", "bi-clock", "Meus horários",
           "Você declara os horários em que atende, e a agenda mostra sozinha onde há vaga livre. Também é aqui que "
           "entram os compromissos fora da clínica, como supervisão e trabalho em ONG."),
@@ -43,18 +43,18 @@ PASSOS: tuple[Passo, ...] = (
           "As mensalidades e sessões viram cobranças automáticas a partir do combinado com cada paciente. Você "
           "registra os pagamentos, e o sistema mostra o que foi pago, o que falta e o que está vencido."),
     Passo("recibos", "bi-receipt", "Recibos e carnê-leão",
-          "Ao registrar um pagamento, diga se já emitiu o recibo — se não, vira um lembrete. E as despesas da "
+          "Ao registrar um pagamento, diga se já emitiu o recibo. Se não, vira um lembrete. E as despesas da "
           "clínica já saem separadas pelo que entra no carnê-leão."),
     Passo("outros_ganhos", "bi-briefcase", "Outros ganhos",
-          "Recebe por fora da clínica — supervisão, ONG, emprego CLT, um bico? Lance aqui. Conta como pendência até "
-          "você marcar que recebeu, e entra na sua receita total do mês."),
+          "Recebe por fora da clínica, com supervisão, ONG, emprego CLT ou um bico? Lance aqui. Conta como "
+          "pendência até você marcar que recebeu, e entra na sua receita total do mês."),
     Passo("documentos", "bi-file-earmark-text", "Documentos",
-          "Declarações, atestados e o prontuário geral que pode ser entregue ao paciente — com os seus dados e o "
+          "Declarações, atestados e o prontuário geral que pode ser entregue ao paciente, com os seus dados e o "
           "timbre, prontos para imprimir."),
     Passo("aniversario", "bi-cake2", "Aniversário do paciente",
           "No dia do aniversário de um paciente em atendimento, ao abrir o sistema aparece um aviso para você não "
           "deixar passar. É rápido e some depois de fechado."),
     Passo("comecar", "bi-check2-circle", "Pronto!",
-          "É isso. Você pode voltar a qualquer parte pelo menu à esquerda. Bom trabalho — e qualquer dúvida, cada "
-          "tela tem textos de ajuda ao lado dos campos."),
+          "É isso. Você pode voltar a qualquer parte pelo menu. Bom trabalho. Se surgir alguma dúvida, cada tela "
+          "tem textos de ajuda ao lado dos campos."),
 )
