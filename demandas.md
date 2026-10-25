@@ -26,21 +26,25 @@ o `main` (no ar) antes da usuária aprovar o conjunto; `main` fica marcado na ta
 entrega a tela no computador e no celular e passa por conferência (testes + capturas Playwright 1440/390px, Claro e
 Noturno, uma vez Compacta).
 
+**Implementado e no ar** (merge do ramo `redesign` em `main`). Rollback num passo pela tag `antes-do-redesign`.
+
 | Etapa | Entrega | Estado | Código |
 |---|---|---|---|
-| 1 | Tema (tokens no `_tema.html`, Figtree/Newsreader, céu, grão), dock (`_barra.html`), topo e faixa de testes (`base.html`), painel lateral→folha, aviso com Desfazer, Noturno+densidade, **vitrine `/vitrine/`** e script de capturas | ✅ decidida | ⚪ |
-| 2 | Painel (+ pendência de agendadas da ADR-139), Cadastrar sessão em painel lateral (fim do redirect da view), tour de boas-vindas no visual novo + textos | ✅ | ⚪ |
-| 3 | Agenda (celular um dia por vez, estado Agendada) e Meus horários | ✅ | ⚪ |
-| 4 | Pacientes, Novo paciente (painel largo / tela cheia) e a ficha com as quatro abas | ✅ | ⚪ |
-| 5 | Prontuários, com a escrita assistida no celular | ✅ | ⚪ |
-| 6 | Financeiro (pagamento, despesa, ganho em painel/folha) | ✅ | ⚪ |
-| 7 | Documentos (a folha) | ✅ | ⚪ |
-| 8 | Configurações, Meu perfil e Assinatura | ✅ | ⚪ |
-| 9 | Entrada, Esqueci a senha, Criar conta e Cadastro pelo link | ✅ | ⚪ |
+| 1 | Tema (tokens no `_tema.html`, Figtree/Newsreader, céu, grão), dock (`_barra.html`), topo e faixa de testes (`base.html`), painel lateral→folha, aviso com Desfazer, Noturno+densidade, **vitrine `/vitrine/`** e script de capturas | ✅ | 🟢 |
+| 2 | Painel (+ pendência de agendadas da ADR-139), Cadastrar sessão em painel lateral (fim do redirect da view), tour de boas-vindas no visual novo + textos | ✅ | 🟢 |
+| 3 | Agenda (celular um dia por vez, estado Agendada) e Meus horários | ✅ | 🟢 |
+| 4 | Pacientes, Novo paciente (painel largo / tela cheia) e a ficha com as quatro abas | ✅ | 🟢 |
+| 5 | Prontuários, com a escrita assistida no celular | ✅ | 🟢 |
+| 6 | Financeiro (pagamento, despesa, ganho em painel/folha) | ✅ | 🟢 |
+| 7 | Documentos (a folha) | ✅ | 🟢 |
+| 8 | Configurações, Meu perfil e Assinatura | ✅ | 🟢 |
+| 9 | Entrada, Esqueci a senha, Criar conta e Cadastro pelo link | ✅ | 🟢 |
 
-Decisões desta rodada: borda de campo `#8E8CA4` (3:1); padrões da conta tema "Seguir o computador" e densidade
-"Confortável". Comportamentos novos a construir nas etapas: Desfazer, painel-lateral-fica-na-tela, tema/densidade na
-conta, vitrine. Guia conferido contra `b65475b`; reconferir o `git diff` no início de cada etapa.
+Decisões da rodada: borda de campo `#8E8CA4` (3:1); padrões tema "Seguir o computador" e densidade "Confortável".
+**Ressalvas registradas** (refinos pós-deploy): o interior do "Cadastrar sessão" ainda não são as "4 opções
+grandes" das pranchetas; a folha lateral recarrega a origem ao salvar (em vez de atualizar sem recarregar); grão via
+SVG inline (não PNG estático); ícones do dock/estrela são aproximação dos SVGs do canvas; Meus horários/Prontuários/
+Documentos/Perfil/Assinatura herdam o tema sem redesenho de layout próprio.
 
 ---
 
