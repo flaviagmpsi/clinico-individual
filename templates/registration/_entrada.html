@@ -8,21 +8,37 @@
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
   {% include "components/_tema.html" %}
   <style>
-    /* O mesmo desenho da entrada: quem chega aqui veio de lá, e precisa reconhecer o lugar. */
-    body { background: var(--escuro); padding-top: 0; }
-    .entrada-marca { color: #fff; font-weight: 600; font-size: 1rem; text-transform: uppercase; letter-spacing: .1em; }
-    .entrada-marca i { color: var(--tinta-clara); }
-    .entrada-sub, .entrada-pe { color: var(--escuro-suave, #b09b8b); }
-    .entrada-pe a { color: #c9b6a6; }
+    /* ADR-140: fundo índigo inteiro com a estrela do Polaris (brilho dourado); cartão branco. Quem chega aqui
+       veio da entrada e precisa reconhecer o lugar. */
+    body { padding: 0; min-height: 100vh; color: #E8EBF2;
+      background:
+        radial-gradient(ellipse 900px 460px at 50% -8%, rgba(146,155,245,.35), rgba(146,155,245,0) 70%),
+        linear-gradient(180deg, #2C2386 0%, #1B1560 60%, #140F4C 100%);
+      background-attachment: fixed; }
+    body::before { display: none; }
+    .entrada-estrela { color: #F2CB83; filter: drop-shadow(0 0 18px rgba(242,203,131,.55)); }
+    .entrada-marca { color: #fff; font-family: var(--f-titulo); font-weight: 500; font-size: 1.7rem; letter-spacing: -.01em; }
+    .entrada-sub { color: #BAB9F9; }
+    .entrada-pe { color: #BAB9F9; }
+    .entrada-pe a { color: #fff; }
+    /* Cartão branco garantido, mesmo com o Noturno do sistema, para ler sobre o índigo. */
+    .entrada-card { background: #fff; color: #15123F; border: 0; border-radius: var(--raio-grande);
+      box-shadow: 0 10px 40px rgba(10,8,40,.45); }
+    .entrada-card .form-control, .entrada-card .form-select { background: #fff; color: #15123F; }
   </style>
 </head>
-<body class="d-flex align-items-center justify-content-center" style="min-height:100vh">
+<body class="d-flex align-items-center justify-content-center" data-bs-theme="light">
   <div style="width:100%; max-width:420px" class="px-3">
     <div class="text-center mb-4">
-      <div class="entrada-marca mb-1"><i class="bi bi-clipboard2-pulse"></i> Polaris</div>
+      <div class="entrada-estrela mb-2">
+        <svg viewBox="0 0 24 24" fill="currentColor" width="46" height="46" aria-hidden="true">
+          <path d="M12 1.6l1.9 6.3 6.3-1.9-4.4 4.9 4.4 4.9-6.3-1.9L12 22.4l-1.9-6.3-6.3 1.9 4.4-4.9L3.8 6l6.3 1.9z"/>
+        </svg>
+      </div>
+      <div class="entrada-marca mb-1">Polaris</div>
       <div class="entrada-sub small">Gestão para o psicólogo clínico</div>
     </div>
-    <div class="card"><div class="card-body p-4">{% block corpo %}{% endblock %}</div></div>
+    <div class="card entrada-card"><div class="card-body p-4">{% block corpo %}{% endblock %}</div></div>
     <p class="entrada-pe text-center small mt-3 mb-0">
       <a href="{% url 'contas:entrar' %}" class="text-decoration-none">Voltar para a entrada</a>
     </p>

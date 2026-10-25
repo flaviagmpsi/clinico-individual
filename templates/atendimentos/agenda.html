@@ -9,53 +9,25 @@ ordem de horário, horários livres visíveis onde há grade cadastrada. Amarelo
 sessão cadastrada muda de cor (presente verde, falta vermelha, cancelada cinza riscada); livre é cinza.
 {% endcomment %}
 <style>
-  /* As cores dizem a situação (ADR-073, ADR-074). Os tons são os do tema terroso (ADR-108). */
-  .calendario { display: grid; gap: 8px; }
-  .coluna .cabecalho { background: var(--escuro-3); color: #e8ddd2; font-size: .6875rem; font-weight: 600; letter-spacing: .08em;
-                       text-transform: uppercase; text-align: center; padding: 5px 4px; border-radius: var(--raio) var(--raio) 0 0; }
-  .coluna .cabecalho.hoje { background: var(--tinta); color: #fff; }
-  .coluna .corpo { border: 1px solid var(--linha); border-top: 0; min-height: 120px; padding: 6px;
-                   display: flex; flex-direction: column; gap: 5px; border-radius: 0 0 var(--raio) var(--raio); background: var(--superficie); }
-  .cartao { display: block; padding: 5px 8px; border-radius: var(--raio); font-size: .78125rem; font-weight: 600;
-            line-height: 1.3; text-decoration: none; color: var(--texto);
-            border: 1px solid transparent; border-left-width: 3px; }
-  .cartao small { display: block; font-weight: 400; font-size: .6875rem; color: var(--suave); }
-  /* ADR-110: os quatro estados eram lavados quentes sobre um fundo quente, e mediam dE 7,7 entre "prevista" e
-     "a cadastrar" — abaixo do limiar de distinguir de relance. "Livre" e "prevista" davam 6,5. A correção anda em
-     três eixos ao mesmo tempo, porque mexer só no matiz do preenchimento não bastava:
-       1. MATIZ  — "prevista" sai da família quente e vai para petróleo pálido. Sobre um fundo pêssego, frio é o
-                   único jeito de uma cor clara se destacar sem gritar, e frio combina com o que ela diz: ainda
-                   vai acontecer, não há nada a fazer.
-       2. PESO   — "a cadastrar" é a única que pede ação, então é a única com preenchimento cheio. dE 31,6 contra
-                   a prevista e 28,8 contra o cartão: salta da tela de longe.
-       3. BARRA  — a lateral saturada engorda para 5px e carrega o estado em cor cheia. Entre as quatro barras a
-                   menor distância é dE 34, então dá para ler o estado só pela barra.
-     O verde do "realizada" também ficou mais cheio: contra o azul da prevista, o verde lavado dava dE 11,1 e as
-     duas competiam na mesma semana. */
-  .cartao { border-left-width: 5px; }
-  /* ADR-129: era transparente com borda tracejada fina — sumia na folha e não parecia nada. Agora é o
-     verde-oliva lavado da paleta (o mesmo tom de `--ok`, rebaixado): diz "disponível" sem competir com a sessão.
-     O tracejado fica, porque é ele que distingue um horário vago de um cartão com gente dentro. */
-  .cartao.livre { background: #e3ecdd; color: #3d5637; border-color: #9fb897; border-style: dashed;
-                  border-left-width: 3px; border-left-color: #6d8a64; font-weight: 600; }
-  .cartao.livre:hover { background: #d7e4cf; }
-  .cartao.esperada { background: #dee9eb; border-color: #b9d2d7; border-left-color: #3c6b79; color: #24444c; }
-  .cartao.pendente { background: #f4c4a2; border-color: #de9463; border-left-color: var(--tinta-escura); color: #5e2a12; }
-  .cartao.pendente small { color: #7a3a19; font-weight: 600; }
-  .cartao.realizada { background: #c4debb; border-color: #9bbe91; border-left-color: var(--ok); color: #2f4a31; }
-  .cartao.faltou { background: #f6cbc6; border-color: #dda49d; border-left-color: var(--erro); color: #7a2a24; }
-  .cartao.cancelada { background: var(--linha-fina); border-color: var(--linha); color: var(--suave); text-decoration: line-through; }
-  .cartao.remarcada { background: #e6dcef; border-color: #c1aed1; border-left-color: #6b5296; color: #3f2f5c; }
-  /* ADR-139: a agendada que ainda vai acontecer — azul calmo, distinta da prevista (petróleo) e da remarcada (lilás). */
-  .cartao.agendada { background: #dde4f0; border-color: #b9c6e0; border-left-color: #3c5a8a; color: #243a5c; }
-  .cartao { transition: transform var(--rapido), box-shadow var(--rapido), filter var(--rapido); }
-  .cartao:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(58, 44, 38, .18); filter: saturate(1.1); color: inherit; }
-  .cartao:active { transform: scale(.98); }
-  .cartao.livre:hover { background: var(--tinta-fundo); border-color: var(--tinta); color: var(--tinta-escura); }
-  .mes .coluna .corpo { min-height: 96px; padding: 4px; gap: 3px; }
-  .mes .cartao { font-size: .6875rem; padding: 2px 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .mes .numero { font-variant-numeric: tabular-nums; font-size: .75rem; font-weight: 600; color: var(--suave); }
-  .mes .numero.hoje { color: var(--tinta); font-weight: 600; }
+  {% comment %}ADR-140: só o layout do calendário mora aqui; as cores dos cartões de situação vêm do _tema
+  (seção 2.2), sem a barra lateral de estado (ADR-110, revista).{% endcomment %}
+  .calendario { display: grid; gap: 10px; }
+  .coluna .cabecalho { background: var(--superficie-2); color: var(--suave); font-size: .82rem; font-weight: 600;
+                       text-align: center; padding: 8px 6px; border: 1px solid var(--linha); border-bottom: 0;
+                       border-radius: var(--raio) var(--raio) 0 0; }
+  .coluna .cabecalho.hoje { background: var(--tinta); color: var(--sobre-tinta); border-color: var(--tinta); }
+  .coluna .corpo { border: 1px solid var(--linha); border-top: 0; min-height: 120px; padding: 8px;
+                   display: flex; flex-direction: column; gap: 6px; border-radius: 0 0 var(--raio) var(--raio); background: var(--superficie); }
+  .mes .coluna .corpo { min-height: 96px; padding: 5px; gap: 4px; }
+  .mes .cartao { font-size: .72rem; padding: 3px 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .mes .cartao small { display: none; }
+  .mes .numero { font-variant-numeric: tabular-nums; font-size: .82rem; font-weight: 600; color: var(--suave); }
+  .mes .numero.hoje { color: var(--tinta); font-weight: 700; }
+  /* No celular, um dia por vez: as colunas empilham em coluna única, cada dia um bloco (ADR-140 §14). */
+  @media (max-width: 767.98px) {
+    .calendario, .calendario.mes { grid-template-columns: 1fr !important; }
+    .coluna .corpo { min-height: 0; }
+  }
 </style>
 
 {% include "atendimentos/_abas.html" with aba="agenda" %}
@@ -93,7 +65,7 @@ sessão cadastrada muda de cor (presente verde, falta vermelha, cancelada cinza 
       {% endfor %}
     </select>
   </form>
-  <a href="{% url 'atendimentos:nova' %}" class="btn btn-sm btn-primary ms-auto"><i class="bi bi-plus-lg"></i> Cadastrar consulta avulsa</a>
+  <a data-painel href="{% url 'atendimentos:nova' %}?origem={{ request.get_full_path|urlencode }}" class="btn btn-sm btn-primary ms-auto"><i class="bi bi-plus-lg"></i> Cadastrar consulta avulsa</a>
 </div>
 
 {% comment %}ADR-074: sem alerta de pendências aqui — a sessão que passou sem cadastro já aparece no próprio

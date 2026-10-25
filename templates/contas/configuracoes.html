@@ -48,6 +48,33 @@ controlar despesas ou não, e trocar de pessoa física para jurídica (ou o cont
     </div>
   </form>
 
+  {% comment %}ADR-140: Aparência — tema e densidade. Vão para o <html> já do servidor (o Noturno não pisca).{% endcomment %}
+  <form method="post" class="card mb-3">
+    {% csrf_token %}
+    <input type="hidden" name="acao" value="aparencia">
+    <div class="card-header bg-white py-2 fw-semibold">Aparência</div>
+    <div class="card-body">
+      <div class="rotulo mb-2">Tema</div>
+      <div class="d-flex flex-column gap-1 mb-3">
+        {% for sub in aparencia.tema %}
+          <div class="form-check">{{ sub.tag }}
+            <label class="form-check-label" for="{{ sub.id_for_label }}">{{ sub.choice_label }}</label></div>
+        {% endfor %}
+      </div>
+      <div class="form-text small mb-3">"Seguir o computador" usa o Claro ou o Noturno conforme o ajuste do seu
+        sistema. O Noturno é o modo escuro.</div>
+      <div class="rotulo mb-2">Densidade</div>
+      <div class="d-flex flex-column gap-1">
+        {% for sub in aparencia.densidade %}
+          <div class="form-check">{{ sub.tag }}
+            <label class="form-check-label" for="{{ sub.id_for_label }}">{{ sub.choice_label }}</label></div>
+        {% endfor %}
+      </div>
+      <div class="form-text small mt-2">A Compacta aproxima tudo um pouco, para caber mais na tela.</div>
+      <button type="submit" class="btn btn-primary btn-sm mt-3">Salvar</button>
+    </div>
+  </form>
+
   <div class="card">
     <div class="card-header bg-white py-2 fw-semibold">
       Pessoa física ou jurídica

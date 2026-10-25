@@ -31,7 +31,7 @@ marca "paguei". Em aberto depois do vencimento fica em amarelo — sem alerta re
 <div class="card">
   <div class="card-header bg-white py-2 d-flex align-items-center">
     <span class="fw-semibold">Despesas de {{ inicio|date:"F"|lower }}</span>
-    <a href="{% url 'financeiro:despesa_nova' %}" class="btn btn-sm btn-primary ms-auto"><i class="bi bi-plus-lg"></i> Nova despesa</a>
+    <a data-painel href="{% url 'financeiro:despesa_nova' %}" class="btn btn-sm btn-primary ms-auto"><i class="bi bi-plus-lg"></i> Nova despesa</a>
   </div>
   {% if ocorrencias %}
   <div class="table-responsive">

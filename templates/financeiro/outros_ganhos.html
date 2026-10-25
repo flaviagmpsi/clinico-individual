@@ -28,7 +28,7 @@ só se marca "recebi". Em aberto depois da data prevista fica em amarelo. É o q
 <div class="card">
   <div class="card-header bg-white py-2 d-flex align-items-center">
     <span class="fw-semibold">Ganhos de {{ inicio|date:"F"|lower }}</span>
-    <a href="{% url 'financeiro:receita_nova' %}" class="btn btn-sm btn-primary ms-auto"><i class="bi bi-plus-lg"></i> Novo ganho</a>
+    <a data-painel href="{% url 'financeiro:receita_nova' %}" class="btn btn-sm btn-primary ms-auto"><i class="bi bi-plus-lg"></i> Novo ganho</a>
   </div>
   {% if ocorrencias %}
   <div class="table-responsive">

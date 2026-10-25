@@ -244,10 +244,10 @@ validação, o formulário volta dentro da folha. Sem JS, o link navega como sem
   }
   function aoEsc(e) { if (e.key === "Escape") fecharPainel(); }
 
-  function montar(conteudoHTML, urlDaTela) {
+  function montar(conteudoHTML, urlDaTela, largo) {
     fecharPainel();
     var wrap = document.createElement("div");
-    wrap.className = "painel-lateral";
+    wrap.className = "painel-lateral" + (largo ? " largo" : "");
     wrap.id = "painelLateral";
     wrap.setAttribute("role", "dialog");
     wrap.setAttribute("aria-modal", "true");
@@ -304,7 +304,7 @@ validação, o formulário volta dentro da folha. Sem JS, o link navega como sem
         var doc = new DOMParser().parseFromString(html, "text/html");
         var conteudo = doc.querySelector("main.conteudo");
         if (!conteudo) { window.location = url; return; }
-        montar(conteudo.innerHTML, url);
+        montar(conteudo.innerHTML, url, link.getAttribute("data-painel") === "largo");
       }).catch(function () { window.location = url; });
   });
 })();

@@ -18,7 +18,7 @@ from django.views import View
 from django.views.generic import CreateView, TemplateView, UpdateView
 
 from contas import freio
-from contas.configuracoes import DespesasForm, RegimeNovoForm
+from contas.configuracoes import AparenciaForm, DespesasForm, RegimeNovoForm
 from contas.forms import (ClinicaForm, ComoAtendeForm, CriarContaForm, IdentificacaoForm, LoginForm, PerfilForm,
                           RegimeForm)
 from core.escopo import dispensa_escopo
@@ -124,6 +124,7 @@ class Configuracoes(LoginRequiredMixin, TemplateView):
         contexto = super().get_context_data(**kwargs)
         psicologo = self.request.user
         contexto.setdefault("despesas", DespesasForm(instance=psicologo))
+        contexto.setdefault("aparencia", AparenciaForm(instance=psicologo))
         contexto.setdefault("regime", RegimeNovoForm(psicologo=psicologo))
         contexto["mudancas"] = psicologo.mudancas_de_regime.all()
         return contexto
@@ -131,6 +132,13 @@ class Configuracoes(LoginRequiredMixin, TemplateView):
     def post(self, request, *args, **kwargs):
         if request.POST.get("acao") == "regime":
             return self._trocar_regime(request)
+        if request.POST.get("acao") == "aparencia":
+            formulario = AparenciaForm(request.POST, instance=request.user)
+            if formulario.is_valid():
+                formulario.save()
+                messages.success(request, "Aparência salva.")
+                return redirect("contas:configuracoes")
+            return self.render_to_response(self.get_context_data(aparencia=formulario))
         formulario = DespesasForm(request.POST, instance=request.user)
         if formulario.is_valid():
             formulario.save()

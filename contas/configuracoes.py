@@ -32,6 +32,16 @@ class PreferenciasForm(forms.ModelForm):
 DespesasForm = PreferenciasForm
 
 
+class AparenciaForm(forms.ModelForm):
+    """Tema e densidade (ADR-140). Vão para o `<html>` já do servidor, para o Noturno não piscar."""
+
+    class Meta:
+        model = Psicologo
+        fields = ["tema", "densidade"]
+        widgets = {"tema": forms.RadioSelect(attrs={"class": "form-check-input"}),
+                   "densidade": forms.RadioSelect(attrs={"class": "form-check-input"})}
+
+
 class RegimeNovoForm(forms.Form):
     """A troca de regime. Pede o que o regime novo exige, e a data em que ele passa a valer."""
 

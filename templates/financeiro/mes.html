@@ -82,7 +82,7 @@ tabela "Pagamentos recebidos" (data, observação e o desfazer) mora dentro da l
             {% empty %}—{% endfor %}
           </td>
           <td class="text-end text-nowrap">
-            {% if not c.quitada %}<a href="{{ c.url_pagar }}" class="text-decoration-none" data-principal>registrar pagamento</a>{% endif %}
+            {% if not c.quitada %}<a data-painel href="{{ c.url_pagar }}" class="text-decoration-none" data-principal>registrar pagamento</a>{% endif %}
             {% if c.pagamentos or c.e_mensalidade %}
             <div class="dropdown d-inline">
               <button class="btn btn-sm btn-link text-muted py-0" data-bs-toggle="dropdown" aria-label="Mais ações desta cobrança"><i class="bi bi-three-dots"></i></button>

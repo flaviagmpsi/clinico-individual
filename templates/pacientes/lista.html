@@ -9,7 +9,7 @@
   <a href="{% url 'pacientes:convites' %}" class="btn btn-outline-primary btn-sm ms-auto position-relative">
     <i class="bi bi-link-45deg"></i> Link de cadastro
     {% if cadastros_para_revisar %}<span class="badge text-bg-warning ms-1" title="Cadastros respondidos esperando a sua revisão">{{ cadastros_para_revisar }}</span>{% endif %}</a>
-  <a href="{% url 'pacientes:novo' %}" class="btn btn-primary btn-sm ms-2">
+  <a data-painel="largo" href="{% url 'pacientes:novo' %}?origem={{ request.get_full_path|urlencode }}" class="btn btn-primary btn-sm ms-2">
     <i class="bi bi-plus-lg"></i> Novo paciente</a>
 </div>
 
@@ -105,7 +105,7 @@ link não é HTML válido, e os dois cliques brigariam.
     Nenhum atendimento encerrado.
   {% else %}
     <p class="mb-2">Nenhum paciente cadastrado.</p>
-    <a href="{% url 'pacientes:novo' %}" class="btn btn-primary btn-sm">Cadastrar o primeiro</a>
+    <a data-painel="largo" href="{% url 'pacientes:novo' %}?origem={{ request.get_full_path|urlencode }}" class="btn btn-primary btn-sm">Cadastrar o primeiro</a>
   {% endif %}
 </div></div>
 {% endif %}
