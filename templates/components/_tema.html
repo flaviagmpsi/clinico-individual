@@ -201,7 +201,10 @@ continuam definidas aqui, recoloridas, até cada tela ser refeita nas etapas seg
   .rotulo { font-size: .8125rem; font-weight: 500; color: var(--suave); letter-spacing: 0; text-transform: none; }
 
   /* ---------- topo ---------- */
-  .topo { position: fixed; top: 0; left: 0; right: 0; height: var(--topo); z-index: 1030; background: transparent; color: var(--texto); }
+  /* No computador o topo começa depois da dock, para a marca não cair sobre a coluna da barra (left: var(--barra)).
+     Sem barra (quiz de cadastro) e no celular, volta à largura cheia. */
+  .topo { position: fixed; top: 0; left: var(--barra); right: 0; height: var(--topo); z-index: 1030; background: transparent; color: var(--texto); }
+  .topo.sem-barra { left: 0; }
   .topo .marca { color: var(--texto); font-weight: 600; font-size: .95rem; letter-spacing: 0; text-decoration: none; }
   .topo .marca i { color: var(--tinta); }
   .topo .quem { color: var(--suave); font-size: .85rem; text-decoration: none; display: inline-flex; align-items: center;
@@ -462,7 +465,7 @@ continuam definidas aqui, recoloridas, até cada tela ser refeita nas etapas seg
   /* ---------- celular: dock embaixo, conteúdo em coluna (≤767px) ---------- */
   @media (max-width: 767.98px) {
     body { padding-top: 60px; padding-bottom: 96px; }
-    .topo { height: 60px; }
+    .topo { height: 60px; left: 0; }
     .conteudo, .conteudo.sem-barra { margin-left: 0; padding: 16px 16px 24px; max-width: 100%; }
     .dock { top: auto; bottom: 0; left: 0; right: 0; width: 100%; height: auto; justify-content: stretch;
             padding: 0 12px calc(12px + env(safe-area-inset-bottom)); }

@@ -21,7 +21,7 @@ computador" é resolvido pelo script abaixo, ainda no <head>, antes de pintar.{%
 </head>
 <body>
 
-<header class="topo d-flex align-items-center px-3">
+<header class="topo d-flex align-items-center px-3{% if esconder_barra %} sem-barra{% endif %}">
   <a href="{% url 'painel' %}" class="marca me-3"><i class="bi bi-clipboard2-pulse"></i> Polaris</a>
   {% comment %}ADR-088: o caminho. A seção leva à raiz dela; a página, quando o template a nomeia, vem depois.{% endcomment %}
   {% load navegacao %}{% raiz_da_secao request as raiz %}
