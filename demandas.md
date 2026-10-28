@@ -470,7 +470,7 @@ e a quem, segue sem decisão — ver "Conflitos com ADRs aceitas" abaixo. Não i
 |---|---|
 | Número do Polaris | **+55 31 8779-6335** (chip Claro pré-pago, dedicado — mantenha recarregado: sem ele não há reverificação) |
 | Nome de exibição | Polaris (em revisão pela Meta até aprovar) |
-| Identificação do número (`WHATSAPP_PHONE_NUMBER_ID`) | **1341567232381753** ⚠️ conferir: se o número foi apagado da conta Sofia e cadastrado de novo na Polaris, o ID muda |
+| Identificação do número (`WHATSAPP_PHONE_NUMBER_ID`) | **1413166918549157** (conferido na conta Polaris; o `1341567232381753` era o da conta Sofia e não vale mais) |
 | Conta de mensagens / WABA (`WHATSAPP_WABA_ID`) | **Polaris — 1068509042871904** (portfólio Associação Allos) |
 | App de desenvolvedor | **Polaris**, separado do app Sofia (`2070718373490547`), que tem webhook próprio e não é tocado |
 | Portfólio | Associação Allos — **empresa verificada** (teto de números sobe de 2 para 20) |
@@ -481,9 +481,10 @@ Passos feitos: chip ativado; vaga de número liberada no portfólio; número adi
 (`meta_social_technologies`) ligado no Claude Code — ele só lê o app e mexe em webhook, não gera token nem registra
 número.
 
-Falta: confirmar que o número está na conta Polaris (não na Sofia) e o ID dele; **moeda BRL e cartão** na conta
-Polaris (hoje "nenhuma moeda"); usuário do sistema `polaris-api` com token permanente (só app Polaris + conta
-Polaris); recriar na conta Polaris os modelos `lembrete_sessao_paciente`, `lembrete_sessao_terapeuta` e
+Número confirmado na conta Polaris, **Conectado**. Falta: **moeda BRL e cartão** na conta Polaris (hoje "nenhuma
+moeda"); token permanente — o portfólio chegou ao **limite de usuários do sistema** (`Sofia_bot`, admin, e
+`Employee`), então o token do Polaris sai de um usuário existente, gerado **para o app Polaris**, com o app e a conta
+Polaris atribuídos a ele (nunca "Anular tokens": derruba o token da Sofia); recriar na conta Polaris os modelos `lembrete_sessao_paciente`, `lembrete_sessao_terapeuta` e
 `cobranca_pagamento` (aprovados na conta Sofia em 03/10); teste com `hello_world`; webhook, quando houver rota no ar.
 Há **duas** contas de mensagens chamadas "Sofia" no portfólio — arrumar depois.
 
