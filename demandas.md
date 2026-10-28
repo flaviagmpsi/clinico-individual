@@ -486,6 +486,10 @@ número.
 "Polaris" liberado sem revisão, limite `TIER_250`; conta Polaris em **BRL**, aprovada, empresa verificada. Nunca
 "Anular tokens" no `Sofia_bot` — derruba o token da Sofia.
 
+**Guia completo (modelos criados, próximos modelos para a Flávia criar, webhook e dicas para programar com IA):
+[WHATSAPP.md](WHATSAPP.md).** Cartão: **adiado por decisão do Paulo (2026-10-28)** — até entrar, modelo fora da
+janela de 24h não sai (erro `131042`).
+
 Falta: **PIN de duas etapas** (`is_pin_enabled: false` — sem ele, quem tiver o chip pode tomar o número); **assinar o
 app Polaris na conta** (`POST /1068509042871904/subscribed_apps` — hoje vazio); confirmar o **cartão** em Pagamentos
 (a API não mostra); **nenhum modelo de mensagem** na conta Polaris (nem `hello_world`) — sem modelo o sistema só

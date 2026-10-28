@@ -36,7 +36,7 @@ O usuário não se perde. Herdado do Hamilton original (ADR-004).
 | Assinatura | Asaas — cartão e PIX Automático |
 | Cadastro | CRP obrigatório. Registro do CFP consultável em `cadastro.cfp.org.br` |
 | IA | OpenAI (Whisper + chat), atrás de adaptador: `prontuarios/ia.py` fala com o provedor, `prontuarios/redacao.py` fala com o domínio. Chave do Hamilton, em `OPENAI_API_KEY` |
-| Aviso crítico | WhatsApp (Meta Cloud API) — só para descarte de conta, nunca conteúdo clínico |
+| Aviso crítico | WhatsApp (Meta Cloud API) — só para descarte de conta, nunca conteúdo clínico. IDs, modelos e como integrar: `WHATSAPP.md` |
 
 ---
 
