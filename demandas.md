@@ -494,7 +494,7 @@ janela de 24h não sai (erro `131042`).
 ou uma 2ª via dele na Claro, recebe o SMS e registra o número em outro lugar. Mitigação: chip guardado e recarregado.
 
 ✅ App Polaris **assinado na conta** e **envio testado** (texto livre na janela de 24h chegou ao celular do Paulo).
-Os 3 modelos do `WHATSAPP.md` estão sendo criados no Gerenciador (2026-10-28) — confirmar a aprovação.
+Os 3 modelos do `WHATSAPP.md` foram **criados pela API** e estão **em análise** (2026-10-28) — confirmar a aprovação.
 
 Falta: confirmar o **cartão** em Pagamentos
 (a API não mostra); **nenhum modelo de mensagem** na conta Polaris (nem `hello_world`) — sem modelo o sistema só

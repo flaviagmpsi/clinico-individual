@@ -61,10 +61,14 @@ aprovados, mas **não saem**.
 
 ## Os três modelos criados (2026-10-28)
 
+Criados pela API (`POST /1068509042871904/message_templates`) e enviados para análise da Meta como **Utilidade**:
+`aviso_exclusao_conta` (`1636762437993588`), `agenda_do_dia` (`2155262938702025`), `pendencias_da_semana`
+(`2185730939007987`). Status em **Gerenciador do WhatsApp → conta Polaris → Gerenciar modelos**.
+
 Todos vão para o **psicólogo** — nunca para o paciente (ADR-039) — e **sem nome de paciente nem nada clínico**
 (ADR-043): o WhatsApp passa pelos servidores da Meta, e saber que alguém faz terapia já é dado de saúde.
 
-Onde criar: **Gerenciador do WhatsApp** → conta **Polaris** (seletor no canto superior direito) → **Modelos de
+Para criar um modelo novo pela tela: **Gerenciador do WhatsApp** → conta **Polaris** (seletor no canto superior direito) → **Modelos de
 mensagem → Gerenciar modelos → Criar modelo** → categoria **Utilidade** → idioma **Português (BR)** → tipo de
 variável **Número**. Copie o corpo exatamente, preencha os exemplos e envie para análise.
 
