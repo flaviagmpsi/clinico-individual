@@ -493,8 +493,10 @@ janela de 24h não sai (erro `131042`).
 **PIN de duas etapas: não usar** (decisão do Paulo, 2026-10-28 — "vamos esquecer"). Risco aceito: quem tiver o chip,
 ou uma 2ª via dele na Claro, recebe o SMS e registra o número em outro lugar. Mitigação: chip guardado e recarregado.
 
-Falta: **assinar o
-app Polaris na conta** (`POST /1068509042871904/subscribed_apps` — hoje vazio); confirmar o **cartão** em Pagamentos
+✅ App Polaris **assinado na conta** e **envio testado** (texto livre na janela de 24h chegou ao celular do Paulo).
+Os 3 modelos do `WHATSAPP.md` foram enviados para análise da Meta.
+
+Falta: confirmar o **cartão** em Pagamentos
 (a API não mostra); **nenhum modelo de mensagem** na conta Polaris (nem `hello_world`) — sem modelo o sistema só
 responde a quem escreveu antes, dentro de 24h; recriar os modelos depende dos conflitos abaixo; webhook (URL +
 `WHATSAPP_APP_SECRET` + `WHATSAPP_WEBHOOK_VERIFY_TOKEN`), quando houver rota no ar.
