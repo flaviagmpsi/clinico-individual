@@ -4264,6 +4264,33 @@ sem prancheta (frequência, cobrança, quem paga, responsável) seguem páginas 
 origem no POST e fallback sem JS); **tema e densidade como campos da conta**; a **vitrine `/vitrine/`**. O `grao.png`
 não veio no pacote — é gerado como ruído 256×256 de alfa baixo e servido como estático (whitenoise), na etapa 1.
 
+## ADR-141 — WhatsApp do Polaris: app próprio e conta de mensagens própria
+
+**Status:** ✅ Aceita — Rodada 93. Infraestrutura na Meta; o uso (o que se envia, a quem) **não** está decidido.
+
+**Contexto:** o Polaris ganhou número dedicado (+55 31 8779-6335) para o sistema de recados. O portfólio Associação
+Allos já tinha o app **Sofia**, com webhook apontando para outro sistema, e a conta de mensagens **Sofia**, com o
+número da Associação Allos.
+
+**Decisão do usuário:** o Polaris tem **app de desenvolvedor próprio** e **conta de mensagens (WABA) própria**, no
+mesmo portfólio. A Flávia é da Allos e pode ver a Sofia; o motivo é organização, não isolamento.
+
+**Por quê (fatos da Meta):**
+- O número pertence à conta de mensagens, não ao app; o app só ganha acesso. Não há o que "mover" entre apps.
+- Cada app tem **uma** URL de webhook. Usar o app Sofia mandaria as respostas dos pacientes do Polaris ao servidor
+  da Sofia (dá para contornar com URL alternativa por número, mas fica implícito e frágil).
+- O token é dado sobre a conta de mensagens inteira: na conta Sofia, ele enviaria também como Associação Allos.
+  Na conta própria, o token do Polaris só alcança o número do Polaris.
+- App Secret, token, modelos, cobrança e relatórios ficam separados por produto.
+
+**Consequências:**
+- Os modelos aprovados na conta Sofia não valem na Polaris: precisam ser recriados e reaprovados.
+- A moeda da conta Polaris é definida uma vez e não muda (BRL).
+- Segredos (token, App Secret, verify token) ficam fora do repositório; o PIN de duas etapas fica com o Paulo.
+- IDs e o que falta: `demandas.md`, seção "Lembretes por WhatsApp".
+- ⚠️ **Não resolve** os conflitos com a ADR-039 (mensagem ao paciente), a ADR-043 (nada clínico no WhatsApp — o
+  nome do paciente num lembrete já revela tratamento) e o I-05 (agendador). Ficam para a decisão de uso.
+
 ## Impeditivos
 
 | # | Impeditivo | Situação |

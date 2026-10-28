@@ -461,10 +461,43 @@ cobrança de sessão futura. O gatilho é a consulta ficar `REALIZADA`, nunca o 
 ## ⏸️ Em espera — não decidido (voltar depois)
 
 ### Lembretes por WhatsApp
-**Status:** parado a pedido do Paulo — ainda não há decisão sobre fazer. Não iniciar implementação.
+**Status:** 🟡 **infraestrutura na Meta montada (2026-10-28, ADR-141)**; o código ainda não existe e o que se envia,
+e a quem, segue sem decisão — ver "Conflitos com ADRs aceitas" abaixo. Não iniciar implementação antes disso.
+
+**Infraestrutura montada na Meta (2026-10-28):**
+
+| Item | Valor |
+|---|---|
+| Número do Polaris | **+55 31 8779-6335** (chip Claro pré-pago, dedicado — mantenha recarregado: sem ele não há reverificação) |
+| Nome de exibição | Polaris (em revisão pela Meta até aprovar) |
+| Identificação do número (`WHATSAPP_PHONE_NUMBER_ID`) | **1341567232381753** ⚠️ conferir: se o número foi apagado da conta Sofia e cadastrado de novo na Polaris, o ID muda |
+| Conta de mensagens / WABA (`WHATSAPP_WABA_ID`) | **Polaris — 1068509042871904** (portfólio Associação Allos) |
+| App de desenvolvedor | **Polaris**, separado do app Sofia (`2070718373490547`), que tem webhook próprio e não é tocado |
+| Portfólio | Associação Allos — **empresa verificada** (teto de números sobe de 2 para 20) |
+| Limite de envio inicial | 250 clientes/24h |
+
+Passos feitos: chip ativado; vaga de número liberada no portfólio; número adicionado e verificado por SMS (status
+**Conectado**); conta de mensagens **Polaris** criada (fuso São Paulo); app **Polaris** criado; MCP da Meta
+(`meta_social_technologies`) ligado no Claude Code — ele só lê o app e mexe em webhook, não gera token nem registra
+número.
+
+Falta: confirmar que o número está na conta Polaris (não na Sofia) e o ID dele; **moeda BRL e cartão** na conta
+Polaris (hoje "nenhuma moeda"); usuário do sistema `polaris-api` com token permanente (só app Polaris + conta
+Polaris); recriar na conta Polaris os modelos `lembrete_sessao_paciente`, `lembrete_sessao_terapeuta` e
+`cobranca_pagamento` (aprovados na conta Sofia em 03/10); teste com `hello_world`; webhook, quando houver rota no ar.
+Há **duas** contas de mensagens chamadas "Sofia" no portfólio — arrumar depois.
+
+`.env` (segredos **nunca** no repositório; entregar à Flávia por gerenciador de senhas):
+`WHATSAPP_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_WABA_ID`, `WHATSAPP_APP_SECRET`,
+`WHATSAPP_WEBHOOK_VERIFY_TOKEN`, `WHATSAPP_API_VERSION=v26.0`. O PIN de duas etapas fica com o Paulo, fora do sistema.
+
+**Conflitos com ADRs aceitas (decidir antes de codar):** `lembrete_sessao_paciente` fala com o paciente — colide com
+a **ADR-039** (o sistema nunca fala com paciente) e exige consentimento LGPD; `cobranca_pagamento` leva o nome do
+paciente à Meta — a ADR-043 proíbe conteúdo clínico no WhatsApp, e saber que alguém faz terapia é dado de saúde;
+lembrete diário/semanal precisa de agendador (I-05, ADR-018).
 
 **O que foi pedido (visão de produto):**
-- Número do remetente informado: **+55 31 8667-3359** (⚠️ parece faltar o 9º dígito do celular — provável **+55 31 9 8667-3359**; e precisa ser um número **dedicado** de WhatsApp Business, não o pessoal).
+- Número do remetente informado: **+55 31 8667-3359** (⚠️ parece faltar o 9º dígito do celular — provável **+55 31 9 8667-3359**; e precisa ser um número **dedicado** de WhatsApp Business, não o pessoal). *(2026-10-28: esse número está conectado como "Associação Allos" na conta Sofia; o Polaris usa o +55 31 8779-6335 acima.)*
 - **Para o paciente:**
   - Lembrete de **confirmação de presença** na sessão, com resposta **sim/não**.
   - Lembrete de **vencimento de pagamento**.
