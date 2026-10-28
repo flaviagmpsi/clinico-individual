@@ -472,7 +472,8 @@ e a quem, segue sem decisão — ver "Conflitos com ADRs aceitas" abaixo. Não i
 | Nome de exibição | Polaris (em revisão pela Meta até aprovar) |
 | Identificação do número (`WHATSAPP_PHONE_NUMBER_ID`) | **1413166918549157** (conferido na conta Polaris; o `1341567232381753` era o da conta Sofia e não vale mais) |
 | Conta de mensagens / WABA (`WHATSAPP_WABA_ID`) | **Polaris — 1068509042871904** (portfólio Associação Allos) |
-| App de desenvolvedor | **Polaris**, separado do app Sofia (`2070718373490547`), que tem webhook próprio e não é tocado |
+| App de desenvolvedor | **Polaris — `1161658156725329`**, separado do app Sofia (`2070718373490547`), que tem webhook próprio e não é tocado |
+| Token permanente | do usuário do sistema `Sofia_bot` (o portfólio só permite um admin), **gerado para o app Polaris**, sem validade, `whatsapp_business_messaging` + `whatsapp_business_management`. Fica fora do repositório |
 | Portfólio | Associação Allos — **empresa verificada** (teto de números sobe de 2 para 20) |
 | Limite de envio inicial | 250 clientes/24h |
 
@@ -481,11 +482,15 @@ Passos feitos: chip ativado; vaga de número liberada no portfólio; número adi
 (`meta_social_technologies`) ligado no Claude Code — ele só lê o app e mexe em webhook, não gera token nem registra
 número.
 
-Número confirmado na conta Polaris, **Conectado**. Falta: **moeda BRL e cartão** na conta Polaris (hoje "nenhuma
-moeda"); token permanente — o portfólio chegou ao **limite de usuários do sistema** (`Sofia_bot`, admin, e
-`Employee`), então o token do Polaris sai de um usuário existente, gerado **para o app Polaris**, com o app e a conta
-Polaris atribuídos a ele (nunca "Anular tokens": derruba o token da Sofia); recriar na conta Polaris os modelos `lembrete_sessao_paciente`, `lembrete_sessao_terapeuta` e
-`cobranca_pagamento` (aprovados na conta Sofia em 03/10); teste com `hello_world`; webhook, quando houver rota no ar.
+**Conferido pela API em 2026-10-28:** token válido, sem validade; número `CONNECTED` na Cloud API, verificado, nome
+"Polaris" liberado sem revisão, limite `TIER_250`; conta Polaris em **BRL**, aprovada, empresa verificada. Nunca
+"Anular tokens" no `Sofia_bot` — derruba o token da Sofia.
+
+Falta: **PIN de duas etapas** (`is_pin_enabled: false` — sem ele, quem tiver o chip pode tomar o número); **assinar o
+app Polaris na conta** (`POST /1068509042871904/subscribed_apps` — hoje vazio); confirmar o **cartão** em Pagamentos
+(a API não mostra); **nenhum modelo de mensagem** na conta Polaris (nem `hello_world`) — sem modelo o sistema só
+responde a quem escreveu antes, dentro de 24h; recriar os modelos depende dos conflitos abaixo; webhook (URL +
+`WHATSAPP_APP_SECRET` + `WHATSAPP_WEBHOOK_VERIFY_TOKEN`), quando houver rota no ar.
 Há **duas** contas de mensagens chamadas "Sofia" no portfólio — arrumar depois.
 
 `.env` (segredos **nunca** no repositório; entregar à Flávia por gerenciador de senhas):
