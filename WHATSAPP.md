@@ -37,7 +37,8 @@ No Render, as mesmas chaves entram em **Environment** do serviço, e no `render.
 `OPENAI_API_KEY`), para o valor nunca ir para o Git.
 
 ⚠️ No portfólio, o token é do usuário do sistema **`Sofia_bot`**. **Nunca clique em "Anular tokens" nele**: isso
-derruba também o token que a Sofia usa. O PIN de duas etapas do número fica com o Paulo, fora do sistema.
+derruba também o token que a Sofia usa. O número **não tem PIN de duas etapas** (decisão do Paulo): o chip da Claro
+é a única chave dele — tem de ficar guardado e recarregado.
 
 ---
 
