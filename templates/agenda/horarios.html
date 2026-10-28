@@ -131,10 +131,10 @@
           <div class="row g-2">
             <div class="col-12">{% include "components/_campo.html" with campo=compromisso.frequencia %}</div>
             <div class="col-12" data-so-repete>{% include "components/_campo.html" with campo=compromisso.dia_semana %}</div>
-            <div class="col-7">{% include "components/_campo.html" with campo=compromisso.inicio %}</div>
-            <div class="col-5">{% include "components/_campo.html" with campo=compromisso.hora %}</div>
-            <div class="col-5">{% include "components/_campo.html" with campo=compromisso.duracao %}</div>
-            <div class="col-7" data-so-repete>{% include "components/_campo.html" with campo=compromisso.fim %}</div>
+            <div class="col-6">{% include "components/_campo.html" with campo=compromisso.inicio %}</div>
+            <div class="col-6">{% include "components/_campo.html" with campo=compromisso.hora %}</div>
+            <div class="col-6">{% include "components/_campo.html" with campo=compromisso.duracao %}</div>
+            <div class="col-6" data-so-repete>{% include "components/_campo.html" with campo=compromisso.fim %}</div>
           </div>
           <button type="submit" class="btn btn-outline-primary btn-sm mt-3">
             {% if editando %}Salvar alterações{% else %}Adicionar compromisso{% endif %}</button>

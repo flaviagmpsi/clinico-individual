@@ -504,6 +504,9 @@ continuam definidas aqui, recoloridas, até cada tela ser refeita nas etapas seg
             font-size: .68rem; font-weight: 600; padding: 0; }
     .dock-item .dock-nome::before { display: none; }
     .dock-separador { display: none; }
+    /* No celular o nome fica sempre visível; a estrela (marca, leva ao Painel) duplicaria "Painel" ao lado do
+       medidor, e a marca "Polaris" já está no topo. Some, deixando as cinco entradas da ADR-105. */
+    .dock-estrela { display: none; }
     .aviso-flutuante { left: 12px; right: 12px; bottom: calc(78px + env(safe-area-inset-bottom)); max-width: none; }
     .painel-lateral { align-items: flex-end; justify-content: stretch; }
     .painel-lateral .folha, .painel-lateral.largo .folha { margin: 0; width: 100%; max-width: 100%; max-height: 92vh;
