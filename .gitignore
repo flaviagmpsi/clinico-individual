@@ -8,3 +8,5 @@ venv/
 staticfiles/
 *.sqlite3
 .pytest_cache/
+# o .envdev carrega os segredos de desenvolvimento e do WhatsApp
+.envdev
