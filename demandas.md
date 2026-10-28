@@ -44,8 +44,9 @@ Decisões da rodada: borda de campo `#8E8CA4` (3:1); padrões tema "Seguir o com
 **Refinos pós-deploy:**
 - 🟢 **Cadastrar sessão em opções grandes** (ADR-142): os 4 conceitos em cartões, filtro futura/passada, e "Agendada"
   unificada a "Prevista". No ar.
-- ⚪ A folha lateral recarrega a origem ao salvar (em vez de atualizar sem recarregar). *Obs.: a ADR-142 já fez o
-  painel re-executar scripts do conteúdo injetado — base pronta para evoluir isto.*
+- 🟢 **Salvar no painel atualiza a origem no lugar** (ADR-142): ao salvar, em vez de recarregar a página inteira,
+  troca só o `main.conteudo` no lugar (sem flash, mantém o scroll) e traz o aviso com Desfazer — a pessoa continua
+  na mesma tela. Vale para todos os painéis (conserto no `ligarForm`). Sem JS, segue recarregando como antes. No ar.
 - ⚪ Grão via SVG inline (não PNG estático).
 - ⚪ Ícones do dock/estrela são aproximação dos SVGs do canvas.
 - ⚪ Meus horários/Prontuários/Documentos/Perfil/Assinatura herdam o tema sem redesenho de layout próprio.

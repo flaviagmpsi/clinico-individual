@@ -228,10 +228,11 @@ modificadora, nem o gesto de selecionar texto.
 </script>
 
 {% comment %}
-ADR-140: painel lateral (sobreposição). Conforto, sobre o fluxo que já funciona sem JavaScript: um link marcado
-com `data-painel` abre o formulário numa folha por cima da tela, em vez de navegar. Ao salvar com sucesso, o
-servidor redireciona para a origem e a página de origem recarrega (mostrando o aviso com Desfazer). Com erro de
-validação, o formulário volta dentro da folha. Sem JS, o link navega como sempre.
+ADR-140 / ADR-142: painel lateral (sobreposição). Conforto, sobre o fluxo que já funciona sem JavaScript: um link
+marcado com `data-painel` abre o formulário numa folha por cima da tela, em vez de navegar. Ao salvar com sucesso,
+o servidor redireciona para a origem; em vez de recarregar a página inteira, trocamos **só o conteúdo no lugar**
+(sem flash, mantendo o scroll) e trazemos o aviso com Desfazer — a pessoa continua na mesma tela. Com erro de
+validação, o formulário volta dentro da folha. Sem JS, o link navega e a origem recarrega, como sempre.
 {% endcomment %}
 <script>
 (function () {
@@ -252,6 +253,37 @@ validação, o formulário volta dentro da folha. Sem JS, o link navega como sem
       if (velho.src) { novo.src = velho.src; } else { novo.textContent = velho.textContent; }
       velho.parentNode.replaceChild(novo, velho);
     });
+  }
+
+  // Salvou no painel: em vez de recarregar a origem inteira, troca só o conteúdo no lugar e traz o aviso
+  // "Desfazer". Mantém o scroll e evita o flash. Volta false quando não dá para trocar no lugar (o destino é
+  // outra tela, ou faltou o `main.conteudo`) — e aí quem chama recarrega a origem, como sem JS.
+  function trocarOrigem(doc, url) {
+    var novoMain = doc.querySelector("main.conteudo");
+    var atualMain = document.querySelector("main.conteudo");
+    if (!novoMain || !atualMain) return false;
+    try {
+      if (url && new URL(url, location.href).pathname !== location.pathname) return false;
+    } catch (e) {}
+    atualMain.innerHTML = novoMain.innerHTML;
+    reexecutarScripts(atualMain);
+    // O aviso com Desfazer mora fora do `main`; tiramos o antigo e trazemos o novo da resposta.
+    var antigo = document.getElementById("avisoDesfazer");
+    if (antigo) antigo.remove();
+    var aviso = doc.getElementById("avisoDesfazer");
+    if (aviso) {
+      var vivo = document.importNode(aviso, true);
+      document.body.appendChild(vivo);
+      ativarAvisoDesfazer(vivo);
+    }
+    return true;
+  }
+
+  // Some sozinho em alguns segundos; parar ao passar o mouse. Mesmo gesto do script do template, aqui porque
+  // o aviso injetado não traz o seu `<script>` junto.
+  function ativarAvisoDesfazer(a) {
+    var t = setTimeout(function () { a.style.display = "none"; }, 6000);
+    a.addEventListener("mouseenter", function () { clearTimeout(t); });
   }
 
   function montar(conteudoHTML, urlDaTela, largo) {
@@ -289,13 +321,18 @@ validação, o formulário volta dentro da folha. Sem JS, o link navega como sem
       fetch(form.getAttribute("action") || urlDaTela, {
         method: "POST", body: dados, headers: { "X-Requested-With": "fetch" }, redirect: "follow",
       }).then(function (resp) {
-        if (resp.redirected) { window.location = resp.url; return null; }
-        return resp.text();
-      }).then(function (html) {
-        if (html === null) return;
-        var doc = new DOMParser().parseFromString(html, "text/html");
+        return resp.text().then(function (html) { return { resp: resp, html: html }; });
+      }).then(function (r) {
+        var doc = new DOMParser().parseFromString(r.html, "text/html");
+        // Redirecionou => salvou. Atualiza a origem no lugar (sem recarregar) e fecha a folha.
+        if (r.resp.redirected) {
+          if (!trocarOrigem(doc, r.resp.url)) { window.location = r.resp.url; return; }
+          fecharPainel();
+          return;
+        }
+        // Não redirecionou => erro de validação: o formulário volta dentro da folha.
         var novo = doc.querySelector("main.conteudo");
-        wrap.querySelector(".corpo").innerHTML = novo ? novo.innerHTML : html;
+        wrap.querySelector(".corpo").innerHTML = novo ? novo.innerHTML : r.html;
         reexecutarScripts(wrap.querySelector(".corpo"));
         ligarForm(wrap, urlDaTela);
         var foco = wrap.querySelector(".is-invalid, .alert-danger, input, select, textarea");
