@@ -166,10 +166,12 @@ class Cadastro(BaseAgenda):
             with self.assertRaises(ValidationError):
                 servicos.cadastrar_prevista(regra, self.ontem, estado=FALTOU)
 
-    def test_situacao_fora_das_cinco_e_recusada(self):
+    def test_situacao_desconhecida_e_recusada(self):
+        # Estado que não existe no enum é recusado (_exigir_situacao). Antes da ADR-139 o exemplo era "AGENDADA",
+        # que passou a ser estado válido (prevista); por isso aqui vai um valor que de fato não existe.
         with contexto.como(self.ana.pk):
             with self.assertRaises(ValidationError):
-                servicos.cadastrar_avulsa(self.caso_joao, estado="AGENDADA", inicio=momento(self.ontem, 10))
+                servicos.cadastrar_avulsa(self.caso_joao, estado="INEXISTENTE", inicio=momento(self.ontem, 10))
 
     def test_corrigir_a_situacao(self):
         with contexto.como(self.ana.pk):

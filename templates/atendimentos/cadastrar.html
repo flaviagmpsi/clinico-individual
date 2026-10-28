@@ -75,28 +75,4 @@
   <button type="submit" class="btn btn-primary">Cadastrar</button>
   {% include "atendimentos/_dinamica.html" %}
 </form>
-
-{% comment %}ADR-139: no cadastro avulso, data futura sugere "Agendada"; data passada, "Presente". Só sugere — se o
-psicólogo escolher outra situação, respeita. Roda só no avulso, que é o form com campo de data.{% endcomment %}
-<script>
-(function () {
-  var data = document.querySelector('[name="data"]');
-  if (!data) return;
-  var radios = Array.prototype.slice.call(document.querySelectorAll('[name="estado"]'));
-  if (!radios.length) return;
-  var tocado = false;
-  radios.forEach(function (r) { r.addEventListener('click', function () { tocado = true; }); });
-  function futura() {
-    if (!data.value) return false;
-    return new Date(data.value + 'T23:59:59') > new Date();
-  }
-  function sugerir() {
-    if (tocado) return;
-    var alvo = futura() ? 'AGENDADA' : 'REALIZADA';
-    radios.forEach(function (r) { r.checked = (r.value === alvo); });
-  }
-  data.addEventListener('change', sugerir);
-  sugerir();
-})();
-</script>
 {% endblock %}

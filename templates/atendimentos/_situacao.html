@@ -1,8 +1,68 @@
-{% comment %}As três situações da ADR-060, com a regra de cobrança logo abaixo.{% endcomment %}
-<div class="form-label small mb-1">{{ campo.label }} <span class="text-danger">*</span></div>
-{% for opcao in campo %}
-  <div class="form-check form-check-inline">{{ opcao.tag }}
-    <label class="form-check-label" for="{{ opcao.id_for_label }}">{{ opcao.choice_label }}</label></div>
-{% endfor %}
-<div class="form-text small">{{ campo.help_text }}</div>
-{% for erro in campo.errors %}<div class="text-danger small">{{ erro }}</div>{% endfor %}
+{% comment %}
+ADR-142: "Como foi a sessão?" em opções grandes (cartões), no lugar das bolinhas. Os 6 estados viram 4 conceitos:
+Presente, Faltou, Cancelou (abre quem desmarcou) e Remarcou. Presente e Faltou exigem a sessão ter acontecido
+(`data-exige-passado`), então somem quando ela ainda vai acontecer — aí sobram Remarcar e Cancelar, e só salvar deixa
+a sessão **prevista** (estado AGENDADA, rádio escondido; só quando `permite_prevista`). Nenhuma opção vem marcada
+(ADR-140 §10). O rádio real fica dentro de cada cartão; o servidor valida de qualquer jeito, e sem JavaScript todos os
+cartões ficam visíveis.
+Contexto: `situacao_futura` = "1"/"0"/"" (vazio = depende do campo de data, no avulso); `permite_prevista` = bool.
+{% endcomment %}
+<div class="situacao" data-situacao
+     {% if situacao_futura %}data-futura="{{ situacao_futura }}"{% endif %}
+     data-permite-prevista="{{ permite_prevista|yesno:'1,0' }}">
+  <div class="form-label small mb-1">Como foi a sessão? <span class="text-danger">*</span></div>
+
+  {% if permite_prevista %}
+    {% comment %}O padrão "prevista": rádio escondido, marcado pelo JS quando a sessão ainda vai acontecer.{% endcomment %}
+    {% for opcao in campo %}{% if opcao.data.value == 'AGENDADA' %}<div class="d-none">{{ opcao.tag }}</div>{% endif %}{% endfor %}
+  {% endif %}
+
+  <div class="opcoes-grandes">
+    {% for opcao in campo %}{% if opcao.data.value == 'REALIZADA' %}
+      <label class="opcao-grande" data-exige-passado>
+        {{ opcao.tag }}
+        <span class="oc-icone oc-presente"><i class="bi bi-check-lg"></i></span>
+        <span class="oc-texto"><span class="oc-titulo">Presente</span><span class="oc-dica">a sessão aconteceu</span></span>
+      </label>
+    {% endif %}{% endfor %}
+
+    {% for opcao in campo %}{% if opcao.data.value == 'FALTOU' %}
+      <label class="opcao-grande" data-exige-passado>
+        {{ opcao.tag }}
+        <span class="oc-icone oc-faltou"><i class="bi bi-x-lg"></i></span>
+        <span class="oc-texto"><span class="oc-titulo">Faltou</span><span class="oc-dica">não veio e não avisou</span></span>
+      </label>
+    {% endif %}{% endfor %}
+
+    {% comment %}Cancelou: um cartão só, com a sub-escolha de quem desmarcou (ADR-065). "O cliente" ainda abre o
+    "Cobrar esta sessão", que fica logo abaixo da grade (data-so-para CANCELADA_CLIENTE).{% endcomment %}
+    <div class="opcao-grande oc-grupo">
+      <span class="oc-icone oc-cancelou"><i class="bi bi-slash-circle"></i></span>
+      <span class="oc-texto"><span class="oc-titulo">Cancelou</span><span class="oc-dica">a sessão foi desmarcada</span></span>
+      <div class="oc-quem">
+        {% for opcao in campo %}{% if opcao.data.value == 'CANCELADA_CLIENTE' %}
+          <div class="form-check">{{ opcao.tag }}<label class="form-check-label" for="{{ opcao.id_for_label }}">O cliente</label></div>
+        {% endif %}{% endfor %}
+        {% for opcao in campo %}{% if opcao.data.value == 'CANCELADA_PROFISSIONAL' %}
+          <div class="form-check">{{ opcao.tag }}<label class="form-check-label" for="{{ opcao.id_for_label }}">Você</label></div>
+        {% endif %}{% endfor %}
+      </div>
+    </div>
+
+    {% for opcao in campo %}{% if opcao.data.value == 'REMARCADA' %}
+      <label class="opcao-grande" data-revela-remarcada>
+        {{ opcao.tag }}
+        <span class="oc-icone oc-remarcou"><i class="bi bi-arrow-repeat"></i></span>
+        <span class="oc-texto"><span class="oc-titulo">Remarcou</span><span class="oc-dica">foi para outro dia</span></span>
+      </label>
+    {% endif %}{% endfor %}
+  </div>
+
+  <p class="oc-nota small text-muted" data-nota-prevista hidden>
+    Esta sessão ainda vai acontecer: fica como <strong>prevista</strong> na agenda. Se já sabe que mudou, marque
+    remarcar ou cancelar.
+  </p>
+  <p class="oc-nota small text-danger" data-escolha-faltando hidden>Escolha como foi a sessão.</p>
+  {% if campo.help_text %}<div class="form-text small">{{ campo.help_text }}</div>{% endif %}
+  {% for erro in campo.errors %}<div class="text-danger small">{{ erro }}</div>{% endfor %}
+</div>

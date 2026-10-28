@@ -51,6 +51,35 @@ lado. Quando um componente mudar no tema, muda aqui junto. CRP e nomes são fict
   </section>
 
   <section>
+    <div class="rotulo mb-2">Opções grandes (ADR-142) — "Como foi a sessão?"</div>
+    <div class="opcoes-grandes" style="max-width:420px">
+      <label class="opcao-grande">
+        <input type="radio" name="amostra-oc" checked>
+        <span class="oc-icone oc-presente"><i class="bi bi-check-lg"></i></span>
+        <span class="oc-texto"><span class="oc-titulo">Presente</span><span class="oc-dica">a sessão aconteceu</span></span>
+      </label>
+      <label class="opcao-grande">
+        <input type="radio" name="amostra-oc">
+        <span class="oc-icone oc-faltou"><i class="bi bi-x-lg"></i></span>
+        <span class="oc-texto"><span class="oc-titulo">Faltou</span><span class="oc-dica">não veio e não avisou</span></span>
+      </label>
+      <div class="opcao-grande oc-grupo">
+        <span class="oc-icone oc-cancelou"><i class="bi bi-slash-circle"></i></span>
+        <span class="oc-texto"><span class="oc-titulo">Cancelou</span><span class="oc-dica">a sessão foi desmarcada</span></span>
+        <div class="oc-quem">
+          <div class="form-check"><input class="form-check-input" type="radio" name="amostra-oc" id="oc-cli"><label class="form-check-label" for="oc-cli">O cliente</label></div>
+          <div class="form-check"><input class="form-check-input" type="radio" name="amostra-oc" id="oc-voce"><label class="form-check-label" for="oc-voce">Você</label></div>
+        </div>
+      </div>
+      <label class="opcao-grande">
+        <input type="radio" name="amostra-oc">
+        <span class="oc-icone oc-remarcou"><i class="bi bi-arrow-repeat"></i></span>
+        <span class="oc-texto"><span class="oc-titulo">Remarcou</span><span class="oc-dica">foi para outro dia</span></span>
+      </label>
+    </div>
+  </section>
+
+  <section>
     <div class="rotulo mb-2">Selos de situação</div>
     <div class="d-flex flex-wrap gap-2">
       <span class="badge text-bg-success"><i class="bi bi-check-lg"></i> Pago</span>
@@ -68,7 +97,6 @@ lado. Quando um componente mudar no tema, muda aqui junto. CRP e nomes são fict
       <span class="cartao pendente">Clara · 15h<small>pendente · cadastrar</small></span>
       <span class="cartao realizada">Marina · 16h<small>presente</small></span>
       <span class="cartao faltou">Bruno · 17h<small>faltou</small></span>
-      <span class="cartao agendada">Rita · 18h<small>agendada</small></span>
       <span class="cartao remarcada">Pedro · 9h<small>remarcada de 02/10</small></span>
       <span class="cartao cancelada">Ana · 10h<small>cancelada</small></span>
       <span class="cartao compromisso">Supervisão · 19h<small>fora da clínica</small></span>

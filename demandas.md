@@ -41,10 +41,14 @@ Noturno, uma vez Compacta).
 | 9 | Entrada, Esqueci a senha, Criar conta e Cadastro pelo link | ✅ | 🟢 |
 
 Decisões da rodada: borda de campo `#8E8CA4` (3:1); padrões tema "Seguir o computador" e densidade "Confortável".
-**Ressalvas registradas** (refinos pós-deploy): o interior do "Cadastrar sessão" ainda não são as "4 opções
-grandes" das pranchetas; a folha lateral recarrega a origem ao salvar (em vez de atualizar sem recarregar); grão via
-SVG inline (não PNG estático); ícones do dock/estrela são aproximação dos SVGs do canvas; Meus horários/Prontuários/
-Documentos/Perfil/Assinatura herdam o tema sem redesenho de layout próprio.
+**Refinos pós-deploy:**
+- 🟢 **Cadastrar sessão em opções grandes** (ADR-142): os 4 conceitos em cartões, filtro futura/passada, e "Agendada"
+  unificada a "Prevista". No ar.
+- ⚪ A folha lateral recarrega a origem ao salvar (em vez de atualizar sem recarregar). *Obs.: a ADR-142 já fez o
+  painel re-executar scripts do conteúdo injetado — base pronta para evoluir isto.*
+- ⚪ Grão via SVG inline (não PNG estático).
+- ⚪ Ícones do dock/estrela são aproximação dos SVGs do canvas.
+- ⚪ Meus horários/Prontuários/Documentos/Perfil/Assinatura herdam o tema sem redesenho de layout próprio.
 
 ---
 

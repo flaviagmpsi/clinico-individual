@@ -244,6 +244,16 @@ validação, o formulário volta dentro da folha. Sem JS, o link navega como sem
   }
   function aoEsc(e) { if (e.key === "Escape") fecharPainel(); }
 
+  // innerHTML não executa <script>. Para o conteúdo injetado no painel se comportar como na página inteira
+  // (ex.: as opções de "Como foi a sessão?" filtrando por data), recriamos cada script para ele rodar.
+  function reexecutarScripts(raiz) {
+    raiz.querySelectorAll("script").forEach(function (velho) {
+      var novo = document.createElement("script");
+      if (velho.src) { novo.src = velho.src; } else { novo.textContent = velho.textContent; }
+      velho.parentNode.replaceChild(novo, velho);
+    });
+  }
+
   function montar(conteudoHTML, urlDaTela, largo) {
     fecharPainel();
     var wrap = document.createElement("div");
@@ -255,6 +265,7 @@ validação, o formulário volta dentro da folha. Sem JS, o link navega como sem
       + '<div class="corpo"></div></div>';
     wrap.querySelector(".corpo").innerHTML = conteudoHTML;
     document.body.appendChild(wrap);
+    reexecutarScripts(wrap.querySelector(".corpo"));
     wrap.querySelector(".veu").addEventListener("click", fecharPainel);
     document.addEventListener("keydown", aoEsc);
     ligarForm(wrap, urlDaTela);
@@ -285,6 +296,7 @@ validação, o formulário volta dentro da folha. Sem JS, o link navega como sem
         var doc = new DOMParser().parseFromString(html, "text/html");
         var novo = doc.querySelector("main.conteudo");
         wrap.querySelector(".corpo").innerHTML = novo ? novo.innerHTML : html;
+        reexecutarScripts(wrap.querySelector(".corpo"));
         ligarForm(wrap, urlDaTela);
         var foco = wrap.querySelector(".is-invalid, .alert-danger, input, select, textarea");
         if (foco && foco.focus) foco.focus();

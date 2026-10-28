@@ -145,11 +145,14 @@ Primeiro o dia; depois as pendências, num bloco; por fim o resumo do mês.
       {% endcomment %}
       {% if total_pendencias %}
         <div class="card-body py-2">
-          {% if sessoes_pendentes %}
+          {% comment %}ADR-139/141: sessões **previstas** que já passaram sem cadastro, num bloco só. Duas origens, o
+          mesmo conceito para quem usa: a prevista pela frequência (cálculo) e a avulsa marcada antes da hora
+          (gravada). Cada uma leva ao lugar de resolver — a calculada ao cadastro, a gravada à própria consulta.{% endcomment %}
+          {% if sessoes_pendentes or agendadas_vencidas %}
             <details class="pendencia">
               <summary>
-                <span class="quantas">{{ total_sessoes_pendentes }}</span>
-                sess{{ total_sessoes_pendentes|pluralize:"ão esperando,ões esperando" }} cadastro
+                <span class="quantas">{{ total_sessoes_pendentes|add:total_agendadas_vencidas }}</span>
+                sess{{ total_sessoes_pendentes|add:total_agendadas_vencidas|pluralize:"ão prevista esperando,ões previstas esperando" }} cadastro
                 <a href="{% url 'atendimentos:agenda' %}" class="ms-auto small text-decoration-none">agenda</a>
               </summary>
               <ul class="list-unstyled small mb-2 mt-1">
@@ -160,20 +163,6 @@ Primeiro o dia; depois as pendências, num bloco; por fim o resumo do mês.
                   {% if s.origem %}<span class="text-muted">· remarcada</span>{% endif %}
                 </li>
               {% endfor %}
-              </ul>
-            </details>
-          {% endif %}
-
-          {% comment %}ADR-139: sessão agendada (marcada à mão) cujo horário já passou e ninguém atualizou. Clicar
-          abre a consulta para dizer o que aconteceu — presente, falta, cancelamento.{% endcomment %}
-          {% if agendadas_vencidas %}
-            <details class="pendencia">
-              <summary>
-                <span class="quantas">{{ total_agendadas_vencidas }}</span>
-                sess{{ total_agendadas_vencidas|pluralize:"ão agendada,ões agendadas" }} para atualizar
-                <a href="{% url 'atendimentos:agenda' %}" class="ms-auto small text-decoration-none">agenda</a>
-              </summary>
-              <ul class="list-unstyled small mb-2 mt-1">
               {% for c in agendadas_vencidas %}
                 <li><a data-painel href="{% url 'atendimentos:editar' c.pk %}?origem={{ request.get_full_path|urlencode }}" class="text-decoration-none">
                   <span class="hora text-muted me-1">{{ c.inicio|date:"d/m H:i" }}</span> {{ c.caso }}</a>

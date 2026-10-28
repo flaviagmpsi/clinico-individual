@@ -1,22 +1,81 @@
 {% comment %}
-ADR-074: o formulário só mostra o que a situação escolhida pede. "Cobrar esta sessão" só existe quando o cliente
-cancelou; "remarcada para" só quando a sessão foi remarcada. Sem JavaScript os blocos ficam visíveis, e o
-servidor continua ignorando o que não se aplica — a tela é conveniência, a regra é do serviço.
+ADR-074/131/141: o formulário de situação só mostra o que a escolha pede, e só oferece o que cabe no tempo da sessão.
+- Antes da sessão acontecer (futura), Presente e Faltou somem; sobram Remarcar e Cancelar. No avulso, "futura" vem
+  da data (e hora) escolhida; na prevista/correção vem do servidor (data-futura) — e aí o CSS já esconde sem JS.
+- Quando a sessão ainda vai acontecer e o contexto aceita (avulso/correção), o padrão é ficar **prevista** (estado
+  AGENDADA, rádio escondido): só salvar já põe na agenda. Nenhuma situação vem pré-marcada (ADR-140 §10).
+- "Cobrar" só aparece quando o cliente cancelou; "remarcada para" só na remarcação.
+Sem JavaScript, tudo fica visível e o servidor valida — a tela é conveniência, a regra é do serviço.
 {% endcomment %}
 <script>
 (function () {
-  const formulario = document.currentScript.closest('form') || document.querySelector('form[method="post"]');
-  const radios = formulario.querySelectorAll('input[name="estado"]');
-  const blocoCobrar = formulario.querySelector('[data-so-para="CANCELADA_CLIENTE"]');
-  const blocoRemarcada = formulario.querySelector('[data-so-para="REMARCADA"]');
-  if (!radios.length) return;
-  function ajustar() {
-    const escolhido = formulario.querySelector('input[name="estado"]:checked');
-    const estado = escolhido ? escolhido.value : '';
-    if (blocoCobrar) blocoCobrar.hidden = estado !== 'CANCELADA_CLIENTE';
-    if (blocoRemarcada) blocoRemarcada.hidden = estado !== 'REMARCADA';
+  const form = document.currentScript.closest('form') || document.querySelector('form[method="post"]');
+  if (!form) return;
+  const bloco = form.querySelector('[data-situacao]');
+  const radios = Array.prototype.slice.call(form.querySelectorAll('input[name="estado"]'));
+  if (!bloco || !radios.length) return;
+
+  const porValor = {};
+  radios.forEach(function (r) { porValor[r.value] = r; });
+  const cartoesPassado = Array.prototype.slice.call(bloco.querySelectorAll('[data-exige-passado]'));
+  const notaPrevista = bloco.querySelector('[data-nota-prevista]');
+  const notaEscolha = bloco.querySelector('[data-escolha-faltando]');
+  const blocoCobrar = form.querySelector('[data-so-para="CANCELADA_CLIENTE"]');
+  const blocoRemarcada = form.querySelector('[data-so-para="REMARCADA"]');
+  const submit = form.querySelector('button[type="submit"]');
+  const campoData = form.querySelector('[name="data"]');
+  const campoHora = form.querySelector('[name="hora"]');
+  const permitePrevista = bloco.getAttribute('data-permite-prevista') === '1';
+
+  // Chega com situação já escolhida à mão (correção, ou volta de erro)? Respeita: não sugere por cima. O padrão
+  // "prevista" (AGENDADA) não conta como escolha — é só o ponto de partida antes da hora.
+  let tocado = radios.some(function (r) { return r.checked && r.value !== 'AGENDADA'; });
+
+  function escolhido() {
+    const r = radios.filter(function (x) { return x.checked; })[0];
+    return r ? r.value : '';
   }
-  radios.forEach((radio) => radio.addEventListener('change', ajustar));
+  function ehFutura() {
+    if (campoData) {
+      if (!campoData.value) return false;
+      const hora = (campoHora && campoHora.value) || '23:59';
+      return new Date(campoData.value + 'T' + hora) > new Date();
+    }
+    return bloco.getAttribute('data-futura') === '1';
+  }
+
+  function ajustar() {
+    const futura = ehFutura();
+    cartoesPassado.forEach(function (c) { c.hidden = futura; });
+
+    // Escolha impossível (Presente/Faltou numa sessão futura): derruba e volta ao padrão.
+    const atual = escolhido();
+    if (futura && (atual === 'REALIZADA' || atual === 'FALTOU')) {
+      porValor[atual].checked = false;
+      tocado = false;
+    }
+    // Padrão "prevista" antes da hora; ao deixar de ser futura, tira o padrão se o usuário não escolheu nada.
+    if (porValor.AGENDADA) {
+      if (futura && permitePrevista && !tocado) {
+        radios.forEach(function (r) { r.checked = (r === porValor.AGENDADA); });
+      } else if ((!futura || !permitePrevista) && !tocado && porValor.AGENDADA.checked) {
+        porValor.AGENDADA.checked = false;
+      }
+    }
+    if (notaPrevista) notaPrevista.hidden = !(futura && permitePrevista);
+
+    const est = escolhido();
+    if (blocoCobrar) blocoCobrar.hidden = est !== 'CANCELADA_CLIENTE';
+    if (blocoRemarcada) blocoRemarcada.hidden = est !== 'REMARCADA';
+
+    const valido = !!est;  // prevista (AGENDADA) conta como escolha válida
+    if (submit) submit.disabled = !valido;
+    if (notaEscolha) notaEscolha.hidden = valido;
+  }
+
+  radios.forEach(function (r) { r.addEventListener('change', function () { tocado = true; ajustar(); }); });
+  if (campoData) campoData.addEventListener('change', ajustar);
+  if (campoHora) campoHora.addEventListener('change', ajustar);
   ajustar();
 })();
 </script>

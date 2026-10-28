@@ -4290,6 +4290,36 @@ mesmo portfólio. A Flávia é da Allos e pode ver a Sofia; o motivo é organiza
 - IDs e o que falta: `demandas.md`, seção "Lembretes por WhatsApp".
 - ⚠️ **Não resolve** os conflitos com a ADR-039 (mensagem ao paciente), a ADR-043 (nada clínico no WhatsApp — o
   nome do paciente num lembrete já revela tratamento) e o I-05 (agendador). Ficam para a decisão de uso.
+## ADR-142 — "Como foi a sessão?" em opções grandes; "Agendada" vira "Prevista" (refino da ADR-140, revisa a ADR-139)
+
+**Status:** ✅ Aceita — Rodada 93. Primeiro dos refinos pós-deploy da ADR-140.
+
+**Pedido do usuário:** o interior do "Cadastrar sessão" ainda eram bolinhas (radio), não as **"4 opções grandes"** das
+pranchetas. E, sobre a ADR-139: "não é pra duplicar a informação. uma sessão prevista é uma sessão prevista, não
+precisa duplicar com a palavra agendada. e quero poder cadastrar uma avulsa antes dela acontecer, e aí ela estará
+como prevista."
+
+**Decisões:**
+- **Opção grande (componente novo no `_tema.html`, na vitrine):** cartão com ícone em quadradinho colorido;
+  selecionado = contorno índigo e fundo `#F0F0FF` (`--tinta-fundo`). O rádio real fica dentro do cartão; `:has()`
+  dá o destaque sem JS.
+- **Os 6 estados em 4 conceitos:** Presente, Faltou, **Cancelou** (um cartão que abre a sub-escolha *quem desmarcou:
+  o cliente / você* — e o "Cobrar" só quando o cliente, ADR-065) e Remarcou. Nada vem pré-marcado (ADR-140 §10).
+- **Antes da sessão acontecer**, Presente e Faltou somem (exigem ter acontecido); sobram **Remarcar e Cancelar**. No
+  avulso isso é dinâmico pela data+hora escolhida; na prevista/correção vem do servidor (`situacao_futura`), e aí o
+  CSS já esconde sem depender de JS.
+- **"Agendada" deixa de existir na interface — é "Prevista".** Para quem usa, a avulsa marcada antes da hora é só uma
+  sessão prevista: mesma palavra e mesma cor da prevista pela frequência (cartão `esperada`; passou sem cadastrar,
+  `pendente`). O nome **interno** do estado segue `AGENDADA` (sem migração de banco); muda só o rótulo e a cor.
+  Removidos o cartão/tokens `agendada` e a entrada da legenda. **Revisa a ADR-139** nestes dois pontos (o estado e o
+  mecanismo continuam; o azul separado e a palavra, não).
+- **Só salvar uma avulsa futura deixa-a prevista:** o padrão do estado é `AGENDADA` e o JS o retira quando a data já
+  passou (para a escolha ser um gesto); sem JS, a futura ainda fica prevista ao salvar.
+- **Painel: as duas pendências de sessão viram uma.** A prevista pela frequência (cálculo) e a avulsa marcada antes
+  (gravada) são o mesmo conceito para quem usa — agora num bloco só ("N sessões previstas esperando cadastro"), cada
+  item com seu link.
+- **Painel lateral passa a re-executar os scripts do conteúdo injetado** (`innerHTML` não roda `<script>`), para o
+  filtro por data funcionar também dentro do painel — onde o cadastro avulso de fato abre.
 
 ## Impeditivos
 

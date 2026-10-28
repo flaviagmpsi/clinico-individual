@@ -75,7 +75,8 @@ visual é `design/POLARIS_DESIGN.md` e os valores em `design/tokens.css`, mescla
 `templates/components/_tema.html`. **Durante a migração**, a referência de cada tela é a seção 10 do guia + o canvas;
 **depois dela**, a vitrine interna `/vitrine/` (seção 13 do guia).
 **Variável primeiro, componente depois, tela nunca:** tela nova monta os componentes do `_tema.html` (botão, campo,
-cartão, selo, lista, painel lateral, aviso) e **não declara cor, fonte, raio nem sombra**. Componente que faltar
+cartão, selo, lista, painel lateral, aviso, **opção grande** — o cartão de escolha de "Como foi a sessão?", ADR-142)
+e **não declara cor, fonte, raio nem sombra**. Componente que faltar
 nasce no `_tema.html`, entra na vitrine e ganha uma linha aqui, na mesma etapa.
 - **Dois lugares, duas faixas de largura, um template.** Toda tela entrega computador e celular no mesmo HTML, com
   CSS por faixa: **até 767px é celular** (dock embaixo, cadastro em folha que sobe, agenda um dia por vez, alvo de

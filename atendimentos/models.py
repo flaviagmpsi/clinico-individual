@@ -27,7 +27,9 @@ DURACAO_MAXIMA = 240
 
 class Consulta(TenantOwnedModel):
     class Estado(models.TextChoices):
-        AGENDADA = "AGENDADA", "Agendada"       # ADR-139: marcada, ainda vai acontecer
+        # ADR-139/ADR-142: a avulsa marcada antes da hora. Para quem usa, é só uma sessão **prevista** (mesma
+        # palavra e cor da prevista pela frequência); o nome interno segue AGENDADA para não migrar o banco.
+        AGENDADA = "AGENDADA", "Prevista"
         REALIZADA = "REALIZADA", "Presente"
         FALTOU = "FALTOU", "Faltou sem avisar"
         CANCELADA_CLIENTE = "CANCELADA_CLIENTE", "Cliente cancelou"

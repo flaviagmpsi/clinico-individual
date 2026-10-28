@@ -219,7 +219,9 @@ class CadastrarAvulsa(LoginRequiredMixin, FormView):
         return kwargs
 
     def get_initial(self):
-        inicial = {"estado": Consulta.Estado.REALIZADA, "data": timezone.localdate(),
+        # ADR-142: o padrão é "prevista" (AGENDADA). O JS tira esse padrão quando a data escolhida já passou, para
+        # a escolha ser um gesto (ADR-140 §10); sem JS, uma sessão futura ainda fica prevista ao salvar.
+        inicial = {"estado": Consulta.Estado.AGENDADA, "data": timezone.localdate(),
                    "modalidade": Paciente.Modalidade.PRESENCIAL}
         codigo = self.request.GET.get("caso", "")
         if codigo.isdigit():
@@ -233,6 +235,7 @@ class CadastrarAvulsa(LoginRequiredMixin, FormView):
         contexto = super().get_context_data(**kwargs)
         contexto["titulo"] = "Cadastrar consulta avulsa"
         contexto["origem_url"] = _origem_de(self.request)
+        contexto["permite_prevista"] = True  # avulso: sessão futura entra na agenda como prevista (ADR-142)
         return contexto
 
     def form_valid(self, form):
@@ -279,7 +282,8 @@ class CadastrarRemarcada(LoginRequiredMixin, FormView):
     def get_initial(self):
         origem = self.origem()
         local = timezone.localtime(origem.remarcada_para)
-        return {"caso": origem.caso_id, "estado": Consulta.Estado.REALIZADA, "data": local.date(),
+        # ADR-142: padrão "prevista" (AGENDADA); o JS ajusta pela data nova (futura fica prevista, passada pede escolha).
+        return {"caso": origem.caso_id, "estado": Consulta.Estado.AGENDADA, "data": local.date(),
                 "hora": local.time(), "duracao": origem.duracao, "modalidade": origem.modalidade}
 
     def get_form(self, form_class=None):
@@ -289,6 +293,7 @@ class CadastrarRemarcada(LoginRequiredMixin, FormView):
         contexto = super().get_context_data(**kwargs)
         origem = self.origem()
         contexto.update(titulo="Cadastrar sessão remarcada", origem=origem, origem_url=_origem_de(self.request),
+                        permite_prevista=True,
                         cobranca_combinada=_cobranca_combinada(origem.caso, timezone.localtime(origem.remarcada_para).date()))
         return contexto
 
@@ -364,14 +369,11 @@ class CadastrarPrevista(LoginRequiredMixin, FormView):
     def get_initial(self):
         prevista = self.prevista()
         regra = prevista.regra
-        inicial = {"hora": regra.hora, "duracao": regra.duracao,
-                   "modalidade": servicos.modalidade_do_caso(regra.caso)}
-        # ADR-131: presença e falta só se cadastram depois. Numa sessão que ainda não aconteceu — inclusive
-        # mais tarde hoje — não pré-selecionamos "Presente": seria uma escolha que a tela vai recusar, e é o
-        # que fazia o psicólogo achar que "não dá para cadastrar". Sem padrão, ele escolhe remarcada/cancelada.
-        if prevista.pendente():
-            inicial["estado"] = Consulta.Estado.REALIZADA
-        return inicial
+        # ADR-140 §10 / ADR-142: nenhuma situação vem pré-marcada — a escolha é sempre um gesto. A sessão da
+        # frequência já aparece como prevista por cálculo; aqui o psicólogo só diz o que aconteceu (ou, antes da
+        # hora, uma remarcação/cancelamento combinados).
+        return {"hora": regra.hora, "duracao": regra.duracao,
+                "modalidade": servicos.modalidade_do_caso(regra.caso)}
 
     def get_form(self, form_class=None):
         # ADR-093: sessão da frequência tem valor conhecido, por mensalidade ou por sessão. O campo é só da avulsa.
@@ -380,7 +382,9 @@ class CadastrarPrevista(LoginRequiredMixin, FormView):
     def get_context_data(self, **kwargs):
         contexto = super().get_context_data(**kwargs)
         prevista = self.prevista()
-        contexto.update(titulo="Cadastrar sessão", prevista=prevista, futura=not prevista.pendente(),
+        futura = not prevista.pendente()
+        contexto.update(titulo="Cadastrar sessão", prevista=prevista, futura=futura,
+                        situacao_futura="1" if futura else "0", permite_prevista=False,
                         origem_url=_origem_de(self.request),
                         cobranca_combinada=_cobranca_combinada(prevista.caso, prevista.data))
         return contexto
@@ -440,6 +444,9 @@ class EditarConsulta(LoginRequiredMixin, _ComConsulta, FormView):
         consulta = self.consulta()
         contexto["consulta"] = consulta
         contexto["origem_url"] = _origem_de(self.request)
+        # ADR-142: ainda no futuro mostra só remarcar/cancelar; a que já é prevista (AGENDADA) pode seguir prevista.
+        contexto["situacao_futura"] = "0" if consulta.ja_passou else "1"
+        contexto["permite_prevista"] = consulta.estado == Consulta.Estado.AGENDADA
         if self.combinada():
             contexto["cobranca_combinada"] = _cobranca_combinada(consulta.caso, timezone.localtime(consulta.inicio).date())
         return contexto

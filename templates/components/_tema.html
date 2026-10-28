@@ -55,7 +55,6 @@ continuam definidas aqui, recoloridas, até cada tela ser refeita nas etapas seg
     --cancelada: #66647A;
     --compromisso: #4A4760; --compromisso-fundo: #E0DFE8;
     --remarcada-borda: #DCDDF3;
-    --agendada: #18507F; --agendada-fundo: #C9E1F7; --agendada-borda: #9EC5EC;
     --desligado: #ECE9F2; --desligado-texto: #8E8BA3;
     /* brilhos usados por telas antigas, nos tons novos */
     --ok-brilho: rgba(44,90,60,.30); --erro-brilho: rgba(168,40,30,.30);
@@ -144,7 +143,6 @@ continuam definidas aqui, recoloridas, até cada tela ser refeita nas etapas seg
     --nao-escrito: #F2CB83; --nao-escrito-fundo: rgba(242,203,131,.14); --nao-escrito-borda: rgba(242,203,131,.40);
     --cancelada: #9EA3B5; --compromisso: #C9CDDA; --compromisso-fundo: rgba(255,255,255,.14);
     --remarcada-borda: rgba(146,155,245,.35);
-    --agendada: #8CC8EE; --agendada-fundo: rgba(60,150,230,.22); --agendada-borda: rgba(60,150,230,.45);
     --desligado: rgba(255,255,255,.08); --desligado-texto: #7D8296;
     --ok-brilho: rgba(60,160,95,.35); --erro-brilho: rgba(230,100,100,.35);
     --f-semanal: #BAB9F9; --f-semanal-fundo: rgba(116,122,237,.18); --f-semanal-traco: #747AED;
@@ -372,6 +370,36 @@ continuam definidas aqui, recoloridas, até cada tela ser refeita nas etapas seg
   .catalogo-opcoes .form-check-label { font-size: .95rem; line-height: 1.35; }
   @media (max-width: 575.98px) { .catalogo-opcoes { columns: 1; } }
 
+  /* Opção grande (ADR-142): escolha em cartão para "Como foi a sessão?". O rádio real fica escondido; o cartão
+     inteiro é o alvo. Selecionado: contorno índigo e fundo lavado (#F0F0FF via --tinta-fundo). */
+  .opcoes-grandes { display: flex; flex-direction: column; gap: 8px; }
+  .opcao-grande { position: relative; display: flex; align-items: center; gap: 12px; margin: 0; padding: 12px 14px;
+    border: 1px solid var(--linha-campo); border-radius: var(--raio); background: var(--superficie); cursor: pointer;
+    transition: border-color var(--rapido), background-color var(--rapido), box-shadow var(--rapido); }
+  .opcao-grande:hover { border-color: var(--linha-forte); }
+  .opcao-grande > input[type="radio"] { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+  .opcao-grande:has(> input:checked),
+  .opcao-grande.oc-grupo:has(.oc-quem input:checked) { border-color: var(--tinta); background: var(--tinta-fundo);
+    box-shadow: inset 0 0 0 1px var(--tinta); }
+  .opcao-grande:has(> input:focus-visible),
+  .opcao-grande.oc-grupo:has(.oc-quem input:focus-visible) { box-shadow: var(--anel-foco); }
+  .oc-icone { flex: none; width: 38px; height: 38px; border-radius: var(--raio-controle); display: flex;
+    align-items: center; justify-content: center; font-size: 1.15rem; color: #fff; }
+  .oc-icone.oc-presente { background: var(--ok-forte); }
+  .oc-icone.oc-faltou { background: var(--falta); }
+  .oc-icone.oc-cancelou { background: var(--cancelada); }
+  .oc-icone.oc-remarcou { background: var(--tinta); }
+  .oc-texto { display: flex; flex-direction: column; line-height: 1.25; }
+  .oc-titulo { font-weight: 600; color: var(--texto); }
+  .oc-dica { font-size: .82rem; color: var(--suave); }
+  /* "Cancelou" é um cartão que guarda a sub-escolha de quem desmarcou. */
+  .opcao-grande.oc-grupo { flex-wrap: wrap; }
+  .opcao-grande.oc-grupo .oc-quem { flex-basis: 100%; margin: 4px 0 0 50px; display: flex; gap: 1.2rem; }
+  .opcao-grande.oc-grupo .oc-quem .form-check { margin: 0; min-height: auto; }
+  .oc-nota { margin-top: 2px; }
+  /* Sessão que ainda vai acontecer (contexto fixo, vindo do servidor): Presente/Faltou somem sem depender de JS. */
+  .situacao[data-futura="1"] [data-exige-passado] { display: none; }
+
   /* ---------- pacientes em blocos (ADR-109) ---------- */
   .blocos { display: grid; grid-template-columns: repeat(auto-fill, minmax(248px, 1fr)); gap: 16px; }
   .paciente { background: var(--superficie); border: 1px solid var(--linha); border-radius: var(--raio); padding: 16px;
@@ -417,7 +445,6 @@ continuam definidas aqui, recoloridas, até cada tela ser refeita nas etapas seg
   .cartao.faltou { background: var(--falta-fundo); border-color: var(--falta-borda); color: var(--falta); }
   .cartao.cancelada { background: transparent; border-color: var(--linha); color: var(--cancelada); text-decoration: line-through; }
   .cartao.remarcada { background: var(--superficie); border-color: var(--remarcada-borda); color: var(--texto); }
-  .cartao.agendada { background: var(--agendada-fundo); border-color: var(--agendada-borda); color: var(--agendada); }
   .cartao.compromisso { background: var(--compromisso-fundo); border-color: var(--compromisso-fundo); color: var(--compromisso); cursor: default; }
 
   /* ---------- painel lateral (folha no celular) e véu ---------- */
