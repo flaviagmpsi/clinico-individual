@@ -78,13 +78,17 @@ class BlocoDeHorario:
                                         "por frequência. Marque cada sessão dele em “Nova sessão”.")
             return
         hoje = timezone.localdate()
-        # A regra vale da primeira sessão em diante; se ela já passou, de hoje — o passado não ganha previsão.
         primeira = paciente.data_primeira_sessao
+        # A regra começa **hoje**, para as sessões aparecerem já no painel e na agenda. A "data da primeira sessão"
+        # só adia o começo quando é exceção de verdade — cai num dia da semana diferente do fixo (ADR-120,
+        # "começamos nesta sexta, depois é toda terça"). Caindo no mesmo dia (ou vazia), a cadência semanal já a
+        # prevê, e adiar a regra para uma data futura só escondia o paciente do painel até lá — era a queixa de
+        # "cadastrei o horário e o painel ficou sem sessão, só aparecia depois de recadastrar".
+        excecao_de_dia = bool(primeira and primeira >= hoje and primeira.weekday() != dados["dia_semana"])
         regra = servicos.definir_frequencia(
             caso, frequencia=dados["frequencia"], dia_semana=dados["dia_semana"], hora=dados["hora"],
-            a_partir_de=max(hoje, primeira or hoje), hoje=hoje,
-            # ADR-120: só a partir de hoje — o passado não ganha sessão prevista (ADR-022).
-            primeira_sessao=primeira if primeira and primeira >= hoje else None)
+            a_partir_de=primeira if excecao_de_dia else hoje, hoje=hoje,
+            primeira_sessao=primeira if excecao_de_dia else None)
         self._dizer_quando_comeca(paciente, regra)
 
     def _dizer_quando_comeca(self, paciente, regra) -> None:
