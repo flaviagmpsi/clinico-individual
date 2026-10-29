@@ -97,8 +97,10 @@ class BlocosDoPeriodo(BaseEstatisticas):
     def test_retrato_da_agenda_traz_horario_dia_e_frequencia(self):
         with contexto.como(self.ana.pk):
             e = estatisticas.retrato_da_agenda(self.ano())
-        self.assertEqual(e.horario_mais_usado, ("14h", 2))
-        self.assertEqual(e.dia_mais_cheio, ("Terça", 2))
+        # "Horário mais usado" e "Dia que mais atende" vêm dos pacientes cadastrados (a regra fixa de cada um), não
+        # das sessões realizadas (pedido da usuária): a única regra em vigor é a quinzenal da Júlia, quarta às 9h.
+        self.assertEqual(e.horario_mais_usado, ("09h", 1))
+        self.assertEqual(e.dia_mais_cheio, ("Quarta", 1))
         self.assertNotIn("20h", [rotulo for rotulo, _ in e.horarios])  # a sessão do Bruno não aparece
         self.assertEqual((e.composicao.semanais, e.composicao.quinzenais, e.composicao.avulsos), (0, 1, 1))
 
@@ -221,7 +223,7 @@ class Telas(TransactionTestCase):
 
         pacientes = self.client.get(reverse("pacientes:lista"), do_ano)
         self.assertContains(pacientes, "Presença dos pacientes em 2026")
-        self.assertContains(pacientes, "Presença por paciente")
+        # A tabela "Presença por paciente" saiu (a % já está no bloco de cada paciente) — só o resumo fica.
 
         fluxo = self.client.get(reverse("financeiro:fluxo"), do_ano)
         self.assertContains(fluxo, "Resultado previsto de 2026")
@@ -251,14 +253,14 @@ class Telas(TransactionTestCase):
         self.assertIn("&situacao=encerrados", resposta.context["outros_parametros"])
 
     def test_painel_mostra_popup_de_aniversario_do_dia(self):
-        """ADR-134: o aniversário virou pop-up do dia. Só aparece quem faz aniversário **hoje**."""
+        """ADR-134: o aniversário é um aviso no canto (não mais um modal, que travava a tela). Só quem faz hoje."""
         hoje = timezone.localdate()
         with contexto.como(self.ana.pk):
             cadastrar_paciente(Paciente(nome="Rita do Dia", data_nascimento=date(1990, hoje.month, hoje.day)),
                                valor=Decimal("200"), vigente_desde=date(2026, 1, 1))
         self.entrar(self.ana)
         resposta = self.client.get(reverse("painel"))
-        self.assertContains(resposta, "modalAniversario")
+        self.assertContains(resposta, "avisoAniversario")
         self.assertContains(resposta, "Aniversário hoje")
         self.assertContains(resposta, "Rita do Dia")
         self.assertNotContains(resposta, "Carla Alheia")

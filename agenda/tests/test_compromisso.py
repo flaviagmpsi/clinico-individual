@@ -81,7 +81,9 @@ class OcupaOHorario(Base):
         with contexto.como(self.ana.pk):
             mapa = mapa_da_semana()
         self.assertEqual(mapa.minutos_ocupados, 90)
-        self.assertEqual(mapa.horas_ocupadas, "1h30")
+        self.assertEqual(mapa.horas_trabalhadas, "1h30")
+        # É trabalho **fora da clínica** (supervisão), não atendimento de paciente.
+        self.assertEqual((mapa.horas_na_clinica, mapa.horas_fora), ("0h", "1h30"))
 
     def test_o_de_uma_vez_so_nao_toma_a_semana_inteira(self):
         """Uma reunião num dia não pode bloquear aquele horário para sempre."""

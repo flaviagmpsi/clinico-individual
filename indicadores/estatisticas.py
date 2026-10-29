@@ -20,6 +20,7 @@ from dataclasses import dataclass, field
 from datetime import date, datetime
 from decimal import Decimal
 
+from django.db.models import Q
 from django.utils import timezone
 
 from agenda import compromissos
@@ -281,9 +282,12 @@ def retrato_da_agenda(periodo: Periodo) -> RetratoDaAgenda:
     ate = min(periodo.ultimo_dia, timezone.localdate())
     fora = compromissos.do_periodo(periodo.primeiro_dia, ate) if ate >= periodo.primeiro_dia else []
     # "Dia que mais atende" e "Horário mais usado": pelos pacientes cadastrados (a regra fixa de cada um), não só
-    # pelas sessões realizadas. Cada atendimento de paciente em vigor conta uma vez no seu dia e na sua hora.
+    # pelas sessões realizadas. Cada atendimento de paciente em vigor conta uma vez no seu dia e na sua hora. Só as
+    # regras **em vigor no período** — um mês ou ano passado não deve mostrar o padrão de hoje.
     por_hora, por_dia = Counter(), Counter()
-    for hora, dia_semana in Recorrencia.objects.filter(fim__isnull=True).values_list("hora", "dia_semana"):
+    ativas = (Recorrencia.objects.filter(inicio__lte=periodo.ultimo_dia)
+              .filter(Q(fim__isnull=True) | Q(fim__gt=periodo.primeiro_dia)))
+    for hora, dia_semana in ativas.values_list("hora", "dia_semana"):
         por_hora[hora.hour] += 1
         por_dia[dia_semana] += 1
     return RetratoDaAgenda(
