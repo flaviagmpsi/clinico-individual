@@ -55,19 +55,27 @@ Primeiro o dia; depois as pendências, num bloco; por fim o resumo do mês.
   .pendencia.a-receber .quantas { color: var(--suave); }
   /* Olhinho da Receita do mês: valor borrado até revelar. */
   .receita-oculta { filter: blur(9px); user-select: none; transition: filter var(--rapido); }
-  [data-olho-receita] { line-height: 1; }
+  [data-olho-receita], [data-olho-agenda] { line-height: 1; }
+  /* Olhinho da agenda: esconde os nomes dos pacientes de quem olhar o painel junto. */
+  .esconder-nomes .nome-paciente { filter: blur(5px); user-select: none; transition: filter var(--rapido); }
 </style>
 <div class="row g-3 mb-3 align-items-start">
   {% comment %}ADR-106: a agenda de hoje costuma ter poucas linhas e sobrava espaço; as pendências, que são muitas,
   ganharam a metade da largura para caber sem arrastar para o lado.{% endcomment %}
   <div class="col-lg-6">
-    <div class="card">
+    <div class="card" data-hoje>
       <div class="card-header bg-white py-2 d-flex align-items-center flex-wrap gap-2">
         <span class="fw-semibold">Hoje</span>
         <span class="text-muted small">
           {{ total_hoje }} sess{{ total_hoje|pluralize:"ão,ões" }}{% if online %} · {{ online }} online{% endif %}
         </span>
-        <a href="{% url 'atendimentos:agenda' %}" class="ms-auto small text-decoration-none">ver a agenda</a>
+        {% comment %}Olhinho (pedido da usuária): esconde os nomes dos pacientes de quem olhar o painel junto. Um só
+        para toda a lista de hoje; a escolha fica guardada no navegador.{% endcomment %}
+        <span class="ms-auto d-flex align-items-center gap-3">
+          <button type="button" class="btn btn-sm btn-link p-0 text-muted" data-olho-agenda
+                  aria-label="Esconder os nomes" aria-pressed="false"><i class="bi bi-eye"></i></button>
+          <a href="{% url 'atendimentos:agenda' %}" class="small text-decoration-none">ver a agenda</a>
+        </span>
       </div>
       {% if itens %}
         <div class="list-group list-group-flush">
@@ -75,7 +83,7 @@ Primeiro o dia; depois as pendências, num bloco; por fim o resumo do mês.
             {% comment %}ADR-089: a próxima sessão é a única linha que se destaca; a que já passou recua.{% endcomment %}
             <div class="list-group-item d-flex align-items-center flex-wrap{% if item == proxima %} proxima{% elif item.cadastrada %} feita{% endif %}">
               <span class="hora me-2" style="min-width:46px">{{ item.inicio|date:"H:i" }}</span>
-              <span class="nome fw-medium">{{ item.caso }}</span>
+              <span class="nome fw-medium nome-paciente">{{ item.caso }}</span>
               <span class="text-muted ms-2" title="Modalidade">
                 {% if item.online %}<i class="bi bi-camera-video"></i> online{% else %}<i class="bi bi-person"></i> presencial{% endif %}
               </span>
@@ -295,6 +303,27 @@ Primeiro o dia; depois as pendências, num bloco; por fim o resumo do mês.
     btn.setAttribute('aria-pressed', String(!oculto));
     btn.setAttribute('aria-label', oculto ? 'Mostrar o valor' : 'Esconder o valor');
     btn.querySelector('i').className = oculto ? 'bi bi-eye-slash' : 'bi bi-eye';
+  });
+})();
+// Olhinho da agenda: esconde os nomes dos pacientes de hoje. A escolha fica no navegador (por dispositivo).
+(function () {
+  var btn = document.querySelector('[data-olho-agenda]');
+  var alvo = document.querySelector('[data-hoje]');
+  if (!btn || !alvo) return;
+  var chave = 'esconder-nomes-agenda';
+  function aplicar(oculto) {
+    alvo.classList.toggle('esconder-nomes', oculto);
+    btn.setAttribute('aria-pressed', String(oculto));
+    btn.setAttribute('aria-label', oculto ? 'Mostrar os nomes' : 'Esconder os nomes');
+    btn.querySelector('i').className = oculto ? 'bi bi-eye-slash' : 'bi bi-eye';
+  }
+  var oculto = false;
+  try { oculto = localStorage.getItem(chave) === '1'; } catch (e) {}
+  aplicar(oculto);
+  btn.addEventListener('click', function () {
+    oculto = !alvo.classList.contains('esconder-nomes');
+    try { if (oculto) { localStorage.setItem(chave, '1'); } else { localStorage.removeItem(chave); } } catch (e) {}
+    aplicar(oculto);
   });
 })();
 </script>
