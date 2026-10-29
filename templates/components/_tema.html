@@ -30,6 +30,7 @@ continuam definidas aqui, recoloridas, até cada tela ser refeita nas etapas seg
       linear-gradient(180deg, #E9EBFF 0%, #F0F0FD 32%, #F7F6FC 70%, #FBFAFD 100%);
     --grao-opacidade: .12;
     --fundo: #F7F6FC; --superficie: #FFFFFF; --superficie-2: #F8F8FC;
+    --topo-fundo: rgba(247,246,252,.72);   /* barra do topo: fosca translúcida, para o conteúdo não embaralhar ao rolar */
     --veu: rgba(21,18,63,.18);
 
     /* ---------- texto ---------- */
@@ -55,6 +56,11 @@ continuam definidas aqui, recoloridas, até cada tela ser refeita nas etapas seg
     --cancelada: #66647A;
     --compromisso: #4A4760; --compromisso-fundo: #E0DFE8;
     --remarcada-borda: #DCDDF3;
+    /* Agenda: cor própria por tipo de horário, para a diferença ser visual (pedido da usuária). Prevista = azul
+       (vai acontecer); remarcada = violeta (foi para outro dia). Presente/faltou/pendente/cancelada usam ok/falta/
+       atenção/cinza, já definidos. */
+    --prevista-texto: #1F5F96; --prevista-fundo: #E6F1FB; --prevista-linha: #BBD8F0;
+    --remarcada-texto: #6A3DA8; --remarcada-fundo: #F0E9FA; --remarcada-linha: #DDCBF0;
     --desligado: #ECE9F2; --desligado-texto: #8E8BA3;
     /* brilhos usados por telas antigas, nos tons novos */
     --ok-brilho: rgba(44,90,60,.30); --erro-brilho: rgba(168,40,30,.30);
@@ -129,6 +135,7 @@ continuam definidas aqui, recoloridas, até cada tela ser refeita nas etapas seg
       radial-gradient(800px 420px at 12% 108%, rgba(70,104,206,.18), rgba(70,104,206,0) 70%),
       linear-gradient(180deg, #06070D 0%, #0A0C18 52%, #15122A 100%);
     --grao-opacidade: .55; --fundo: #0A0C18;
+    --topo-fundo: rgba(10,12,24,.72);
     --superficie: rgba(18,21,31,.74); --superficie-2: rgba(255,255,255,.025); --veu: rgba(0,0,0,.35);
     --texto: #E8EBF2; --texto-corrido: #D5D8E4; --suave: #ABB1C2; --placeholder: #8A90A3;
     --linha: rgba(255,255,255,.07); --linha-fina: rgba(255,255,255,.05); --linha-forte: rgba(255,255,255,.22);
@@ -143,6 +150,8 @@ continuam definidas aqui, recoloridas, até cada tela ser refeita nas etapas seg
     --nao-escrito: #F2CB83; --nao-escrito-fundo: rgba(242,203,131,.14); --nao-escrito-borda: rgba(242,203,131,.40);
     --cancelada: #9EA3B5; --compromisso: #C9CDDA; --compromisso-fundo: rgba(255,255,255,.14);
     --remarcada-borda: rgba(146,155,245,.35);
+    --prevista-texto: #8CC8EE; --prevista-fundo: rgba(36,143,204,.18); --prevista-linha: rgba(36,143,204,.42);
+    --remarcada-texto: #C9B3EC; --remarcada-fundo: rgba(150,110,230,.18); --remarcada-linha: rgba(150,110,230,.42);
     --desligado: rgba(255,255,255,.08); --desligado-texto: #7D8296;
     --ok-brilho: rgba(60,160,95,.35); --erro-brilho: rgba(230,100,100,.35);
     --f-semanal: #BAB9F9; --f-semanal-fundo: rgba(116,122,237,.18); --f-semanal-traco: #747AED;
@@ -201,7 +210,8 @@ continuam definidas aqui, recoloridas, até cada tela ser refeita nas etapas seg
   /* ---------- topo ---------- */
   /* No computador o topo começa depois da dock, para a marca não cair sobre a coluna da barra (left: var(--barra)).
      Sem barra (quiz de cadastro) e no celular, volta à largura cheia. */
-  .topo { position: fixed; top: 0; left: var(--barra); right: 0; height: var(--topo); z-index: 1030; background: transparent; color: var(--texto); }
+  .topo { position: fixed; top: 0; left: var(--barra); right: 0; height: var(--topo); z-index: 1030; color: var(--texto);
+          background: var(--topo-fundo); backdrop-filter: blur(10px) saturate(120%); -webkit-backdrop-filter: blur(10px) saturate(120%); }
   .topo.sem-barra { left: 0; }
   .topo .marca { color: var(--texto); font-weight: 600; font-size: .95rem; letter-spacing: 0; text-decoration: none; }
   .topo .marca i { color: var(--tinta); }
@@ -438,13 +448,15 @@ continuam definidas aqui, recoloridas, até cada tela ser refeita nas etapas seg
   .cartao small { display: block; font-weight: 400; font-size: .78rem; }
   .cartao:hover { transform: translateY(-1px); box-shadow: var(--sombra-hover); }
   .cartao.livre { background: transparent; color: var(--cancelada); border: 1.5px dashed var(--linha-livre); font-weight: 500; }
-  .cartao.esperada { background: var(--superficie); border-color: var(--remarcada-borda); color: var(--texto); }
+  .cartao.esperada { background: var(--prevista-fundo); border-color: var(--prevista-linha); color: var(--prevista-texto); }
+  .cartao.esperada small { color: var(--prevista-texto); }
   .cartao.pendente { background: var(--atencao-fundo); border-color: var(--atencao-borda); color: var(--atencao); }
   .cartao.pendente small { color: var(--atencao); font-weight: 600; }
   .cartao.realizada { background: var(--ok-fundo); border-color: var(--ok-fundo); color: var(--ok); }
   .cartao.faltou { background: var(--falta-fundo); border-color: var(--falta-borda); color: var(--falta); }
   .cartao.cancelada { background: transparent; border-color: var(--linha); color: var(--cancelada); text-decoration: line-through; }
-  .cartao.remarcada { background: var(--superficie); border-color: var(--remarcada-borda); color: var(--texto); }
+  .cartao.remarcada { background: var(--remarcada-fundo); border-color: var(--remarcada-linha); color: var(--remarcada-texto); }
+  .cartao.remarcada small { color: var(--remarcada-texto); }
   .cartao.compromisso { background: var(--compromisso-fundo); border-color: var(--compromisso-fundo); color: var(--compromisso); cursor: default; }
 
   /* ---------- painel lateral (folha no celular) e véu ---------- */

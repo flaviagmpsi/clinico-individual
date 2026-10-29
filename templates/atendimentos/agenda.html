@@ -5,8 +5,9 @@
 {% block conteudo %}
 {% comment %}
 ADR-073 e ADR-074: a agenda no desenho da planilha do psicólogo. Colunas por dia, cartões empilhados em
-ordem de horário, horários livres visíveis onde há grade cadastrada. Amarelo é o que ainda vai acontecer; a
-sessão cadastrada muda de cor (presente verde, falta vermelha, cancelada cinza riscada); livre é cinza.
+ordem de horário, horários livres visíveis onde há grade cadastrada. Cada tipo tem cor própria (cores no _tema):
+prevista azul, pendente âmbar, presente verde, falta vermelha, remarcada violeta, cancelada cinza riscada,
+fora da clínica cinza-violeta, livre cinza tracejado.
 {% endcomment %}
 <style>
   {% comment %}ADR-140: só o layout do calendário mora aqui; as cores dos cartões de situação vêm do _tema
@@ -77,10 +78,17 @@ calendário, como cartão "pendente"; repetir em cima seria a mesma informação
     <span><i class="bi bi-person"></i> {{ presenciais }} presencia{{ presenciais|pluralize:"l,is" }}</span>
   {% endif %}
   {% if not situacao %}
-    <span class="ms-auto"><span class="cartao esperada d-inline-block py-0 px-2">prevista</span> ainda vai acontecer ·
-      <span class="cartao pendente d-inline-block py-0 px-2">pendente</span> passou e falta cadastrar ·
-      <span class="cartao realizada d-inline-block py-0 px-2">presente</span> cadastrada ·
-      <span class="cartao livre d-inline-block py-0 px-2">livre</span> horário da grade sem sessão</span>
+    {% comment %}Cada tipo tem cor própria (pedido da usuária): a legenda mostra todas, com ícone/palavra, nunca só cor.{% endcomment %}
+    <span class="ms-auto d-flex flex-wrap gap-2 align-items-center">
+      <span class="cartao esperada d-inline-block py-0 px-2">prevista</span>
+      <span class="cartao pendente d-inline-block py-0 px-2">pendente</span>
+      <span class="cartao realizada d-inline-block py-0 px-2">presente</span>
+      <span class="cartao faltou d-inline-block py-0 px-2">faltou</span>
+      <span class="cartao remarcada d-inline-block py-0 px-2">remarcada</span>
+      <span class="cartao cancelada d-inline-block py-0 px-2">cancelada</span>
+      <span class="cartao compromisso d-inline-block py-0 px-2">fora da clínica</span>
+      <span class="cartao livre d-inline-block py-0 px-2">livre</span>
+    </span>
   {% endif %}
 </div>
 

@@ -235,7 +235,7 @@ class PacienteForm(LimpaMascara, forms.ModelForm):
             "pais": forms.TextInput(attrs=_TEXTO),
             "estado_exterior": forms.TextInput(attrs=_TEXTO),
             "cpf": forms.TextInput(attrs=_CPF),
-            "data_nascimento": forms.DateInput(attrs=_DATA),
+            "data_nascimento": forms.DateInput(attrs=_DATA, format="%Y-%m-%d"),
             "telefone": forms.TextInput(attrs=_TELEFONE),
             "email": forms.EmailInput(attrs=_TEXTO),
             "cep": forms.TextInput(attrs=_CEP),
@@ -248,7 +248,7 @@ class PacienteForm(LimpaMascara, forms.ModelForm):
             "medicamento": forms.Textarea(attrs={**_TEXTO, "rows": 2,
                 "placeholder": "O que o paciente relata usar. Deixe vazio se não houver."}),
             "modalidade": forms.Select(attrs=_SELECT),
-            "data_primeira_sessao": forms.DateInput(attrs=_DATA),
+            "data_primeira_sessao": forms.DateInput(attrs=_DATA, format="%Y-%m-%d"),
             "observacoes": forms.Textarea(attrs={**_TEXTO, "rows": 3}),
         }
         help_texts = {

@@ -9,14 +9,14 @@ A estrela de oito pontas é a marca do Polaris e leva ao Painel.
 <nav class="dock" aria-label="Seções">
   <div class="dock-barra">
     <a href="{% url 'painel' %}" class="dock-item dock-estrela{% if request.resolver_match.url_name == 'painel' %} ativo{% endif %}"
-       {% if request.resolver_match.url_name == 'painel' %}aria-current="page"{% endif %}>
+       aria-label="Polaris, ir para o painel"{% if request.resolver_match.url_name == 'painel' %} aria-current="page"{% endif %}>
       {% comment %}Estrela da marca, exata do canvas (Simbolo.dc.html): facetada em duas cores, variante de fundo
       escuro (o dock é escuro), com o miolo branco.{% endcomment %}
       <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true">
         <path d="M12 12L11.43 10.61L12.00 0.50ZM12 12L12.57 10.61L16.95 7.05ZM12 12L13.39 11.43L23.50 12.00ZM12 12L13.39 12.57L16.95 16.95ZM12 12L12.57 13.39L12.00 23.50ZM12 12L11.43 13.39L7.05 16.95ZM12 12L10.61 12.57L0.50 12.00ZM12 12L10.61 11.43L7.05 7.05Z" fill="#E1E8FF"/>
         <path d="M12 12L12.00 0.50L12.57 10.61ZM12 12L16.95 7.05L13.39 11.43ZM12 12L23.50 12.00L13.39 12.57ZM12 12L16.95 16.95L12.57 13.39ZM12 12L12.00 23.50L11.43 13.39ZM12 12L7.05 16.95L10.61 12.57ZM12 12L0.50 12.00L10.61 11.43ZM12 12L7.05 7.05L11.43 10.61Z" fill="#6496E8"/>
         <circle cx="12" cy="12" r="1.1" fill="#FFFFFF"/>
-      </svg><span class="dock-nome">Painel</span></a>
+      </svg><span class="dock-nome">Polaris</span></a>
 
     <div class="dock-separador"></div>
 

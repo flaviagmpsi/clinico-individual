@@ -22,33 +22,6 @@ ordem em que ela importa.
       </div>
     </div>
   </div>
-
-  <div class="card-header bg-white py-2 border-top fw-semibold">Presença por paciente
-    <span class="text-muted fw-normal small">— da menor para a maior{% if periodo.por_mes %}; quem está em atendimento e não teve sessão vem por último{% endif %}</span></div>
-  {% if presenca.por_paciente %}
-  <div class="table-responsive" style="max-height:340px; overflow-y:auto">
-    <table class="table table-sm align-middle mb-0 small tabela-cartoes">
-      <thead class="table-light"><tr><th>Paciente</th><th>Presença</th><th class="text-end">Presentes</th><th class="text-end">Faltas</th><th class="text-end">Canceladas</th><th class="text-end">Remarcadas</th></tr></thead>
-      <tbody>
-      {% for caso, p in presenca.por_paciente %}
-        <tr{% if not p.total %} class="text-muted"{% endif %}>
-          <td class="fw-medium" data-rotulo="">{{ caso }}</td>
-          <td style="min-width:160px" data-rotulo="Presença">
-            {% if p.esperadas %}
-            <div class="d-flex align-items-center gap-2">
-              <div class="progress flex-grow-1" style="height:6px"><div class="progress-bar {% if p.percentual < 70 %}bg-warning{% else %}bg-success{% endif %}" style="width:{{ p.percentual }}%"></div></div>
-              <span class="text-nowrap">{{ p.percentual }}% <span class="text-muted">· {{ p.presentes }} de {{ p.esperadas }}</span></span>
-            </div>
-            {% else %}<span class="fst-italic">sem sessão no mês</span>{% endif %}
-          </td>
-          <td class="text-end" data-rotulo="Presentes">{{ p.presentes }}</td><td class="text-end" data-rotulo="Faltas">{{ p.faltas }}</td>
-          <td class="text-end" data-rotulo="Canceladas">{{ p.canceladas }}</td><td class="text-end" data-rotulo="Remarcadas">{{ p.remarcadas }}</td>
-        </tr>
-      {% endfor %}
-      </tbody>
-    </table>
-  </div>
-  {% else %}
-    <div class="card-body small text-muted">Nenhuma sessão cadastrada em {{ periodo.rotulo }}.</div>
-  {% endif %}
+  {% comment %}A tabela "Presença por paciente" saiu (pedido da usuária): a porcentagem de cada paciente já aparece
+  no bloco dele, em cima. Aqui fica só o resumo da clínica no período.{% endcomment %}
 </div>
