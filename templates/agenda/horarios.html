@@ -50,7 +50,15 @@
 <div class="row g-3">
   <div class="col-lg-8">
     <div class="card">
-      <div class="card-header bg-white py-2 fw-semibold">Mapa da semana</div>
+      {% comment %}Legenda do mapa (prancheta Horários do canvas): o que cada cor quer dizer, sem depender de cor só.{% endcomment %}
+      <div class="card-header bg-white py-2 d-flex align-items-center flex-wrap gap-2">
+        <span class="fw-semibold">Mapa da semana</span>
+        <div class="ms-auto d-flex flex-wrap align-items-center gap-2 small text-muted">
+          <span class="badge bg-success-subtle text-success-emphasis border border-success-subtle fw-normal">livre</span>
+          <span class="badge text-bg-light border fw-normal">paciente fixo</span>
+          <span>quinzenal conta metade</span>
+        </div>
+      </div>
       {% if mapa.dias %}
       <div class="list-group list-group-flush">
         {% for dia in mapa.dias %}
