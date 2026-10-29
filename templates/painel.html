@@ -306,46 +306,39 @@ quando um paciente faz aniversário hoje, uma vez por dia — o "visto hoje" fic
 é conveniência por dispositivo e não precisa do servidor. Sem JavaScript o modal não abre sozinho, mas o bloco
 fica acessível no rodapé, então a lembrança nunca some de vez.{% endcomment %}
 {% if aniversariantes_hoje %}
-<div class="modal fade" id="modalAniversario" tabindex="-1" aria-labelledby="tituloAniversario" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title" id="tituloAniversario"><i class="bi bi-cake2 text-success"></i> Aniversário hoje 🎉</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
-      </div>
-      <div class="modal-body">
-        <p class="small text-muted mb-2">
-          {% if aniversariantes_hoje|length == 1 %}Um paciente em atendimento faz aniversário hoje:{% else %}Pacientes em atendimento que fazem aniversário hoje:{% endif %}
-        </p>
-        <ul class="list-unstyled mb-0">
-          {% for a in aniversariantes_hoje %}
-          <li class="py-1">
-            <a href="{% url 'pacientes:detalhe' a.paciente.pk %}" class="text-decoration-none fw-semibold">{{ a.paciente.nome_social|default:a.paciente.nome }}</a>
-            <span class="text-muted">· faz {{ a.idade }} anos</span>
-          </li>
-          {% endfor %}
-        </ul>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-sm btn-primary" data-bs-dismiss="modal">Fechar</button>
-      </div>
+{% comment %}ADR-134: o aniversário é um AVISO no canto, **nunca** um modal que cobre a tela. Um modal travou o
+sistema de uma usuária quando o fechar do Bootstrap falhou — ela não conseguia fazer mais nada. Um aviso flutuante
+não bloqueia: a pessoa usa o sistema normalmente, e fecha em JavaScript puro, sem depender do Bootstrap. Fica
+"visto" no navegador (localStorage), uma vez por dia. Sem JavaScript, nem aparece — e, por não cobrir a tela, nunca
+trava.{% endcomment %}
+<div class="aviso-flutuante aviso-aniversario" role="status" id="avisoAniversario" hidden>
+  <i class="bi bi-cake2" aria-hidden="true" style="color: var(--ok-forte); font-size: 1.2rem"></i>
+  <div>
+    <strong>Aniversário hoje 🎉</strong>
+    <div class="small" style="opacity: .92">
+      {% for a in aniversariantes_hoje %}<a href="{% url 'pacientes:detalhe' a.paciente.pk %}">{{ a.paciente.nome_social|default:a.paciente.nome }}</a> · faz {{ a.idade }} ano{{ a.idade|pluralize }}{% if not forloop.last %}<br>{% endif %}{% endfor %}
     </div>
   </div>
+  <button type="button" class="ms-auto" aria-label="Fechar" data-fechar-aniversario
+          style="background: none; border: 0; color: inherit; opacity: .8; cursor: pointer; padding: 2px; line-height: 1; align-self: flex-start">
+    <i class="bi bi-x-lg" aria-hidden="true"></i>
+  </button>
 </div>
 <script>
-// O bundle do Bootstrap é carregado depois deste ponto no base.html; o "load" garante que ele já exista.
-window.addEventListener("load", function () {
-  // ADR-138: o tour de boas-vindas tem prioridade no primeiro acesso — não empilha com o aniversário.
-  if (document.getElementById("modalBoasVindas")) return;
+// Fecha em JavaScript puro (sem Bootstrap), para nunca travar a tela. O aviso não cobre nada; o sistema fica usável.
+(function () {
+  if (document.getElementById("modalBoasVindas")) return;  // o tour de boas-vindas tem prioridade no 1º acesso
+  var aviso = document.getElementById("avisoAniversario");
+  if (!aviso) return;
   var chave = "aniversario-visto-{{ hoje|date:'Y-m-d' }}";
-  try { if (localStorage.getItem(chave)) return; } catch (e) {}
-  var el = document.getElementById("modalAniversario");
-  if (!el || !window.bootstrap) return;
-  el.addEventListener("hide.bs.modal", function () {
+  try { if (localStorage.getItem(chave)) { aviso.remove(); return; } } catch (e) {}
+  var botao = aviso.querySelector("[data-fechar-aniversario]");
+  if (botao) botao.addEventListener("click", function () {
     try { localStorage.setItem(chave, "1"); } catch (e) {}
+    aviso.remove();
   });
-  new bootstrap.Modal(el).show();
-});
+  aviso.hidden = false;
+})();
 </script>
 {% endif %}
 
