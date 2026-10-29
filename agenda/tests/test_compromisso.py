@@ -139,6 +139,11 @@ class ContaNasHoras(Base):
         from indicadores import estatisticas
         from indicadores.periodo import Periodo
         with contexto.como(self.ana.pk):
+            # A supervisão da Base é terça, e o retrato só conta o que já aconteceu até hoje (ADR-128): num mês
+            # em que a terça ainda não chegou, ela não entra. Uma reunião de hoje garante um compromisso já
+            # ocorrido no período, que é o que este teste prova — compromisso conta como hora de trabalho.
+            Compromisso.objects.create(titulo="Reunião", frequencia="UNICO", dia_semana=None,
+                                       hora=time(9), duracao=90, inicio=self.hoje)
             retrato = estatisticas.retrato_da_agenda(Periodo(self.hoje.year, self.hoje.month))
         self.assertEqual(retrato.minutos_de_sessao, 0)
         self.assertTrue(retrato.minutos_fora_da_clinica >= 90)
