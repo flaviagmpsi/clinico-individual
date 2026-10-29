@@ -47,7 +47,8 @@ Decisões da rodada: borda de campo `#8E8CA4` (3:1); padrões tema "Seguir o com
 - 🟢 **Salvar no painel atualiza a origem no lugar** (ADR-142): ao salvar, em vez de recarregar a página inteira,
   troca só o `main.conteudo` no lugar (sem flash, mantém o scroll) e traz o aviso com Desfazer — a pessoa continua
   na mesma tela. Vale para todos os painéis (conserto no `ligarForm`). Sem JS, segue recarregando como antes. No ar.
-- ⚪ Grão via SVG inline (não PNG estático).
+- 🟢 Grão via SVG inline (não PNG estático): o `_tema.html` já usa `feTurbulence` em data URI desde a etapa 1;
+  nenhum `grao.png` existe. `design/tokens.css` alinhado à implementação (não aponta mais para arquivo). No ar.
 - ⚪ Ícones do dock/estrela são aproximação dos SVGs do canvas.
 - ⚪ Meus horários/Prontuários/Documentos/Perfil/Assinatura herdam o tema sem redesenho de layout próprio.
 

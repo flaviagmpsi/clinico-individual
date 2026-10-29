@@ -2,6 +2,7 @@
 {% block titulo %}{{ paciente.nome }}{% endblock %}
 {% block secao %}Pacientes{% endblock %}
 {% block pagina %}<span class="separa">›</span>{{ paciente.nome }}{% endblock %}
+{% load formatos %}
 
 {% block conteudo %}
 <div class="d-flex align-items-center mb-3">
@@ -41,7 +42,7 @@
           <dd class="col-7 py-1 fw-medium">{{ paciente.nome_social }}</dd>
           {% endif %}
           <dt class="col-5 fw-normal text-muted py-1">CPF</dt>
-          <dd class="col-7 py-1">{{ paciente.cpf|default:"—" }}</dd>
+          <dd class="col-7 py-1">{{ paciente.cpf|cpf|default:"—" }}</dd>
           {% if paciente.documento_estrangeiro %}
           <dt class="col-5 fw-normal text-muted py-1">Documento</dt>
           <dd class="col-7 py-1">{{ paciente.documento_estrangeiro }}</dd>
@@ -134,7 +135,7 @@
           <dt class="col-5 fw-normal text-muted py-1">Quem paga</dt>
           <dd class="col-7 py-1">
             {% if not caso %}—
-            {% elif caso.pagador_nome %}{{ caso.pagador_nome }}{% if caso.pagador_cpf %} <span class="text-muted">· CPF {{ caso.pagador_cpf }}</span>{% endif %}
+            {% elif caso.pagador_nome %}{{ caso.pagador_nome }}{% if caso.pagador_cpf %} <span class="text-muted">· CPF {{ caso.pagador_cpf|cpf }}</span>{% endif %}
             {% else %}O próprio paciente{% endif %}
           </dd>
         </dl>

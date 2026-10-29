@@ -235,7 +235,9 @@ body { background: var(--ceu); background-color: var(--fundo); min-height: 100vh
 :root[data-bs-theme="dark"] body { background-attachment: fixed; }
 body::before {
   content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 0;
-  background: url("grao.png") repeat;   /* o PNG não veio nesta mensagem: gere um ruído de 256x256 em pontos neutros com alfa baixo, salve como arquivo estático e aponte para ele */
+  /* Grão em SVG inline (feTurbulence), sem arquivo estático: nada para servir, some do deploy e vale em qualquer
+     fundo. É a fonte do ruído que o _tema.html usa. */
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
   opacity: var(--grao-opacidade);
 }
 
