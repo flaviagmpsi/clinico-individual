@@ -52,7 +52,11 @@ Decisões da rodada: borda de campo `#8E8CA4` (3:1); padrões tema "Seguir o com
 - 🟢 Ícones do dock/estrela trocados pelos **exatos do canvas** (lidos de `IconSet.dc.html` e `Simbolo.dc.html`):
   os 5 ícones do dock e a estrela facetada de duas cores (miolo branco). Login/entrada passaram do dourado para a
   estrela índigo do canvas (brilho azul) — reversível se o dourado for preferido. No ar.
-- ⚪ Meus horários/Prontuários/Documentos/Perfil/Assinatura herdam o tema sem redesenho de layout próprio.
+- 🟢 Telas com layout próprio da prancheta do canvas: lidas as 5 pranchetas (`Assinatura`, `Configuracoes`,
+  `Horarios`, `Prontuarios`, `Documento`). **Assinatura** era genérica → remontada (estados ativa/teste/encerrado).
+  **Horários** ganhou a legenda do Mapa. **Prontuários, Documento, Perfil e Configurações** já seguiam de perto a
+  prancheta (foram construídas a partir dela) — só restam melhorias opcionais: barra "alterações não salvas" no
+  perfil e confirmação em linha da troca de regime. No ar.
 
 ---
 
