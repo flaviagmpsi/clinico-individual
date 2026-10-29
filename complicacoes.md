@@ -4321,6 +4321,29 @@ como prevista."
 - **Painel lateral passa a re-executar os scripts do conteúdo injetado** (`innerHTML` não roda `<script>`), para o
   filtro por data funcionar também dentro do painel — onde o cadastro avulso de fato abre.
 
+## ADR-143 — Céu do Claro mais cheio e poeira de estrelas no alto (revisa o céu da ADR-140)
+
+**Status:** ✅ Aceita — escolha da usuária no canvas de design ("Fundo 2 · lavanda com poeira de estrelas"),
+já medida e especificada. Mexe só no fundo; revisa a parte do céu da ADR-140, sem tocar no resto do redesign.
+
+**Decisões:**
+- **Céu do Claro mais cheio:** o degradê vai até o fim da página em lavanda (`#D9DBFA → #E7E6F7`), em vez de
+  clarear para quase branco (`#FBFAFD`). `--fundo` passa a `#E2E2F9`. **O Noturno não muda de cor.**
+- **Poeira de estrelas no alto de cada tela** (Claro e Noturno): `.poeira` no `base.html` logo após o `<body>`,
+  estilizada no `_tema.html`. Pontinhos em `radial-gradient` + estrelas de oito pontas (SVG). **Nunca piscam nem
+  se mexem** (sem animação). Fica **presa ao alto da página** (`position: absolute`, rola junto — não acompanha a
+  tela), **atrás de tudo** (`z-index: 0`, abaixo do topo, dock, cartões, painéis e modais), não pega clique
+  (`pointer-events: none`), e **some ao descer** (máscara que apaga de 32% a 100% da sua altura). No celular fica
+  mais baixa e mostra só as duas estrelas de oito pontas (as outras são `so-largo`). As telas de entrada
+  (`_entrada.html`) têm layout próprio e não a incluem.
+- **Texto secundário direto sobre o céu escurece** (`--suave-fundo`): no Claro, `#4F5269` (4,6:1 no ponto mais
+  escuro da luz do topo; o `--suave` de hoje cairia a 3,7:1 ali). Usado no caminho do topo, na conta do topo e no
+  apoio dos títulos de página (data, subtítulo, contagem ao lado do título). Dentro de cartão, `--suave` continua.
+  No Noturno `--suave-fundo` é igual ao `--suave` (o céu já é escuro).
+- **Grão do Noturno removido (`.55` → `0`):** em tela de alta densidade (retina/celular, 2×) a textura de ruído
+  virava estática pesada. A usuária pediu um "modo noturno de verdade, sem esse estático"; o Noturno fica com o
+  degradê escuro liso e a poeira no topo, sem grão. O Claro mantém o grão (`.12`, sutil). Único ajuste no Noturno.
+
 ## Impeditivos
 
 | # | Impeditivo | Situação |

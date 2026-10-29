@@ -25,12 +25,13 @@ continuam definidas aqui, recoloridas, até cada tela ser refeita nas etapas seg
 
     /* ---------- céu ---------- */
     --ceu:
-      radial-gradient(ellipse 1100px 360px at 46% -150px, rgba(84,76,232,.30), rgba(84,76,232,0) 70%),
-      radial-gradient(ellipse 700px 300px at 88% -120px, rgba(150,110,235,.22), rgba(150,110,235,0) 70%),
-      linear-gradient(180deg, #E9EBFF 0%, #F0F0FD 32%, #F7F6FC 70%, #FBFAFD 100%);
+      radial-gradient(ellipse 1100px 380px at 46% -150px, rgba(84,76,232,.24), rgba(84,76,232,0) 70%),
+      radial-gradient(ellipse 700px 300px at 88% -120px, rgba(150,110,235,.18), rgba(150,110,235,0) 70%),
+      linear-gradient(180deg, #D9DBFA 0%, #DFE0FA 38%, #E4E3F8 72%, #E7E6F7 100%);
     --grao-opacidade: .12;
-    --fundo: #F7F6FC; --superficie: #FFFFFF; --superficie-2: #F8F8FC;
-    --topo-fundo: rgba(247,246,252,.72);   /* barra do topo: fosca translúcida, para o conteúdo não embaralhar ao rolar */
+    --fundo: #E2E2F9; --superficie: #FFFFFF; --superficie-2: #F8F8FC;
+    --topo-fundo: rgba(217,219,250,.78);   /* barra do topo: fosca translúcida, para o conteúdo não embaralhar ao rolar */
+    --suave-fundo: #4F5269;   /* texto secundário direto sobre o céu, fora de cartão: 4,6:1 na luz mais escura do topo */
     --veu: rgba(21,18,63,.18);
 
     /* ---------- texto ---------- */
@@ -134,10 +135,11 @@ continuam definidas aqui, recoloridas, até cada tela ser refeita nas etapas seg
       radial-gradient(1100px 520px at 62% 118%, rgba(122,98,214,.30), rgba(122,98,214,0) 70%),
       radial-gradient(800px 420px at 12% 108%, rgba(70,104,206,.18), rgba(70,104,206,0) 70%),
       linear-gradient(180deg, #06070D 0%, #0A0C18 52%, #15122A 100%);
-    --grao-opacidade: .55; --fundo: #0A0C18;
+    --grao-opacidade: 0; --fundo: #0A0C18;   /* sem grão no Noturno: a textura virava estática em tela de alta densidade (decisão da usuária) */
     --topo-fundo: rgba(10,12,24,.72);
     --superficie: rgba(18,21,31,.74); --superficie-2: rgba(255,255,255,.025); --veu: rgba(0,0,0,.35);
     --texto: #E8EBF2; --texto-corrido: #D5D8E4; --suave: #ABB1C2; --placeholder: #8A90A3;
+    --suave-fundo: #ABB1C2;   /* no Noturno o céu já é escuro: texto sobre ele segue igual ao --suave */
     --linha: rgba(255,255,255,.07); --linha-fina: rgba(255,255,255,.05); --linha-forte: rgba(255,255,255,.22);
     --linha-campo: rgba(255,255,255,.22); --linha-livre: rgba(255,255,255,.22);
     --tinta: #929BF5; --tinta-hover: #A3AAF7; --tinta-escura: #BAB9F9; --tinta-clara: #A3AAF7;
@@ -188,6 +190,59 @@ continuam definidas aqui, recoloridas, até cada tela ser refeita nas etapas seg
   body::before { content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 0; opacity: var(--grao-opacidade);
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); }
   body > * { position: relative; z-index: 1; }
+
+  /* Poeira de estrelas: só no alto da página, some ao descer; nada pisca. */
+  .poeira { position: absolute; top: 0; left: 0; right: 0; height: 720px; pointer-events: none; z-index: 0; overflow: hidden;
+    -webkit-mask-image: linear-gradient(to bottom, #000 0, #000 32%, transparent 100%);
+            mask-image: linear-gradient(to bottom, #000 0, #000 32%, transparent 100%); }
+  .poeira::before, .poeira::after { content: ""; position: absolute; inset: 0; }
+  .poeira::before { background-size: 360px 300px; background-image:
+      radial-gradient(2.1px 2.1px at 24px 38px, rgba(84,76,232,.70), transparent 72%),
+      radial-gradient(1.6px 1.6px at 132px 92px, rgba(84,76,232,.50), transparent 72%),
+      radial-gradient(2.6px 2.6px at 210px 22px, rgba(255,255,255,1), transparent 72%),
+      radial-gradient(1.6px 1.6px at 286px 150px, rgba(84,76,232,.50), transparent 72%),
+      radial-gradient(2.2px 2.2px at 76px 196px, rgba(255,255,255,1), transparent 72%),
+      radial-gradient(1.8px 1.8px at 330px 238px, rgba(84,76,232,.70), transparent 72%),
+      radial-gradient(1.9px 1.9px at 178px 262px, rgba(84,76,232,.50), transparent 72%),
+      radial-gradient(1.4px 1.4px at 250px 70px, rgba(84,76,232,.70), transparent 72%),
+      radial-gradient(1.4px 1.4px at 40px 130px, rgba(84,76,232,.50), transparent 72%); }
+  .poeira::after { background-size: 530px 410px; background-image:
+      radial-gradient(1.8px 1.8px at 60px 40px, rgba(120,96,230,.60), transparent 72%),
+      radial-gradient(2.4px 2.4px at 380px 120px, rgba(255,255,255,1), transparent 72%),
+      radial-gradient(1.6px 1.6px at 210px 300px, rgba(120,96,230,.60), transparent 72%),
+      radial-gradient(1.9px 1.9px at 470px 330px, rgba(255,255,255,1), transparent 72%),
+      radial-gradient(1.4px 1.4px at 130px 210px, rgba(120,96,230,.60), transparent 72%),
+      radial-gradient(1.6px 1.6px at 300px 20px, rgba(255,255,255,1), transparent 72%); }
+  :root[data-bs-theme="dark"] .poeira::before { background-image:
+      radial-gradient(2.1px 2.1px at 24px 38px, rgba(255,255,255,.75), transparent 72%),
+      radial-gradient(1.6px 1.6px at 132px 92px, rgba(200,196,255,.55), transparent 72%),
+      radial-gradient(2.6px 2.6px at 210px 22px, rgba(255,255,255,.95), transparent 72%),
+      radial-gradient(1.6px 1.6px at 286px 150px, rgba(200,196,255,.55), transparent 72%),
+      radial-gradient(2.2px 2.2px at 76px 196px, rgba(255,255,255,.95), transparent 72%),
+      radial-gradient(1.8px 1.8px at 330px 238px, rgba(255,255,255,.75), transparent 72%),
+      radial-gradient(1.9px 1.9px at 178px 262px, rgba(200,196,255,.55), transparent 72%),
+      radial-gradient(1.4px 1.4px at 250px 70px, rgba(255,255,255,.75), transparent 72%),
+      radial-gradient(1.4px 1.4px at 40px 130px, rgba(200,196,255,.55), transparent 72%); }
+  :root[data-bs-theme="dark"] .poeira::after { background-image:
+      radial-gradient(1.8px 1.8px at 60px 40px, rgba(200,196,255,.5), transparent 72%),
+      radial-gradient(2.4px 2.4px at 380px 120px, rgba(255,255,255,.85), transparent 72%),
+      radial-gradient(1.6px 1.6px at 210px 300px, rgba(200,196,255,.5), transparent 72%),
+      radial-gradient(1.9px 1.9px at 470px 330px, rgba(255,255,255,.85), transparent 72%),
+      radial-gradient(1.4px 1.4px at 130px 210px, rgba(200,196,255,.5), transparent 72%),
+      radial-gradient(1.6px 1.6px at 300px 20px, rgba(255,255,255,.85), transparent 72%); }
+  .poeira .estrela { position: absolute; z-index: 1; color: var(--tinta); }
+  :root[data-bs-theme="dark"] .poeira .estrela { color: #E8EBF2; }
+  .poeira .e1 { left: 39%; top: 60px; width: 15px; height: 15px; opacity: 0.85; }
+  .poeira .e2 { left: 68%; top: 128px; width: 10px; height: 10px; opacity: 0.7; }
+  .poeira .e3 { left: 90%; top: 54px; width: 17px; height: 17px; opacity: 0.8; }
+  .poeira .e4 { left: 28%; top: 164px; width: 9px; height: 9px; opacity: 0.65; }
+  .poeira .e5 { left: 82%; top: 232px; width: 11px; height: 11px; opacity: 0.6; }
+  .poeira .e6 { left: 53%; top: 200px; width: 8px; height: 8px; opacity: 0.55; }
+  @media (max-width: 767.98px) {
+    .poeira { height: 480px; }
+    .poeira .estrela.so-largo { display: none; }
+  }
+
   a { color: var(--link); transition: color var(--rapido), background-color var(--rapido); }
   a:hover { color: var(--link-hover); }
   .mono, .hora, .valor { font-family: var(--f-num); font-variant-numeric: tabular-nums; }
@@ -197,6 +252,12 @@ continuam definidas aqui, recoloridas, até cada tela ser refeita nas etapas seg
   .text-warning, .text-warning-emphasis { color: var(--atencao) !important; }
   .fw-medium { font-weight: 500 !important; }
   .text-muted, .text-secondary { color: var(--suave) !important; }
+  /* Apoio do título de página, direto sobre o céu (fora de cartão): escurece um pouco para seguir legível no
+     fundo mais cheio. h1 só aparece em cabeçalho de página — a folha de papel não tem apoio .text-muted ao lado
+     do seu título. Dentro de cartão, painel ou modal, --suave continua (no Noturno os dois são iguais). */
+  h1 .text-muted, h1 .text-secondary,
+  h1 + .text-muted, h1 + .text-secondary,
+  .conteudo > .text-muted, .conteudo > .text-secondary { color: var(--suave-fundo) !important; }
 
   /* ---------- títulos ---------- */
   h1, h2, h3, .h1, .h2, .h3 { font-family: var(--f-titulo); font-weight: 500; letter-spacing: -.01em; line-height: 1.15; color: var(--texto); }
@@ -215,11 +276,11 @@ continuam definidas aqui, recoloridas, até cada tela ser refeita nas etapas seg
   .topo.sem-barra { left: 0; }
   .topo .marca { color: var(--texto); font-weight: 600; font-size: .95rem; letter-spacing: 0; text-decoration: none; }
   .topo .marca i { color: var(--tinta); }
-  .topo .quem { color: var(--suave); font-size: .85rem; text-decoration: none; display: inline-flex; align-items: center;
+  .topo .quem { color: var(--suave-fundo); font-size: .85rem; text-decoration: none; display: inline-flex; align-items: center;
                 gap: .45rem; padding: .3rem .55rem; border-radius: var(--raio-controle); line-height: 1.2;
                 transition: background-color var(--rapido), color var(--rapido); position: relative; }
   .topo .quem:hover, .topo .quem:focus-visible, .topo .quem.ativo { color: var(--texto); background: var(--tinta-fundo); }
-  .topo .quem .crp { color: var(--suave); }
+  .topo .quem .crp { color: var(--suave-fundo); }
   .topo .quem i { font-size: 1.05rem; }
   .topo .quem .dica-do-perfil { position: absolute; top: calc(100% - 2px); right: 0; white-space: nowrap;
     background: var(--dica-fundo); color: var(--dica-texto); font-weight: 600; font-size: .78rem;
@@ -227,8 +288,8 @@ continuam definidas aqui, recoloridas, até cada tela ser refeita nas etapas seg
     transition: opacity var(--rapido), transform var(--rapido); z-index: 5; }
   .topo .quem:hover .dica-do-perfil, .topo .quem:focus-visible .dica-do-perfil { opacity: 1; transform: translateY(0); }
   @media (max-width: 575.98px) { .topo .quem .nome-de-quem { display: none; } }
-  .caminho { font-size: .85rem; color: var(--suave); }
-  .caminho a { color: var(--suave); text-decoration: none; }
+  .caminho { font-size: .85rem; color: var(--suave-fundo); }
+  .caminho a { color: var(--suave-fundo); text-decoration: none; }
   .caminho a:hover { color: var(--texto); text-decoration: underline; }
   .caminho .separa { color: var(--linha-forte); margin: 0 .35rem; }
 

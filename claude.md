@@ -74,6 +74,12 @@ com sombra suave e grão por cima, acento **índigo `--tinta` #544CE8**, tipogra
 visual é `design/POLARIS_DESIGN.md` e os valores em `design/tokens.css`, mesclados no `:root` de
 `templates/components/_tema.html`. **Durante a migração**, a referência de cada tela é a seção 10 do guia + o canvas;
 **depois dela**, a vitrine interna `/vitrine/` (seção 13 do guia).
+O **céu do Claro é cheio até o fim** (lavanda, não clareia para branco; ADR-143) e há uma **poeira de estrelas no
+alto de cada tela** (Claro e Noturno), atrás de tudo, que some ao descer e **nunca pisca nem se mexe** — mora no
+`base.html` (após o `<body>`) e no `_tema.html`. Texto secundário **direto sobre o céu, fora de cartão** (caminho e
+conta do topo, apoio dos títulos de página) usa `--suave-fundo` para seguir legível no fundo mais forte; dentro de
+cartão é `--suave`. O Noturno não muda de cor, mas perde o grão (a textura virava estática em tela de alta
+densidade; `--grao-opacidade: 0` no escuro, `.12` no Claro).
 **Variável primeiro, componente depois, tela nunca:** tela nova monta os componentes do `_tema.html` (botão, campo,
 cartão, selo, lista, painel lateral, aviso, **opção grande** — o cartão de escolha de "Como foi a sessão?", ADR-142)
 e **não declara cor, fonte, raio nem sombra**. Componente que faltar
