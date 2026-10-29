@@ -49,7 +49,9 @@ Decisões da rodada: borda de campo `#8E8CA4` (3:1); padrões tema "Seguir o com
   na mesma tela. Vale para todos os painéis (conserto no `ligarForm`). Sem JS, segue recarregando como antes. No ar.
 - 🟢 Grão via SVG inline (não PNG estático): o `_tema.html` já usa `feTurbulence` em data URI desde a etapa 1;
   nenhum `grao.png` existe. `design/tokens.css` alinhado à implementação (não aponta mais para arquivo). No ar.
-- ⚪ Ícones do dock/estrela são aproximação dos SVGs do canvas.
+- 🟢 Ícones do dock/estrela trocados pelos **exatos do canvas** (lidos de `IconSet.dc.html` e `Simbolo.dc.html`):
+  os 5 ícones do dock e a estrela facetada de duas cores (miolo branco). Login/entrada passaram do dourado para a
+  estrela índigo do canvas (brilho azul) — reversível se o dourado for preferido. No ar.
 - ⚪ Meus horários/Prontuários/Documentos/Perfil/Assinatura herdam o tema sem redesenho de layout próprio.
 
 ---
