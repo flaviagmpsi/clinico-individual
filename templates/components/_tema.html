@@ -274,8 +274,10 @@ continuam definidas aqui, recoloridas, até cada tela ser refeita nas etapas seg
   .topo { position: fixed; top: 0; left: var(--barra); right: 0; height: var(--topo); z-index: 1030; color: var(--texto);
           background: var(--topo-fundo); backdrop-filter: blur(10px) saturate(120%); -webkit-backdrop-filter: blur(10px) saturate(120%); }
   .topo.sem-barra { left: 0; }
-  .topo .marca { color: var(--texto); font-weight: 600; font-size: .95rem; letter-spacing: 0; text-decoration: none; }
-  .topo .marca i { color: var(--tinta); }
+  .topo .marca { color: var(--texto); font-weight: 600; font-size: .95rem; letter-spacing: 0; text-decoration: none;
+                 display: inline-flex; align-items: center; gap: .4rem; }
+  .topo .marca i, .topo .marca svg { color: var(--tinta); }
+  .topo .marca .marca-estrela { width: 1.15em; height: 1.15em; flex: none; }
   .topo .quem { color: var(--suave-fundo); font-size: .85rem; text-decoration: none; display: inline-flex; align-items: center;
                 gap: .45rem; padding: .3rem .55rem; border-radius: var(--raio-controle); line-height: 1.2;
                 transition: background-color var(--rapido), color var(--rapido); position: relative; }

@@ -38,18 +38,19 @@ class Navegacao(TransactionTestCase):
         resposta = self.client.get(reverse("financeiro:mes"))
         # ADR-098: "Horários" saiu da barra e virou sub-aba da Agenda; ADR-100 trouxe "Configurações".
         # ADR-105: a barra é só das seções de trabalho — conta e saída moram no topo.
+        # ADR-140: o nome de cada seção é um `.dock-nome` (balão ao passar o mouse; sempre visível no celular).
         for nome in ["Painel", "Pacientes", "Agenda", "Prontuários", "Financeiro"]:
             with self.subTest(nome=nome):
-                self.assertContains(resposta, f'<span class="nome">{nome}</span>')
+                self.assertContains(resposta, f'<span class="dock-nome">{nome}</span>')
         for fora in ["Configurações", "Meu perfil", "Sair"]:
             with self.subTest(fora_da_barra=fora):
-                self.assertNotContains(resposta, f'<span class="nome">{fora}</span>')
+                self.assertNotContains(resposta, f'<span class="dock-nome">{fora}</span>')
         # ADR-102: Documentos não é seção da barra — todo documento é sobre um paciente, e mora na ficha dele.
-        self.assertNotContains(resposta, '<span class="nome">Documentos</span>')
+        self.assertNotContains(resposta, '<span class="dock-nome">Documentos</span>')
         # ADR-103: Estatísticas também não — cada número foi para a tela de que ele fala.
-        self.assertNotContains(resposta, '<span class="nome">Estatísticas</span>')
-        # e a seção em que se está fica marcada
-        self.assertContains(resposta, 'title="Financeiro"\n     class="ativo"')
+        self.assertNotContains(resposta, '<span class="dock-nome">Estatísticas</span>')
+        # e a seção em que se está fica marcada (ADR-140: item ativo é `.dock-item ativo`)
+        self.assertContains(resposta, f'href="{reverse("financeiro:mes")}" class="dock-item ativo"')
 
     def test_a_conta_mora_no_topo(self):
         """ADR-105: o nome leva ao perfil e diz isso; a engrenagem leva a Configurações, de onde se sai."""

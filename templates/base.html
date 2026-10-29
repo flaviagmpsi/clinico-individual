@@ -34,7 +34,7 @@ clique. As telas de entrada têm layout próprio e não a incluem.{% endcomment 
 </div>
 
 <header class="topo d-flex align-items-center px-3{% if esconder_barra %} sem-barra{% endif %}">
-  <a href="{% url 'painel' %}" class="marca me-3"><i class="bi bi-clipboard2-pulse"></i> Polaris</a>
+  <a href="{% url 'painel' %}" class="marca me-3"><svg class="marca-estrela" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 12L11.43 10.61L12.00 0.50ZM12 12L12.57 10.61L16.95 7.05ZM12 12L13.39 11.43L23.50 12.00ZM12 12L13.39 12.57L16.95 16.95ZM12 12L12.57 13.39L12.00 23.50ZM12 12L11.43 13.39L7.05 16.95ZM12 12L10.61 12.57L0.50 12.00ZM12 12L10.61 11.43L7.05 7.05Z" fill="currentColor"/><path d="M12 12L12.00 0.50L12.57 10.61ZM12 12L16.95 7.05L13.39 11.43ZM12 12L23.50 12.00L13.39 12.57ZM12 12L16.95 16.95L12.57 13.39ZM12 12L12.00 23.50L11.43 13.39ZM12 12L7.05 16.95L10.61 12.57ZM12 12L0.50 12.00L10.61 11.43ZM12 12L7.05 7.05L11.43 10.61Z" fill="currentColor" fill-opacity=".55"/></svg> Polaris</a>
   {% comment %}ADR-088: o caminho. A seção leva à raiz dela; a página, quando o template a nomeia, vem depois.{% endcomment %}
   {% load navegacao %}{% raiz_da_secao request as raiz %}
   <span class="caminho small d-none d-md-inline">

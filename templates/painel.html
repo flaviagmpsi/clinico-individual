@@ -98,15 +98,17 @@ Primeiro o dia; depois as pendências, num bloco; por fim o resumo do mês.
               {% else %}
                 <span class="badge text-bg-light border ms-2">prevista</span>
               {% endif %}
-              {% comment %}ADR-140: a ação por linha diz o que ela faz. A sessão que já passou pede "Cadastrar
-              sessão" (ação principal); a futura, "Remarcar ou cancelar"; a já cadastrada, "Corrigir".{% endcomment %}
+              {% comment %}A ação por linha diz o que ela faz. Toda sessão ainda não cadastrada pede "Cadastrar
+              sessão" (a que já passou em destaque, como ação principal; a futura, como link) — "Cadastrar" é a porta
+              geral: lá dentro cabe presente, faltou, cancelar ou remarcar, não só remarcar/cancelar. A já cadastrada,
+              "Corrigir".{% endcomment %}
               <span class="ms-auto">
                 {% if item.cadastrada %}
                   <a data-painel href="{% url 'atendimentos:editar' item.consulta.pk %}?origem={{ request.get_full_path|urlencode }}" class="text-decoration-none">Corrigir</a>
                 {% elif item.espera.origem %}
-                  <a data-painel href="{% url 'atendimentos:cadastrar_remarcada' item.espera.origem.pk %}?origem={{ request.get_full_path|urlencode }}" class="{% if item.situacao == 'a cadastrar' %}btn btn-sm btn-primary{% else %}text-decoration-none{% endif %}">{% if item.situacao == 'a cadastrar' %}Cadastrar sessão{% else %}Remarcar ou cancelar{% endif %}</a>
+                  <a data-painel href="{% url 'atendimentos:cadastrar_remarcada' item.espera.origem.pk %}?origem={{ request.get_full_path|urlencode }}" class="{% if item.situacao == 'a cadastrar' %}btn btn-sm btn-primary{% else %}text-decoration-none{% endif %}">Cadastrar sessão</a>
                 {% else %}
-                  <a data-painel href="{% url 'atendimentos:cadastrar_prevista' item.espera.regra.pk item.espera.data_iso %}?origem={{ request.get_full_path|urlencode }}" class="{% if item.situacao == 'a cadastrar' %}btn btn-sm btn-primary{% else %}text-decoration-none{% endif %}">{% if item.situacao == 'a cadastrar' %}Cadastrar sessão{% else %}Remarcar ou cancelar{% endif %}</a>
+                  <a data-painel href="{% url 'atendimentos:cadastrar_prevista' item.espera.regra.pk item.espera.data_iso %}?origem={{ request.get_full_path|urlencode }}" class="{% if item.situacao == 'a cadastrar' %}btn btn-sm btn-primary{% else %}text-decoration-none{% endif %}">Cadastrar sessão</a>
                 {% endif %}
               </span>
             </div>

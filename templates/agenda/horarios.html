@@ -66,7 +66,9 @@
       {% if mapa.dias %}
       <div class="list-group list-group-flush">
         {% for dia in mapa.dias %}
-        <div class="list-group-item">
+        {% comment %}d-block: o .list-group-item do tema é flex em linha (para listas de uma linha). Aqui a linha
+        empilha nome do dia + faixas, então precisa ser bloco, senão tudo vira uma fila horizontal que vaza.{% endcomment %}
+        <div class="list-group-item d-block">
           <div class="fw-semibold small mb-1">{{ dia.nome }}</div>
           {% for bloco, trechos in dia.blocos %}
             <div class="d-flex flex-wrap align-items-center gap-1 small mb-1">
