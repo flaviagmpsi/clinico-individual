@@ -138,12 +138,23 @@ def _horas(minutos: float) -> str:
 @dataclass
 class Mapa:
     dias: list
-    minutos_disponiveis: int
-    minutos_ocupados: float
+    minutos_disponiveis: int        # a janela toda da semana-tipo (grade + onde já há paciente)
+    minutos_ocupados: float         # tudo que está tomado: paciente **mais** fora da clínica (compromissos)
+    minutos_na_clinica: float       # só atendimento de paciente
     tem_grade: bool
 
     @property
+    def minutos_fora(self) -> float:
+        """O que é trabalho, mas não paciente: supervisão, ONG, aula (ADR-122)."""
+        return self.minutos_ocupados - self.minutos_na_clinica
+
+    @property
+    def tem_fora(self) -> bool:
+        return round(self.minutos_fora) > 0
+
+    @property
     def ocupacao(self) -> int | None:
+        """Ocupado sobre o total (ocupado + livre): quanto da semana já está tomado."""
         if not self.minutos_disponiveis:
             return None
         return round(100 * self.minutos_ocupados / self.minutos_disponiveis)
@@ -153,8 +164,16 @@ class Mapa:
         return _horas(self.minutos_disponiveis)
 
     @property
-    def horas_ocupadas(self) -> str:
+    def horas_trabalhadas(self) -> str:
         return _horas(self.minutos_ocupados)
+
+    @property
+    def horas_na_clinica(self) -> str:
+        return _horas(self.minutos_na_clinica)
+
+    @property
+    def horas_fora(self) -> str:
+        return _horas(self.minutos_fora)
 
     @property
     def horas_livres(self) -> str:
@@ -199,8 +218,12 @@ def mapa_da_semana() -> Mapa:
     dias = []
     disponivel = 0
     ocupado = 0.0
+    na_clinica = 0.0
     for numero, nome in Recorrencia.DiaSemana.choices:
         do_dia = [r for r in regras if r.dia_semana == numero]
+        # Só paciente, para separar "na clínica" do que é fora dela (compromisso). O mapa desenhado continua com
+        # a união de tudo; a conta de horas é que distingue atendimento de supervisão/ONG/aula.
+        so_pacientes = [r for r in do_dia if isinstance(r, Recorrencia)]
         dia = DiaDaGrade(numero, nome)
         declarados = {(b.inicio, b.fim): b for b in blocos if b.dia_semana == numero}
         # ADR-124: a semana desenhada é a união — o declarado e o que já tem paciente. Onde a união nasce só de
@@ -208,10 +231,12 @@ def mapa_da_semana() -> Mapa:
         # não oferece para apagar: não há o que apagar, há paciente marcado ali.
         for inicio, fim in faixas_da_grade(blocos, do_dia, numero):
             trechos, ocupado_no_bloco = _trechos(inicio, fim, do_dia)
+            _, na_clinica_no_bloco = _trechos(inicio, fim, so_pacientes)
             bloco = declarados.get((_hora(inicio), _hora(fim))) or FaixaDeTrabalho(_hora(inicio), _hora(fim))
             dia.blocos.append((bloco, trechos))
             disponivel += fim - inicio
             ocupado += ocupado_no_bloco
+            na_clinica += na_clinica_no_bloco
         # Nada mais fica "fora": onde há atendimento, há grade. A lista continua existindo para o caso de uma
         # regra que não caiba inteira na faixa — hoje impossível por construção, e barata de manter honesta.
         dia.fora = sorted(
@@ -222,7 +247,7 @@ def mapa_da_semana() -> Mapa:
         if dia.blocos or dia.fora:
             dias.append(dia)
     return Mapa(dias=dias, minutos_disponiveis=disponivel, minutos_ocupados=ocupado,
-                tem_grade=bool(blocos or regras))
+                minutos_na_clinica=na_clinica, tem_grade=bool(blocos or regras))
 
 
 @dataclass

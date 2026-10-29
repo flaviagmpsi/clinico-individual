@@ -21,15 +21,17 @@ outra: o calendário navega por semana, a estatística responde por mês ou por 
           {% if retrato.tem_trabalho_fora %}sendo {{ retrato.horas_fora_da_clinica }} fora da clínica
           {% else %}sessões realizadas no período{% endif %}</div>
       </div>
+      {% comment %}Horário mais usado e Dia que mais atende: pelos pacientes cadastrados (a frequência fixa de cada
+      um), não pelas sessões realizadas — mostram o padrão real da semana, mesmo num mês com poucas sessões marcadas.{% endcomment %}
       <div class="col-md-3 col-6">
         <div class="rotulo">Horário mais usado</div>
         <div class="h4 mb-0">{{ retrato.horario_mais_usado.0|default:"—" }}</div>
-        <div class="small text-muted">{% if retrato.horario_mais_usado %}{{ retrato.horario_mais_usado.1 }} sess{{ retrato.horario_mais_usado.1|pluralize:"ão,ões" }}{% else %}sem sessões no período{% endif %}</div>
+        <div class="small text-muted">{% if retrato.horario_mais_usado %}{{ retrato.horario_mais_usado.1 }} paciente{{ retrato.horario_mais_usado.1|pluralize }} fixo{{ retrato.horario_mais_usado.1|pluralize }} nesse horário{% else %}sem paciente com horário fixo{% endif %}</div>
       </div>
       <div class="col-md-3 col-6">
-        <div class="rotulo">Dia com mais sessões</div>
+        <div class="rotulo">Dia que mais atende</div>
         <div class="h4 mb-0">{{ retrato.dia_mais_cheio.0|default:"—" }}</div>
-        <div class="small text-muted">{% if retrato.dia_mais_cheio %}{{ retrato.dia_mais_cheio.1 }} sess{{ retrato.dia_mais_cheio.1|pluralize:"ão,ões" }}{% else %}sem sessões no período{% endif %}</div>
+        <div class="small text-muted">{% if retrato.dia_mais_cheio %}{{ retrato.dia_mais_cheio.1 }} paciente{{ retrato.dia_mais_cheio.1|pluralize }} fixo{{ retrato.dia_mais_cheio.1|pluralize }} nesse dia{% else %}sem paciente com dia fixo{% endif %}</div>
       </div>
       <div class="col-md-3 col-6">
         <div class="rotulo">Atendimentos em curso</div>

@@ -32,17 +32,21 @@
 {% if mapa.tem_grade %}
 <div class="row g-3 mb-3">
   <div class="col-6 col-lg-3"><div class="card h-100"><div class="card-body py-3">
-    <div class="rotulo">Disponível por semana</div><div class="h4 mb-0">{{ mapa.horas_disponiveis }}</div>
+    <div class="rotulo">Horas trabalhadas</div><div class="h4 mb-0">{{ mapa.horas_trabalhadas }}</div>
+    {% if mapa.tem_fora %}<div class="small text-muted">sendo {{ mapa.horas_fora }} fora da clínica</div>
+    {% else %}<div class="small text-muted">na semana-tipo</div>{% endif %}
   </div></div></div>
   <div class="col-6 col-lg-3"><div class="card h-100"><div class="card-body py-3">
-    <div class="rotulo">Com paciente fixo</div><div class="h4 mb-0">{{ mapa.horas_ocupadas }}</div>
-    <div class="small text-muted">Quinzenal conta metade.</div>
+    <div class="rotulo">Na clínica</div><div class="h4 mb-0">{{ mapa.horas_na_clinica }}</div>
+    <div class="small text-muted">só atendimento de paciente</div>
   </div></div></div>
   <div class="col-6 col-lg-3"><div class="card h-100"><div class="card-body py-3">
-    <div class="rotulo">Livre</div><div class="h4 mb-0">{{ mapa.horas_livres }}</div>
+    <div class="rotulo">Livres</div><div class="h4 mb-0">{{ mapa.horas_livres }}</div>
+    <div class="small text-muted">horários sobrando na grade</div>
   </div></div></div>
   <div class="col-6 col-lg-3"><div class="card h-100"><div class="card-body py-3">
     <div class="rotulo">Ocupação</div><div class="h4 mb-0">{{ mapa.ocupacao }}%</div>
+    <div class="small text-muted">do total da semana</div>
   </div></div></div>
 </div>
 {% endif %}

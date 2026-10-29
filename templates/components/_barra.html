@@ -11,8 +11,12 @@ Os ícones são SVG com a mesma espessura de traço (1,75) e caixa de 24, para l
     painel igual ao medidor abaixo e parecia um "Painel" duplicado. A marca Polaris segue no topo e no login.{% endcomment %}
     <a href="{% url 'painel' %}" class="dock-item{% if request.resolver_match.url_name == 'painel' %} ativo{% endif %}"
        {% if request.resolver_match.url_name == 'painel' %}aria-current="page"{% endif %}>
-      <svg class="icone" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-        <path d="M3.5 16a8.5 8.5 0 1 1 17 0"/><path d="M12 16l4.5-5"/>
+      {% comment %}Painel = a estrela da marca (pedido da usuária), exata do canvas (Simbolo.dc.html): facetada em
+      duas cores, com o miolo branco. É a única entrada do Painel — não há mais o medidor repetido.{% endcomment %}
+      <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
+        <path d="M12 12L11.43 10.61L12.00 0.50ZM12 12L12.57 10.61L16.95 7.05ZM12 12L13.39 11.43L23.50 12.00ZM12 12L13.39 12.57L16.95 16.95ZM12 12L12.57 13.39L12.00 23.50ZM12 12L11.43 13.39L7.05 16.95ZM12 12L10.61 12.57L0.50 12.00ZM12 12L10.61 11.43L7.05 7.05Z" fill="#E1E8FF"/>
+        <path d="M12 12L12.00 0.50L12.57 10.61ZM12 12L16.95 7.05L13.39 11.43ZM12 12L23.50 12.00L13.39 12.57ZM12 12L16.95 16.95L12.57 13.39ZM12 12L12.00 23.50L11.43 13.39ZM12 12L7.05 16.95L10.61 12.57ZM12 12L0.50 12.00L10.61 11.43ZM12 12L7.05 7.05L11.43 10.61Z" fill="#6496E8"/>
+        <circle cx="12" cy="12" r="1.1" fill="#FFFFFF"/>
       </svg><span class="dock-nome">Painel</span></a>
     <a href="{% url 'pacientes:lista' %}" class="dock-item{% if request.resolver_match.app_name == 'pacientes' %} ativo{% endif %}"
        {% if request.resolver_match.app_name == 'pacientes' %}aria-current="page"{% endif %}>

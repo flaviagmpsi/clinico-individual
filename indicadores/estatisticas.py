@@ -16,13 +16,14 @@ prontuário (I-10), e nenhum nome de paciente vai para o JavaScript dos gráfico
 """
 
 from collections import Counter
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import date, datetime
 from decimal import Decimal
 
 from django.utils import timezone
 
 from agenda import compromissos
+from agenda.models import Recorrencia
 from atendimentos.models import Consulta
 from financeiro.despesas import Fluxo, fluxo_do_ano
 from indicadores.periodo import Periodo
@@ -148,9 +149,13 @@ class RetratoDaAgenda:
     """Agenda: quando a clínica acontece, e com que frequência (ADR-103)."""
 
     periodo: Periodo
-    horarios: list  # (rótulo, sessões), só das horas que tiveram sessão
-    dias: list  # (dia da semana, sessões)
+    horarios: list  # (rótulo, sessões realizadas), só das horas que tiveram sessão — alimenta o gráfico
+    dias: list  # (dia da semana, sessões realizadas) — alimenta o gráfico
     composicao: Composicao
+    # "Dia que mais atende" e "Horário mais usado" vêm dos pacientes **cadastrados** (a frequência fixa de cada um),
+    # não só das sessões já realizadas: mostram o padrão real da semana, mesmo num mês com poucas sessões marcadas.
+    horarios_agendados: list = field(default_factory=list)  # (rótulo, nº de pacientes com sessão fixa nessa hora)
+    dias_agendados: list = field(default_factory=list)       # (dia da semana, nº de pacientes)
     # ADR-122: minutos de trabalho no período, somando sessão realizada e compromisso fora da clínica. Separados
     # para a tela poder dizer de onde vem cada parte — "22h, sendo 6h fora da clínica" explica; "28h" esconde.
     minutos_de_sessao: int = 0
@@ -174,11 +179,12 @@ class RetratoDaAgenda:
 
     @property
     def horario_mais_usado(self):
-        return max(self.horarios, key=lambda par: par[1], default=None)
+        usado = max(self.horarios_agendados, key=lambda par: par[1], default=None)
+        return usado if usado and usado[1] else None
 
     @property
     def dia_mais_cheio(self):
-        cheio = max(self.dias, key=lambda par: par[1], default=None)
+        cheio = max(self.dias_agendados, key=lambda par: par[1], default=None)
         return cheio if cheio and cheio[1] else None
 
     @property
@@ -274,11 +280,19 @@ def retrato_da_agenda(periodo: Periodo) -> RetratoDaAgenda:
     # e o mês marcava 32h40 de trabalho no dia 14.
     ate = min(periodo.ultimo_dia, timezone.localdate())
     fora = compromissos.do_periodo(periodo.primeiro_dia, ate) if ate >= periodo.primeiro_dia else []
+    # "Dia que mais atende" e "Horário mais usado": pelos pacientes cadastrados (a regra fixa de cada um), não só
+    # pelas sessões realizadas. Cada atendimento de paciente em vigor conta uma vez no seu dia e na sua hora.
+    por_hora, por_dia = Counter(), Counter()
+    for hora, dia_semana in Recorrencia.objects.filter(fim__isnull=True).values_list("hora", "dia_semana"):
+        por_hora[hora.hour] += 1
+        por_dia[dia_semana] += 1
     return RetratoDaAgenda(
         periodo=periodo,
         horarios=_faixa_de_horas(horas),
         # Sábado e domingo só aparecem quando houve sessão: a coluna vazia do fim de semana não diz nada.
         dias=[(_DIAS[dia], dias[dia]) for dia in range(7) if dia < 5 or dias[dia]],
+        horarios_agendados=[(f"{h:02d}h", por_hora[h]) for h in sorted(por_hora)],
+        dias_agendados=[(_DIAS[d], por_dia[d]) for d in range(7) if por_dia[d]],
         composicao=_composicao(),
         minutos_de_sessao=minutos_de_sessao,
         minutos_fora_da_clinica=sum(item.duracao for item in fora),
