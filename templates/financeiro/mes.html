@@ -59,24 +59,24 @@ tabela "Pagamentos recebidos" (data, observação e o desfazer) mora dentro da l
   </div>
   {% if cobrancas %}
   <div class="table-responsive">
-    <table class="table table-sm align-middle mb-0 small">
+    <table class="table table-sm align-middle mb-0 small tabela-cartoes">
       <thead class="table-light">
         <tr><th>Paciente</th><th>Cobrança</th><th>Vence</th><th class="text-end">Pago / devido</th><th>Situação</th><th>Pagamento</th><th></th></tr>
       </thead>
       <tbody>
       {% for c in cobrancas %}
         <tr class="{% if c.quitada %}estado-feito{% elif c.vencimento <= hoje %}estado-atencao{% endif %}">
-          <td class="fw-medium">{{ c.caso }}</td>
-          <td>{{ c.descricao }}</td>
-          <td class="text-muted valor">{{ c.vencimento|date:"d/m" }}</td>
-          <td class="text-end text-nowrap valor">R$ {{ c.pago|floatformat:2 }} / R$ {{ c.devido|floatformat:2 }}</td>
-          <td>
+          <td class="fw-medium" data-rotulo="">{{ c.caso }}</td>
+          <td data-rotulo="Cobrança">{{ c.descricao }}</td>
+          <td class="text-muted valor" data-rotulo="Vence">{{ c.vencimento|date:"d/m" }}</td>
+          <td class="text-end text-nowrap valor" data-rotulo="Pago / devido">R$ {{ c.pago|floatformat:2 }} / R$ {{ c.devido|floatformat:2 }}</td>
+          <td data-rotulo="Situação">
             {% if c.quitada_manualmente %}<span class="badge text-bg-success">Quitado à mão</span>
             {% elif c.quitada %}<span class="badge text-bg-success">Pago</span>
             {% elif c.vencimento <= hoje %}<span class="badge text-bg-warning">Pendente</span>{% if c.pago %} <span class="text-muted">falta R$ {{ c.saldo|floatformat:2 }}</span>{% endif %}
             {% else %}<span class="badge text-bg-light border">A vencer</span>{% endif %}
           </td>
-          <td class="text-muted">
+          <td class="text-muted" data-rotulo="Pagamento">
             {% for p in c.pagamentos %}
               <div><span class="valor">{{ p.data|date:"d/m" }}</span> · {{ p.get_forma_display }}{% if c.pagamentos|length > 1 %} · <span class="valor">R$ {{ p.valor|floatformat:2 }}</span>{% endif %}{% if p.observacao %} · <span title="{{ p.observacao }}">{{ p.observacao|truncatechars:40 }}</span>{% endif %}</div>
             {% empty %}—{% endfor %}

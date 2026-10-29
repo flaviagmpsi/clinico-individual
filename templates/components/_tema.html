@@ -512,5 +512,18 @@ continuam definidas aqui, recoloridas, até cada tela ser refeita nas etapas seg
     .painel-lateral .folha, .painel-lateral.largo .folha { margin: 0; width: 100%; max-width: 100%; max-height: 92vh;
             border-radius: var(--raio-dock) var(--raio-dock) 0 0; }
     .blocos { grid-template-columns: 1fr; }
+    /* Tabela de muitas colunas vira cartões empilhados no celular — sem arrastar de lado. Cada linha é um cartão;
+       cada célula mostra o nome da coluna (data-rotulo) à frente do valor. A célula com data-rotulo vazio é o
+       título do cartão (o nome), e a sem rótulo (ações) fica solta no rodapé. Desktop não muda. */
+    .tabela-cartoes thead { display: none; }
+    .tabela-cartoes, .tabela-cartoes tbody, .tabela-cartoes tr, .tabela-cartoes td { display: block; width: auto; }
+    .tabela-cartoes tr { padding: .6rem .25rem; border-bottom: 1px solid var(--linha); }
+    .tabela-cartoes tr:last-child { border-bottom: 0; }
+    .tabela-cartoes td { border: 0 !important; padding: .12rem .25rem; text-align: left !important;
+            display: flex; gap: .6rem; align-items: baseline; }
+    .tabela-cartoes td::before { content: attr(data-rotulo); color: var(--suave); flex: none; min-width: 8.5rem; }
+    .tabela-cartoes td[data-rotulo=""] { font-weight: 600; font-size: 1rem; margin-bottom: .15rem; }
+    .tabela-cartoes td[data-rotulo=""]::before, .tabela-cartoes td:not([data-rotulo])::before { content: none; }
+    .tabela-cartoes td:not([data-rotulo]) { margin-top: .3rem; }
   }
 </style>

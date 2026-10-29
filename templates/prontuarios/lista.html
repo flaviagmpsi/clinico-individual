@@ -9,7 +9,7 @@
     {% if paciente %}Prontuário <span class="text-muted fw-normal">· {{ paciente.nome }}</span>{% else %}Prontuários para escrever{% endif %}
   </h1>
   <form method="get" class="ms-auto d-flex gap-2 align-items-center small">
-    <select name="paciente" class="form-select form-select-sm" style="max-width:260px" aria-label="Paciente" onchange="this.form.submit()">
+    <select name="paciente" class="form-select form-select-sm" style="max-width:300px" aria-label="Paciente" onchange="this.form.submit()">
       <option value="">Pendentes de todos os pacientes</option>
       {% for p in pacientes %}<option value="{{ p.pk }}"{% if paciente and paciente.pk == p.pk %} selected{% endif %}>{{ p.nome }}</option>{% endfor %}
     </select>
@@ -32,15 +32,15 @@
 {% if registros %}
 <div class="card">
   <div class="table-responsive">
-    <table class="table table-sm align-middle mb-0 small">
+    <table class="table table-sm align-middle mb-0 small tabela-cartoes">
       <thead class="table-light"><tr><th>Sessão</th><th>Paciente</th><th>Atendimento</th><th>Situação</th><th></th></tr></thead>
       <tbody>
       {% for r in registros %}
         <tr>
-          <td class="text-nowrap">{{ r.consulta.inicio|date:"d/m/Y H:i" }}</td>
-          <td class="fw-medium">{{ r.paciente.nome }}</td>
-          <td class="text-muted">{{ r.consulta.caso }}</td>
-          <td>
+          <td class="text-nowrap" data-rotulo="Sessão">{{ r.consulta.inicio|date:"d/m/Y H:i" }}</td>
+          <td class="fw-medium" data-rotulo="">{{ r.paciente.nome }}</td>
+          <td class="text-muted" data-rotulo="Atendimento">{{ r.consulta.caso }}</td>
+          <td data-rotulo="Situação">
             {% if r.situacao == "confirmado" %}<span class="badge text-bg-success">Confirmado</span>
             {% elif r.situacao == "em edição" %}<span class="badge text-bg-info">Em edição</span>
             {% elif r.situacao == "rascunho" %}<span class="badge text-bg-light border">Rascunho</span>

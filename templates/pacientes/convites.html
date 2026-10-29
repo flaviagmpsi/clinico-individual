@@ -47,18 +47,18 @@ revisão — só vira paciente quando o psicólogo abre, confere, completa e sal
 {% if convites %}
 <div class="card">
   <div class="table-responsive">
-    <table class="table table-sm align-middle mb-0 small">
+    <table class="table table-sm align-middle mb-0 small tabela-cartoes">
       <thead class="table-light"><tr><th>Para quem</th><th>Gerado em</th><th>Situação</th><th></th></tr></thead>
       <tbody>
       {% for c in convites %}
         <tr>
-          <td class="fw-medium">
+          <td class="fw-medium" data-rotulo="">
             {% if c.paciente %}<a href="{% url 'pacientes:detalhe' c.paciente.pk %}" class="text-decoration-none">{{ c.paciente.nome }}</a>
             {% else %}{{ c.nome_informado|default:c.rotulo|default:"—" }}{% endif %}
             {% if c.rotulo and c.nome_informado %}<span class="text-muted fw-normal">· {{ c.rotulo }}</span>{% endif %}
           </td>
-          <td class="text-nowrap text-muted">{{ c.criado_em|date:"d/m/Y H:i" }}</td>
-          <td>
+          <td class="text-nowrap text-muted" data-rotulo="Gerado em">{{ c.criado_em|date:"d/m/Y H:i" }}</td>
+          <td data-rotulo="Situação">
             {% if c.situacao == "respondido" %}<span class="badge text-bg-warning">Respondido — revisar</span>
               <span class="text-muted">{{ c.respondido_em|date:"d/m H:i" }}</span>
             {% elif c.situacao == "aguardando" %}<span class="badge text-bg-light border">Aguardando o paciente</span>

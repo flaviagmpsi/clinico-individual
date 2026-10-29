@@ -18,15 +18,15 @@
 {% if registros %}
 <div class="card">
   <div class="table-responsive">
-    <table class="table table-sm align-middle mb-0 small">
+    <table class="table table-sm align-middle mb-0 small tabela-cartoes">
       <thead class="table-light"><tr><th>Quando</th><th>Ação</th><th>Registro</th><th>Campos</th></tr></thead>
       <tbody>
       {% for r in registros %}
         <tr>
-          <td class="text-muted text-nowrap">{{ r.criado_em|date:"d/m/Y H:i:s" }}</td>
-          <td>{{ r.get_acao_display }}</td>
-          <td>{{ r.descricao_alvo }}</td>
-          <td class="text-muted">{{ r.campos_legiveis|join:", "|default:"—" }}</td>
+          <td class="text-muted text-nowrap" data-rotulo="Quando">{{ r.criado_em|date:"d/m/Y H:i:s" }}</td>
+          <td data-rotulo="Ação">{{ r.get_acao_display }}</td>
+          <td data-rotulo="Registro">{{ r.descricao_alvo }}</td>
+          <td class="text-muted" data-rotulo="Campos">{{ r.campos_legiveis|join:", "|default:"—" }}</td>
         </tr>
       {% endfor %}
       </tbody>

@@ -32,19 +32,19 @@ só se marca "recebi". Em aberto depois da data prevista fica em amarelo. É o q
   </div>
   {% if ocorrencias %}
   <div class="table-responsive">
-    <table class="table table-sm align-middle mb-0 small">
+    <table class="table table-sm align-middle mb-0 small tabela-cartoes">
       <thead class="table-light"><tr><th>Trabalho</th><th>Forma</th><th>Previsto</th><th class="text-end">Valor</th><th>Situação</th><th></th></tr></thead>
       <tbody>
       {% for o in ocorrencias %}
         <tr>
-          <td class="fw-medium">{{ o.receita.descricao }}
+          <td class="fw-medium" data-rotulo="">{{ o.receita.descricao }}
             {% if o.receita.mensal %}<span class="badge text-bg-light border fw-normal ms-1" title="Aparece todo mês{% if o.receita.fim %} até {{ o.receita.fim|date:'m/Y' }}{% endif %}"><i class="bi bi-arrow-repeat"></i> todo mês{% if o.receita.fim %} até {{ o.receita.fim|date:"m/Y" }}{% endif %}</span>{% endif %}
             {% if not o.receita.entra_no_carne_leao %}<span class="badge text-bg-light border fw-normal ms-1" title="Já tributado na fonte (ex.: CLT) — não entra no carnê-leão">fora do carnê-leão</span>{% endif %}
           </td>
-          <td class="text-muted">{{ o.receita.get_forma_display }}</td>
-          <td class="text-muted">{{ o.vencimento|date:"d/m" }}</td>
-          <td class="text-end text-nowrap">R$ {{ o.valor|floatformat:2 }}</td>
-          <td>
+          <td class="text-muted" data-rotulo="Forma">{{ o.receita.get_forma_display }}</td>
+          <td class="text-muted" data-rotulo="Previsto">{{ o.vencimento|date:"d/m" }}</td>
+          <td class="text-end text-nowrap" data-rotulo="Valor">R$ {{ o.valor|floatformat:2 }}</td>
+          <td data-rotulo="Situação">
             {% if o.recebida %}<span class="badge text-bg-success">Recebido</span> <span class="text-muted">em {{ o.recebimento.recebido_em|date:"d/m" }}</span>
             {% elif o.vencimento < hoje %}<span class="badge text-bg-warning">Em atraso</span>
             {% else %}<span class="badge text-bg-light border">A receber</span>{% endif %}

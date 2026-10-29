@@ -35,22 +35,22 @@ marca "paguei". Em aberto depois do vencimento fica em amarelo — sem alerta re
   </div>
   {% if ocorrencias %}
   <div class="table-responsive">
-    <table class="table table-sm align-middle mb-0 small">
+    <table class="table table-sm align-middle mb-0 small tabela-cartoes">
       <thead class="table-light"><tr><th>Despesa</th><th>Categoria</th><th>Vence</th><th class="text-end">Valor</th><th>Situação</th><th></th></tr></thead>
       <tbody>
       {% for o in ocorrencias %}
         <tr>
-          <td class="fw-medium">{{ o.despesa.descricao }}
+          <td class="fw-medium" data-rotulo="">{{ o.despesa.descricao }}
             {% if o.despesa.mensal %}<span class="badge text-bg-light border fw-normal ms-1" title="Aparece todo mês{% if o.despesa.fim %} até {{ o.despesa.fim|date:'m/Y' }}{% endif %}"><i class="bi bi-arrow-repeat"></i> todo mês{% if o.despesa.fim %} até {{ o.despesa.fim|date:"m/Y" }}{% endif %}</span>{% endif %}
           </td>
           {% with c=o.despesa.categoria_do_carne_leao %}
-          <td class="text-muted">{{ c.nome }}
+          <td class="text-muted" data-rotulo="Categoria">{{ c.nome }}
             {% if not c.deduz %}<i class="bi bi-exclamation-circle text-warning ms-1" title="{{ c.rotulo_da_dedutibilidade }}: {{ c.explicacao }}"></i>{% endif %}
           </td>
           {% endwith %}
-          <td class="text-muted">{{ o.vencimento|date:"d/m" }}</td>
-          <td class="text-end text-nowrap">R$ {{ o.valor|floatformat:2 }}</td>
-          <td>
+          <td class="text-muted" data-rotulo="Vence">{{ o.vencimento|date:"d/m" }}</td>
+          <td class="text-end text-nowrap" data-rotulo="Valor">R$ {{ o.valor|floatformat:2 }}</td>
+          <td data-rotulo="Situação">
             {% if o.paga %}<span class="badge text-bg-success">Paga</span> <span class="text-muted">em {{ o.baixa.pago_em|date:"d/m" }}</span>
             {% elif o.vencimento < hoje %}<span class="badge text-bg-warning">Em atraso</span>
             {% else %}<span class="badge text-bg-light border">A pagar</span>{% endif %}

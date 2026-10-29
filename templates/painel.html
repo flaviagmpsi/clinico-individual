@@ -28,9 +28,12 @@ Primeiro o dia; depois as pendências, num bloco; por fim o resumo do mês.
   /* A lista rola só na vertical. O padding de 6px devolve o que a margem negativa do tema tira de cada item
      (ela existe para o realce do hover ir de ponta a ponta) — sem ele, o recorte comia a primeira letra do nome. */
   .pendencias .pendencia ul { max-height: 42vh; overflow: hidden auto; padding-inline: 6px; }
-  .pendencias .pendencia li { align-items: baseline; padding-block: .1rem; }
-  .pendencias .pendencia li .valor { margin-left: auto; }
-  .pendencias .pendencia li > * { min-width: 0; overflow-wrap: anywhere; }
+  .pendencias .pendencia li { padding-block: .1rem; overflow-wrap: anywhere; }
+  /* Linha com valor à direita: o texto ocupa o espaço e quebra sozinho; o valor fica fixo no alto, à direita, sem
+     pular para a linha de baixo — era o que desalinhava as mensalidades, de rótulo mais longo. */
+  .pendencias .pendencia li.pend-linha { display: flex; align-items: baseline; gap: .4rem; }
+  .pendencias .pendencia li.pend-linha .pend-texto { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+  .pendencias .pendencia li.pend-linha .valor { flex: none; margin-left: auto; white-space: nowrap; }
   /* ADR-104: cada pendência é uma linha que abre. O número puxa o olho; a lista, quem quiser, abre. */
   .pendencia > summary { display: flex; align-items: center; gap: .5rem; cursor: pointer; padding: .45rem .1rem;
                          border-bottom: 1px solid var(--linha-fina); list-style: none; font-weight: 500; }
@@ -186,10 +189,10 @@ Primeiro o dia; depois as pendências, num bloco; por fim o resumo do mês.
               </summary>
               <ul class="list-unstyled small mb-2 mt-1">
               {% for c in pagamentos_vencidos %}
-                <li><a href="{{ c.url_pagar }}" class="text-decoration-none fw-medium">{{ c.caso }}</a>
+                <li class="pend-linha"><span class="pend-texto"><a href="{{ c.url_pagar }}" class="text-decoration-none fw-medium">{{ c.caso }}</a>
                   <span class="text-muted">{{ c.descricao|lower }} ·</span>
-                  <span class="atraso">venceu {{ c.vencimento|date:"d/m" }}{% with dias=c.dias_de_atraso %}{% if dias %} · {{ dias }} dia{{ dias|pluralize }} de atraso{% endif %}{% endwith %}</span>
-                  <span class="valor ms-auto">R$ {{ c.saldo|floatformat:2 }}</span></li>
+                  <span class="atraso">venceu {{ c.vencimento|date:"d/m" }}{% with dias=c.dias_de_atraso %}{% if dias %} · {{ dias }} dia{{ dias|pluralize }} de atraso{% endif %}{% endwith %}</span></span>
+                  <span class="valor">R$ {{ c.saldo|floatformat:2 }}</span></li>
               {% endfor %}
               </ul>
             </details>
@@ -204,9 +207,9 @@ Primeiro o dia; depois as pendências, num bloco; por fim o resumo do mês.
               </summary>
               <ul class="list-unstyled small mb-2 mt-1">
               {% for c in pagamentos_pendentes %}
-                <li><a href="{{ c.url_pagar }}" class="text-decoration-none fw-medium">{{ c.caso }}</a>
-                  <span class="text-muted">{{ c.descricao|lower }} · vence {{ c.vencimento|date:"d/m" }}{% with dias=c.dias_para_vencer %}{% if dias %} · em {{ dias }} dia{{ dias|pluralize }}{% else %} · hoje{% endif %}{% endwith %}</span>
-                  <span class="valor ms-auto">R$ {{ c.saldo|floatformat:2 }}</span></li>
+                <li class="pend-linha"><span class="pend-texto"><a href="{{ c.url_pagar }}" class="text-decoration-none fw-medium">{{ c.caso }}</a>
+                  <span class="text-muted">{{ c.descricao|lower }} · vence {{ c.vencimento|date:"d/m" }}{% with dias=c.dias_para_vencer %}{% if dias %} · em {{ dias }} dia{{ dias|pluralize }}{% else %} · hoje{% endif %}{% endwith %}</span></span>
+                  <span class="valor">R$ {{ c.saldo|floatformat:2 }}</span></li>
               {% endfor %}
               </ul>
             </details>
@@ -257,9 +260,9 @@ Primeiro o dia; depois as pendências, num bloco; por fim o resumo do mês.
               </summary>
               <ul class="list-unstyled small mb-1 mt-1">
               {% for o in ganhos_externos %}
-                <li class="d-flex"><a href="{% url 'financeiro:outros_ganhos' %}?mes={{ o.mes|date:'Y-m' }}" class="text-decoration-none fw-medium">{{ o.receita.descricao }}</a>
-                  <span class="text-muted ms-1">{% if o.atrasada %}venceu {{ o.vencimento|date:"d/m" }}{% else %}até {{ o.vencimento|date:"d/m" }}{% endif %}</span>
-                  <span class="valor ms-auto">R$ {{ o.valor|floatformat:2 }}</span></li>
+                <li class="pend-linha"><span class="pend-texto"><a href="{% url 'financeiro:outros_ganhos' %}?mes={{ o.mes|date:'Y-m' }}" class="text-decoration-none fw-medium">{{ o.receita.descricao }}</a>
+                  <span class="text-muted ms-1">{% if o.atrasada %}venceu {{ o.vencimento|date:"d/m" }}{% else %}até {{ o.vencimento|date:"d/m" }}{% endif %}</span></span>
+                  <span class="valor">R$ {{ o.valor|floatformat:2 }}</span></li>
               {% endfor %}
               </ul>
             </details>
