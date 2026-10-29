@@ -22,6 +22,10 @@ class _TelaDeAssinatura(LoginRequiredMixin, TemplateView):
             esconder_barra=assinatura is None or not assinatura.libera_o_sistema()
             or not self.request.user.cadastro_completo,
         )
+        # A barrinha de dias do teste (prancheta da Assinatura): um segmento por dia, os já usados preenchidos.
+        if assinatura is not None and assinatura.em_teste():
+            usados = DIAS_DE_TESTE - assinatura.dias_de_teste_restantes()
+            contexto["barra_teste"] = [i < usados for i in range(DIAS_DE_TESTE)]
         return contexto
 
 
