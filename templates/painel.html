@@ -63,7 +63,7 @@ Primeiro o dia; depois as pendências, num bloco; por fim o resumo do mês.
   {% comment %}ADR-106: a agenda de hoje costuma ter poucas linhas e sobrava espaço; as pendências, que são muitas,
   ganharam a metade da largura para caber sem arrastar para o lado.{% endcomment %}
   <div class="col-lg-6">
-    <div class="card" data-hoje>
+    <div class="card esconder-nomes" data-hoje>
       <div class="card-header bg-white py-2 d-flex align-items-center flex-wrap gap-2">
         <span class="fw-semibold">Hoje</span>
         <span class="text-muted small">
@@ -73,7 +73,7 @@ Primeiro o dia; depois as pendências, num bloco; por fim o resumo do mês.
         para toda a lista de hoje; a escolha fica guardada no navegador.{% endcomment %}
         <span class="ms-auto d-flex align-items-center gap-3">
           <button type="button" class="btn btn-sm btn-link p-0 text-muted" data-olho-agenda
-                  aria-label="Esconder os nomes" aria-pressed="false"><i class="bi bi-eye"></i></button>
+                  aria-label="Mostrar os nomes" aria-pressed="true"><i class="bi bi-eye-slash"></i></button>
           <a href="{% url 'atendimentos:agenda' %}" class="small text-decoration-none">ver a agenda</a>
         </span>
       </div>
@@ -307,25 +307,18 @@ Primeiro o dia; depois as pendências, num bloco; por fim o resumo do mês.
     btn.querySelector('i').className = oculto ? 'bi bi-eye-slash' : 'bi bi-eye';
   });
 })();
-// Olhinho da agenda: esconde os nomes dos pacientes de hoje. A escolha fica no navegador (por dispositivo).
+// Olhinho da agenda: os nomes já nascem censurados (classe vinda do servidor, para não piscar). Revelar é um
+// gesto manual e temporário — não fica guardado, então ao recarregar o painel volta a esconder, que é o seguro.
 (function () {
   var btn = document.querySelector('[data-olho-agenda]');
   var alvo = document.querySelector('[data-hoje]');
   if (!btn || !alvo) return;
-  var chave = 'esconder-nomes-agenda';
-  function aplicar(oculto) {
+  btn.addEventListener('click', function () {
+    var oculto = !alvo.classList.contains('esconder-nomes');
     alvo.classList.toggle('esconder-nomes', oculto);
     btn.setAttribute('aria-pressed', String(oculto));
     btn.setAttribute('aria-label', oculto ? 'Mostrar os nomes' : 'Esconder os nomes');
     btn.querySelector('i').className = oculto ? 'bi bi-eye-slash' : 'bi bi-eye';
-  }
-  var oculto = false;
-  try { oculto = localStorage.getItem(chave) === '1'; } catch (e) {}
-  aplicar(oculto);
-  btn.addEventListener('click', function () {
-    oculto = !alvo.classList.contains('esconder-nomes');
-    try { if (oculto) { localStorage.setItem(chave, '1'); } else { localStorage.removeItem(chave); } } catch (e) {}
-    aplicar(oculto);
   });
 })();
 </script>
