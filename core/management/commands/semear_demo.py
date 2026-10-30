@@ -58,6 +58,9 @@ def _criar_conta_rica(modelo: dict, senha: str) -> Psicologo:
     psicologo = Psicologo.objects.create_user(
         password=senha, telefone="31988887777", crp_regiao="04",
         quiz_concluido_em=timezone.now(), atende_online=True, atende_presencial=True,
+        # IA de prontuário ligada na conta demo (ADR-111 a deixa desligada por padrão): aqui é de propósito,
+        # para quem explora a demonstração poder testar a escrita assistida.
+        usa_ia_no_prontuario=True,
         nome_clinica=f"Consultório de {dados['nome_completo'].split()[-1]}",
         telefone_clinica="3133334444", cep="30140071", logradouro="Rua da Bahia", numero="1200",
         bairro="Lourdes", cidade="Belo Horizonte", uf="MG",
