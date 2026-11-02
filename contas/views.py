@@ -18,7 +18,7 @@ from django.views import View
 from django.views.generic import CreateView, TemplateView, UpdateView
 
 from contas import freio
-from contas.configuracoes import AparenciaForm, DespesasForm, RegimeNovoForm
+from contas.configuracoes import AparenciaForm, DespesasForm, RegimeNovoForm, WhatsappForm
 from contas.forms import (ClinicaForm, ComoAtendeForm, CriarContaForm, IdentificacaoForm, LoginForm, PerfilForm,
                           RegimeForm)
 from core.escopo import dispensa_escopo
@@ -126,6 +126,7 @@ class Configuracoes(LoginRequiredMixin, TemplateView):
         contexto.setdefault("despesas", DespesasForm(instance=psicologo))
         contexto.setdefault("aparencia", AparenciaForm(instance=psicologo))
         contexto.setdefault("regime", RegimeNovoForm(psicologo=psicologo))
+        contexto.setdefault("whatsapp", WhatsappForm(instance=psicologo))
         contexto["mudancas"] = psicologo.mudancas_de_regime.all()
         return contexto
 
@@ -139,6 +140,13 @@ class Configuracoes(LoginRequiredMixin, TemplateView):
                 messages.success(request, "Aparência salva.")
                 return redirect("contas:configuracoes")
             return self.render_to_response(self.get_context_data(aparencia=formulario))
+        if request.POST.get("acao") == "whatsapp":
+            formulario = WhatsappForm(request.POST, instance=request.user)
+            if formulario.is_valid():
+                formulario.save()
+                messages.success(request, "Lembretes por WhatsApp salvos.")
+                return redirect("contas:configuracoes")
+            return self.render_to_response(self.get_context_data(whatsapp=formulario))
         formulario = DespesasForm(request.POST, instance=request.user)
         if formulario.is_valid():
             formulario.save()

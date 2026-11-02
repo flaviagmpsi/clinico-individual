@@ -42,6 +42,33 @@ class AparenciaForm(forms.ModelForm):
                    "densidade": forms.RadioSelect(attrs={"class": "form-check-input"})}
 
 
+_DIAS_DA_SEMANA = [(0, "segunda-feira"), (1, "terça-feira"), (2, "quarta-feira"), (3, "quinta-feira"),
+                   (4, "sexta-feira"), (5, "sábado"), (6, "domingo")]
+_HORA = {"class": "form-control form-control-sm", "type": "time"}
+
+
+class WhatsappForm(forms.ModelForm):
+    """Lembretes por WhatsApp do psicólogo (ADR-144). `whatsapp_ligado` é o interruptor-mestre; cada aviso é
+    independente, com seu horário. O dia do resumo semanal vira um seletor (o campo no banco é um número 0–6)."""
+
+    whatsapp_pendencias_dia = forms.TypedChoiceField(
+        label="Dia do resumo semanal", choices=_DIAS_DA_SEMANA, coerce=int,
+        widget=forms.Select(attrs={"class": "form-select form-select-sm"}))
+
+    class Meta:
+        model = Psicologo
+        fields = ["whatsapp_ligado", "whatsapp_confirmacoes", "whatsapp_agenda_manha", "whatsapp_agenda_manha_hora",
+                  "whatsapp_pendencias_semana", "whatsapp_pendencias_dia", "whatsapp_pendencias_hora"]
+        widgets = {
+            "whatsapp_ligado": forms.CheckboxInput(attrs={"class": "form-check-input"}),
+            "whatsapp_confirmacoes": forms.CheckboxInput(attrs={"class": "form-check-input"}),
+            "whatsapp_agenda_manha": forms.CheckboxInput(attrs={"class": "form-check-input"}),
+            "whatsapp_agenda_manha_hora": forms.TimeInput(attrs=_HORA, format="%H:%M"),
+            "whatsapp_pendencias_semana": forms.CheckboxInput(attrs={"class": "form-check-input"}),
+            "whatsapp_pendencias_hora": forms.TimeInput(attrs=_HORA, format="%H:%M"),
+        }
+
+
 class RegimeNovoForm(forms.Form):
     """A troca de regime. Pede o que o regime novo exige, e a data em que ele passa a valer."""
 

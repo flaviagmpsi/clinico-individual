@@ -44,6 +44,26 @@ class Despesas(Base):
         self.assertEqual(self.client.get(reverse("financeiro:despesas")).status_code, 200)
 
 
+class Whatsapp(Base):
+    def test_nasce_tudo_desligado(self):
+        self.assertFalse(self.ana.whatsapp_ligado)
+        self.assertContains(self.client.get(self.rota), "Lembretes por WhatsApp")
+
+    def test_salva_os_lembretes_do_psicologo(self):
+        resposta = self.client.post(self.rota, {
+            "acao": "whatsapp", "whatsapp_ligado": "on", "whatsapp_confirmacoes": "on",
+            "whatsapp_agenda_manha": "on", "whatsapp_agenda_manha_hora": "07:30",
+            "whatsapp_pendencias_dia": "2", "whatsapp_pendencias_hora": "08:15"})
+        self.assertRedirects(resposta, self.rota)
+        self.ana.refresh_from_db()
+        self.assertTrue(self.ana.whatsapp_ligado)
+        self.assertTrue(self.ana.whatsapp_confirmacoes)
+        self.assertTrue(self.ana.whatsapp_agenda_manha)
+        self.assertEqual(self.ana.whatsapp_agenda_manha_hora.strftime("%H:%M"), "07:30")
+        self.assertEqual(self.ana.whatsapp_pendencias_dia, 2)
+        self.assertEqual(self.ana.whatsapp_pendencias_hora.strftime("%H:%M"), "08:15")
+
+
 class TrocaDeRegime(Base):
     def virar_pj(self, **ajustes):
         dados = {"acao": "regime", "vigente_desde": self.hoje.isoformat(), "cnpj": "11.222.333/0001-81",
