@@ -473,8 +473,10 @@ cobrança de sessão futura. O gatilho é a consulta ficar `REALIZADA`, nunca o 
 ## ⏸️ Em espera — não decidido (voltar depois)
 
 ### Lembretes por WhatsApp
-**Status:** 🟡 **infraestrutura na Meta montada (2026-10-28, ADR-141)**; o código ainda não existe e o que se envia,
-e a quem, segue sem decisão — ver "Conflitos com ADRs aceitas" abaixo. Não iniciar implementação antes disso.
+**Status:** ✅ **Especificada (ADR-144, 2026-11-02)** — o produto está decidido (User Story abaixo). A infraestrutura
+na Meta está montada (2026-10-28, ADR-141). Falta a parte **operacional** antes de ir ao ar: **cartão** na conta Meta
+(sem ele nada sai — erro `131042`), a **rota de webhook** no ar e o **cron externo**. O código pode começar em **modo
+simulado** (registra "enviaria", não chama a Meta).
 
 **Infraestrutura montada na Meta (2026-10-28):**
 
@@ -518,32 +520,93 @@ Há **duas** contas de mensagens chamadas "Sofia" no portfólio — arrumar depo
 `WHATSAPP_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_WABA_ID`, `WHATSAPP_APP_SECRET`,
 `WHATSAPP_WEBHOOK_VERIFY_TOKEN`, `WHATSAPP_API_VERSION=v26.0`. O PIN de duas etapas fica com o Paulo, fora do sistema.
 
-**Conflitos com ADRs aceitas (decidir antes de codar):** `lembrete_sessao_paciente` fala com o paciente — colide com
-a **ADR-039** (o sistema nunca fala com paciente) e exige consentimento LGPD; `cobranca_pagamento` leva o nome do
-paciente à Meta — a ADR-043 proíbe conteúdo clínico no WhatsApp, e saber que alguém faz terapia é dado de saúde;
-lembrete diário/semanal precisa de agendador (I-05, ADR-018).
+### User Story (ADR-144)
 
-**O que foi pedido (visão de produto):**
-- Número do remetente informado: **+55 31 8667-3359** (⚠️ parece faltar o 9º dígito do celular — provável **+55 31 9 8667-3359**; e precisa ser um número **dedicado** de WhatsApp Business, não o pessoal). *(2026-10-28: esse número está conectado como "Associação Allos" na conta Sofia; o Polaris usa o +55 31 8779-6335 acima.)*
-- **Para o paciente:**
-  - Lembrete de **confirmação de presença** na sessão, com resposta **sim/não**.
-  - Lembrete de **vencimento de pagamento**.
-  - Ativação **por paciente**, no cadastro do paciente.
-- **Para o psicólogo:**
-  - Lembrete **semanal de pendências**.
-  - Lembrete **diário da agenda**.
-  - Ativável no cadastro (signup) e em **Configurações**.
+- **Como** psicólogo(a) autônomo(a) do Polaris, dono(a) dos meus dados e responsável pelos meus pacientes,
+- **Quero** ligar/desligar (e personalizar) lembretes por WhatsApp — pelo número do Polaris **+55 31 8779-6335** —
+  para mim e para meus pacientes,
+- **Para que** eu reduza faltas e esquecimentos sem mandar mensagem à mão, mantendo o sigilo e sob consentimento do
+  paciente. O lembrete é **só aviso**: quem registra presença/falta/cancelamento/remarcação no Polaris sou eu (ADR-060).
 
-**Fatos que travam / encarecem (levantados por mim, confirmar com Paulo):**
-1. **Não dá para automatizar a partir de um número cru.** Precisa de **WhatsApp Business API** via Meta ou um BSP brasileiro (Twilio/Zenvia/Gupshup). Mensagens proativas usam **templates pré-aprovados** pela Meta; respostas interativas (o sim/não) exigem **webhook**. Há **custo por conversa**.
-2. **Agendamento reabre o impedimento I-05.** O Render (plano free) **não tem cron/worker**: os lembretes diário/semanal precisam de um agendador — ou **cron externo gratuito** (recomendado) ou **Render Cron ~US$1/mês**.
-3. **Consentimento LGPD do paciente** para receber mensagem no WhatsApp precisa ser coletado e registrado (quem ativa é o psicólogo, mas o dado é do paciente).
+**Mensagens (modelos Meta, `pt_BR`, categoria Utilidade — nomes em minúsculas):**
+- `lembrete_compromisso` — ao **paciente**, com botões **[Sim] [Não]**:
+  *"Olá {{1}}! O sistema de gestão para psicólogos Polaris gostaria de confirmar seu atendimento com {{2}} em {{3}} às
+  {{4}}, {{5}}. Você confirma esse compromisso?"* — {{1}} paciente · {{2}} psicólogo (nome e sobrenome) · {{3}} data ·
+  {{4}} hora · {{5}} "presencialmente"/"online".
+- Resposta do Polaris ao paciente (**texto livre**, dentro da janela de 24h aberta pelo clique no botão — não é modelo):
+  **Sim →** *"Agradecemos sua confirmação!"* · **Não →** *"Obrigado por nos informar, seu/sua psicólogo(a) irá entrar
+  em contato com você para uma possível remarcação."*
+- `aviso_pagamento` — ao **paciente**: *"Olá {{1}}! Aqui é do consultório de {{2}}. Lembrete do pagamento do seu
+  atendimento, com vencimento em {{3}}."*
+- `paciente_confirmou` — ao **psicólogo** (primeiro nome): *"{{1}} confirmou o compromisso das {{2}}."*
+- `paciente_nao_vem` — ao **psicólogo**: *"{{1}} avisou que não poderá comparecer às {{2}}. Recomendamos falar com
+  ele(a) sobre a remarcação."*
+- `agenda_do_dia` e `pendencias_da_semana` — ao **psicólogo**, **sem nome de paciente** (já no [WHATSAPP.md](WHATSAPP.md)).
 
-**Perguntas em aberto (grill-me, sem resposta):**
-1. Aceitar a WhatsApp Business API + custo por conversa via BSP brasileiro (Zenvia/Gupshup) **ou** adiar e usar e-mail primeiro? ➡️ recomendado: BSP brasileiro quando for fazer.
-2. Agendador: **cron externo gratuito** ➡️ (recomendado) **ou** Render Cron (~US$1/mês)?
-3. Confirmar o número: **+55 31 9 8667-3359**, dedicado ao Business? ➡️ recomendado: número novo e dedicado.
-4. Tópicos ainda não definidos: textos exatos das mensagens; consentimento LGPD do paciente; o que fazer quando o paciente **não responde** o sim/não.
+**Requisitos Funcionais (RF):**
+- **RF01.** Interruptor-**mestre** de WhatsApp por conta; desligado, nada sai.
+- **RF02.** No cadastro do psicólogo pergunta-se se quer os lembretes para si; se recusar, avisa que pode ligar depois
+  em Configurações.
+- **RF03.** Em **Configurações › WhatsApp**, o psicólogo liga/desliga separadamente: receber **confirmações** dos
+  pacientes; **agenda da manhã** (horário, padrão 07:00); **pendências da semana** (dia + horário, padrão segunda 08:00).
+- **RF04.** No cadastro de paciente pergunta-se se quer lembretes por WhatsApp para ele.
+- **RF05.** No **perfil do paciente**, seção WhatsApp: interruptor **lembrete de sessão**; interruptor **aviso de
+  pagamento**; **antecedência** do lembrete (24h/12h/6h/3h + valor livre em horas); **registro de consentimento**
+  (marcação + data), **obrigatório** para qualquer envio ao paciente.
+- **RF06.** Sem consentimento registrado, os interruptores de envio ao paciente ficam **bloqueados**.
+- **RF07.** Para cada sessão futura com lembrete ativo, envia **uma** `lembrete_compromisso` na antecedência
+  configurada, com [Sim]/[Não].
+- **RF08.** **Idempotência:** registra que enviou o lembrete daquela sessão e **não reenvia**.
+- **RF09.** Sessão criada/editada **depois** da hora do lembrete → **não** envia retroativo.
+- **RF10.** **Casal/família:** envia a cada participante com opt-in e telefone; cada resposta gera um aviso ao psicólogo.
+- **RF11.** **Sim →** envia `paciente_confirmou` ao psicólogo **e** "Agradecemos sua confirmação!" ao paciente.
+  **Não →** envia `paciente_nao_vem` ao psicólogo **e** a mensagem de remarcação ao paciente.
+- **RF12.** A resposta do paciente **não cria nem altera** consulta/presença/cobrança (ADR-060); no máximo um **status
+  leve** na agenda do dia ("confirmou"/"avisou que não vem"), sem valor clínico.
+- **RF13.** Aviso de pagamento: no **dia do vencimento**, com a opção ativa, envia `aviso_pagamento` ao paciente
+  (idempotente por cobrança).
+- **RF14.** **Agenda da manhã** e **pendências da semana**: enviadas nos horários configurados, **sem nome de paciente**.
+- **RF15.** Um **cron externo** chama a cada ~15 min uma **rota protegida** (segredo compartilhado) que apura o que
+  está na hora e dispara.
+- **RF16.** Envio proativo sempre por **modelo aprovado**; **webhook** (`/whatsapp/webhook/`) valida `hub.verify_token`
+  (GET) e `X-Hub-Signature-256` (POST), confere `phone_number_id`, normaliza o **9º dígito** e responde 200 rápido.
+- **RF17.** **Modo simulado** (sem cartão/credenciais): registra "enviaria", não chama a Meta, nenhuma tela quebra.
+- **RF18.** Sem telefone de WhatsApp (paciente ou psicólogo) → a opção fica **desabilitada**, com aviso.
+- **RF19.** Todo envio é **registrado** (para quem por referência — não nome —, modelo, quando, resultado), para
+  diagnóstico e idempotência.
+
+**Requisitos Não Funcionais (RNF):**
+- **RNF01. LGPD:** nenhum envio ao paciente sem consentimento registrado (marcação + data); o psicólogo é o controlador.
+- **RNF02. Sigilo (ADR-043, revisada):** ao **psicólogo**, no máximo **primeiro nome** + "compromisso", nunca conteúdo
+  clínico. Ao **paciente**, a mensagem pode identificar o **psicólogo** e citar o "atendimento" — é a conta do próprio
+  psicólogo e o paciente consentiu e já sabe do que se trata; **proibido** nome completo de paciente pela Meta.
+- **RNF03. ADR-039 (revisada):** o paciente continua **sem login, sem portal**; a única interação é **receber** e
+  **responder Sim/Não** por botão.
+- **RNF04. Adaptador único** para a Meta (como `prontuarios/ia.py`); o resto do sistema chama intenções, não sabe que é
+  WhatsApp. `requests` com timeout; erro da Meta **nunca derruba a tela**.
+- **RNF05.** Segredos só no `.env`/Environment (`sync: false`); nunca em código, log, chat ou Git (conferir `EAA` no diff).
+- **RNF06.** Idempotência e cron sem duplicar; respeitar o limite da Meta (250/dia no tier atual). Testes com a Meta
+  **simulada**. Telas de configuração responsivas; isolamento por psicólogo (ADR-001).
+
+**Critérios de aceitação (Cenário → esperado):**
+- Ativar sem consentimento → interruptor **bloqueado**, com explicação.
+- Sessão amanhã 14:00, antecedência 24h, cron roda → sai **um** `lembrete_compromisso` ~24h antes.
+- Cron roda várias vezes → o lembrete sai **uma vez** (idempotente).
+- Sessão cadastrada 2h antes com antecedência 24h → **nenhum** lembrete retroativo.
+- Paciente clica **Sim** → psicólogo recebe "{primeiro_nome} confirmou…", paciente recebe "Agradecemos…"; **nada**
+  muda no Polaris.
+- Paciente clica **Não** → psicólogo recebe o aviso, paciente recebe a mensagem de remarcação; **nada** muda.
+- Cobrança vence hoje, aviso ativo → paciente recebe `aviso_pagamento` uma vez.
+- Agenda da manhã / pendências da semana → chegam nos horários, **sem nome de paciente**.
+- Mestre desligado → nada sai, mesmo com opções individuais ligadas.
+- Sem telefone → opção **desabilitada**. Sem cartão → **modo simulado**, nada é chamado na Meta.
+- Webhook sem assinatura válida → **recusado**; número br sem o 9º dígito → **casa** com o paciente certo.
+- Erro da Meta → **registrado**, tela **não quebra**, fluxo segue.
+
+**Pendências operacionais (não são decisão de produto):** cartão na conta Meta (sem ele nada sai — `131042`); criar os
+modelos acima e aguardar aprovação; webhook no ar (URL + `WHATSAPP_APP_SECRET` + `WHATSAPP_WEBHOOK_VERIFY_TOKEN`); cron
+externo apontando para a rota protegida. Ordem de implementação sugerida (WHATSAPP.md): **enviar** um modelo →
+**agendar** → **webhook**.
 
 ---
 

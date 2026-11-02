@@ -533,6 +533,9 @@ Um terceiro apareceu de graça na ADR-016: **prontuário pendente**, que pertenc
 
 ## ADR-018 — Lembretes: in-app e Google Agenda, sem agendador
 
+> ⚠️ **Revisada em parte pela ADR-144 (2026-11-02):** os lembretes do dia a dia passam a existir **também por
+> WhatsApp**, agendados por um cron externo — o que esta ADR tinha deixado de fora por causa do custo de agendador (I-05).
+
 **Status:** ✅ Aceita — Rodada 8
 **Decisão:** Os três tipos de lembrete (cobrança, atendimento e prontuário pendente — ADR-017)
 são entregues por dois canais no MVP:
@@ -1304,6 +1307,10 @@ porque o silêncio é que causaria o dano.
 > ⚠️ **Revogada em parte pela ADR-081:** existe uma tela pública que **recebe** o cadastro do paciente por link de
 > uso único. Nada sai do sistema para ele — o resto desta ADR continua valendo inteiro.
 
+> ⚠️ **Revogada em parte pela ADR-144 (2026-11-02):** o sistema passa a **enviar** lembretes ao paciente por WhatsApp
+> e a **receber** a resposta Sim/Não (por botão), **com consentimento registrado** e **sem conteúdo clínico**. O
+> paciente continua **sem login e sem portal**; o restante desta ADR segue valendo.
+
 **Status:** ✅ Aceita — Rodada 22
 **Contexto:** Discutia-se como o sistema entregaria prontuário ou documento ao paciente ou ao
 responsável legal, e como limitar isso ao "estritamente necessário". O usuário cortou a premissa:
@@ -1434,6 +1441,11 @@ cópia de material sensível.
 ---
 
 ## ADR-043 — Aviso de descarte por WhatsApp, e o relógio que congela
+
+> ➕ **Estendida pela ADR-144 (2026-11-02):** o WhatsApp passa a levar mais que o aviso de descarte (lembretes de
+> sessão e de pagamento ao paciente, e avisos ao psicólogo), mantendo o princípio desta ADR — **nada clínico pela
+> Meta**. Ao psicólogo, no máximo **primeiro nome** + "compromisso" (mitigação); ao paciente, só o que já é dele e
+> com consentimento.
 
 **Status:** ✅ Aceita — Rodada 24
 **Decisão do usuário:** o aviso do descarte pode e deve ser feito **intensamente por WhatsApp**.
@@ -4343,6 +4355,44 @@ já medida e especificada. Mexe só no fundo; revisa a parte do céu da ADR-140,
 - **Grão do Noturno removido (`.55` → `0`):** em tela de alta densidade (retina/celular, 2×) a textura de ruído
   virava estática pesada. A usuária pediu um "modo noturno de verdade, sem esse estático"; o Noturno fica com o
   degradê escuro liso e a poeira no topo, sem grão. O Claro mantém o grão (`.12`, sutil). Único ajuste no Noturno.
+
+## ADR-144 — Lembretes por WhatsApp: para o psicólogo e para o paciente, com consentimento e sem conteúdo clínico
+
+**Status:** ✅ Aceita — 2026-11-02 (grill-me de 3 rodadas). Revisa em parte a **ADR-018** e a **ADR-039**, estende a
+**ADR-043**. Spec completa (RF/RNF/critérios) em `demandas.md` → "Lembretes por WhatsApp"; mecânica da Meta em
+`WHATSAPP.md`.
+
+**Decisão do usuário:** o Polaris passa a enviar lembretes por WhatsApp pelo número próprio (**+55 31 8779-6335**),
+**para o psicólogo e para o paciente**, cada um ativável/desativável/personalizável. O lembrete é **só aviso** — quem
+registra presença/falta/cancelamento/remarcação continua sendo o psicólogo (ADR-060).
+
+**O que fica decidido:**
+- **Ao paciente** (opt-in por paciente, com **consentimento registrado** — marcação + data — declarado pelo psicólogo):
+  - *Confirmação de sessão* (modelo `lembrete_compromisso`, botões Sim/Não), com antecedência que o psicólogo escolhe
+    (24h/12h/6h/3h ou valor livre). A mensagem **identifica o psicólogo** e diz "atendimento" — relaxação consciente
+    da discrição, "por enquanto", porque o paciente consentiu e já sabe do que se trata.
+  - Ao responder, o Polaris fecha a conversa em texto livre (dentro da janela de 24h aberta pelo botão): "Agradecemos
+    sua confirmação!" / "Obrigado por nos informar, seu/sua psicólogo(a) irá entrar em contato…".
+  - *Aviso de pagamento* no vencimento (modelo `aviso_pagamento`), também identificando o psicólogo.
+- **Ao psicólogo** (opt-in no cadastro e em Configurações): recebe a **confirmação/não** dos pacientes (modelos
+  `paciente_confirmou`/`paciente_nao_vem`, **só primeiro nome** + "compromisso" — mitigação da ADR-043), a **agenda da
+  manhã** (padrão 07:00) e as **pendências da semana** (padrão segunda 08:00), ambas **sem nome de paciente**.
+- **Interruptor-mestre** por conta; sem ele, nada sai.
+
+**Por que revisa as ADRs:**
+- **ADR-018** (lembrete do dia a dia fora do WhatsApp, por custo de agendador): agora **tem** WhatsApp, e o agendador é
+  um **cron externo gratuito** batendo a cada ~15 min numa rota protegida do Polaris (resolve o I-05 sem custo).
+- **ADR-039** (o sistema nunca fala com paciente): agora **fala** — mas só lembrete, o paciente continua **sem login e
+  sem portal**, só **recebe** e **responde Sim/Não** por botão, com consentimento.
+- **ADR-043** (nada clínico pela Meta): mantida. Ao psicólogo, só primeiro nome; ao paciente, só o que já é dele.
+
+**Restrições que continuam valendo:** adaptador único para a Meta (como `prontuarios/ia.py`); erro da Meta nunca
+derruba a tela; **modo simulado** enquanto a conta Meta não tiver **cartão** (sem ele, modelo fora da janela não sai —
+`131042`); webhook com verificação de assinatura e normalização do 9º dígito; segredos só no `.env`/Environment; testes
+com a Meta simulada; isolamento por psicólogo (ADR-001).
+
+**Pendências operacionais (não são decisão de produto):** cadastrar o cartão na conta Meta; criar e aprovar os modelos;
+subir a rota de webhook; configurar o cron externo. Ordem sugerida: enviar → agendar → webhook.
 
 ## Impeditivos
 
