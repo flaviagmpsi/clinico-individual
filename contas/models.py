@@ -7,6 +7,8 @@ requisição para representar uma relação que é sempre 1-para-1. O `id` do us
 identificador do tenant.
 """
 
+from datetime import time
+
 from django.contrib.auth.models import AbstractUser, UserManager as DjangoUserManager
 from django.core.validators import MaxValueValidator, MinValueValidator, RegexValidator
 from django.core.exceptions import ValidationError
@@ -142,6 +144,20 @@ class Psicologo(ValidaAoSalvar, AbstractUser):
     tema = models.CharField("Tema", max_length=10, choices=Tema.choices, default=Tema.SISTEMA)
     densidade = models.CharField("Densidade", max_length=11, choices=Densidade.choices,
                                  default=Densidade.CONFORTAVEL)
+
+    # Lembretes do psicólogo por WhatsApp (ADR-144). `whatsapp_ligado` é o interruptor-mestre da conta: desligado,
+    # **nada** sai — nem para ele, nem para os pacientes dele —, qualquer que seja o ajuste individual. Os três
+    # avisos são independentes, cada um com seu horário. (O envio real também depende do nível de sistema:
+    # `settings.WHATSAPP_ATIVO` + cartão na Meta; até lá, tudo roda simulado.)
+    whatsapp_ligado = models.BooleanField("Lembretes por WhatsApp ligados", default=False)
+    whatsapp_confirmacoes = models.BooleanField("Receber as confirmações dos pacientes", default=False)
+    whatsapp_agenda_manha = models.BooleanField("Resumo da agenda toda manhã", default=False)
+    whatsapp_agenda_manha_hora = models.TimeField("Horário do resumo da manhã", default=time(7, 0))
+    whatsapp_pendencias_semana = models.BooleanField("Resumo das pendências toda semana", default=False)
+    whatsapp_pendencias_dia = models.PositiveSmallIntegerField(
+        "Dia do resumo semanal", default=0, validators=[MaxValueValidator(6)],
+        help_text="0 = segunda-feira … 6 = domingo.")
+    whatsapp_pendencias_hora = models.TimeField("Horário do resumo semanal", default=time(8, 0))
 
     # Quando o quiz de cadastro foi concluído. Vazio: a conta existe, mas o sistema ainda não sabe o
     # bastante para propor nada — e manda o psicólogo terminar o cadastro antes de qualquer tela.

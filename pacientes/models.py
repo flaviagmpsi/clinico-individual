@@ -108,6 +108,18 @@ class Paciente(Auditado, TenantOwnedModel):
     data_primeira_sessao = models.DateField("Data da primeira sessão", null=True, blank=True)
     observacoes = models.TextField("Observações", blank=True)
 
+    # Lembretes por WhatsApp para este paciente (ADR-144). Nascem desligados e só podem ser ligados com o
+    # consentimento registrado: sem `whatsapp_consentimento_em`, os envios ficam bloqueados (LGPD — contatar o
+    # paciente é decisão do psicólogo, que é o controlador do dado).
+    whatsapp_lembrete_sessao = models.BooleanField("Lembrete de sessão por WhatsApp", default=False)
+    whatsapp_aviso_pagamento = models.BooleanField("Aviso de pagamento por WhatsApp", default=False)
+    whatsapp_antecedencia_horas = models.PositiveSmallIntegerField(
+        "Antecedência do lembrete (horas)", default=24,
+        validators=[MinValueValidator(1), MaxValueValidator(168)])
+    whatsapp_consentimento_em = models.DateField(
+        "Consentimento para WhatsApp em", null=True, blank=True,
+        help_text="Data em que o paciente consentiu receber lembretes por WhatsApp.")
+
     class Meta:
         verbose_name = "Paciente"
         verbose_name_plural = "Pacientes"
