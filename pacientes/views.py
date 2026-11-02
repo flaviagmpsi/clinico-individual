@@ -32,6 +32,7 @@ from pacientes.forms import (
     PacienteForm,
     PagadorForm,
     ResponsavelLegalForm,
+    WhatsappDoPacienteForm,
 )
 from indicadores import estatisticas, fichas, periodo
 from pacientes import convites
@@ -288,6 +289,23 @@ class ExcluirPaciente(LoginRequiredMixin, DeleteView):
             return redirect("pacientes:detalhe", pk=self.object.pk)
         messages.success(self.request, f"Paciente {nome} excluído.")
         return redirect(self.success_url)
+
+
+class EditarWhatsappPaciente(LoginRequiredMixin, UpdateView):
+    """Lembretes por WhatsApp de um paciente (ADR-144): opt-in de sessão e de pagamento, antecedência e o
+    consentimento — sem o qual nada é enviado."""
+
+    model = Paciente
+    form_class = WhatsappDoPacienteForm
+    template_name = "pacientes/whatsapp.html"
+
+    def form_valid(self, form):
+        resposta = super().form_valid(form)
+        messages.success(self.request, "Lembretes por WhatsApp salvos.")
+        return resposta
+
+    def get_success_url(self):
+        return reverse("pacientes:detalhe", args=[self.object.pk])
 
 
 class EditarAtendimento(LoginRequiredMixin, UpdateView):

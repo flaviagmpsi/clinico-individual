@@ -283,6 +283,8 @@
         <hr class="my-3">
         <div class="small">
           <p class="mb-0">
+            <a href="{% url 'pacientes:whatsapp' paciente.pk %}" class="text-decoration-none me-3">
+              <i class="bi bi-whatsapp"></i> Lembretes por WhatsApp</a>
             <a href="{% url 'pacientes:historico' paciente.pk %}" class="text-decoration-none me-3">
               <i class="bi bi-shield-check"></i> Histórico de acesso e alterações</a>
             <a href="{% url 'pacientes:excluir' paciente.pk %}" class="text-danger text-decoration-none">

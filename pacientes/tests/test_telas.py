@@ -121,3 +121,34 @@ class Cadastro(BaseTelas):
         self.assertEqual(resposta.status_code, 200)
         self.assertContains(resposta, "CPF tem 11 números")
         self.assertFalse(Paciente.objetos_todos.filter(nome="X").exists())
+
+
+class WhatsappDoPaciente(BaseTelas):
+    """Opt-in de lembretes (ADR-144): sem consentimento, nada liga (RF06)."""
+
+    def setUp(self):
+        super().setUp()
+        self.entrar(self.ana)
+        self.rota = reverse("pacientes:whatsapp", args=[self.da_ana.pk])
+
+    def test_com_consentimento_liga_e_grava_a_data(self):
+        resposta = self.client.post(self.rota, {
+            "consentimento": "on", "whatsapp_lembrete_sessao": "on", "whatsapp_antecedencia_horas": "12"})
+        self.assertEqual(resposta.status_code, 302)
+        with contexto.como(self.ana.pk):
+            self.da_ana.refresh_from_db()
+        self.assertTrue(self.da_ana.whatsapp_lembrete_sessao)
+        self.assertEqual(self.da_ana.whatsapp_antecedencia_horas, 12)
+        self.assertIsNotNone(self.da_ana.whatsapp_consentimento_em)
+
+    def test_sem_consentimento_desliga_tudo(self):
+        self.client.post(self.rota, {"consentimento": "on", "whatsapp_lembrete_sessao": "on",
+                                     "whatsapp_antecedencia_horas": "24"})
+        # Tira o consentimento tentando manter os avisos ligados — devem cair.
+        self.client.post(self.rota, {"whatsapp_lembrete_sessao": "on", "whatsapp_aviso_pagamento": "on",
+                                     "whatsapp_antecedencia_horas": "24"})
+        with contexto.como(self.ana.pk):
+            self.da_ana.refresh_from_db()
+        self.assertIsNone(self.da_ana.whatsapp_consentimento_em)
+        self.assertFalse(self.da_ana.whatsapp_lembrete_sessao)
+        self.assertFalse(self.da_ana.whatsapp_aviso_pagamento)

@@ -306,3 +306,43 @@ class PacienteForm(LimpaMascara, forms.ModelForm):
             {"nome": dados[f"emergencia{n}_nome"], "parentesco": dados.get(f"emergencia{n}_parentesco", ""),
              "telefone": dados.get(f"emergencia{n}_telefone", "")}
             for n in (1, 2) if dados.get(f"emergencia{n}_nome")])
+
+
+class WhatsappDoPacienteForm(forms.ModelForm):
+    """Lembretes por WhatsApp deste paciente (ADR-144).
+
+    Sem **consentimento** registrado, nada é enviado (RF06): desmarcar o consentimento desliga os dois avisos e
+    apaga a data. Marcar grava a data de hoje (se ainda não houver uma).
+    """
+
+    consentimento = forms.BooleanField(
+        label="Tenho o consentimento do paciente para enviar lembretes por WhatsApp", required=False,
+        widget=forms.CheckboxInput(attrs={"class": "form-check-input"}))
+
+    class Meta:
+        model = Paciente
+        fields = ["whatsapp_lembrete_sessao", "whatsapp_aviso_pagamento", "whatsapp_antecedencia_horas"]
+        widgets = {
+            "whatsapp_lembrete_sessao": forms.CheckboxInput(attrs={"class": "form-check-input"}),
+            "whatsapp_aviso_pagamento": forms.CheckboxInput(attrs={"class": "form-check-input"}),
+            "whatsapp_antecedencia_horas": forms.NumberInput(
+                attrs={"class": "form-control form-control-sm", "min": 1, "max": 168, "style": "max-width:110px"}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["consentimento"].initial = self.instance.whatsapp_consentimento_em is not None
+
+    def save(self, commit=True):
+        from django.utils import timezone
+        paciente = super().save(commit=False)
+        if self.cleaned_data.get("consentimento"):
+            if paciente.whatsapp_consentimento_em is None:
+                paciente.whatsapp_consentimento_em = timezone.localdate()
+        else:
+            paciente.whatsapp_consentimento_em = None
+            paciente.whatsapp_lembrete_sessao = False
+            paciente.whatsapp_aviso_pagamento = False
+        if commit:
+            paciente.save()
+        return paciente

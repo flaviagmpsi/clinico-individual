@@ -15,6 +15,7 @@ urlpatterns = [
     path("<int:pk>/excluir/", views.ExcluirPaciente.as_view(), name="excluir"),
     path("<int:pk>/historico/", views.HistoricoPaciente.as_view(), name="historico"),
     path("<int:pk>/atendimento/", views.EditarAtendimento.as_view(), name="atendimento"),
+    path("<int:pk>/whatsapp/", views.EditarWhatsappPaciente.as_view(), name="whatsapp"),
     path("<int:pk>/responsaveis/novo/", views.NovoResponsavel.as_view(), name="responsavel_novo"),
     path("responsaveis/<int:pk>/editar/", views.EditarResponsavel.as_view(), name="responsavel_editar"),
     path("responsaveis/<int:pk>/excluir/", views.ExcluirResponsavel.as_view(), name="responsavel_excluir"),
