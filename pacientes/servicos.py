@@ -98,45 +98,51 @@ def _tem_atendimento(caso: Caso) -> bool:
             or caso.desfechos.exists() or caso.pagamentos.exists())
 
 
-@transaction.atomic
-def excluir_paciente(paciente: Paciente) -> None:
-    """Exclusão de verdade — a regra para cadastro feito por engano (ADR-048).
+def motivo_para_nao_excluir(paciente: Paciente) -> str | None:
+    """Por que este paciente **não** pode ser excluído de vez — ou `None` se pode (ADR-048).
 
-    Paciente **sem atendimento** é apagado de fato. Paciente **com** atendimento é recusado: pela ADR-048
-    ele iria para a lixeira, que ainda não existe — e até ela existir, recusar é o lado certo do erro. O
-    caminho para tirá-lo da lista de ativos é registrar o desfecho (ADR-055).
-
-    Leva junto o caso individual dele — sem isso, o `PROTECT` do pagador impediria a exclusão de
-    qualquer paciente, já que todo paciente paga o próprio caso. **Recusa** se ele participa de
-    atendimento de casal ou família: apagá-lo ali alteraria em silêncio o vínculo de outra pessoa.
+    Com atendimento, prontuário, anamnese ou documento emitido, a guarda é obrigatória (5 anos, Res. CFP 001/2009,
+    Art. 4º): o caminho é **arquivar** (registrar o desfecho), que mantém tudo e tira o paciente da rotina. Esta
+    função é a fonte da verdade da regra — a tela a usa para mostrar/bloquear, e `excluir_paciente` a usa para recusar.
     """
     casos = list(Caso.objects.filter(participacoes__paciente=paciente).prefetch_related("participacoes"))
     if any(caso.participacoes.count() > 1 for caso in casos):
-        raise ValidationError(
-            "Este paciente participa de um atendimento de casal ou família. "
-            "Exclua esse atendimento antes de excluir o paciente.")
+        return ("Este paciente participa de um atendimento de casal ou família. "
+                "Exclua esse atendimento antes de excluir o paciente.")
     if any(_tem_atendimento(caso) for caso in casos):
-        raise ValidationError(
-            "Este paciente já tem atendimento registrado e não pode ser apagado — o prontuário tem guarda "
-            "obrigatória. Para tirá-lo da lista de ativos, registre o desfecho do atendimento.")
+        return ("Este paciente já tem atendimento registrado, e o prontuário tem guarda obrigatória de 5 anos "
+                "(Res. CFP 001/2009, Art. 4º). Arquive o paciente para manter os dados.")
     # Documento emitido é registro documental (ADR-076). Nome reverso `documentos`, sem importar o app, que
-    # depende deste (regra 5 de dependência). Rascunho não é registro de nada e sai junto.
+    # depende deste (regra 5 de dependência). Rascunho não é registro de nada e sai junto na exclusão.
     if paciente.documentos.filter(emitido_em__isnull=False).exists():
-        raise ValidationError(
-            "Este paciente tem documento psicológico emitido, que faz parte do registro documental e tem guarda "
-            "obrigatória. Não pode ser apagado.")
+        return ("Este paciente tem documento psicológico emitido, que faz parte do registro documental e tem guarda "
+                "obrigatória. Arquive o paciente para manter os dados.")
     # A ficha do prontuário (ADR-079) pode existir antes da primeira sessão — a avaliação da demanda se escreve na
     # entrevista inicial. Escrita, é prontuário. Nome reverso, pelo mesmo motivo de `documentos`.
     if paciente.fichas_do_prontuario.exists():
-        raise ValidationError(
-            "Este paciente já tem prontuário escrito, que tem guarda obrigatória. Não pode ser apagado.")
+        return ("Este paciente já tem prontuário escrito, que tem guarda obrigatória. Arquive o paciente para manter "
+                "os dados.")
     # A anamnese (ADR-085) é registro clínico da entrevista inicial. Nome reverso, como acima.
     if hasattr(paciente, "anamnese"):
-        raise ValidationError(
-            "Este paciente tem anamnese escrita, que é registro clínico. Não pode ser apagado.")
+        return ("Este paciente tem anamnese escrita, que é registro clínico de guarda obrigatória. Arquive o paciente "
+                "para manter os dados.")
+    return None
+
+
+@transaction.atomic
+def excluir_paciente(paciente: Paciente) -> None:
+    """Exclusão de verdade — só para cadastro feito por engano (ADR-048).
+
+    Recusa se há qualquer registro de guarda obrigatória (ver `motivo_para_nao_excluir`): nesse caso o caminho é
+    **arquivar**. Leva junto o caso individual — sem isso, o `PROTECT` do pagador impediria a exclusão de qualquer
+    paciente, já que todo paciente paga o próprio caso.
+    """
+    motivo = motivo_para_nao_excluir(paciente)
+    if motivo:
+        raise ValidationError(motivo)
     for rascunho in paciente.documentos.all():
         rascunho.delete()
-    for caso in casos:
+    for caso in Caso.objects.filter(participacoes__paciente=paciente):
         caso.consultas.all().delete()  # restam só cancelamentos e remarcações sem cobrança
         caso.delete()
     paciente.delete()

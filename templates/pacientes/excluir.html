@@ -1,21 +1,57 @@
 {% extends "base.html" %}
-{% block titulo %}Excluir paciente{% endblock %}
+{% block titulo %}Encerrar cadastro{% endblock %}
 {% block secao %}Pacientes{% endblock %}
+{% block pagina %}<span class="separa">›</span>{{ paciente.nome }}{% endblock %}
 
 {% block conteudo %}
-<div class="card mx-auto" style="max-width:560px">
-  <div class="card-body">
-    <h1 class="h6">Excluir {{ paciente.nome }}?</h1>
-    <p class="small text-muted">
-      A exclusão é definitiva e não há lixeira. Hoje isso é aceitável porque o cadastro não tem
-      histórico clínico preso a ele — a partir do prontuário (passo 3) não será, porque a guarda
-      mínima é de 5 anos (Res. CFP 001/2009, Art. 4º), e este botão vira arquivamento.
-    </p>
-    <form method="post">
-      {% csrf_token %}
-      <button type="submit" class="btn btn-danger btn-sm">Excluir definitivamente</button>
-      <a href="{% url 'pacientes:detalhe' paciente.pk %}" class="btn btn-link btn-sm text-muted">Cancelar</a>
-    </form>
+<div class="mx-auto" style="max-width:620px">
+  <h1 class="h5 mb-1">O que fazer com {{ paciente.nome }}?</h1>
+  <p class="text-muted small mb-3">Duas saídas: <strong>arquivar</strong> (guarda tudo e tira da rotina) ou
+    <strong>excluir de vez</strong>.</p>
+
+  {% comment %}Arquivar = encerrar o atendimento (ADR-055): mantém o histórico, tira da agenda e do financeiro, e
+  dá para retomar. É o caminho obrigatório para quem tem prontuário (guarda de 5 anos, CFP).{% endcomment %}
+  <div class="card mb-3">
+    <div class="card-body">
+      <h2 class="h6 mb-1"><i class="bi bi-archive"></i> Arquivar paciente</h2>
+      <p class="small text-muted mb-2">
+        Mantém tudo o que foi produzido — prontuários, documentos e histórico. O paciente <strong>sai da sua
+        rotina</strong> (some da agenda e do financeiro), mas fica <strong>guardado</strong>, e você pode
+        <strong>retomar</strong> quando ele voltar. Você registra o tipo de encerramento (alta, desistência,
+        encaminhamento ou interrupção), para ter controle do que acontece na sua clínica.
+      </p>
+      {% if ja_arquivado %}
+        <span class="badge text-bg-secondary">Este paciente já está arquivado</span>
+      {% elif caso %}
+        <a href="{% url 'atendimentos:desfecho' caso.pk %}" class="btn btn-primary btn-sm">
+          <i class="bi bi-archive"></i> Arquivar paciente</a>
+      {% else %}
+        <span class="small text-muted">Não há atendimento individual para arquivar.</span>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-body">
+      <h2 class="h6 mb-1"><i class="bi bi-trash"></i> Excluir definitivamente</h2>
+      <p class="small text-muted mb-2">Apaga o cadastro e tudo ligado a ele. É <strong>definitivo</strong> e não há
+        lixeira — serve para um cadastro feito por engano.</p>
+      {% if pode_excluir %}
+        <form method="post" class="m-0">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-danger btn-sm">
+            <i class="bi bi-trash"></i> Excluir definitivamente</button>
+        </form>
+      {% else %}
+        <div class="alert alert-warning py-2 small mb-0">
+          <i class="bi bi-shield-lock"></i> {{ motivo_bloqueio }}
+        </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="mt-3">
+    <a href="{% url 'pacientes:detalhe' paciente.pk %}" class="btn btn-link btn-sm text-muted">Cancelar</a>
   </div>
 </div>
 {% endblock %}

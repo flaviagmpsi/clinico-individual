@@ -44,6 +44,7 @@ from pacientes.servicos import (
     criar_caso_coletivo,
     excluir_caso_coletivo,
     excluir_paciente,
+    motivo_para_nao_excluir,
     pacientes_ativos,
     pacientes_encerrados,
 )
@@ -257,11 +258,23 @@ class HistoricoPaciente(LoginRequiredMixin, ListView):
 
 
 class ExcluirPaciente(LoginRequiredMixin, DeleteView):
-    """Exclusão de verdade, para cadastro feito por engano. A regra está em `servicos.excluir_paciente`."""
+    """Duas saídas para o cadastro: **arquivar** (encerrar o atendimento, guarda tudo) ou **excluir de vez** (só
+    quando não há registro de guarda obrigatória). A regra está em `servicos.motivo_para_nao_excluir`."""
 
     model = Paciente
     template_name = "pacientes/excluir.html"
     success_url = reverse_lazy("pacientes:lista")
+
+    def get_context_data(self, **kwargs):
+        contexto = super().get_context_data(**kwargs)
+        paciente = self.object
+        motivo = motivo_para_nao_excluir(paciente)
+        caso = caso_individual_de(paciente)
+        contexto["motivo_bloqueio"] = motivo
+        contexto["pode_excluir"] = motivo is None
+        contexto["caso"] = caso
+        contexto["ja_arquivado"] = bool(caso and caso.desfecho_aberto() is not None)
+        return contexto
 
     def form_valid(self, form):
         nome = self.object.nome
