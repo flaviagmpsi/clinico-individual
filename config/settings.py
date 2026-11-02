@@ -158,6 +158,9 @@ WHATSAPP_WABA_ID = os.getenv("WHATSAPP_WABA_ID", "")
 WHATSAPP_APP_SECRET = os.getenv("WHATSAPP_APP_SECRET", "")
 WHATSAPP_WEBHOOK_VERIFY_TOKEN = os.getenv("WHATSAPP_WEBHOOK_VERIFY_TOKEN", "")
 WHATSAPP_API_VERSION = os.getenv("WHATSAPP_API_VERSION", "v26.0")
+# O cron externo (gratuito) bate na rota /lembretes/disparar/ com este segredo no cabeçalho `X-Cron-Segredo`.
+# Vazio = rota desligada (recusa tudo). Gere com `openssl rand -hex 24` e guarde fora do Git.
+WHATSAPP_CRON_SEGREDO = os.getenv("WHATSAPP_CRON_SEGREDO", "")
 # Simulado quando não está ativo OU faltam as credenciais mínimas de envio — assim o dev e o ar-sem-cartão nunca
 # tentam enviar de verdade.
 WHATSAPP_SIMULADO = not (WHATSAPP_ATIVO and WHATSAPP_TOKEN and WHATSAPP_PHONE_NUMBER_ID)

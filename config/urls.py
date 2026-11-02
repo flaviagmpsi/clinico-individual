@@ -5,6 +5,7 @@ from django.views.generic import RedirectView
 from contas.views import Sair
 from core.saude import saude
 from indicadores.views import Painel, Vitrine
+from lembretes.views import disparar as disparar_lembretes
 from pacientes.views_convite import CadastroPeloPaciente
 
 urlpatterns = [
@@ -13,6 +14,8 @@ urlpatterns = [
     path("vitrine/", Vitrine.as_view(), name="vitrine"),
     # ADR-114: a verificação de saúde do Render. Não toca o banco, de propósito.
     path("saude/", saude, name="saude"),
+    # ADR-144: o cron externo bate aqui (protegida por segredo) para disparar os lembretes por WhatsApp.
+    path("lembretes/disparar/", disparar_lembretes, name="lembretes_disparar"),
     path("pacientes/", include("pacientes.urls")),
     # Pública e sem login: o link que o psicólogo manda ao paciente (ADR-081). Fora de `pacientes/` de
     # propósito — o endereço que o paciente vê não diz nada sobre a estrutura do sistema.
