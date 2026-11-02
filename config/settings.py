@@ -44,6 +44,7 @@ INSTALLED_APPS = [
     "indicadores",
     "prontuarios",
     "documentos",
+    "lembretes",
 ]
 
 MIDDLEWARE = [
@@ -145,6 +146,21 @@ IA_MINUTOS_MAXIMOS = int(os.getenv("IA_MINUTOS_MAXIMOS", "20"))
 # Teto mensal por conta (ADR-114). A chave é uma só, e quem paga é quem hospeda: sem teto, um laço acidental ou
 # um testador animado viram fatura que só aparece no fim do mês. Zero desliga o teto.
 IA_SINTESES_POR_MES = int(os.getenv("IA_SINTESES_POR_MES", "40"))
+
+# --- WhatsApp (Meta Cloud API) — lembretes (ADR-144) --------------------------------------------
+# Fica DESLIGADO por padrão. Sem `WHATSAPP_ATIVO=True` + credenciais, o sistema roda em **modo simulado**:
+# registra "enviaria X" e não chama a Meta. É o padrão até o cartão entrar na conta Meta (sem ele, modelo fora da
+# janela de 24h é recusado — erro 131042). Os segredos moram no `.env`/Environment, nunca no Git. Ver WHATSAPP.md.
+WHATSAPP_ATIVO = os.getenv("WHATSAPP_ATIVO", "False") == "True"
+WHATSAPP_TOKEN = os.getenv("WHATSAPP_TOKEN", "")
+WHATSAPP_PHONE_NUMBER_ID = os.getenv("WHATSAPP_PHONE_NUMBER_ID", "")
+WHATSAPP_WABA_ID = os.getenv("WHATSAPP_WABA_ID", "")
+WHATSAPP_APP_SECRET = os.getenv("WHATSAPP_APP_SECRET", "")
+WHATSAPP_WEBHOOK_VERIFY_TOKEN = os.getenv("WHATSAPP_WEBHOOK_VERIFY_TOKEN", "")
+WHATSAPP_API_VERSION = os.getenv("WHATSAPP_API_VERSION", "v26.0")
+# Simulado quando não está ativo OU faltam as credenciais mínimas de envio — assim o dev e o ar-sem-cartão nunca
+# tentam enviar de verdade.
+WHATSAPP_SIMULADO = not (WHATSAPP_ATIVO and WHATSAPP_TOKEN and WHATSAPP_PHONE_NUMBER_ID)
 
 # --- E-mail (ADR-114) ---------------------------------------------------------------------------
 # Hoje serve só à recuperação de senha. Sem `EMAIL_HOST`, as mensagens vão para o console — em
