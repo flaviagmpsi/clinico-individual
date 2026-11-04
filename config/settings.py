@@ -49,6 +49,9 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    # ADR-145: responde /saude/ antes de qualquer middleware que toque o banco, para o Neon poder dormir. Depois
+    # do SecurityMiddleware, que aplica o SECURE_REDIRECT_EXEMPT da rota.
+    "core.saude.SaudeMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",

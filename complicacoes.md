@@ -4394,6 +4394,42 @@ com a Meta simulada; isolamento por psicólogo (ADR-001).
 **Pendências operacionais (não são decisão de produto):** cadastrar o cartão na conta Meta; criar e aprovar os modelos;
 subir a rota de webhook; configurar o cron externo. Ordem sugerida: enviar → agendar → webhook.
 
+## ADR-145 — A checagem de saúde responde antes da pilha de middlewares, para o Neon poder dormir (estende a ADR-114)
+
+**Status:** ✅ Aceita — 2026-11-04.
+
+**Contexto:** a conta do Neon da Allos triplicou (US$ 22 → US$ 86/mês), quase tudo compute. O projeto
+`clinico-individual` (Launch) não suspendeu nenhuma vez de 02/10 a 31/10 — a única suspensão foi uma manutenção do
+próprio Neon — e em novembro somava ~85 h ativas em ~3,5 dias: 100% do tempo, ~US$ 19,60/mês, contra ~US$ 1,70 de um
+projeto de uso parecido que dorme. No Launch o Neon suspende após **5 min sem nenhum statement** (tempo fixo);
+conexão aberta e parada não segura o banco, statement segura. A causa: o Render consulta `healthCheckPath: /saude/`
+de poucos em poucos segundos, e embora a view não consulte nada, o `EscopoDoPsicologoMiddleware` envolvia **toda**
+requisição em `transaction.atomic()` + `SET LOCAL ROLE hamilton_web` — inclusive a de saúde e as `@dispensa_escopo`.
+Cada checagem virava BEGIN / SET LOCAL ROLE / COMMIT, e o banco nunca ficava 5 min parado.
+
+**Decisão:** um `core.saude.SaudeMiddleware`, logo **depois** do `SecurityMiddleware` e antes de todos os outros,
+responde `/saude/` com `ok` e devolve na hora. Sessão, autenticação, escopo, assinatura e quiz nem rodam.
+
+**Por que middleware próprio, e não uma exceção dentro do `EscopoDoPsicologoMiddleware`:**
+- O middleware de escopo é a camada de isolamento (ADR-046). Ensinar a ele uma lista de rotas que "não descem de
+  papel" é abrir a porta que a ADR-046 fechou — a versão antiga também começou com uma exceção (o anônimo) e acabou
+  com a superfície pública inteira rodando como dono. Ele continua **sem exceção nenhuma**.
+- Mesmo com a exceção lá dentro, o `AuthenticationMiddleware` + `SessionMiddleware` ainda leriam `django_session`
+  se a checagem viesse com cookie (de um navegador, ou forjado). Respondendo antes deles, zero é zero.
+- **Depois do `SecurityMiddleware`**, não antes: é ele que aplica o `SECURE_REDIRECT_EXEMPT` da rota (a checagem chega
+  em HTTP pela rede interna; um 301 seria lido como serviço caído) e os cabeçalhos de segurança.
+
+**A fronteira:** comparação **exata** com `path_info == "/saude/"`. `/saude`, `/saude/x/`, `/saudex/` seguem o caminho
+normal, com transação e `hamilton_web`. A rota não lê dado nenhum, então não há papel a afrouxar: ela simplesmente
+não abre conexão. A view `core.saude.saude` continua com `@dispensa_escopo` e no `urls.py`, por garantia.
+
+**Teste:** `core/tests/test_saude.py` — `GET /saude/` sob `CaptureQueriesContext` registra **zero** statements
+(inclusive `SET LOCAL ROLE` e `SAVEPOINT`), com e sem cookie de sessão; continua 200 com `SECURE_SSL_REDIRECT`; e as
+rotas vizinhas ainda emitem `SET LOCAL ROLE`.
+
+**Fora do escopo desta ADR (relatado, não alterado):** o cron dos lembretes da ADR-144 (~15 min) também acorda o
+banco; configuração do compute do Neon (tratada à parte).
+
 ## Impeditivos
 
 | # | Impeditivo | Situação |

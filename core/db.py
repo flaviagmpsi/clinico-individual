@@ -57,7 +57,7 @@ def assumir_papel_da_aplicacao() -> None:
 
 
 def assumir_papel_da_web() -> None:
-    """Papel da requisição **anônima**: login, cadastro, healthcheck, webhook.
+    """Papel da requisição **anônima**: login, cadastro, webhook. (O healthcheck nem chega aqui: ADR-145.)
 
     Existe porque devolver a requisição anônima cedo deixava a superfície pública inteira
     rodando como dono do banco — com `BYPASSRLS`, portanto sem a terceira camada (ADR-046).
