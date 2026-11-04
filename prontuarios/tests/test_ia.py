@@ -7,7 +7,7 @@ Nada aqui chama a OpenAI. A anonimização e a montagem do contexto são funçõ
 testadas sem rede; as views são testadas com a chamada trocada por uma que não sai da máquina.
 """
 
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 from django.test import SimpleTestCase, TestCase, override_settings
 from django.urls import reverse
@@ -171,3 +171,32 @@ class SemChave(SimpleTestCase):
         self.assertIn("sem crédito", ia._recado(Exception("Error code: 429 - insufficient_quota")))
         self.assertIn("recusada", ia._recado(Exception("invalid_api_key")))
         self.assertIn("à mão", ia._recado(Exception("qualquer outra coisa")))
+
+
+@override_settings(OPENAI_API_KEY="sk-de-mentira")
+class FallbackDeTemperature(SimpleTestCase):
+    """Modelos mais novos (ex.: gpt-6-luna) só aceitam temperature=1 — o sistema refaz sem ela, não derruba a tela."""
+
+    def _resposta(self, texto):
+        resposta = MagicMock()
+        resposta.choices[0].message.content = texto
+        return resposta
+
+    def test_modelo_que_recusa_temperature_refaz_sem_ela(self):
+        erro = Exception("Error code: 400 - Unsupported value: 'temperature' does not support 0.2")
+        cliente = MagicMock()
+        cliente.chat.completions.create.side_effect = [erro, self._resposta("corpo do registro")]
+        with patch("prontuarios.ia._cliente", return_value=cliente):
+            resultado = ia.sintetizar("relato fictício de sessão")
+        self.assertEqual(resultado, "corpo do registro")
+        self.assertEqual(cliente.chat.completions.create.call_count, 2)
+        # o retry não manda temperature
+        self.assertNotIn("temperature", cliente.chat.completions.create.call_args_list[1].kwargs)
+
+    def test_erro_que_nao_e_de_temperature_nao_refaz(self):
+        cliente = MagicMock()
+        cliente.chat.completions.create.side_effect = Exception("insufficient_quota")
+        with patch("prontuarios.ia._cliente", return_value=cliente):
+            with self.assertRaises(ia.IAIndisponivel):
+                ia.sintetizar("relato fictício de sessão")
+        self.assertEqual(cliente.chat.completions.create.call_count, 1)

@@ -260,15 +260,22 @@ def sintetizar(relato: str, *, contexto: Contexto | None = None) -> str:
               "",
               "Relato do profissional sobre a sessão (transcrito da fala, já sem nomes):",
               relato]
+    chamada = dict(
+        model=getattr(settings, "OPENAI_MODELO", _MODELO_PADRAO),
+        messages=[{"role": "system", "content": PROMPT_DO_SISTEMA},
+                  {"role": "user", "content": "\n".join(p for p in pedido if p is not None)}],
+    )
     try:
-        resposta = _cliente().chat.completions.create(
-            model=getattr(settings, "OPENAI_MODELO", _MODELO_PADRAO),
-            messages=[{"role": "system", "content": PROMPT_DO_SISTEMA},
-                      {"role": "user", "content": "\n".join(p for p in pedido if p is not None)}],
-            temperature=0.2,   # documento técnico não quer criatividade
-        )
+        # temperature baixa: documento técnico não quer criatividade. Mas os modelos mais novos (ex.: gpt-6-luna)
+        # só aceitam o padrão (1) — então, se o modelo recusar a temperature, refazemos sem ela em vez de falhar.
+        resposta = _cliente().chat.completions.create(**chamada, temperature=0.2)
     except Exception as erro:
-        raise IAIndisponivel(_recado(erro)) from erro
+        if "temperature" not in str(erro).lower():
+            raise IAIndisponivel(_recado(erro)) from erro
+        try:
+            resposta = _cliente().chat.completions.create(**chamada)
+        except Exception as erro:
+            raise IAIndisponivel(_recado(erro)) from erro
     return (resposta.choices[0].message.content or "").strip()
 
 
