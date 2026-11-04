@@ -474,8 +474,8 @@ cobrança de sessão futura. O gatilho é a consulta ficar `REALIZADA`, nunca o 
 
 ### Lembretes por WhatsApp
 **Status:** ✅ **Especificada (ADR-144, 2026-11-02)** — o produto está decidido (User Story abaixo). A infraestrutura
-na Meta está montada (2026-10-28, ADR-141). Falta a parte **operacional** antes de ir ao ar: **cartão** na conta Meta
-(sem ele nada sai — erro `131042`), a **rota de webhook** no ar e o **cron externo**. O código pode começar em **modo
+na Meta está montada (2026-10-28, ADR-141). Falta a parte **operacional** antes de ir ao ar: ~~**cartão** na conta Meta~~
+(✅ liberado em 2026-11-04 — credenciais corretas colocadas pela Flávia), a **rota de webhook** no ar e o **cron externo**. O código pode começar em **modo
 simulado** (registra "enviaria", não chama a Meta).
 
 **Infraestrutura montada na Meta (2026-10-28):**
@@ -501,8 +501,8 @@ número.
 "Anular tokens" no `Sofia_bot` — derruba o token da Sofia.
 
 **Guia completo (modelos criados, próximos modelos para a Flávia criar, webhook e dicas para programar com IA):
-[WHATSAPP.md](WHATSAPP.md).** Cartão: **adiado por decisão do Paulo (2026-10-28)** — até entrar, modelo fora da
-janela de 24h não sai (erro `131042`).
+[WHATSAPP.md](WHATSAPP.md).** Cartão: ~~adiado por decisão do Paulo (2026-10-28)~~ → **liberado por decisão do Paulo (2026-11-04)**; a Flávia
+já colocou as credenciais corretas. Modelo fora da janela de 24h passa a sair (antes: erro `131042`).
 
 **PIN de duas etapas: não usar** (decisão do Paulo, 2026-10-28 — "vamos esquecer"). Risco aceito: quem tiver o chip,
 ou uma 2ª via dele na Claro, recebe o SMS e registra o número em outro lugar. Mitigação: chip guardado e recarregado.

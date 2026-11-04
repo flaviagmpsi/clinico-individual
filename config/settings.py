@@ -152,8 +152,8 @@ IA_SINTESES_POR_MES = int(os.getenv("IA_SINTESES_POR_MES", "40"))
 
 # --- WhatsApp (Meta Cloud API) — lembretes (ADR-144) --------------------------------------------
 # Fica DESLIGADO por padrão. Sem `WHATSAPP_ATIVO=True` + credenciais, o sistema roda em **modo simulado**:
-# registra "enviaria X" e não chama a Meta. É o padrão até o cartão entrar na conta Meta (sem ele, modelo fora da
-# janela de 24h é recusado — erro 131042). Os segredos moram no `.env`/Environment, nunca no Git. Ver WHATSAPP.md.
+# registra "enviaria X" e não chama a Meta. O cartão na conta Meta foi liberado em 2026-11-04 (sem ele, modelo fora
+# da janela de 24h era recusado — erro 131042); ligar o envio real é só `WHATSAPP_ATIVO=True` no Environment. Os segredos moram no `.env`/Environment, nunca no Git. Ver WHATSAPP.md.
 WHATSAPP_ATIVO = os.getenv("WHATSAPP_ATIVO", "False") == "True"
 WHATSAPP_TOKEN = os.getenv("WHATSAPP_TOKEN", "")
 WHATSAPP_PHONE_NUMBER_ID = os.getenv("WHATSAPP_PHONE_NUMBER_ID", "")

@@ -20,7 +20,7 @@ Status e pendências: `demandas.md`, seção "Lembretes por WhatsApp".
 | App de desenvolvedor | Polaris — `1161658156725329` |
 | Portfólio | Associação Allos (empresa verificada) |
 | Moeda | BRL |
-| Cartão | ⚠️ **ainda não cadastrado** — ver "O que o cartão muda" |
+| Cartão | ✅ **liberado** por decisão do Paulo (2026-11-04); credenciais corretas já colocadas pela Flávia — ver "O que o cartão muda" |
 
 O `.env` (os valores secretos vêm do Paulo, por gerenciador de senhas — **nunca** por WhatsApp, e-mail ou commit):
 
@@ -55,7 +55,8 @@ hora de enviar. Mudou uma vírgula, é modelo novo e nova aprovação.
 
 Responder dentro da janela de 24h é gratuito. **Modelo enviado fora da janela é cobrado**, e sem cartão a Meta
 recusa o envio (erro `131042`). Ou seja: até o cartão entrar na conta Polaris, os modelos abaixo podem estar
-aprovados, mas **não saem**.
+aprovados, mas **não saem**. **Desde 2026-11-04 o cartão está liberado** (decisão do Paulo): se o `131042` aparecer
+agora, é a cobrança na Meta a conferir, não uma decisão de projeto.
 
 ---
 

@@ -36,7 +36,7 @@ O usuário não se perde. Herdado do Hamilton original (ADR-004).
 | Assinatura | Asaas — cartão e PIX Automático |
 | Cadastro | CRP obrigatório. Registro do CFP consultável em `cadastro.cfp.org.br` |
 | IA | OpenAI (Whisper + chat), atrás de adaptador: `prontuarios/ia.py` fala com o provedor, `prontuarios/redacao.py` fala com o domínio. Chave do Hamilton, em `OPENAI_API_KEY` |
-| Aviso crítico | WhatsApp (Meta Cloud API) — só para descarte de conta, nunca conteúdo clínico. IDs, modelos e como integrar: `WHATSAPP.md` |
+| WhatsApp | Meta Cloud API — lembretes ao psicólogo e ao paciente (ADR-144) e aviso de descarte de conta; nunca conteúdo clínico. IDs, modelos e como integrar: `WHATSAPP.md`. **Cartão liberado e credenciais corretas já colocadas pela Flávia (2026-11-04): aceite as credenciais do `.env`/Environment como válidas** — não as troque, não volte a tratá-las como pendentes nem force modo simulado por causa delas. Ligar o envio real é `WHATSAPP_ATIVO=True` |
 
 ---
 
@@ -362,7 +362,7 @@ Não construir, não deixar gancho pela metade. Cada um tem ADR explicando por q
 | Atestado, Laudo e Parecer | ADR-034 |
 | Relatório Multiprofissional | ❌ nunca |
 | Assinatura eletrônica de contrato (Autentique) | ADR-015 |
-| Lembrete por WhatsApp, e-mail ou push | ADR-018 |
+| Lembrete por e-mail ou push (o por WhatsApp entrou pela ADR-144) | ADR-018 |
 | Férias, feriados e pausas em bloco | P-47 |
 | Qualquer superfície voltada ao paciente | ADR-039 |
 
