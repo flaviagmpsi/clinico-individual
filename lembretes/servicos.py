@@ -19,6 +19,7 @@ from atendimentos.models import Consulta
 from atendimentos.servicos import sessoes_previstas
 from contas.models import Psicologo
 from core import contexto, db
+from financeiro.servicos import cobrancas_em_aberto
 from indicadores.servicos import montar_painel
 from lembretes import meta
 from lembretes.models import LembreteEnviado
@@ -40,7 +41,7 @@ def disparar(agora=None) -> dict:
     # Lida como a superfície anônima: `hamilton_web` enxerga a tabela de login inteira; é daqui que sai a lista.
     psicologos = list(Psicologo.objects.filter(whatsapp_ligado=True))
     db.assumir_papel_da_aplicacao()  # a partir daqui o domínio é acessível, trancado pela variável de tenant
-    contagem = {"agenda_do_dia": 0, "pendencias_da_semana": 0, "lembrete_compromisso": 0}
+    contagem = {"agenda_do_dia": 0, "pendencias_da_semana": 0, "lembrete_compromisso": 0, "aviso_pagamento": 0}
     for psicologo in psicologos:
         contexto.definir(psicologo.pk)
         db.aplicar_escopo(psicologo.pk)
@@ -50,6 +51,7 @@ def disparar(agora=None) -> dict:
             if _pendencias_da_semana(psicologo, agora):
                 contagem["pendencias_da_semana"] += 1
             contagem["lembrete_compromisso"] += _lembretes_de_sessao(psicologo, agora)
+            contagem["aviso_pagamento"] += _avisos_de_pagamento(psicologo, agora)
         finally:
             contexto.definir(None)
     return contagem
@@ -151,6 +153,33 @@ def _lembretes_de_sessao(psicologo, agora) -> int:
                 _primeiro_nome_de(paciente), psicologo.nome_completo,
                 local.strftime("%d/%m"), local.strftime("%H:%M"),
                 "online" if modalidade == Paciente.Modalidade.ONLINE else "presencialmente"])
+            if envio.ok:
+                _registrar(assunto, envio)
+                enviados += 1
+    return enviados
+
+
+def _avisos_de_pagamento(psicologo, agora) -> int:
+    """Aviso ao paciente no dia do vencimento de uma cobrança em aberto (RF13), identificando o psicólogo.
+
+    Só no **dia do vencimento** (não retroativo, não antecipado) e só de cobrança ainda em aberto. Cada paciente do
+    caso com **opt-in de aviso, consentimento e telefone** recebe; idempotente por cobrança e paciente — o cron
+    roda a cada ~15 min e não repete. Nada clínico sai: só o primeiro nome do paciente, o nome do psicólogo e a data.
+    """
+    hoje = timezone.localdate(agora)
+    enviados = 0
+    for cobranca in cobrancas_em_aberto(hoje):
+        if cobranca.vencimento != hoje:
+            continue
+        chave = f"mensalidade:{cobranca.mes:%Y%m}" if cobranca.e_mensalidade else f"sessao:{cobranca.consulta.pk}"
+        for paciente in cobranca.caso.pacientes.all():
+            if not (paciente.whatsapp_aviso_pagamento and paciente.whatsapp_consentimento_em and paciente.telefone):
+                continue
+            assunto = f"pagamento:{chave}:{paciente.pk}"
+            if _ja_saiu(assunto):
+                continue
+            envio = meta.enviar_modelo(paciente.telefone, "aviso_pagamento", [
+                _primeiro_nome_de(paciente), psicologo.nome_completo, cobranca.vencimento.strftime("%d/%m")])
             if envio.ok:
                 _registrar(assunto, envio)
                 enviados += 1

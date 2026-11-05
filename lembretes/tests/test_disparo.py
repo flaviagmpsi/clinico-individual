@@ -6,6 +6,7 @@ desce para `hamilton_app` por psicólogo. Se a ponte de papel/RLS estiver errada
 """
 
 from datetime import datetime, time, timedelta
+from decimal import Decimal
 
 from django.test import TransactionTestCase, override_settings
 from django.urls import reverse
@@ -15,7 +16,7 @@ from atendimentos.servicos import cadastrar_avulsa
 from contas.models import Psicologo
 from core import contexto
 from lembretes.models import LembreteEnviado
-from pacientes.models import Paciente
+from pacientes.models import CondicaoCobranca, Paciente
 from pacientes.servicos import cadastrar_paciente
 
 SENHA = "senha-de-teste-123"
@@ -94,3 +95,23 @@ class RotaDoCron(TransactionTestCase):
 
         resposta = self.client.post(self.rota, HTTP_X_CRON_SEGREDO="segredo-do-cron")
         self.assertEqual(resposta.json()["lembrete_compromisso"], 0)
+
+    def test_aviso_de_pagamento_no_vencimento_sai_uma_vez(self):
+        self.ana.whatsapp_agenda_manha = False  # isola do resumo da manhã
+        hoje = timezone.localdate()
+        with contexto.como(self.ana.pk):
+            self.ana.save()
+            # Mensalidade que vence hoje (dia fixo = hoje), em aberto porque nada foi pago.
+            caso = cadastrar_paciente(
+                Paciente(nome="Carla Dias", telefone="31999990002"),
+                valor=Decimal("300"), modalidade=CondicaoCobranca.Modalidade.MENSAL,
+                dia_vencimento=hoje.day, vigente_desde=hoje.replace(day=1))
+            paciente = caso.pacientes.first()
+            paciente.whatsapp_aviso_pagamento = True
+            paciente.whatsapp_consentimento_em = hoje
+            paciente.save()
+
+        primeiro = self.client.post(self.rota, HTTP_X_CRON_SEGREDO="segredo-do-cron")
+        self.assertEqual(primeiro.json()["aviso_pagamento"], 1)
+        segundo = self.client.post(self.rota, HTTP_X_CRON_SEGREDO="segredo-do-cron")
+        self.assertEqual(segundo.json()["aviso_pagamento"], 0)
