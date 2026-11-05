@@ -5,7 +5,7 @@ o mesmo motivo dos testes de tela. Aqui isso é essencial: a rota é anônima (c
 desce para `hamilton_app` por psicólogo. Se a ponte de papel/RLS estiver errada, o disparo falha aqui.
 """
 
-from datetime import datetime, time
+from datetime import datetime, time, timedelta
 
 from django.test import TransactionTestCase, override_settings
 from django.urls import reverse
@@ -61,3 +61,36 @@ class RotaDoCron(TransactionTestCase):
         with contexto.como(self.ana.pk):
             self.assertEqual(
                 LembreteEnviado.objects.filter(assunto__startswith="agenda_do_dia").count(), 1)
+
+    def test_lembrete_de_sessao_ao_paciente_sai_uma_vez(self):
+        self.ana.whatsapp_agenda_manha = False  # isola do resumo da manhã
+        inicio = timezone.localtime() + timedelta(hours=1, minutes=30)
+        with contexto.como(self.ana.pk):
+            self.ana.save()
+            caso = cadastrar_paciente(Paciente(nome="João Silva", telefone="31999990000"))
+            paciente = caso.pacientes.first()
+            paciente.whatsapp_lembrete_sessao = True
+            paciente.whatsapp_consentimento_em = timezone.localdate()
+            paciente.whatsapp_antecedencia_horas = 2  # 1h30 até a sessão cai dentro da janela
+            paciente.save()
+            cadastrar_avulsa(caso, estado="AGENDADA", inicio=inicio, cobrada=False)
+
+        primeiro = self.client.post(self.rota, HTTP_X_CRON_SEGREDO="segredo-do-cron")
+        self.assertEqual(primeiro.json()["lembrete_compromisso"], 1)
+        segundo = self.client.post(self.rota, HTTP_X_CRON_SEGREDO="segredo-do-cron")
+        self.assertEqual(segundo.json()["lembrete_compromisso"], 0)
+
+    def test_sem_consentimento_nao_manda_lembrete_de_sessao(self):
+        self.ana.whatsapp_agenda_manha = False
+        inicio = timezone.localtime() + timedelta(hours=1, minutes=30)
+        with contexto.como(self.ana.pk):
+            self.ana.save()
+            caso = cadastrar_paciente(Paciente(nome="Maria Souza", telefone="31999990001"))
+            paciente = caso.pacientes.first()
+            paciente.whatsapp_lembrete_sessao = True   # ligado, mas SEM consentimento
+            paciente.whatsapp_antecedencia_horas = 2
+            paciente.save()
+            cadastrar_avulsa(caso, estado="AGENDADA", inicio=inicio, cobrada=False)
+
+        resposta = self.client.post(self.rota, HTTP_X_CRON_SEGREDO="segredo-do-cron")
+        self.assertEqual(resposta.json()["lembrete_compromisso"], 0)

@@ -11,16 +11,25 @@ adaptador não toca a Meta — ainda assim registramos, para o cron não ficar "
 """
 
 import logging
+from datetime import datetime, time, timedelta
 
 from django.utils import timezone
 
+from atendimentos.models import Consulta
+from atendimentos.servicos import sessoes_previstas
 from contas.models import Psicologo
 from core import contexto, db
 from indicadores.servicos import montar_painel
 from lembretes import meta
 from lembretes.models import LembreteEnviado
+from pacientes.models import Paciente
 
 logger = logging.getLogger("lembretes")
+
+# Quanto tempo depois do "momento do lembrete" o sistema ainda dispara, se o cron não tiver pego na hora exata. Cobre
+# atrasos/hiccups do cron (que roda a cada ~15 min) sem reenviar (a idempotência garante uma vez só) e, de quebra,
+# honra o "não envia retroativo" (ADR-144, RF09): sessão cuja hora de lembrete passou faz tempo não recebe nada.
+_MARGEM_LEMBRETE = timedelta(hours=1)
 
 
 def disparar(agora=None) -> dict:
@@ -31,7 +40,7 @@ def disparar(agora=None) -> dict:
     # Lida como a superfície anônima: `hamilton_web` enxerga a tabela de login inteira; é daqui que sai a lista.
     psicologos = list(Psicologo.objects.filter(whatsapp_ligado=True))
     db.assumir_papel_da_aplicacao()  # a partir daqui o domínio é acessível, trancado pela variável de tenant
-    contagem = {"agenda_do_dia": 0, "pendencias_da_semana": 0}
+    contagem = {"agenda_do_dia": 0, "pendencias_da_semana": 0, "lembrete_compromisso": 0}
     for psicologo in psicologos:
         contexto.definir(psicologo.pk)
         db.aplicar_escopo(psicologo.pk)
@@ -40,6 +49,7 @@ def disparar(agora=None) -> dict:
                 contagem["agenda_do_dia"] += 1
             if _pendencias_da_semana(psicologo, agora):
                 contagem["pendencias_da_semana"] += 1
+            contagem["lembrete_compromisso"] += _lembretes_de_sessao(psicologo, agora)
         finally:
             contexto.definir(None)
     return contagem
@@ -101,3 +111,47 @@ def _pendencias_da_semana(psicologo, agora) -> bool:
         return True
     logger.warning("pendencias_da_semana não saiu para o psicólogo %s: %s", psicologo.pk, envio.erro)
     return False
+
+
+def _primeiro_nome_de(paciente) -> str:
+    return (paciente.nome_social or paciente.nome).split()[0]
+
+
+def _meia_noite(dia):
+    return timezone.make_aware(datetime.combine(dia, time.min))
+
+
+def _lembretes_de_sessao(psicologo, agora) -> int:
+    """Lembrete de confirmação ao paciente, X horas antes de cada sessão (RF07). Um por sessão (idempotente).
+
+    As sessões vêm da frequência (`sessoes_previstas`) e das avulsas marcadas como futuras (estado AGENDADA). Cada
+    participante do caso com **opt-in, consentimento e telefone** recebe (RF10). Dispara quando `agora` cai na janela
+    do lembrete `[inicio - antecedência, + margem)` — o que também honra o "não retroativo" (RF09).
+    """
+    hoje = timezone.localdate(agora)
+    fim = hoje + timedelta(days=8)  # cobre a maior antecedência (168h = 7 dias)
+    ocorrencias = [(s.inicio, s.caso, s.modalidade) for s in sessoes_previstas(hoje, fim)]
+    futuras = (Consulta.objects.filter(estado=Consulta.Estado.AGENDADA, inicio__gt=agora, inicio__lt=_meia_noite(fim))
+               .select_related("caso").prefetch_related("caso__pacientes"))
+    ocorrencias += [(c.inicio, c.caso, c.modalidade) for c in futuras]
+
+    enviados = 0
+    for inicio, caso, modalidade in ocorrencias:
+        for paciente in caso.pacientes.all():
+            if not (paciente.whatsapp_lembrete_sessao and paciente.whatsapp_consentimento_em and paciente.telefone):
+                continue
+            momento = inicio - timedelta(hours=paciente.whatsapp_antecedencia_horas)
+            if not (momento <= agora < momento + _MARGEM_LEMBRETE and agora < inicio):
+                continue
+            assunto = f"sessao:{paciente.pk}:{timezone.localtime(inicio).strftime('%Y%m%d%H%M')}"
+            if _ja_saiu(assunto):
+                continue
+            local = timezone.localtime(inicio)
+            envio = meta.enviar_modelo(paciente.telefone, "lembrete_compromisso", [
+                _primeiro_nome_de(paciente), psicologo.nome_completo,
+                local.strftime("%d/%m"), local.strftime("%H:%M"),
+                "online" if modalidade == Paciente.Modalidade.ONLINE else "presencialmente"])
+            if envio.ok:
+                _registrar(assunto, envio)
+                enviados += 1
+    return enviados
