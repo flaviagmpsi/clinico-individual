@@ -10,6 +10,8 @@ urlpatterns = [
     path("prontuario/", views.EscolherProntuario.as_view(), name="escolher_prontuario"),
     path("prontuario/<int:pk>/", views.ProntuarioGeral.as_view(), name="prontuario"),
     path("prontuario/<int:pk>/baixar/<str:formato>/", views.BaixarProntuario.as_view(), name="baixar_prontuario"),
+    # Todos os prontuários de uma vez, num ZIP (um arquivo por paciente). Vem antes das rotas <int:pk> abaixo.
+    path("prontuarios/baixar/<str:formato>/", views.BaixarTodosProntuarios.as_view(), name="baixar_todos"),
     path("<int:pk>/", views.EditarDocumento.as_view(), name="editar"),
     path("<int:pk>/imprimir/", views.Imprimir.as_view(), name="imprimir"),
     path("<int:pk>/baixar/<str:formato>/", views.Baixar.as_view(), name="baixar"),

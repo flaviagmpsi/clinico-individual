@@ -84,6 +84,19 @@ dos dois se está fazendo.
       </div>
     </form>
 
+    {% if pacientes %}
+      <div class="card mb-3"><div class="card-body py-2 small d-flex align-items-center flex-wrap gap-2">
+        <span class="fw-semibold"><i class="bi bi-archive"></i> Baixar todos os prontuários</span>
+        <span class="text-muted">Um arquivo por paciente (com os documentos emitidos), num ZIP. Só o que está confirmado.</span>
+        <div class="btn-group btn-group-sm ms-auto" role="group" aria-label="Baixar todos">
+          <a href="{% url 'documentos:baixar_todos' 'pdf' %}" class="btn btn-outline-secondary" title="Baixa um ZIP com tudo em PDF">
+            <i class="bi bi-file-earmark-pdf"></i> PDF</a>
+          <a href="{% url 'documentos:baixar_todos' 'docx' %}" class="btn btn-outline-secondary" title="Baixa um ZIP com tudo em DOCX (Word)">
+            <i class="bi bi-file-earmark-word"></i> DOCX</a>
+        </div>
+      </div></div>
+    {% endif %}
+
     {% if not paciente %}
       <div class="card"><div class="card-body text-muted small text-center py-5">
         {% if pacientes %}Escolha um paciente acima para abrir o prontuário dele.

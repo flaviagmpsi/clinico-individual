@@ -313,6 +313,22 @@ class BaixarProntuario(LoginRequiredMixin, View):
         return resposta
 
 
+class BaixarTodosProntuarios(LoginRequiredMixin, View):
+    """O acervo inteiro num ZIP: o prontuário de cada paciente com registro confirmado, mais os documentos emitidos.
+
+    Um arquivo por paciente, numa pasta por paciente — cada prontuário íntegro, como no download individual (ADR-080).
+    Exportar entra na trilha de auditoria por documento (ADR-057), dentro do serviço que monta o pacote.
+    """
+
+    def get(self, request, *args, **kwargs):
+        if self.kwargs["formato"] not in exportacao.GERADORES:
+            raise Http404("Formato desconhecido.")
+        nome, conteudo = servicos.montar_pacote(request.user, self.kwargs["formato"])
+        resposta = HttpResponse(conteudo, content_type=servicos.TIPO_ZIP)
+        resposta["Content-Disposition"] = f'attachment; filename="{nome}.zip"'
+        return resposta
+
+
 class GuardarArquivo(LoginRequiredMixin, FormView):
     """Sobe um arquivo feito fora do sistema e o prende ao paciente (ADR-112).
 

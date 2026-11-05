@@ -162,6 +162,17 @@ def ficha_de(paciente: Paciente) -> FichaDoProntuario | None:
     return FichaDoProntuario.objects.filter(paciente=paciente).first()
 
 
+def pacientes_com_prontuario() -> list[Paciente]:
+    """Os pacientes com ao menos um registro de sessão **confirmado**, em ordem de nome (ADR-080).
+
+    É o acervo que a cópia em lote exporta: quem não tem nada confirmado não tem prontuário a entregar. Inclui os
+    encerrados/arquivados — a guarda de 5 anos do CFP vale para todos. Uma consulta só, não um por paciente.
+    """
+    ids = (Prontuario.objects.filter(versoes__confirmada_em__isnull=False)
+           .values_list("paciente_id", flat=True).distinct())
+    return list(Paciente.objects.filter(pk__in=ids).prefetch_related("responsaveis").order_by("nome"))
+
+
 def _casos(paciente: Paciente) -> list:
     casos = list(Caso.objects.filter(participacoes__paciente=paciente).prefetch_related("participacoes"))
     return sorted(casos, key=lambda caso: (not caso.individual, caso.pk))  # o individual primeiro

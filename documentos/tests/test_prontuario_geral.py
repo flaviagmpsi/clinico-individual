@@ -4,6 +4,8 @@ O prontuário geral é documento — o que se entrega ao paciente ou a quem soli
 registros de sessão moram na aba Prontuários, e a evolução é montada com eles: nesta tela ela não se edita.
 """
 
+import io
+import zipfile
 from datetime import datetime
 
 from django.test import TransactionTestCase
@@ -15,6 +17,7 @@ from atendimentos.models import Consulta
 from contas.models import Psicologo
 from core import contexto
 from core.models import RegistroAuditoria
+from documentos.models import Documento
 from pacientes.models import Paciente
 from pacientes.servicos import cadastrar_paciente
 from prontuarios import servicos as prontuarios
@@ -172,3 +175,52 @@ class EmArquivo(BaseProntuarioGeral):
     def test_formato_desconhecido_da_404(self):
         self.entrar(self.ana)
         self.assertEqual(self.client.get(self.baixar("exe")).status_code, 404)
+
+
+class BaixarTodos(BaseProntuarioGeral):
+    """O acervo inteiro num ZIP: um arquivo por paciente com registro confirmado, mais os documentos emitidos."""
+
+    def rota(self, formato="pdf"):
+        return reverse("documentos:baixar_todos", args=[formato])
+
+    def nomes_no_zip(self, resposta):
+        with zipfile.ZipFile(io.BytesIO(resposta.content)) as pacote:
+            return pacote.namelist()
+
+    def test_um_prontuario_por_paciente_com_registro_confirmado(self):
+        self.entrar(self.ana)
+        with contexto.como(self.ana.pk):
+            cadastrar_paciente(Paciente(nome="Sem Registro"))  # nada confirmado: fica de fora
+        resposta = self.client.get(self.rota("pdf"))
+        self.assertEqual(resposta["Content-Type"], "application/zip")
+        self.assertIn('filename="prontuarios-ana', resposta["Content-Disposition"])
+        self.assertTrue(resposta.content.startswith(b"PK"))
+        nomes = self.nomes_no_zip(resposta)
+        self.assertIn("marcos-geral/prontuario.pdf", nomes)
+        self.assertFalse(any(nome.startswith("sem-registro/") for nome in nomes))
+        self.assertFalse(any("carla" in nome for nome in nomes))  # carla é do bruno: isolamento (ADR-001)
+
+    def test_inclui_documento_emitido_e_ignora_rascunho(self):
+        with contexto.como(self.ana.pk):
+            Documento.objects.create(
+                modelo="declaracao", paciente=self.marcos, emitido_em=timezone.now(),
+                dados={"atendido": "Marcos Geral", "finalidade": "Teste.", "informacao": "Declaro atendimento."})
+            Documento.objects.create(
+                modelo="declaracao", paciente=self.marcos, dados={"atendido": "Marcos Geral"})  # rascunho
+        self.entrar(self.ana)
+        nomes = self.nomes_no_zip(self.client.get(self.rota("pdf")))
+        avulsos = [n for n in nomes if n.startswith("marcos-geral/") and "prontuario" not in n]
+        self.assertEqual(len(avulsos), 1)  # só o emitido; o rascunho não entra (ADR-005)
+
+    def test_exportar_em_lote_entra_na_trilha(self):
+        self.entrar(self.ana)
+        self.client.get(self.rota("pdf"))
+        self.assertTrue(RegistroAuditoria.objetos_todos.filter(
+            acao="EXPORTAR", titular="pacientes.paciente", titular_id=self.marcos.pk).exists())
+
+    def test_formato_desconhecido_da_404(self):
+        self.entrar(self.ana)
+        self.assertEqual(self.client.get(self.rota("exe")).status_code, 404)
+
+    def test_nao_abre_sem_login(self):
+        self.assertEqual(self.client.get(self.rota("pdf")).status_code, 302)

@@ -5,15 +5,20 @@ o sistema sugere é identificação do paciente escolhido e o bloco de assinatur
 de quem o assina (Manual do CFP, 2025: a responsabilidade pelo documento é integralmente da profissional).
 """
 
+import io
+import zipfile
 from datetime import date, datetime
 
 from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.utils import timezone
+from django.utils.text import slugify
 
+from core import auditoria, exportacao
 from documentos import modelos
 from documentos.models import Documento
 from pacientes.models import Paciente
+from prontuarios import servicos as prontuarios
 
 
 def _cpf(cpf: str) -> str:
@@ -121,3 +126,45 @@ def duplicar(documento: Documento, hoje: date | None = None) -> Documento:
 def documentos(*, paciente: Paciente | None = None):
     lista = Documento.objects.select_related("paciente")
     return lista.filter(paciente=paciente) if paciente is not None else lista
+
+
+TIPO_ZIP = "application/zip"
+
+
+def _nome_unico(usados: set, base: str) -> str:
+    """Um nome de arquivo que não colide com os já usados nesta pasta do ZIP (dois documentos do mesmo tipo)."""
+    nome, conta = base, 2
+    while nome in usados:
+        nome, conta = f"{base}-{conta}", conta + 1
+    usados.add(nome)
+    return nome
+
+
+def montar_pacote(psicologo, formato: str) -> tuple[str, bytes]:
+    """Um ZIP com o prontuário de cada paciente que tem registro confirmado, mais os documentos que ele emitiu.
+
+    Cada arquivo é o mesmo que o download individual produziria (ADR-078): o prontuário sai **íntegro**, com sua
+    própria identificação, numeração de lauda e assinatura — importa por ser peça de defesa legal (ADR-005), e é por
+    isso que são arquivos separados num ZIP, não um documento só. Uma pasta por paciente. Rascunho não entra: o
+    pacote é do que já é registro. Exportar entra na trilha de auditoria (ADR-057), uma vez por documento que sai.
+    """
+    gerar, _ = exportacao.GERADORES[formato]
+    timbre = exportacao.timbre_de(psicologo)
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as zip_:
+        for paciente in prontuarios.pacientes_com_prontuario():
+            pasta = slugify(paciente.nome) or f"paciente-{paciente.pk}"
+            usados: set = set()
+            folha = {**prontuarios.folha_para_arquivo(paciente, psicologo), "timbre": timbre}
+            auditoria.registrar(auditoria.Acao.EXPORTAR, prontuarios.ficha_de(paciente) or paciente)
+            zip_.writestr(f"{pasta}/prontuario.{formato}", gerar(folha))
+            usados.add("prontuario")
+            for documento in documentos(paciente=paciente):
+                if documento.rascunho:
+                    continue  # o pacote é do que foi emitido; rascunho não é documento (ADR-005)
+                folha_doc = {**modelos.compor(documento.definicao, documento.dados), "timbre": timbre}
+                auditoria.registrar(auditoria.Acao.EXPORTAR, documento)
+                base = slugify(f"{documento.nome} {documento.atendido}") or f"documento-{documento.pk}"
+                nome = _nome_unico(usados, base)
+                zip_.writestr(f"{pasta}/{nome}.{formato}", gerar(folha_doc))
+    return (slugify(f"prontuarios {psicologo.nome_completo}") or "prontuarios"), buffer.getvalue()
