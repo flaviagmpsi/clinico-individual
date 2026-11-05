@@ -1,12 +1,17 @@
-"""A rota que o cron externo chama para disparar os lembretes (ADR-144).
+"""As rotas anônimas do WhatsApp (ADR-144): o cron que dispara os lembretes e o webhook que recebe o Sim/Não.
 
-Anônima e protegida por um **segredo compartilhado** (`WHATSAPP_CRON_SEGREDO`), não por login — quem chama é um
-cron, não uma pessoa. `dispensa_escopo` a faz correr sob `hamilton_web`; o motor (`servicos.disparar`) faz a ponte
-para o domínio, por psicólogo. Sem o segredo configurado, a rota **recusa tudo** — desligada por padrão.
+Ambas correm sob `hamilton_web` (`dispensa_escopo`), não por login — quem chama é um cron ou a Meta, não uma
+pessoa. O motor (`servicos`) faz a ponte para o domínio, por psicólogo. Cada uma tem sua prova de que o chamador é
+quem diz ser: o cron, um **segredo compartilhado**; o webhook, a **assinatura HMAC** da Meta. Sem isso configurado,
+a rota recusa — desligada por padrão.
 """
 
+import hashlib
+import hmac
+import json
+
 from django.conf import settings
-from django.http import HttpResponseForbidden, JsonResponse
+from django.http import HttpResponse, HttpResponseForbidden, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 
@@ -24,3 +29,46 @@ def disparar(request):
         return HttpResponseForbidden("segredo inválido")
     contagem = servicos.disparar()
     return JsonResponse({"ok": True, **contagem})
+
+
+@dispensa_escopo
+@csrf_exempt
+def webhook(request):
+    """O webhook da Meta (RF16): GET verifica a inscrição; POST traz o Sim/Não do paciente.
+
+    Responde **200 rápido** a todo POST com assinatura válida — a Meta reenvia o que não receber 200, e o motor é
+    idempotente, então um reenvio não duplica resposta. Assinatura inválida é recusada (nunca processa).
+    """
+    if request.method == "GET":
+        return _verificar(request)
+    if not _assinatura_valida(request):
+        return HttpResponseForbidden("assinatura inválida")
+    try:
+        payload = json.loads(request.body or b"{}")
+    except ValueError:
+        return HttpResponse("ok")  # corpo ilegível não é motivo para a Meta ficar reenviando
+    servicos.processar_webhook(payload)
+    return HttpResponse("ok")
+
+
+def _verificar(request):
+    """A verificação única da Meta ao cadastrar o webhook: devolve o `hub.challenge` se o token bater."""
+    esperado = settings.WHATSAPP_WEBHOOK_VERIFY_TOKEN
+    if (request.GET.get("hub.mode") == "subscribe" and esperado
+            and request.GET.get("hub.verify_token") == esperado):
+        return HttpResponse(request.GET.get("hub.challenge", ""))
+    return HttpResponseForbidden("verificação falhou")
+
+
+def _assinatura_valida(request) -> bool:
+    """Confere o `X-Hub-Signature-256`: HMAC-SHA256 do corpo cru com o segredo do app (RF16).
+
+    Sem o segredo configurado, não há como validar — e então nada é aceito. É o que mantém o webhook fechado por
+    padrão: só processa o que a Meta assinou.
+    """
+    segredo = settings.WHATSAPP_APP_SECRET
+    assinatura = request.headers.get("X-Hub-Signature-256", "")
+    if not segredo or not assinatura.startswith("sha256="):
+        return False
+    esperada = "sha256=" + hmac.new(segredo.encode(), request.body, hashlib.sha256).hexdigest()
+    return hmac.compare_digest(esperada, assinatura)

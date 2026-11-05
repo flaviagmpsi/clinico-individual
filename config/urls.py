@@ -6,6 +6,7 @@ from contas.views import Sair
 from core.saude import saude
 from indicadores.views import Painel, Vitrine
 from lembretes.views import disparar as disparar_lembretes
+from lembretes.views import webhook as webhook_whatsapp
 from pacientes.views_convite import CadastroPeloPaciente
 
 urlpatterns = [
@@ -16,6 +17,8 @@ urlpatterns = [
     path("saude/", saude, name="saude"),
     # ADR-144: o cron externo bate aqui (protegida por segredo) para disparar os lembretes por WhatsApp.
     path("lembretes/disparar/", disparar_lembretes, name="lembretes_disparar"),
+    # ADR-144: a Meta bate aqui (GET verifica a inscrição, POST traz o Sim/Não do paciente). Assinada por HMAC.
+    path("whatsapp/webhook/", webhook_whatsapp, name="whatsapp_webhook"),
     path("pacientes/", include("pacientes.urls")),
     # Pública e sem login: o link que o psicólogo manda ao paciente (ADR-081). Fora de `pacientes/` de
     # propósito — o endereço que o paciente vê não diz nada sobre a estrutura do sistema.

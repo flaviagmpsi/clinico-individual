@@ -49,6 +49,44 @@ def normalizar_numero(telefone: str) -> str:
     return "+" + digitos
 
 
+def _nucleo(telefone: str) -> str:
+    """O número reduzido ao que importa para **comparar**: sem o `+55` e sem o 9º dígito do celular.
+
+    O `wa_id` que a Meta devolve no webhook às vezes vem sem o 9 que o Brasil pôs nos celulares (WHATSAPP.md), e o
+    cadastro pode ter guardado com ou sem ele. Comparar os números crus erraria o paciente; comparar o núcleo
+    (DDD + os 8 dígitos finais) casa os dois jeitos de escrever o mesmo telefone.
+    """
+    digitos = re.sub(r"\D", "", telefone or "")
+    if digitos.startswith("55"):
+        digitos = digitos[2:]
+    ddd, resto = digitos[:2], digitos[2:]
+    if len(resto) == 9 and resto.startswith("9"):
+        resto = resto[1:]
+    return ddd + resto
+
+
+def mesmo_numero(a: str, b: str) -> bool:
+    """Os dois telefones são o mesmo, tolerando o 9º dígito que vai e vem no celular brasileiro (RF16)."""
+    nucleo = _nucleo(a)
+    return bool(nucleo) and nucleo == _nucleo(b)
+
+
+def enviar_texto(telefone: str, texto: str) -> Envio:
+    """Texto livre, só **dentro da janela de 24h** aberta por uma mensagem do paciente (ADR-144).
+
+    É a resposta curta de cortesia ao Sim/Não ("Agradecemos sua confirmação!"). Fora da janela a Meta recusaria —
+    por isso só se usa no webhook, em resposta a um clique que acabou de abrir a janela.
+    """
+    destino = normalizar_numero(telefone)
+    if not destino:
+        return Envio(ok=False, simulado=settings.WHATSAPP_SIMULADO, erro="sem número de WhatsApp")
+    if settings.WHATSAPP_SIMULADO:
+        logger.info("WhatsApp SIMULADO: responderia a %s com %r", destino, texto)
+        return Envio(ok=True, simulado=True, id_mensagem="simulado")
+    corpo = {"messaging_product": "whatsapp", "to": destino, "type": "text", "text": {"body": texto}}
+    return _postar(corpo, "texto", destino)
+
+
 def enviar_modelo(telefone: str, modelo: str, variaveis: list) -> Envio:
     """Envia um modelo aprovado (`pt_BR`), preenchendo `{{1}}, {{2}}...` com `variaveis`, **na ordem**.
 

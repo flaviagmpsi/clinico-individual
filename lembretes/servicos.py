@@ -10,9 +10,12 @@ Idempotente (RF08): antes de enviar confere o `LembreteEnviado`; depois de envia
 adaptador não toca a Meta — ainda assim registramos, para o cron não ficar "reenviando" a cada 15 minutos.
 """
 
+import hashlib
 import logging
+from collections import namedtuple
 from datetime import datetime, time, timedelta
 
+from django.conf import settings
 from django.utils import timezone
 
 from atendimentos.models import Consulta
@@ -66,7 +69,8 @@ def _ja_saiu(assunto: str) -> bool:
 
 
 def _registrar(assunto: str, envio: meta.Envio) -> None:
-    LembreteEnviado.objects.get_or_create(assunto=assunto, defaults={"simulado": envio.simulado})
+    LembreteEnviado.objects.get_or_create(
+        assunto=assunto, defaults={"simulado": envio.simulado, "wamid": envio.id_mensagem or ""})
 
 
 def _agenda_da_manha(psicologo, agora) -> bool:
@@ -157,6 +161,135 @@ def _lembretes_de_sessao(psicologo, agora) -> int:
                 _registrar(assunto, envio)
                 enviados += 1
     return enviados
+
+
+# ── A resposta do paciente (RF11, RF12) ─────────────────────────────────────────────────────────────────────────
+#
+# O paciente clica [Sim]/[Não] no `lembrete_compromisso`. A Meta chama o webhook, que corre anônimo (`hamilton_web`).
+# A resposta volta com `context.id` = o `wamid` da mensagem que enviamos — é a chave que liga o clique de volta à
+# sessão e, por ela, ao psicólogo dono. Como `wamid` é único no mundo, só um tenant tem aquele `LembreteEnviado`:
+# descemos psicólogo a psicólogo (a mesma ponte do cron) e paramos no que reconhece a mensagem.
+#
+# RF12: a resposta **não cria nem altera** consulta, presença ou cobrança (ADR-060). Só avisa o psicólogo e agradece
+# ao paciente. Nada clínico sai: ao psicólogo, primeiro nome + a hora; ao paciente, texto fixo de cortesia.
+
+_Resposta = namedtuple("_Resposta", "context_id de confirmou")
+
+_AGRADECE = "Agradecemos sua confirmação!"
+_REMARCAR = ("Obrigado por nos informar, seu/sua psicólogo(a) irá entrar em contato com você para uma "
+             "possível remarcação.")
+
+
+def processar_webhook(payload: dict) -> dict:
+    """Lê o que a Meta mandou e responde a cada Sim/Não. Idempotente — a Meta reenvia até receber 200.
+
+    **Precisa de uma transação aberta** (a view anônima a tem pelo middleware), como o `disparar`."""
+    respostas = [r for r in _respostas_do_payload(payload) if r.context_id]
+    resultado = {"confirmou": 0, "nao_vem": 0, "ignoradas": 0}
+    if not respostas:
+        return resultado
+    psicologos = list(Psicologo.objects.all())  # como `hamilton_web`: a lista de tenants sai daqui
+    db.assumir_papel_da_aplicacao()
+    for psicologo in psicologos:
+        if not respostas:
+            break
+        contexto.definir(psicologo.pk)
+        db.aplicar_escopo(psicologo.pk)
+        try:
+            respostas = [r for r in respostas if not _resolver(psicologo, r, resultado)]
+        finally:
+            contexto.definir(None)
+    resultado["ignoradas"] = len(respostas)
+    return resultado
+
+
+def _respostas_do_payload(payload: dict):
+    for entry in payload.get("entry") or []:
+        for change in entry.get("changes") or []:
+            valor = change.get("value") or {}
+            numero = (valor.get("metadata") or {}).get("phone_number_id", "")
+            # Confere que a mensagem chegou no **nosso** número. Em dev/simulado o id não está configurado — aí não há
+            # o que conferir e seguimos (nenhum envio real acontece de qualquer modo).
+            if settings.WHATSAPP_PHONE_NUMBER_ID and numero != settings.WHATSAPP_PHONE_NUMBER_ID:
+                continue
+            for mensagem in valor.get("messages") or []:
+                resposta = _extrair(mensagem)
+                if resposta:
+                    yield resposta
+
+
+def _extrair(mensagem: dict) -> _Resposta | None:
+    """Tira da mensagem a resposta de botão. `None` para qualquer outra coisa (texto solto, mídia, status)."""
+    context_id = (mensagem.get("context") or {}).get("id", "")
+    de = mensagem.get("from", "")
+    tipo = mensagem.get("type")
+    if tipo == "button":
+        rotulo = (mensagem.get("button") or {}).get("text", "")
+    elif tipo == "interactive":
+        rotulo = ((mensagem.get("interactive") or {}).get("button_reply") or {}).get("title", "")
+    else:
+        return None
+    confirmou = _e_sim(rotulo)
+    if confirmou is None:
+        return None
+    return _Resposta(context_id=context_id, de=de, confirmou=confirmou)
+
+
+def _e_sim(rotulo: str) -> bool | None:
+    """Os botões do modelo são **Sim**/**Não**. True para sim, False para não, `None` se não reconhecer."""
+    texto = (rotulo or "").strip().lower()
+    if texto.startswith("sim"):
+        return True
+    if texto.startswith("n"):  # "não"/"nao"
+        return False
+    return None
+
+
+def _resolver(psicologo, resposta: _Resposta, resultado: dict) -> bool:
+    """Tenta tratar a resposta neste tenant. True se a mensagem é daqui (tratada ou já tratada antes)."""
+    lembrete = LembreteEnviado.objects.filter(wamid=resposta.context_id).first()
+    if lembrete is None:
+        return False  # não é deste psicólogo — tenta o próximo
+    chave = f"resposta:{hashlib.sha1(resposta.context_id.encode()).hexdigest()[:24]}"
+    if _ja_saiu(chave):
+        return True  # a Meta reenviou; já respondemos
+    paciente = _paciente_do_assunto(lembrete.assunto)
+    if paciente is None:
+        return True
+    if paciente.telefone and resposta.de and not meta.mesmo_numero(resposta.de, paciente.telefone):
+        # Não deveria acontecer — o `wamid` já identifica a mensagem com exatidão. Fica como diagnóstico, tolerante
+        # ao 9º dígito para não disparar alarme falso por formatação (RF16). Seguimos: o `wamid` é a verdade.
+        logger.warning("resposta de %s não casa com o telefone do paciente %s", resposta.de, paciente.pk)
+    hora = _hora_do_assunto(lembrete.assunto)
+    primeiro = _primeiro_nome_de(paciente)
+    avisar = psicologo.whatsapp_ligado and psicologo.whatsapp_confirmacoes
+    if resposta.confirmou:
+        if avisar:
+            meta.enviar_modelo(psicologo.telefone, "paciente_confirmou", [primeiro, hora])
+        meta.enviar_texto(paciente.telefone, _AGRADECE)
+        resultado["confirmou"] += 1
+    else:
+        if avisar:
+            meta.enviar_modelo(psicologo.telefone, "paciente_nao_vem", [primeiro, hora])
+        meta.enviar_texto(paciente.telefone, _REMARCAR)
+        resultado["nao_vem"] += 1
+    _registrar(chave, meta.Envio(ok=True, simulado=settings.WHATSAPP_SIMULADO))
+    return True
+
+
+def _paciente_do_assunto(assunto: str):
+    """O paciente que gerou o lembrete, a partir do assunto `sessao:{pk}:{carimbo}`."""
+    partes = assunto.split(":")
+    if len(partes) >= 2 and partes[0] == "sessao" and partes[1].isdigit():
+        return Paciente.objects.filter(pk=int(partes[1])).first()
+    return None
+
+
+def _hora_do_assunto(assunto: str) -> str:
+    """A hora da sessão (HH:MM) a partir do carimbo `YYYYMMDDHHMM` no assunto. Vazia se não der para ler."""
+    partes = assunto.split(":")
+    carimbo = partes[2] if len(partes) >= 3 else ""
+    return f"{carimbo[8:10]}:{carimbo[10:12]}" if len(carimbo) >= 12 else ""
 
 
 def _avisos_de_pagamento(psicologo, agora) -> int:

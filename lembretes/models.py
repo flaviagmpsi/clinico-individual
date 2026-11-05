@@ -15,6 +15,10 @@ class LembreteEnviado(TenantOwnedModel):
 
     assunto = models.CharField("Assunto", max_length=80)
     simulado = models.BooleanField("Simulado", default=False)
+    # O id da mensagem na Meta (`wamid`). É por ele que o webhook casa a resposta Sim/Não do paciente com a sessão
+    # que a gerou (ADR-144, RF11): o clique volta com `context.id` = este `wamid`. Vazio no simulado e nos lembretes
+    # que não esperam resposta (agenda, pendências, pagamento).
+    wamid = models.CharField("ID na Meta", max_length=128, blank=True)
     criado_em = models.DateTimeField("Criado em", auto_now_add=True)
 
     class Meta:
