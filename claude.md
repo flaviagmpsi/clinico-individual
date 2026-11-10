@@ -342,7 +342,7 @@ Se o passo 0 não fechar, nada mais deve ser escrito — o produto inteiro se ap
 
 ### Testes obrigatórios, por app
 - **`core`** — isolamento, nas três camadas.
-- **`agenda`** — remarcação avulsa que sobrevive a mudança na regra; quinzenal com âncora.
+- **`agenda`** — remarcação avulsa que sobrevive a mudança na regra; quinzenal por par de semanas do mês (ADR-146).
 - **`atendimentos`** — as três situações da consulta e a cobrança que deriva delas; previsão sem gravar nada; pendência (ADR-060).
 - **`financeiro`** — baixa parcial deixando saldo correto; cobrança de casal indo ao pagador do caso.
 - **`documentos`** — a IA de Declaração **não recebe** conteúdo de prontuário.

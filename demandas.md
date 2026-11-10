@@ -223,7 +223,7 @@ em atendimento de casal. Ver **P-70**, resolvida em parte.
 
 | # | História | Camada | Estado | Código | ADR |
 |---|---|---|---|---|---|
-| A-01 | Frequência por caso: **semanal**, **quinzenal** (semana sim, semana não, com âncora) ou **avulso** (sem sessão prevista) | 🎨🗄️ | ✅ | 🟢 | ADR-022, ADR-053 |
+| A-01 | Frequência por caso: **semanal**, **quinzenal** (par fixo de semanas do mês — 1ª e 3ª, ou 2ª e 4ª; sempre duas por mês, nunca três; par editável) ou **avulso** (sem sessão prevista) | 🎨🗄️ | ✅ | 🟢 | ADR-022, ADR-053, ADR-146 |
 | A-02 | Sessões **previstas** pela frequência aparecem na agenda, **calculadas e nunca gravadas**; a que passou sem cadastro é **pendente** | ⚙️🎨 | ✅ | 🟢 | ADR-052, ADR-060 |
 | A-03 | ~~Remarcação avulsa~~ — a sessão que não aconteceu vira falta remarcada, e a nova é cadastrada quando acontecer | — | ❌ | — | ADR-060 |
 | A-04 | ~~Ocorrência remarcada lembra que foi alterada à mão~~ — não há mais consulta gravada antes de acontecer | — | ❌ | — | ADR-060 |
@@ -463,7 +463,7 @@ sentido gerando consultas concretas (atendimentos).
 6. **Google Agenda** (A-12 a A-16) por último: é integração externa, e tudo acima funciona sem ela.
 
 **Testes obrigatórios deste passo** (claude.md §10): remarcação avulsa que sobrevive a mudança na
-regra; quinzenal com âncora; e as cinco combinações de estado × `contabilizada`.
+regra; quinzenal por par de semanas do mês (ADR-146); e as cinco combinações de estado × `contabilizada`.
 
 **Armadilha registrada:** materializar a recorrência **não** pode criar prontuário pendente nem
 cobrança de sessão futura. O gatilho é a consulta ficar `REALIZADA`, nunca o agendamento.

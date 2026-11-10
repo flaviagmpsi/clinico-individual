@@ -367,6 +367,7 @@ def definir_frequencia(
     a_partir_de: date | None = None,
     hoje: date | None = None,
     primeira_sessao: date | None = None,
+    semanas_do_mes: str = "",
 ) -> Recorrencia | None:
     """Semanal, quinzenal ou avulso (ADR-053). Vale "desta data em diante" (ADR-022).
 
@@ -401,7 +402,7 @@ def definir_frequencia(
     nova = Recorrencia.objects.create(
         caso=caso, frequencia=frequencia, dia_semana=dia_semana, hora=hora,
         duracao=duracao or _psicologo().duracao_sessao, inicio=a_partir_de,
-        primeira_sessao_em=excecao,
+        primeira_sessao_em=excecao, semanas_do_mes=semanas_do_mes or "",
     )
     conflito = _conflito_da_regra(nova)
     if conflito:

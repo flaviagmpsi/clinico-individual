@@ -138,12 +138,16 @@ class FrequenciaForm(forms.Form):
     frequencia = forms.ChoiceField(
         label="Frequência",
         choices=[(Recorrencia.Frequencia.SEMANAL, "Semanal"),
-                 (Recorrencia.Frequencia.QUINZENAL, "Quinzenal — semana sim, semana não"),
+                 (Recorrencia.Frequencia.QUINZENAL, "Quinzenal — duas semanas no mês"),
                  (AVULSO, "Avulso — sem sessão prevista")],
         widget=forms.RadioSelect(attrs=_RADIO))
     dia_semana = forms.TypedChoiceField(
         label="Dia da semana", choices=[("", "—")] + list(Recorrencia.DiaSemana.choices),
         coerce=int, empty_value=None, required=False, widget=forms.Select(attrs=_SELECT))
+    semanas_do_mes = forms.ChoiceField(
+        label="Semanas do mês", choices=[("", "—")] + list(Recorrencia.SemanasDoMes.choices),
+        required=False, widget=forms.Select(attrs=_SELECT),
+        help_text="Só na quinzenal: em quais duas semanas do mês cai a sessão.")
     hora = forms.TimeField(
         label="Horário", required=False, widget=forms.TimeInput(attrs={**_TEXTO, "type": "time"}, format="%H:%M"))
     duracao = forms.IntegerField(
@@ -164,6 +168,8 @@ class FrequenciaForm(forms.Form):
                 self.add_error("dia_semana", "Informe o dia da semana.")
             if not dados.get("hora"):
                 self.add_error("hora", "Informe o horário.")
+        if dados.get("frequencia") == Recorrencia.Frequencia.QUINZENAL and not dados.get("semanas_do_mes"):
+            self.add_error("semanas_do_mes", "Na quinzenal, escolha em quais duas semanas do mês.")
         return dados
 
 

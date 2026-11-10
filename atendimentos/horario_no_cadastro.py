@@ -42,6 +42,9 @@ class HorarioDoPacienteForm(forms.Form):
         coerce=int, empty_value=None, required=False, widget=forms.Select(attrs=_SELECT))
     hora = forms.TimeField(
         label="Horário", required=False, widget=forms.TimeInput(attrs={**_TEXTO, "type": "time"}, format="%H:%M"))
+    semanas_do_mes = forms.ChoiceField(
+        label="Semanas do mês", choices=[("", "Escolha")] + list(Recorrencia.SemanasDoMes.choices),
+        required=False, widget=forms.Select(attrs=_SELECT))
 
     def clean(self):
         dados = super().clean()
@@ -51,6 +54,8 @@ class HorarioDoPacienteForm(forms.Form):
             self.add_error("dia_semana", "Informe o dia da semana em que o paciente será atendido.")
         if not dados.get("hora") and "hora" not in self.errors:
             self.add_error("hora", "Informe o horário do atendimento.")
+        if dados.get("frequencia") == Recorrencia.Frequencia.QUINZENAL and not dados.get("semanas_do_mes"):
+            self.add_error("semanas_do_mes", "Na quinzenal, escolha em quais duas semanas do mês.")
         return dados
 
 
@@ -88,7 +93,8 @@ class BlocoDeHorario:
         regra = servicos.definir_frequencia(
             caso, frequencia=dados["frequencia"], dia_semana=dados["dia_semana"], hora=dados["hora"],
             a_partir_de=primeira if excecao_de_dia else hoje, hoje=hoje,
-            primeira_sessao=primeira if excecao_de_dia else None)
+            primeira_sessao=primeira if excecao_de_dia else None,
+            semanas_do_mes=dados.get("semanas_do_mes", ""))
         self._dizer_quando_comeca(paciente, regra)
 
     def _dizer_quando_comeca(self, paciente, regra) -> None:

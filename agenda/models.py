@@ -43,10 +43,43 @@ def serie_semanal(dia_semana: int, passo: int, inicio: date, fim: date | None,
         dia += timedelta(days=passo)
     return datas
 
+
+def _enesimo_dia_do_mes(ano: int, mes: int, dia_semana: int, n: int) -> date:
+    """O n-ésimo (1 a 4) `dia_semana` do mês. Sempre existe: todo mês tem ao menos quatro de cada dia."""
+    primeiro = date(ano, mes, 1)
+    deslocamento = (dia_semana - primeiro.weekday()) % 7
+    return primeiro + timedelta(days=deslocamento + 7 * (n - 1))
+
+
+def serie_mensal(dia_semana: int, ordinais: tuple[int, ...], inicio: date, fim: date | None,
+                 de: date, ate: date) -> list[date]:
+    """As datas da quinzenal por **par de semanas do mês** no intervalo fechado `[de, ate]` (ADR-146).
+
+    Quinzenal aqui não é "de 14 em 14 dias": é um par fixo de semanas — 1ª e 3ª, ou 2ª e 4ª. Assim são sempre
+    duas sessões por mês, nunca três, e a 5ª semana, quando existe, é ignorada. Dentro do par o intervalo é de
+    14 dias; entre o fim de um mês e o começo do outro ele pode esticar, e é o preço de "sempre duas".
+    """
+    datas = []
+    ano, mes = de.year, de.month
+    while date(ano, mes, 1) <= ate:
+        for n in ordinais:
+            dia = _enesimo_dia_do_mes(ano, mes, dia_semana, n)
+            if de <= dia <= ate and inicio <= dia and (fim is None or dia < fim):
+                datas.append(dia)
+        ano, mes = (ano + 1, 1) if mes == 12 else (ano, mes + 1)
+    return sorted(datas)
+
+
 class Recorrencia(TenantOwnedModel):
     class Frequencia(models.TextChoices):
         SEMANAL = "SEMANAL", "Semanal"
         QUINZENAL = "QUINZENAL", "Quinzenal"
+
+    class SemanasDoMes(models.TextChoices):
+        # As duas semanas do mês em que a quinzenal cai (ADR-146). Só esses dois pares garantem "sempre duas,
+        # nunca três", com 14 dias dentro do par; um par como "3ª e 5ª" deixaria mês sem 5ª semana com uma só.
+        PRIMEIRA_TERCEIRA = "1E3", "1ª e 3ª semana do mês"
+        SEGUNDA_QUARTA = "2E4", "2ª e 4ª semana do mês"
 
     class DiaSemana(models.IntegerChoices):
         # Os mesmos números de `date.weekday()`, para comparar sem tradução.
@@ -60,13 +93,16 @@ class Recorrencia(TenantOwnedModel):
 
     caso = models.ForeignKey(Caso, on_delete=models.CASCADE, related_name="recorrencias")
     frequencia = models.CharField("Frequência", max_length=10, choices=Frequencia.choices)
+    semanas_do_mes = models.CharField(
+        "Semanas do mês", max_length=3, choices=SemanasDoMes.choices, blank=True,
+        help_text="Só na quinzenal: em quais duas semanas do mês cai a sessão (ADR-146).")
     dia_semana = models.PositiveSmallIntegerField("Dia da semana", choices=DiaSemana.choices)
     hora = models.TimeField("Horário")
     duracao = models.PositiveSmallIntegerField(
         "Duração (minutos)", validators=[MinValueValidator(10), MaxValueValidator(240)])
     inicio = models.DateField(
         "Vale a partir de",
-        help_text="Na quinzenal, a primeira sessão a partir desta data define quais semanas são as de atendimento.")
+        help_text="Sessões anteriores a esta data não mudam (ADR-022).")
     fim = models.DateField(
         "Encerrada em", null=True, blank=True,
         help_text="Nenhuma sessão é prevista nesta data nem depois. Vazio enquanto a regra valer.")
@@ -90,36 +126,56 @@ class Recorrencia(TenantOwnedModel):
                 condition=models.Q(fim__isnull=True) | models.Q(fim__gte=models.F("inicio")),
                 name="recorrencia_fim_nao_antes_do_inicio",
             ),
+            # A quinzenal guarda as semanas do mês; a semanal, não. Espelha o padrão do `Compromisso`: sem isto,
+            # uma quinzenal sem o par ficaria sem saber que semanas prever, e sem erro em lugar nenhum.
+            models.CheckConstraint(
+                condition=(models.Q(frequencia="QUINZENAL") & ~models.Q(semanas_do_mes=""))
+                          | (~models.Q(frequencia="QUINZENAL") & models.Q(semanas_do_mes="")),
+                name="recorrencia_semanas_do_mes_so_na_quinzenal",
+            ),
         ]
 
     def __str__(self) -> str:
-        return f"{self.get_frequencia_display()} · {self.get_dia_semana_display()}, {self.hora:%H:%M}"
+        quando = f"{self.get_dia_semana_display()}, {self.hora:%H:%M}"
+        if self.frequencia == self.Frequencia.QUINZENAL and self.semanas_do_mes:
+            return f"{self.get_frequencia_display()} ({self.get_semanas_do_mes_display().lower()}) · {quando}"
+        return f"{self.get_frequencia_display()} · {quando}"
 
     def clean(self):
         super().clean()
         exigir_mesmo_dono(self, caso=self.caso if self.caso_id else None)
+        if self.frequencia == self.Frequencia.QUINZENAL:
+            if not self.semanas_do_mes:
+                raise ValidationError("A quinzenal precisa das semanas do mês (1ª e 3ª, ou 2ª e 4ª).")
+        else:
+            self.semanas_do_mes = ""
 
     @property
     def primeira_ocorrencia(self) -> date:
-        """O primeiro dia a partir de `inicio` que cai no dia da semana da regra — a âncora da quinzenal."""
+        """O primeiro dia do padrão fixo a partir de `inicio`, sem a exceção da ADR-120.
+
+        Na semanal, o próximo dia da semana da regra. Na quinzenal, a primeira das semanas do mês escolhidas —
+        70 dias de janela bastam, porque todo mês tem a 1ª..4ª ocorrência do dia.
+        """
+        if self.frequencia == self.Frequencia.QUINZENAL:
+            return serie_mensal(self.dia_semana, self._ordinais, self.inicio, None,
+                                self.inicio, self.inicio + timedelta(days=70))[0]
         return self.inicio + timedelta(days=(self.dia_semana - self.inicio.weekday()) % 7)
 
     @property
-    def _passo(self) -> int:
-        return 14 if self.frequencia == self.Frequencia.QUINZENAL else 7
+    def _ordinais(self) -> tuple[int, int]:
+        """As duas semanas do mês da quinzenal, como ordinais do dia da semana (1ª e 3ª → (1, 3))."""
+        return (1, 3) if self.semanas_do_mes == self.SemanasDoMes.PRIMEIRA_TERCEIRA else (2, 4)
 
     def _dentro_da_vigencia(self, dia: date) -> bool:
         return self.inicio <= dia and (self.fim is None or dia < self.fim)
 
     def ocorre_em(self, dia: date) -> bool:
         # A primeira sessão avulsa conta como ocorrência: é por ela que a tela de cadastrar a sessão aceita a
-        # data (ADR-120). Não mexe na âncora da quinzenal, que continua sendo `primeira_ocorrencia`.
+        # data (ADR-120). Não entra na contagem das semanas do mês da quinzenal.
         if self.primeira_sessao_em == dia and self._dentro_da_vigencia(dia):
             return True
-        primeira = self.primeira_ocorrencia
-        if dia < primeira or (self.fim is not None and dia >= self.fim):
-            return False
-        return (dia - primeira).days % self._passo == 0
+        return dia in self.ocorrencias(dia, dia)
 
     @property
     def rotulo(self) -> str:
@@ -127,8 +183,11 @@ class Recorrencia(TenantOwnedModel):
         return str(self.caso)
 
     def ocorrencias(self, de: date, ate: date) -> list[date]:
-        """Datas previstas no intervalo fechado `[de, ate]`, respeitando início, fim e a alternância."""
-        datas = serie_semanal(self.dia_semana, self._passo, self.inicio, self.fim, de, ate)
+        """Datas previstas no intervalo fechado `[de, ate]`, respeitando início, fim e a frequência."""
+        if self.frequencia == self.Frequencia.QUINZENAL:
+            datas = serie_mensal(self.dia_semana, self._ordinais, self.inicio, self.fim, de, ate)
+        else:
+            datas = serie_semanal(self.dia_semana, 7, self.inicio, self.fim, de, ate)
         # A primeira sessão fora do dia fixo entra aqui, uma vez só, na ordem certa (ADR-120).
         avulsa = self.primeira_sessao_em
         if (avulsa is not None and de <= avulsa <= ate

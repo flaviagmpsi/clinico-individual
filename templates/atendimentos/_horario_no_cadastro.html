@@ -24,6 +24,8 @@ não preenchem, mas os dois campos funcionam do mesmo jeito.
       </div>
       <div class="col-md-4" data-dia-e-hora>{% include "components/_campo.html" with campo=form.dia_semana %}</div>
       <div class="col-md-3" data-dia-e-hora>{% include "components/_campo.html" with campo=form.hora %}</div>
+      <div class="col-md-5" data-so-quinzenal>{% include "components/_campo.html" with campo=form.semanas_do_mes %}
+        <div class="form-text small">Na quinzenal, em quais duas semanas do mês cai a sessão.</div></div>
     </div>
 
     <div class="mt-3" data-dia-e-hora>
@@ -68,6 +70,9 @@ não preenchem, mas os dois campos funcionam do mesmo jeito.
       const frequencia = bloco.querySelector('input[name="{{ form.frequencia.html_name }}"]:checked');
       const semHorario = !!frequencia && frequencia.value === "AVULSO";
       bloco.querySelectorAll("[data-dia-e-hora]").forEach((parte) => { parte.hidden = semHorario; });
+      // As "semanas do mês" só valem na quinzenal.
+      const quinzenal = !!frequencia && frequencia.value === "QUINZENAL";
+      bloco.querySelectorAll("[data-so-quinzenal]").forEach((parte) => { parte.hidden = !quinzenal; });
       // O atalho que coincide com o que está nos campos fica aceso — é o horário livre sendo preenchido.
       vagas.forEach((vaga) => {
         const aceso = vaga.dataset.dia === dia.value && vaga.dataset.hora === hora.value.slice(0, 5);

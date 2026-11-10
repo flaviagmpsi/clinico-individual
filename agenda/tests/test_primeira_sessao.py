@@ -25,9 +25,10 @@ TERCA_15 = date(2026, 9, 15)
 SEXTA_18 = date(2026, 9, 18)
 
 
-def regra(frequencia=SEMANAL, inicio=SEGUNDA_14, fim=None, primeira=None, dia=TERCA):
+def regra(frequencia=SEMANAL, inicio=SEGUNDA_14, fim=None, primeira=None, dia=TERCA, semanas="1E3"):
     return Recorrencia(frequencia=frequencia, dia_semana=dia, hora=time(9), duracao=50,
-                       inicio=inicio, fim=fim, primeira_sessao_em=primeira)
+                       inicio=inicio, fim=fim, primeira_sessao_em=primeira,
+                       semanas_do_mes=semanas if frequencia == QUINZENAL else "")
 
 
 class CalendarioConferido(SimpleTestCase):
@@ -59,12 +60,15 @@ class ComExcecao(SimpleTestCase):
         datas = regra(primeira=SEXTA_18).ocorrencias(SEGUNDA_14, date(2026, 12, 31))
         self.assertEqual(datas.count(SEXTA_18), 1)
 
-    def test_nao_mexe_na_ancora_da_quinzenal(self):
-        """A âncora continua sendo a primeira terça: a exceção é uma sessão, não um recomeço da contagem."""
-        r = regra(QUINZENAL, primeira=SEXTA_18)
+    def test_nao_mexe_nas_semanas_do_mes_da_quinzenal(self):
+        """A exceção é uma sessão à parte: entra uma vez e não altera o par de semanas do mês (ADR-146).
+
+        15/09 é a 3ª terça do mês, então na 1ª e 3ª a primeira do padrão é ela; 29/09 é a 5ª terça e fica de fora.
+        """
+        r = regra(QUINZENAL, primeira=SEXTA_18, semanas="1E3")
         self.assertEqual(r.primeira_ocorrencia, TERCA_15)
         self.assertEqual(r.ocorrencias(SEGUNDA_14, date(2026, 10, 15)),
-                         [TERCA_15, SEXTA_18, date(2026, 9, 29), date(2026, 10, 13)])
+                         [TERCA_15, SEXTA_18, date(2026, 10, 6)])
 
     def test_nao_duplica_quando_cai_no_proprio_dia_fixo(self):
         """Defesa contra um dado inconsistente: se alguém gravar a exceção na terça, ela não vira duas sessões."""

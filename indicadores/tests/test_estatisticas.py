@@ -73,7 +73,7 @@ class BaseEstatisticas(TestCase):
             # Júlia: uma quarta às 9h, presente. Sessão de 2025 não entra nas estatísticas de 2026.
             agenda.cadastrar_avulsa(cls.caso_julia, estado=E.REALIZADA, inicio=momento(9, 9, 9))
             Recorrencia.objects.create(caso=cls.caso_julia, frequencia=Recorrencia.Frequencia.QUINZENAL, dia_semana=2,
-                                       hora=time(9), duracao=50, inicio=date(2026, 9, 9))
+                                       hora=time(9), duracao=50, inicio=date(2026, 9, 9), semanas_do_mes="1E3")
             # Pedro desistiu: sai da composição e dos aniversariantes.
             agenda.registrar_desfecho(cls.caso_pedro, tipo=Desfecho.Tipo.DESISTENCIA, data=date(2026, 9, 1))
         with contexto.como(cls.bruno.pk):

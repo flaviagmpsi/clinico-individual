@@ -34,10 +34,25 @@
         <div class="col-md-3">{% include "components/_campo.html" with campo=form.hora %}</div>
         <div class="col-md-3">{% include "components/_campo.html" with campo=form.duracao %}</div>
         <div class="col-md-3">{% include "components/_campo.html" with campo=form.a_partir_de %}</div>
+        <div class="col-md-5" data-so-quinzenal>{% include "components/_campo.html" with campo=form.semanas_do_mes %}</div>
       </div>
       <div class="form-text small mt-2">No avulso, dia, horário e duração são ignorados: cada consulta é marcada à parte.</div>
     </div>
   </div>
   <button type="submit" class="btn btn-primary">Salvar</button>
 </form>
+<script>
+  // As "semanas do mês" só valem na quinzenal; some nas outras. Sem JavaScript o campo fica à vista e o rótulo
+  // explica para que serve — o formulário ignora o valor fora da quinzenal.
+  document.addEventListener("DOMContentLoaded", () => {
+    const so = document.querySelectorAll("[data-so-quinzenal]");
+    const ajustar = () => {
+      const marcada = document.querySelector('input[name="frequencia"]:checked');
+      const quinzenal = !!marcada && marcada.value === "QUINZENAL";
+      so.forEach((parte) => { parte.hidden = !quinzenal; });
+    };
+    document.querySelectorAll('input[name="frequencia"]').forEach((o) => o.addEventListener("change", ajustar));
+    ajustar();
+  });
+</script>
 {% endblock %}

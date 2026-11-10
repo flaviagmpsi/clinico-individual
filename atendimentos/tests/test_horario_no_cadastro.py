@@ -135,7 +135,8 @@ class HorarioNoCadastro(Base):
         primeira = self.hoje + timedelta(days=20)
         self.client.post(reverse("pacientes:novo"), {
             "nome": "Paula Futura", "uf": "", "data_primeira_sessao": primeira.isoformat(),
-            "horario-frequencia": "QUINZENAL", "horario-dia_semana": "1", "horario-hora": "16:00"})
+            "horario-frequencia": "QUINZENAL", "horario-dia_semana": "1", "horario-hora": "16:00",
+            "horario-semanas_do_mes": "1E3"})
         regra = self.regra_de("Paula Futura")
         self.assertEqual((regra.frequencia, regra.inicio), ("QUINZENAL", primeira))
 

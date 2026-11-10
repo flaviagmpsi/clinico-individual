@@ -4430,6 +4430,47 @@ rotas vizinhas ainda emitem `SET LOCAL ROLE`.
 **Fora do escopo desta ADR (relatado, não alterado):** o cron dos lembretes da ADR-144 (~15 min) também acorda o
 banco; configuração do compute do Neon (tratada à parte).
 
+## ADR-146 — Quinzenal é "par fixo de semanas do mês", não mais "de 14 em 14 dias" (revisa a ADR-053)
+
+**Status:** ✅ Aceita — 2026-11-06 (grill-me de 3 rodadas). Revisa a definição de quinzenal da **ADR-053**/ADR-022.
+
+**Contexto:** a psicóloga tem uma paciente quinzenal cuja agenda ficou errada depois de remarcações — a alternância
+"semana sim, semana não" escorregou para o par de semanas errado do mês. Investigando, a definição vigente de
+quinzenal era **estritamente 14 em 14 dias** a partir de uma âncora (`serie_semanal`, passo 14), e essa contagem, em
+alguns meses, cai em **três** sessões no mesmo mês civil (ex.: dias 1, 15 e 29). Ela não quer isso: quinzenal, para
+ela, é **duas sessões por mês, em duas semanas fixas**, nunca três.
+
+**Decisão do usuário:**
+- **(1)** Quinzenal passa a ser um **par fixo de semanas do mês**: **1ª e 3ª** ou **2ª e 4ª** ocorrência do dia da
+  semana escolhido. São os únicos dois pares que garantem "sempre duas, nunca três" com 14 dias dentro do par; um par
+  como "3ª e 5ª" deixaria mês sem 5ª semana com uma só sessão. A **5ª semana**, quando existe, é ignorada.
+- **(2)** Aceito o custo: dentro do par o intervalo é de 14 dias, mas **entre o fim de um mês e o começo do outro ele
+  pode esticar** (~21 dias). É o preço de "sempre duas por mês".
+- **(3)** O **"de 14 em 14 dias" deixa de existir** — toda quinzenal é por par de semanas. Se um dia outro psicólogo
+  precisar do 14-em-14 cravado, ele volta como uma terceira opção; não foi construído agora.
+- Reajustar qual é o par é **editável**: é um campo na tela "Alterar frequência" (e no cadastro do paciente), trocado
+  pelo fluxo de sempre — encerra a regra vigente e cria outra "desta data em diante" (ADR-022). Era a dor de origem.
+
+**Modelagem:** `Recorrencia` ganha `semanas_do_mes` (`1E3`/`2E4`), obrigatório na quinzenal e vazio nas demais
+(espelha o `Compromisso`: `clean()` + `CheckConstraint`). A semanal segue em `serie_semanal` (passo 7); a quinzenal
+usa a nova `serie_mensal` (n-ésimo dia da semana no mês). `ocorre_em` passou a ser pertença em `ocorrencias`, como no
+`Compromisso`. **O `Compromisso` não muda** — "a cada duas semanas" dele é visual (supervisão, ONG) e segue 14-em-14.
+
+**Migração (ADR-022 na prática):** a `0008` adiciona o campo, **deriva** de cada quinzenal já existente o par mais
+próximo do que ela previa (a semana do mês da primeira ocorrência da âncora) e só então crava a constraint — para a
+agenda não dar salto brusco entre o deploy e o momento em que a psicóloga reabre "Alterar frequência" e escolhe o par
+de propósito. Decisão **(3)** do grill: ela reacerta manualmente cada quinzenal (a âncora da paciente já estava errada
+mesmo, é o momento natural de corrigir).
+
+**Sem impacto financeiro:** a paciente é **mensal** (ADR-059), então duas-vs-três sessões no mês não muda cobrança. Se
+fosse por sessão, mudaria, e seria o ponto de atenção — fica registrado para quem um dia cruzar quinzenal com
+`POR_SESSAO`.
+
+**Testes:** `agenda/test_recorrencia.py` (par 1ª/3ª e 2ª/4ª; mês de cinco semanas nunca tem três; 14 dias dentro do
+par e ~21 virando o mês; respeita início e fim); `agenda/test_primeira_sessao.py` (a exceção da ADR-120 não mexe no
+par); `atendimentos/test_servicos.py` (previsão por par, nunca três no mês; troca de frequência; quinzenais de pares
+diferentes no mesmo horário não colidem, do mesmo par colidem).
+
 ## Impeditivos
 
 | # | Impeditivo | Situação |

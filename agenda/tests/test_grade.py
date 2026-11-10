@@ -52,9 +52,10 @@ class BaseGrade(TestCase):
         with contexto.como(cls.bruno.pk):
             cls.caso_carla = cadastrar_paciente(Paciente(nome="Carla Grade"))
 
-    def frequencia(self, caso, dia, hora, frequencia=SEMANAL, duracao=60):
+    def frequencia(self, caso, dia, hora, frequencia=SEMANAL, duracao=60, semanas_do_mes="1E3"):
         return servicos.definir_frequencia(
-            caso, frequencia=frequencia, dia_semana=dia, hora=time(hora), duracao=duracao, a_partir_de=proxima(dia))
+            caso, frequencia=frequencia, dia_semana=dia, hora=time(hora), duracao=duracao, a_partir_de=proxima(dia),
+            semanas_do_mes=semanas_do_mes if frequencia == QUINZENAL else "")
 
 
 class DeclararGrade(BaseGrade):

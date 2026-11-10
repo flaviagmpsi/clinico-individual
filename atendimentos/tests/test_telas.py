@@ -301,10 +301,13 @@ class CadastroPelaTela(BaseTelasAgenda):
         quinta = proxima(QUINTA)
         resposta = self.client.post(reverse("atendimentos:frequencia", args=[self.caso_joao.pk]), {
             "frequencia": QUINZENAL, "dia_semana": str(QUINTA), "hora": "10:00", "duracao": "",
-            "a_partir_de": f"{quinta:%Y-%m-%d}"})
+            "semanas_do_mes": "1E3", "a_partir_de": f"{quinta:%Y-%m-%d}"})
         self.assertRedirects(resposta, reverse("pacientes:detalhe", args=[self.joao.pk]), fetch_redirect_response=False)
-        self.assertEqual(Recorrencia.objetos_todos.get(caso=self.caso_joao, fim__isnull=True).frequencia, QUINZENAL)
-        self.assertContains(self.client.get(self.semana_de(quinta)), "João Agenda")
+        regra = Recorrencia.objetos_todos.get(caso=self.caso_joao, fim__isnull=True)
+        self.assertEqual(regra.frequencia, QUINZENAL)
+        # Na quinzenal por par de semanas (ADR-146), a primeira sessão pode não cair na semana de `quinta`: é a
+        # 1ª/3ª quinta do mês a partir dela. A agenda mostra o paciente na semana dessa primeira ocorrência.
+        self.assertContains(self.client.get(self.semana_de(regra.primeira_ocorrencia)), "João Agenda")
 
     def test_painel_mostra_o_que_ficou_para_tras(self):
         """ADR-069: a pendência de cadastro vem antes do dia, no painel."""

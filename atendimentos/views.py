@@ -516,7 +516,7 @@ class FrequenciaDoCaso(LoginRequiredMixin, _ComCaso, FormView):
             inicial["frequencia"] = servicos.AVULSO
         else:
             inicial.update(frequencia=regra.frequencia, dia_semana=regra.dia_semana, hora=regra.hora,
-                           duracao=regra.duracao)
+                           duracao=regra.duracao, semanas_do_mes=regra.semanas_do_mes)
         return inicial
 
     def form_valid(self, form):
@@ -525,7 +525,8 @@ class FrequenciaDoCaso(LoginRequiredMixin, _ComCaso, FormView):
         try:
             regra = servicos.definir_frequencia(
                 caso, frequencia=dados["frequencia"], dia_semana=dados.get("dia_semana"), hora=dados.get("hora"),
-                duracao=dados.get("duracao"), a_partir_de=dados["a_partir_de"])
+                duracao=dados.get("duracao"), a_partir_de=dados["a_partir_de"],
+                semanas_do_mes=dados.get("semanas_do_mes", ""))
         except ValidationError as erro:
             form.add_error(None, erro.messages[0])
             return self.form_invalid(form)

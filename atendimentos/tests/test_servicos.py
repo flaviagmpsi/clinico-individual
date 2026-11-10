@@ -18,6 +18,7 @@ que começou no passado, e o serviço recusa isso — o passado não é reescrit
 regra direto, como uma frequência cadastrada semanas atrás, com a última sessão ontem.
 """
 
+from collections import Counter
 from datetime import datetime, time, timedelta
 
 from django.core.exceptions import ValidationError
@@ -78,9 +79,10 @@ class BaseAgenda(TestCase):
         self.hoje = timezone.localdate()
         self.ontem = self.hoje - timedelta(days=1)
 
-    def semanal_da_maria(self, hora=14, frequencia=SEMANAL, inicio=None):
+    def semanal_da_maria(self, hora=14, frequencia=SEMANAL, inicio=None, semanas_do_mes="1E3"):
         return servicos.definir_frequencia(
-            self.caso_maria, frequencia=frequencia, dia_semana=TERCA, hora=time(hora), a_partir_de=inicio or self.terca)
+            self.caso_maria, frequencia=frequencia, dia_semana=TERCA, hora=time(hora), a_partir_de=inicio or self.terca,
+            semanas_do_mes=semanas_do_mes if frequencia == QUINZENAL else "")
 
     def frequencia_desde(self, caso, semanas=3, hora=9):
         """Semanal que começou `semanas` atrás, com sessões em ontem - 14, ontem - 7 e ontem."""
@@ -102,12 +104,15 @@ class Previsao(BaseAgenda):
         self.assertEqual([s.data for s in previstas], [self.terca + timedelta(weeks=n) for n in range(4)])
         self.assertTrue(all(s.duracao == 50 and s.inicio == momento(s.data, 14) for s in previstas))
 
-    def test_quinzenal_e_semana_sim_semana_nao(self):
+    def test_quinzenal_pega_duas_semanas_do_mes_nunca_tres(self):
+        de, ate = self.terca, self.terca + timedelta(weeks=12)
         with contexto.como(self.ana.pk):
-            self.semanal_da_maria(frequencia=QUINZENAL)
-            previstas = servicos.sessoes_previstas(self.terca, self.terca + timedelta(weeks=4), caso=self.caso_maria)
-        self.assertEqual([s.data for s in previstas],
-                         [self.terca, self.terca + timedelta(days=14), self.terca + timedelta(days=28)])
+            regra = self.semanal_da_maria(frequencia=QUINZENAL, semanas_do_mes="1E3")
+            previstas = servicos.sessoes_previstas(de, ate, caso=self.caso_maria)
+        datas = [s.data for s in previstas]
+        self.assertEqual(datas, regra.ocorrencias(de, ate))  # a previsão segue a regra por par de semanas
+        por_mes = Counter((d.year, d.month) for d in datas)
+        self.assertTrue(datas and all(quantas <= 2 for quantas in por_mes.values()))
 
     def test_avulso_nao_preve_nada(self):
         with contexto.como(self.ana.pk):
@@ -333,14 +338,19 @@ class TrocaDeFrequencia(BaseAgenda):
         with contexto.como(self.ana.pk):
             antiga = self.semanal_da_maria()
             nova = servicos.definir_frequencia(
-                self.caso_maria, frequencia=QUINZENAL, dia_semana=TERCA, hora=time(16), a_partir_de=virada)
+                self.caso_maria, frequencia=QUINZENAL, dia_semana=TERCA, hora=time(16), a_partir_de=virada,
+                semanas_do_mes="1E3")
             antiga.refresh_from_db()
-            previstas = servicos.sessoes_previstas(self.terca, virada + timedelta(days=14), caso=self.caso_maria)
+            ate = virada + timedelta(weeks=6)
+            previstas = servicos.sessoes_previstas(self.terca, ate, caso=self.caso_maria)
         self.assertEqual(antiga.fim, virada)
-        self.assertEqual(
-            [(s.regra.pk, s.data) for s in previstas],
-            [(antiga.pk, self.terca), (antiga.pk, self.terca + timedelta(days=7)),
-             (nova.pk, virada), (nova.pk, virada + timedelta(days=14))])
+        por_regra: dict[int, list] = {}
+        for s in previstas:
+            por_regra.setdefault(s.regra.pk, []).append(s.data)
+        # A antiga prevê só o que vem antes da virada; a nova, só o que a regra nova prevê dali em diante.
+        self.assertEqual(por_regra.get(antiga.pk), [self.terca, self.terca + timedelta(days=7)])
+        self.assertEqual(por_regra.get(nova.pk), nova.ocorrencias(virada, ate))
+        self.assertTrue(all(data < virada for data in por_regra[antiga.pk]))
 
     def test_o_passado_nao_e_reescrito(self):
         with contexto.como(self.ana.pk):
@@ -376,13 +386,22 @@ class Colisao(BaseAgenda):
                     self.caso_joao, frequencia=SEMANAL, dia_semana=TERCA, hora=time(14, 30), a_partir_de=self.terca)
             self.assertFalse(Recorrencia.objects.filter(caso=self.caso_joao).exists())
 
-    def test_quinzenais_alternadas_no_mesmo_horario_nao_colidem(self):
+    def test_quinzenais_de_pares_diferentes_no_mesmo_horario_nao_colidem(self):
+        """1ª/3ª e 2ª/4ª no mesmo dia e hora nunca caem na mesma data (ADR-146)."""
         with contexto.como(self.ana.pk):
-            self.semanal_da_maria(frequencia=QUINZENAL)
+            self.semanal_da_maria(frequencia=QUINZENAL, semanas_do_mes="1E3")
             servicos.definir_frequencia(
                 self.caso_joao, frequencia=QUINZENAL, dia_semana=TERCA, hora=time(14),
-                a_partir_de=self.terca + timedelta(days=7))
+                a_partir_de=self.terca, semanas_do_mes="2E4")
             self.assertTrue(Recorrencia.objects.filter(caso=self.caso_joao).exists())
+
+    def test_quinzenais_do_mesmo_par_no_mesmo_horario_colidem(self):
+        with contexto.como(self.ana.pk):
+            self.semanal_da_maria(frequencia=QUINZENAL, semanas_do_mes="1E3")
+            with self.assertRaises(ValidationError):
+                servicos.definir_frequencia(
+                    self.caso_joao, frequencia=QUINZENAL, dia_semana=TERCA, hora=time(14),
+                    a_partir_de=self.terca, semanas_do_mes="1E3")
 
     def test_duas_consultas_no_mesmo_horario_sao_recusadas(self):
         with contexto.como(self.ana.pk):
