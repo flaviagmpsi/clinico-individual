@@ -100,6 +100,23 @@ class RegistroPelaTela(BaseTelasFinanceiro):
         self.assertEqual(resposta.status_code, 302)
         self.assertTrue(Pagamento.objetos_todos.filter(consulta=self.consulta_marcos).exists())
 
+    def test_pagamento_volta_para_a_origem(self):
+        """ADR-140: registrado a partir de uma pendência do painel, volta para o painel — não para o financeiro."""
+        self.entrar(self.ana)
+        resposta = self.client.post(reverse("financeiro:pagar_sessao", args=[self.consulta_marcos.pk]), {
+            "valor": "200", "data": "2026-09-03", "forma": "PIX", "observacao": "", "recibo_emitido": "sim",
+            "origem": "/"})
+        self.assertRedirects(resposta, "/", fetch_redirect_response=False)
+
+    def test_origem_de_fora_e_ignorada(self):
+        """Proteção contra redirecionamento aberto: origem que não é caminho local cai no mês do financeiro."""
+        self.entrar(self.ana)
+        resposta = self.client.post(reverse("financeiro:pagar_sessao", args=[self.consulta_marcos.pk]), {
+            "valor": "200", "data": "2026-09-03", "forma": "PIX", "observacao": "", "recibo_emitido": "sim",
+            "origem": "https://fora.example/x"})
+        self.assertEqual(resposta.status_code, 302)
+        self.assertNotIn("fora.example", resposta["Location"])
+
     def test_sem_forma_de_pagamento_volta_explicando(self):
         self.entrar(self.ana)
         resposta = self.client.post(reverse("financeiro:pagar_sessao", args=[self.consulta_marcos.pk]), {

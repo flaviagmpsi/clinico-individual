@@ -13,6 +13,7 @@ from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse
 from django.utils import timezone
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.views import View
 from django.views.generic import FormView, TemplateView
 
@@ -25,6 +26,18 @@ from pacientes.models import Caso
 
 def _url_do_mes(dia: date) -> str:
     return f"{reverse('financeiro:mes')}?mes={dia:%Y-%m}"
+
+
+def _origem(request) -> str:
+    """ADR-140: ao salvar, a pessoa volta para **onde estava** (painel, financeiro), não sempre para o mês do
+    financeiro. A origem viaja num campo escondido; só é aceita se for um caminho local (sem redirecionamento aberto)."""
+    alvo = request.POST.get("origem") or request.GET.get("origem") or ""
+    return alvo if alvo and url_has_allowed_host_and_scheme(alvo, allowed_hosts=None) else ""
+
+
+def _origem_de(request) -> str:
+    """O valor para o campo escondido, montado na renderização (POST tem prioridade, na volta de erro)."""
+    return request.POST.get("origem") or request.GET.get("origem") or ""
 
 
 class MesFinanceiro(LoginRequiredMixin, TemplateView):
@@ -97,6 +110,7 @@ class _RegistrarPagamento(LoginRequiredMixin, FormView):
     def get_context_data(self, **kwargs):
         contexto = super().get_context_data(**kwargs)
         contexto["cobranca"] = self.cobranca()
+        contexto["origem_url"] = _origem_de(self.request)
         return contexto
 
     def registrar(self, dados):
@@ -110,7 +124,8 @@ class _RegistrarPagamento(LoginRequiredMixin, FormView):
             form.add_error(None, erro.messages[0])
             return self.form_invalid(form)
         messages.success(self.request, f"Pagamento registrado: {cobranca.descricao.lower()} · {cobranca.caso}.")
-        return redirect(_url_do_mes(cobranca.mes or cobranca.vencimento))
+        # ADR-140: volta para a origem (o painel, quando veio de uma pendência de lá); senão, o mês do financeiro.
+        return redirect(_origem(self.request) or _url_do_mes(cobranca.mes or cobranca.vencimento))
 
 
 class PagarMensalidade(_RegistrarPagamento):

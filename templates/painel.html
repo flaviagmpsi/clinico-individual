@@ -210,7 +210,7 @@ Primeiro o dia; depois as pendências, num bloco; por fim o resumo do mês.
               </summary>
               <ul class="list-unstyled small mb-2 mt-1">
               {% for c in pagamentos_vencidos %}
-                <li class="pend-linha"><span class="pend-texto"><a href="{{ c.url_pagar }}" class="text-decoration-none fw-medium">{{ c.caso }}</a>
+                <li class="pend-linha"><span class="pend-texto"><a data-painel href="{{ c.url_pagar }}?origem={{ request.get_full_path|urlencode }}" class="text-decoration-none fw-medium">{{ c.caso }}</a>
                   <span class="text-muted">{{ c.descricao|lower }} ·</span>
                   <span class="atraso">venceu {{ c.vencimento|date:"d/m" }}{% with dias=c.dias_de_atraso %}{% if dias %} · {{ dias }} dia{{ dias|pluralize }} de atraso{% endif %}{% endwith %}</span></span>
                   <span class="valor">R$ {{ c.saldo|floatformat:2 }}</span></li>
@@ -228,7 +228,7 @@ Primeiro o dia; depois as pendências, num bloco; por fim o resumo do mês.
               </summary>
               <ul class="list-unstyled small mb-2 mt-1">
               {% for c in pagamentos_pendentes %}
-                <li class="pend-linha"><span class="pend-texto"><a href="{{ c.url_pagar }}" class="text-decoration-none fw-medium">{{ c.caso }}</a>
+                <li class="pend-linha"><span class="pend-texto"><a data-painel href="{{ c.url_pagar }}?origem={{ request.get_full_path|urlencode }}" class="text-decoration-none fw-medium">{{ c.caso }}</a>
                   <span class="text-muted">{{ c.descricao|lower }} · vence {{ c.vencimento|date:"d/m" }}{% with dias=c.dias_para_vencer %}{% if dias %} · em {{ dias }} dia{{ dias|pluralize }}{% else %} · hoje{% endif %}{% endwith %}</span></span>
                   <span class="valor">R$ {{ c.saldo|floatformat:2 }}</span></li>
               {% endfor %}

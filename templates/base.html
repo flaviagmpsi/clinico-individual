@@ -262,6 +262,12 @@ validação, o formulário volta dentro da folha. Sem JS, o link navega e a orig
   function reexecutarScripts(raiz) {
     raiz.querySelectorAll("script").forEach(function (velho) {
       var novo = document.createElement("script");
+      // Copia os atributos, inclusive o `type`: sem ele, um <script type="application/json"> (os dados de
+      // gráfico que o `json_script` do Django gera) voltaria a rodar como JavaScript e quebraria com
+      // "Unexpected token ':'", abortando a reinjeção dos scripts seguintes.
+      for (var i = 0; i < velho.attributes.length; i++) {
+        novo.setAttribute(velho.attributes[i].name, velho.attributes[i].value);
+      }
       if (velho.src) { novo.src = velho.src; } else { novo.textContent = velho.textContent; }
       velho.parentNode.replaceChild(novo, velho);
     });
