@@ -509,12 +509,15 @@ já colocou as credenciais corretas. Modelo fora da janela de 24h passa a sair (
 ou uma 2ª via dele na Claro, recebe o SMS e registra o número em outro lugar. Mitigação: chip guardado e recarregado.
 
 ✅ App Polaris **assinado na conta** e **envio testado** (texto livre na janela de 24h chegou ao celular do Paulo).
-Os 3 modelos do `WHATSAPP.md` foram **criados pela API** e estão **em análise** (2026-10-28) — confirmar a aprovação.
 
-Falta: confirmar o **cartão** em Pagamentos
-(a API não mostra); **nenhum modelo de mensagem** na conta Polaris (nem `hello_world`) — sem modelo o sistema só
-responde a quem escreveu antes, dentro de 24h; recriar os modelos depende dos conflitos abaixo; webhook (URL +
-`WHATSAPP_APP_SECRET` + `WHATSAPP_WEBHOOK_VERIFY_TOKEN`), quando houver rota no ar.
+✅ **Os 6 modelos que o código usa estão na conta Polaris (2026-11-11).** `agenda_do_dia`, `pendencias_da_semana` e
+`aviso_exclusao_conta` **APROVADOS**; `lembrete_compromisso`, `aviso_pagamento`, `paciente_confirmou` e
+`paciente_nao_vem` **criados pela API** (`POST .../message_templates`) e **em análise** — confirmar a aprovação na
+Meta (costuma sair em minutos/horas). Os 3 textos reescritos pela regra "sem variável nas pontas" estão acima.
+
+Falta: **webhook no ar** (URL `/lembretes/webhook/` + `WHATSAPP_APP_SECRET` + `WHATSAPP_WEBHOOK_VERIFY_TOKEN`
+apontados no app Polaris) e o **cron externo** batendo em `/lembretes/disparar/?segredo=…` a cada ~15 min (I-05).
+Depois, `WHATSAPP_ATIVO=True` no Environment do Render liga o envio real.
 Há **duas** contas de mensagens chamadas "Sofia" no portfólio — arrumar depois.
 
 `.env` (segredos **nunca** no repositório; entregar à Flávia por gerenciador de senhas):
@@ -538,10 +541,16 @@ Há **duas** contas de mensagens chamadas "Sofia" no portfólio — arrumar depo
   **Sim →** *"Agradecemos sua confirmação!"* · **Não →** *"Obrigado por nos informar, seu/sua psicólogo(a) irá entrar
   em contato com você para uma possível remarcação."*
 - `aviso_pagamento` — ao **paciente**: *"Olá {{1}}! Aqui é do consultório de {{2}}. Lembrete do pagamento do seu
-  atendimento, com vencimento em {{3}}."*
-- `paciente_confirmou` — ao **psicólogo** (primeiro nome): *"{{1}} confirmou o compromisso das {{2}}."*
-- `paciente_nao_vem` — ao **psicólogo**: *"{{1}} avisou que não poderá comparecer às {{2}}. Recomendamos falar com
-  ele(a) sobre a remarcação."*
+  atendimento, com vencimento em {{3}}. Qualquer dúvida, estamos à disposição."*
+- `paciente_confirmou` — ao **psicólogo** (primeiro nome): *"Confirmação recebida: {{1}} confirmou o compromisso das
+  {{2}} pelo WhatsApp."*
+- `paciente_nao_vem` — ao **psicólogo**: *"Aviso: {{1}} informou que não poderá comparecer às {{2}}. Recomendamos
+  falar sobre a remarcação."*
+
+> ⚠️ **Textos reescritos ao criar na Meta (2026-11-11):** a Meta recusa modelo com **variável no início ou no fim**
+> (erro 100). Os três acima ganharam uma abertura/fecho fixos; as **variáveis e sua ordem não mudaram**, então o
+> código (`lembretes/meta.enviar_modelo`, que só passa os valores) **não muda**. `lembrete_compromisso` passou como
+> estava.
 - `agenda_do_dia` e `pendencias_da_semana` — ao **psicólogo**, **sem nome de paciente** (já no [WHATSAPP.md](WHATSAPP.md)).
 
 **Requisitos Funcionais (RF):**

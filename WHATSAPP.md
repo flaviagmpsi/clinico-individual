@@ -107,10 +107,12 @@ gratuito — a saída recomendada é um cron externo gratuito chamando uma rota 
 
 ---
 
-## 📌 Próximos modelos — para a Flávia criar
+## 📌 Próximos modelos — ✅ criados em 2026-11-11
 
-Ficaram na conta **Sofia** (aprovados em 03/10) e **não** foram recriados no Polaris, porque cada um esbarra numa
-regra do projeto. Antes de criar qualquer um, a decisão tem de estar escrita como ADR no `complicacoes.md`.
+Os 4 abaixo **já foram criados na conta Polaris pela API** (`POST .../message_templates`) e estão **em análise** na
+Meta: `lembrete_compromisso` (com botões Sim/Não), `aviso_pagamento`, `paciente_confirmou`, `paciente_nao_vem`.
+A decisão de uso está na **ADR-144**; os textos exatos (3 reescritos pela regra "sem variável nas pontas") estão em
+`demandas.md` → "Lembretes por WhatsApp". A tabela abaixo fica como registro do que **travava** cada um antes.
 
 | Modelo | O que trava |
 |---|---|
