@@ -4471,6 +4471,36 @@ par e ~21 virando o mês; respeita início e fim); `agenda/test_primeira_sessao.
 par); `atendimentos/test_servicos.py` (previsão por par, nunca três no mês; troca de frequência; quinzenais de pares
 diferentes no mesmo horário não colidem, do mesmo par colidem).
 
+## ADR-147 — Trocar o horário do paciente descarta as sessões que o horário antigo só previa (estende a ADR-022)
+
+**Status:** ✅ Aceita — 2026-11-11 (relato de uso real).
+
+**Contexto (nas palavras da usuária):** *"às vezes eu troco o horário do paciente para um novo horário lá nas
+configurações dele, e uma sessão que já existia na semana continua existindo, o que não é verdade, ela já não existe
+mais; isso acontece principalmente com pacientes quinzenais em que eu preciso mudar quais semanas ele realiza o
+atendimento."* Ao mudar a frequência (dia/horário, ou as semanas do quinzenal — ADR-146), a regra antiga encerrava em
+`a_partir_de` e parava de prever o **futuro**, mas a ocorrência que ela já previa para o **ciclo atual** e que a
+psicóloga nunca cadastrou continuava aparecendo como pendência "a cadastrar" — uma sessão-fantasma, que não aconteceu
+naquele horário porque o horário mudou.
+
+**Decisão:** na própria tela "Alterar frequência", ao salvar, o sistema **lista** as sessões que o horário atual só
+previa e que não foram cadastradas, e oferece **descartá-las** (marcado por padrão). Descartadas, elas **somem sem
+virar registro**: a sessão prevista é cálculo, não consulta (ADR-060), então basta a regra antiga terminar **logo
+depois da última sessão cadastrada**, em vez de em `a_partir_de`. Nada de estado novo no banco, nenhuma consulta
+"cancelada" criada.
+
+**Por que não é remarcação nem cancelamento:** "Remarcou" (ADR-068) é para uma sessão que foi para outro dia e o
+sistema passa a **esperar**; aqui a sessão simplesmente **deixou de existir** no horário antigo e o paciente segue no
+novo. "Cancelou pelo cliente/profissional" criaria um registro de cancelamento que não é verdade.
+
+**Salvaguarda (ADR-022, o passado não se reescreve):** só se descarta o **rabo não cadastrado** depois da última
+sessão real — o que foi cadastrado continua válido. A tela mostra exatamente quais datas somem, e há um aviso: se
+alguma aconteceu, desmarque e cadastre-a antes. O descarte é opt-out por troca, não automático em silêncio.
+
+**Escopo:** `atendimentos` (serviço `definir_frequencia`/`_encerrar` + `pendentes_descartaveis`, formulário, view e a
+tela `frequencia.html`). **Testes:** `atendimentos/test_servicos.py` — descartar tira a prevista não cadastrada e
+preserva a cadastrada; sem pedir, a prevista antiga segue pendente.
+
 ## Impeditivos
 
 | # | Impeditivo | Situação |

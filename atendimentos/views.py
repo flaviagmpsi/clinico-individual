@@ -519,6 +519,12 @@ class FrequenciaDoCaso(LoginRequiredMixin, _ComCaso, FormView):
                            duracao=regra.duracao, semanas_do_mes=regra.semanas_do_mes)
         return inicial
 
+    def get_context_data(self, **kwargs):
+        contexto = super().get_context_data(**kwargs)
+        # ADR-147: as sessões que o horário atual só previu e que não foram cadastradas — some ao trocar o horário.
+        contexto["descartaveis"] = servicos.pendentes_descartaveis(self.caso())
+        return contexto
+
     def form_valid(self, form):
         dados = form.cleaned_data
         caso = self.caso()
@@ -526,7 +532,8 @@ class FrequenciaDoCaso(LoginRequiredMixin, _ComCaso, FormView):
             regra = servicos.definir_frequencia(
                 caso, frequencia=dados["frequencia"], dia_semana=dados.get("dia_semana"), hora=dados.get("hora"),
                 duracao=dados.get("duracao"), a_partir_de=dados["a_partir_de"],
-                semanas_do_mes=dados.get("semanas_do_mes", ""))
+                semanas_do_mes=dados.get("semanas_do_mes", ""),
+                descartar_pendentes_anteriores=dados.get("descartar_pendentes", False))
         except ValidationError as erro:
             form.add_error(None, erro.messages[0])
             return self.form_invalid(form)

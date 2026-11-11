@@ -377,6 +377,34 @@ class TrocaDeFrequencia(BaseAgenda):
             self.assertEqual(len(servicos.sessoes_pendentes(caso=self.caso_maria)), 2)
 
 
+    def test_trocar_horario_descarta_as_previstas_nao_cadastradas(self):
+        """ADR-147: ao trocar o horário, a sessão que o horário antigo só previa e que não foi cadastrada some;
+        a que foi cadastrada continua existindo."""
+        with contexto.como(self.ana.pk):
+            antiga = self.frequencia_desde(self.caso_maria)  # começou 3 semanas atrás; previstas passadas pendentes
+            pendentes = servicos.sessoes_pendentes(caso=self.caso_maria)
+            self.assertGreaterEqual(len(pendentes), 2)
+            primeira = min(s.data for s in pendentes)
+            servicos.cadastrar_prevista(antiga, primeira, estado=REALIZADA)  # a mais antiga aconteceu
+            self.assertTrue(servicos.pendentes_descartaveis(self.caso_maria))  # o resto é fantasma
+            servicos.definir_frequencia(self.caso_maria, frequencia=SEMANAL, dia_semana=TERCA, hora=time(16),
+                                        descartar_pendentes_anteriores=True)
+            sobraram = [s for s in servicos.sessoes_pendentes(caso=self.caso_maria)
+                        if getattr(s, "regra", None) and s.regra.pk == antiga.pk]
+            self.assertEqual(sobraram, [])  # os fantasmas sumiram
+            self.assertTrue(Consulta.objects.filter(recorrencia=antiga, data_prevista=primeira).exists())
+
+    def test_sem_descartar_a_prevista_antiga_continua_pendente(self):
+        """Sem pedir o descarte, o comportamento de sempre: a previsão passada da regra antiga segue pendente."""
+        with contexto.como(self.ana.pk):
+            antiga = self.frequencia_desde(self.caso_maria)
+            antes = [s for s in servicos.sessoes_pendentes(caso=self.caso_maria) if getattr(s, "regra", None)]
+            servicos.definir_frequencia(self.caso_maria, frequencia=SEMANAL, dia_semana=TERCA, hora=time(16))
+            depois = [s for s in servicos.sessoes_pendentes(caso=self.caso_maria)
+                      if getattr(s, "regra", None) and s.regra.pk == antiga.pk]
+        self.assertEqual(len(depois), len(antes))
+
+
 class Colisao(BaseAgenda):
     def test_regra_que_bate_em_outra_regra_e_recusada_sem_gravar_nada(self):
         with contexto.como(self.ana.pk):

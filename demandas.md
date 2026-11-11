@@ -228,6 +228,7 @@ em atendimento de casal. Ver **P-70**, resolvida em parte.
 | A-03 | ~~Remarcação avulsa~~ — a sessão que não aconteceu vira falta remarcada, e a nova é cadastrada quando acontecer | — | ❌ | — | ADR-060 |
 | A-04 | ~~Ocorrência remarcada lembra que foi alterada à mão~~ — não há mais consulta gravada antes de acontecer | — | ❌ | — | ADR-060 |
 | A-05 | Alterar a frequência vale **"desta data em diante"**; o que foi cadastrado não é tocado | 🎨 | ✅ | 🟢 | ADR-022 |
+| A-25 | Ao trocar o horário/semanas, a tela mostra as sessões que o horário antigo só previa e não foram cadastradas e oferece **descartá-las** (somem sem virar registro; só o rabo não cadastrado) | 🎨⚙️ | ✅ | 🟢 | ADR-147 |
 | A-06 | Consulta tem data, **hora e duração** (o original só tem data) | 🗄️ | ✅ | 🟢 | ADR-023 |
 | A-07 | Colisão de horário **bloqueia** a marcação | ⚙️ | ✅ | 🟢 | ADR-024 |
 | A-08 | Casal não dispara colisão: é uma consulta com dois participantes | ⚙️ | ✅ | 🟢 | ADR-026 |

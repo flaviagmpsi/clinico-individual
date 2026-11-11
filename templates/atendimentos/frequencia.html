@@ -39,6 +39,26 @@
       <div class="form-text small mt-2">No avulso, dia, horário e duração são ignorados: cada consulta é marcada à parte.</div>
     </div>
   </div>
+
+  {% comment %}ADR-147: ao trocar o horário/semanas, as sessões que o horário atual só previa e que você não
+  cadastrou não aconteceram ali. Some-as da pendência de uma vez, mostrando quais.{% endcomment %}
+  {% if descartaveis %}
+  <div class="card mb-3 border-warning-subtle">
+    <div class="card-body">
+      <div class="small mb-2">O horário atual ainda previa {{ descartaveis|length }}
+        sess{{ descartaveis|length|pluralize:"ão,ões" }} que você <strong>não cadastrou</strong>:</div>
+      <ul class="small mb-2">
+        {% for s in descartaveis %}<li>{{ s.data|date:"l, d/m/Y" }} às {{ s.inicio|time:"H:i" }}</li>{% endfor %}
+      </ul>
+      <div class="form-check">{{ form.descartar_pendentes }}
+        <label class="form-check-label" for="{{ form.descartar_pendentes.id_for_label }}">{{ form.descartar_pendentes.label }}</label>
+        <div class="form-text small">Elas somem da lista de pendências — mudou o horário, não aconteceram ali.
+          Se alguma aconteceu, desmarque e cadastre-a antes.</div>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
   <button type="submit" class="btn btn-primary">Salvar</button>
 </form>
 <script>

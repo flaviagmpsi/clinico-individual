@@ -156,6 +156,11 @@ class FrequenciaForm(forms.Form):
     a_partir_de = forms.DateField(
         label="Vale a partir de", widget=forms.DateInput(attrs={**_TEXTO, "type": "date"}, format="%Y-%m-%d"),
         help_text="Sessões anteriores a esta data não mudam (ADR-022).")
+    # ADR-147: ao trocar o horário/semanas, as sessões que o horário antigo só previa e que nunca foram
+    # cadastradas não aconteceram — some da pendência. Só tem efeito quando há essas sessões (a tela as mostra).
+    descartar_pendentes = forms.BooleanField(
+        label="Descartar as sessões do horário antigo que você não cadastrou",
+        required=False, initial=True)
 
     def __init__(self, *args, duracao_padrao: int, **kwargs):
         super().__init__(*args, **kwargs)

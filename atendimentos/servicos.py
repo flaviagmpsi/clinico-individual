@@ -22,7 +22,7 @@ from decimal import Decimal
 
 from django.core.exceptions import ValidationError
 from django.db import transaction
-from django.db.models import Q
+from django.db.models import Max, Q
 from django.utils import timezone
 
 from agenda import compromissos
@@ -339,13 +339,37 @@ def _conflito_da_regra(nova: Recorrencia) -> str | None:
     return None
 
 
-def _encerrar(regra: Recorrencia, a_partir_de: date) -> None:
-    """Fecha a regra numa data. Previsão não é registro: nada além da regra muda, e o que foi cadastrado fica."""
-    if regra.inicio >= a_partir_de and not regra.consultas.exists():
+def _encerrar(regra: Recorrencia, a_partir_de: date, *, descartar_pendentes: bool = False) -> None:
+    """Fecha a regra numa data. Previsão não é registro: nada além da regra muda, e o que foi cadastrado fica.
+
+    Com `descartar_pendentes` (ADR-147), a regra termina logo **depois da última sessão cadastrada**, e não em
+    `a_partir_de`: as sessões que ela só previa — e que o psicólogo nunca cadastrou — somem da pendência, porque o
+    horário mudou e elas não aconteceram. É o caso de trocar o dia/horário (ou as semanas do quinzenal) e a sessão
+    do horário antigo continuar aparecendo. Nenhum registro é criado; o que foi cadastrado continua válido, porque
+    só se descarta o rabo **não cadastrado** depois da última sessão real."""
+    corte = a_partir_de
+    if descartar_pendentes:
+        ultima = regra.consultas.aggregate(fim=Max("data_prevista"))["fim"]
+        corte = min(a_partir_de, ultima + timedelta(days=1)) if ultima else regra.inicio
+    if regra.inicio >= corte and not regra.consultas.exists():
         regra.delete()  # nunca chegou a valer e não deixou rastro
         return
-    regra.fim = max(a_partir_de, regra.inicio)
+    regra.fim = max(corte, regra.inicio)
     regra.save()
+
+
+def pendentes_descartaveis(caso: Caso, hoje: date | None = None) -> list[SessaoPrevista]:
+    """As sessões que a regra aberta só previu (passadas, sem cadastro) depois da última sessão cadastrada.
+
+    São exatamente as que o descarte da troca de horário (ADR-147) remove — devolvidas para a tela mostrar ao
+    psicólogo conferir antes de confirmar. Vazio quando não há regra aberta ou nada ficou pendente nela."""
+    regra = caso.regra_aberta()
+    if regra is None:
+        return []
+    hoje = hoje or timezone.localdate()
+    ultima = regra.consultas.aggregate(fim=Max("data_prevista"))["fim"]
+    de = (ultima + timedelta(days=1)) if ultima else regra.inicio
+    return [SessaoPrevista(regra, dia) for dia in regra.ocorrencias(de, hoje)]
 
 
 def _recusar_encerrado(caso: Caso) -> None:
@@ -368,6 +392,7 @@ def definir_frequencia(
     hoje: date | None = None,
     primeira_sessao: date | None = None,
     semanas_do_mes: str = "",
+    descartar_pendentes_anteriores: bool = False,
 ) -> Recorrencia | None:
     """Semanal, quinzenal ou avulso (ADR-053). Vale "desta data em diante" (ADR-022).
 
@@ -386,7 +411,7 @@ def definir_frequencia(
 
     atual = caso.regra_aberta()
     if atual is not None:
-        _encerrar(atual, a_partir_de)
+        _encerrar(atual, a_partir_de, descartar_pendentes=descartar_pendentes_anteriores)
     if frequencia == AVULSO:
         return None
     if dia_semana is None or hora is None:
