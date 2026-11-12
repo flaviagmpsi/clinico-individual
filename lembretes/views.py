@@ -23,9 +23,12 @@ from lembretes import servicos
 @csrf_exempt
 @require_POST
 def disparar(request):
-    segredo = settings.WHATSAPP_CRON_SEGREDO
-    apresentado = request.headers.get("X-Cron-Segredo", "") or request.GET.get("segredo", "")
-    if not segredo or apresentado != segredo:
+    # `.strip()` nos dois lados: uma variável de ambiente colada no painel do Render costuma vir com um espaço ou
+    # uma quebra de linha invisível no fim, e sem isso o cron leva 403 com o segredo "certo". Comparação em tempo
+    # constante por ser um segredo compartilhado.
+    segredo = (settings.WHATSAPP_CRON_SEGREDO or "").strip()
+    apresentado = (request.headers.get("X-Cron-Segredo", "") or request.GET.get("segredo", "")).strip()
+    if not segredo or not hmac.compare_digest(apresentado, segredo):
         return HttpResponseForbidden("segredo inválido")
     contagem = servicos.disparar()
     return JsonResponse({"ok": True, **contagem})

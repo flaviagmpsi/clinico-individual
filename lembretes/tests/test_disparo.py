@@ -35,6 +35,15 @@ class RotaDoCron(TransactionTestCase):
         self.assertEqual(self.client.post(self.rota).status_code, 403)
         self.assertEqual(self.client.post(self.rota, HTTP_X_CRON_SEGREDO="errado").status_code, 403)
 
+    @override_settings(WHATSAPP_CRON_SEGREDO="  segredo-do-cron\n", WHATSAPP_SIMULADO=True)
+    def test_tolera_espaco_invisivel_no_segredo(self):
+        # No painel do Render, o valor colado costuma vir com um \n no fim; o cron manda o valor limpo. Tem que casar.
+        self.ana.whatsapp_agenda_manha = False
+        with contexto.como(self.ana.pk):
+            self.ana.save()
+        resposta = self.client.post(self.rota, HTTP_X_CRON_SEGREDO="segredo-do-cron")
+        self.assertEqual(resposta.status_code, 200)
+
     def test_sem_nada_na_hora_roda_sem_erro(self):
         # Prova que a ponte de papel/RLS funciona mesmo sem nada a enviar (agenda vazia → conta 0, sem explodir).
         self.ana.whatsapp_agenda_manha = False
