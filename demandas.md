@@ -541,14 +541,17 @@ Há **duas** contas de mensagens chamadas "Sofia" no portfólio — arrumar depo
 
 **Mensagens (modelos Meta, `pt_BR`, categoria Utilidade — nomes em minúsculas):**
 - `lembrete_compromisso` — ao **paciente**, com botões **[Sim] [Não]**:
-  *"Olá {{1}}! O sistema de gestão para psicólogos Polaris gostaria de confirmar seu atendimento com {{2}} em {{3}} às
-  {{4}}, {{5}}. Você confirma esse compromisso?"* — {{1}} paciente · {{2}} psicólogo (nome e sobrenome) · {{3}} data ·
-  {{4}} hora · {{5}} "presencialmente"/"online".
+  *"Olá {{1}}! Gostaria de confirmar seu atendimento com {{2}} em {{3}} às {{4}}, {{5}}. Você confirma esse
+  compromisso?"* — {{1}} paciente · {{2}} psicólogo (nome e sobrenome) · {{3}} data · {{4}} hora ·
+  {{5}} "presencialmente"/"online". _(Texto encurtado em 2026-11-13 a pedido da Flávia: saiu "O sistema de gestão para
+  psicólogos Polaris".)_
 - Resposta do Polaris ao paciente (**texto livre**, dentro da janela de 24h aberta pelo clique no botão — não é modelo):
   **Sim →** *"Agradecemos sua confirmação!"* · **Não →** *"Obrigado por nos informar, seu/sua psicólogo(a) irá entrar
   em contato com você para uma possível remarcação."*
-- `aviso_pagamento` — ao **paciente**: *"Olá {{1}}! Aqui é do consultório de {{2}}. Lembrete do pagamento do seu
-  atendimento, com vencimento em {{3}}. Qualquer dúvida, estamos à disposição."*
+- `aviso_pagamento` — ao **paciente**, **só no dia do vencimento e só se a cobrança estiver em aberto** (dar baixa no
+  pagamento cancela o aviso — ver RF13): *"Olá {{1}}! Passando para te lembrar que seu pagamento das sessões deste mês
+  com {{2}} vence hoje, {{3}}. Qualquer dúvida, consulte seu/sua psicólogo(a)."* — {{1}} paciente · {{2}} psicólogo ·
+  {{3}} data do vencimento. _(Reescrito em 2026-11-13 a pedido da Flávia.)_
 - `paciente_confirmou` — ao **psicólogo** (primeiro nome): *"Confirmação recebida: {{1}} confirmou o compromisso das
   {{2}} pelo WhatsApp."*
 - `paciente_nao_vem` — ao **psicólogo**: *"Aviso: {{1}} informou que não poderá comparecer às {{2}}. Recomendamos
