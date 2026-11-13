@@ -9,6 +9,7 @@ a rota recusa — desligada por padrão.
 import hashlib
 import hmac
 import json
+import logging
 
 from django.conf import settings
 from django.http import HttpResponse, HttpResponseForbidden, JsonResponse
@@ -17,6 +18,8 @@ from django.views.decorators.http import require_POST
 
 from core.escopo import dispensa_escopo
 from lembretes import servicos
+
+logger = logging.getLogger("lembretes")
 
 
 @dispensa_escopo
@@ -30,7 +33,14 @@ def disparar(request):
     apresentado = (request.headers.get("X-Cron-Segredo", "") or request.GET.get("segredo", "")).strip()
     if not segredo or not hmac.compare_digest(apresentado, segredo):
         return HttpResponseForbidden("segredo inválido")
-    contagem = servicos.disparar()
+    # O cron não pode cair num 500 mudo: um erro aqui some no log do Django (sem config, `django.request` não vai
+    # ao console em produção). Registramos o traceback com um marcador buscável e devolvemos a classe+mensagem no
+    # corpo, para diagnosticar sem depender de caçar log.
+    try:
+        contagem = servicos.disparar()
+    except Exception as erro:  # noqa: BLE001 — a borda do cron é o lugar certo de não deixar nada vazar como 500 mudo
+        logger.exception("LEMBRETES_CRON_FALHOU")
+        return JsonResponse({"ok": False, "erro": f"{type(erro).__name__}: {erro}"}, status=500)
     return JsonResponse({"ok": True, **contagem})
 
 

@@ -7,6 +7,7 @@ desce para `hamilton_app` por psicólogo. Se a ponte de papel/RLS estiver errada
 
 from datetime import datetime, time, timedelta
 from decimal import Decimal
+from unittest.mock import patch
 
 from django.test import TransactionTestCase, override_settings
 from django.urls import reverse
@@ -34,6 +35,16 @@ class RotaDoCron(TransactionTestCase):
     def test_sem_segredo_ou_com_segredo_errado_recusa(self):
         self.assertEqual(self.client.post(self.rota).status_code, 403)
         self.assertEqual(self.client.post(self.rota, HTTP_X_CRON_SEGREDO="errado").status_code, 403)
+
+    def test_erro_no_motor_vira_500_com_mensagem(self):
+        # O cron nunca deve devolver um 500 mudo: o erro é registrado com marcador e a causa volta no corpo.
+        with patch("lembretes.views.servicos.disparar", side_effect=ValueError("boom")), \
+                self.assertLogs("lembretes", level="ERROR") as logs:
+            resposta = self.client.post(self.rota, HTTP_X_CRON_SEGREDO="segredo-do-cron")
+        self.assertEqual(resposta.status_code, 500)
+        self.assertFalse(resposta.json()["ok"])
+        self.assertIn("ValueError: boom", resposta.json()["erro"])
+        self.assertTrue(any("LEMBRETES_CRON_FALHOU" in linha for linha in logs.output))
 
     @override_settings(WHATSAPP_CRON_SEGREDO="  segredo-do-cron\n", WHATSAPP_SIMULADO=True)
     def test_tolera_espaco_invisivel_no_segredo(self):
