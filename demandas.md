@@ -476,7 +476,8 @@ cobrança de sessão futura. O gatilho é a consulta ficar `REALIZADA`, nunca o 
 ### Lembretes por WhatsApp
 **Status:** ✅ **Especificada (ADR-144, 2026-11-02)** — o produto está decidido (User Story abaixo). A infraestrutura
 na Meta está montada (2026-10-28, ADR-141). Falta a parte **operacional** antes de ir ao ar: ~~**cartão** na conta Meta~~
-(✅ liberado em 2026-11-04 — credenciais corretas colocadas pela Flávia), a **rota de webhook** no ar e o **cron externo**. O código pode começar em **modo
+(✅ liberado em 2026-11-04 — credenciais corretas colocadas pela Flávia), ~~o **cron externo**~~ (✅ **2026-11-13** —
+cron-job.org a cada 15 min, execução automática `Successful` em produção) e a **rota de webhook** no ar. O código pode começar em **modo
 simulado** (registra "enviaria", não chama a Meta).
 
 **Infraestrutura montada na Meta (2026-10-28):**
@@ -515,8 +516,10 @@ ou uma 2ª via dele na Claro, recebe o SMS e registra o número em outro lugar. 
 `paciente_nao_vem` **criados pela API** (`POST .../message_templates`) e **em análise** — confirmar a aprovação na
 Meta (costuma sair em minutos/horas). Os 3 textos reescritos pela regra "sem variável nas pontas" estão acima.
 
-Falta: **webhook no ar** (URL `/lembretes/webhook/` + `WHATSAPP_APP_SECRET` + `WHATSAPP_WEBHOOK_VERIFY_TOKEN`
-apontados no app Polaris) e o **cron externo** batendo em `/lembretes/disparar/?segredo=…` a cada ~15 min (I-05).
+~~Cron externo~~ ✅ **no ar (2026-11-13):** cron-job.org bate em `/lembretes/disparar/` com `X-Cron-Segredo`
+(`WHATSAPP_CRON_SEGREDO` no Render) a cada 15 min; execução automática `Successful (1,6 s)`, resposta `{"ok": true, …}`,
+modo simulado (I-05 resolvido sem custo). Falta: **webhook no ar** (URL `/whatsapp/webhook/` + `WHATSAPP_APP_SECRET` +
+`WHATSAPP_WEBHOOK_VERIFY_TOKEN` apontados no app Polaris).
 Depois, `WHATSAPP_ATIVO=True` no Environment do Render liga o envio real.
 Há **duas** contas de mensagens chamadas "Sofia" no portfólio — arrumar depois.
 

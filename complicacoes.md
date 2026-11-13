@@ -4391,8 +4391,10 @@ derruba a tela; **modo simulado** enquanto a conta Meta não tiver **cartão** (
 `131042`); webhook com verificação de assinatura e normalização do 9º dígito; segredos só no `.env`/Environment; testes
 com a Meta simulada; isolamento por psicólogo (ADR-001).
 
-**Pendências operacionais (não são decisão de produto):** cadastrar o cartão na conta Meta; criar e aprovar os modelos;
-subir a rota de webhook; configurar o cron externo. Ordem sugerida: enviar → agendar → webhook.
+**Pendências operacionais (não são decisão de produto):** ~~cadastrar o cartão na conta Meta~~ (✅ 2026-11-04);
+~~criar e aprovar os modelos~~ (✅ 6 modelos na conta Polaris, 2026-11-11); ~~configurar o cron externo~~
+(✅ **2026-11-13** — cron-job.org batendo em `/lembretes/disparar/` a cada 15 min, execução automática `Successful`
+em produção, modo simulado); **falta** subir a rota de webhook. Ordem sugerida: enviar → agendar → webhook.
 
 ## ADR-145 — A checagem de saúde responde antes da pilha de middlewares, para o Neon poder dormir (estende a ADR-114)
 
