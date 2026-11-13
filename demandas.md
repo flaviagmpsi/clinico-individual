@@ -512,10 +512,10 @@ ou uma 2ª via dele na Claro, recebe o SMS e registra o número em outro lugar. 
 
 ✅ App Polaris **assinado na conta** e **envio testado** (texto livre na janela de 24h chegou ao celular do Paulo).
 
-✅ **Os 6 modelos que o código usa estão na conta Polaris (2026-11-11).** `agenda_do_dia`, `pendencias_da_semana` e
-`aviso_exclusao_conta` **APROVADOS**; `lembrete_compromisso`, `aviso_pagamento`, `paciente_confirmou` e
-`paciente_nao_vem` **criados pela API** (`POST .../message_templates`) e **em análise** — confirmar a aprovação na
-Meta (costuma sair em minutos/horas). Os 3 textos reescritos pela regra "sem variável nas pontas" estão acima.
+✅ **Os 6 modelos que o código usa estão na conta Polaris e TODOS APROVADOS** (confirmado pela API em 2026-11-13):
+`agenda_do_dia`, `pendencias_da_semana`, `lembrete_compromisso`, `aviso_pagamento`, `paciente_confirmou`,
+`paciente_nao_vem` — mais `aviso_exclusao_conta` — todos `APPROVED`, categoria Utilidade, `pt_BR`. Os 3 textos
+reescritos pela regra "sem variável nas pontas" estão abaixo.
 
 ~~Cron externo~~ ✅ **no ar (2026-11-13):** cron-job.org bate em `/lembretes/disparar/` com `X-Cron-Segredo`
 (`WHATSAPP_CRON_SEGREDO` no Render) a cada 15 min; execução automática `Successful (1,6 s)`, resposta `{"ok": true, …}`,
