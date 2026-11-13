@@ -4394,7 +4394,10 @@ com a Meta simulada; isolamento por psicólogo (ADR-001).
 **Pendências operacionais (não são decisão de produto):** ~~cadastrar o cartão na conta Meta~~ (✅ 2026-11-04);
 ~~criar e aprovar os modelos~~ (✅ 6 modelos na conta Polaris, 2026-11-11); ~~configurar o cron externo~~
 (✅ **2026-11-13** — cron-job.org batendo em `/lembretes/disparar/` a cada 15 min, execução automática `Successful`
-em produção, modo simulado); **falta** subir a rota de webhook. Ordem sugerida: enviar → agendar → webhook.
+em produção, modo simulado); ~~subir a rota de webhook~~ (✅ **2026-11-13** — `/whatsapp/webhook/` registrado na
+Meta pela API: callback + verify token conferidos no aperto de mão, WABA inscrita no campo `messages`). **Só falta ir
+ao ar:** pôr `WHATSAPP_APP_SECRET` no Environment do Render (valida a assinatura dos POSTs reais) e virar
+`WHATSAPP_ATIVO=True`.
 
 ## ADR-145 — A checagem de saúde responde antes da pilha de middlewares, para o Neon poder dormir (estende a ADR-114)
 

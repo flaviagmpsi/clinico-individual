@@ -475,10 +475,11 @@ cobrança de sessão futura. O gatilho é a consulta ficar `REALIZADA`, nunca o 
 
 ### Lembretes por WhatsApp
 **Status:** ✅ **Especificada (ADR-144, 2026-11-02)** — o produto está decidido (User Story abaixo). A infraestrutura
-na Meta está montada (2026-10-28, ADR-141). Falta a parte **operacional** antes de ir ao ar: ~~**cartão** na conta Meta~~
+na Meta está montada (2026-10-28, ADR-141). A parte **operacional** está pronta: ~~**cartão** na conta Meta~~
 (✅ liberado em 2026-11-04 — credenciais corretas colocadas pela Flávia), ~~o **cron externo**~~ (✅ **2026-11-13** —
-cron-job.org a cada 15 min, execução automática `Successful` em produção) e a **rota de webhook** no ar. O código pode começar em **modo
-simulado** (registra "enviaria", não chama a Meta).
+cron-job.org a cada 15 min, execução automática `Successful` em produção) e ~~a **rota de webhook** no ar~~ (✅ **2026-11-13** —
+`/whatsapp/webhook/` registrado na Meta pela API, WABA inscrita em `messages`). Segue em **modo
+simulado** (registra "enviaria", não chama a Meta) até `WHATSAPP_ATIVO=True`.
 
 **Infraestrutura montada na Meta (2026-10-28):**
 
@@ -518,9 +519,12 @@ Meta (costuma sair em minutos/horas). Os 3 textos reescritos pela regra "sem var
 
 ~~Cron externo~~ ✅ **no ar (2026-11-13):** cron-job.org bate em `/lembretes/disparar/` com `X-Cron-Segredo`
 (`WHATSAPP_CRON_SEGREDO` no Render) a cada 15 min; execução automática `Successful (1,6 s)`, resposta `{"ok": true, …}`,
-modo simulado (I-05 resolvido sem custo). Falta: **webhook no ar** (URL `/whatsapp/webhook/` + `WHATSAPP_APP_SECRET` +
-`WHATSAPP_WEBHOOK_VERIFY_TOKEN` apontados no app Polaris).
-Depois, `WHATSAPP_ATIVO=True` no Environment do Render liga o envio real.
+modo simulado (I-05 resolvido sem custo).
+~~Webhook~~ ✅ **no ar (2026-11-13):** `/whatsapp/webhook/` registrado na Meta **pela API** (`POST /{app}/subscriptions`
+com `object=whatsapp_business_account`, `fields=messages`, callback `https://hamilton-zdsf.onrender.com/whatsapp/webhook/`
+e o verify token; depois `POST /{WABA}/subscribed_apps`). A Meta fez o aperto de mão (GET) contra o Render e devolveu
+`{"success":true}`; `WHATSAPP_WEBHOOK_VERIFY_TOKEN` posto no Render pela Flávia.
+**Para ir ao ar:** `WHATSAPP_APP_SECRET` no Environment do Render (valida a assinatura dos POSTs reais) e `WHATSAPP_ATIVO=True`.
 Há **duas** contas de mensagens chamadas "Sofia" no portfólio — arrumar depois.
 
 `.env` (segredos **nunca** no repositório; entregar à Flávia por gerenciador de senhas):
