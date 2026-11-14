@@ -4395,9 +4395,20 @@ com a Meta simulada; isolamento por psicólogo (ADR-001).
 ~~criar e aprovar os modelos~~ (✅ 6 modelos na conta Polaris, 2026-11-11); ~~configurar o cron externo~~
 (✅ **2026-11-13** — cron-job.org batendo em `/lembretes/disparar/` a cada 15 min, execução automática `Successful`
 em produção, modo simulado); ~~subir a rota de webhook~~ (✅ **2026-11-13** — `/whatsapp/webhook/` registrado na
-Meta pela API: callback + verify token conferidos no aperto de mão, WABA inscrita no campo `messages`). **Só falta ir
-ao ar:** pôr `WHATSAPP_APP_SECRET` no Environment do Render (valida a assinatura dos POSTs reais) e virar
-`WHATSAPP_ATIVO=True`.
+Meta pela API: callback + verify token conferidos no aperto de mão, WABA inscrita no campo `messages`).
+
+**⚠️ Impedimento descoberto no teste de ponta a ponta (2026-11-13):** o número da Polaris (+55 31 8779-6335)
+**envia mensagem de sessão mas NÃO entrega template.** Teste real ao número da Flávia: texto livre dentro da janela
+de 24h **chegou**; template `agenda_do_dia` (aprovado) **não chegou** — nem frio, nem na mesma janela aberta em que
+o texto chegou. A Meta devolve `wamid` sem erro, mas a analytics da WABA não conta o template nem como "enviado"
+(aceita e descarta antes de sair). Não é o 9º dígito, opt-in, nº de variáveis, qualidade do modelo nem o código —
+é estado de **número recém-registrado** na Meta (só libera mensagem de sessão; template é liberado depois, por
+warm-up/tempo ou algum passo no WhatsApp Manager). **Como todo lembrete é template, ir ao ar agora não entregaria
+nada.**
+
+**Para ir ao ar (nesta ordem):** (1) confirmar que o número já entrega template — reenviar um template de teste e
+checar na `analytics` da WABA (enviadas vs entregues) ou no WhatsApp Manager; (2) pôr `WHATSAPP_APP_SECRET` no
+Environment do Render (valida a assinatura dos POSTs reais); (3) virar `WHATSAPP_ATIVO=True`.
 
 ## ADR-145 — A checagem de saúde responde antes da pilha de middlewares, para o Neon poder dormir (estende a ADR-114)
 
