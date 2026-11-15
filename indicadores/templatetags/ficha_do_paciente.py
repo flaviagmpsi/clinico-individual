@@ -8,17 +8,27 @@ números, por template tag. Só leitura, como tudo neste app.
 from decimal import Decimal
 
 from django import template
+from django.utils import timezone
 
 from financeiro.servicos import cobrancas_em_aberto
 from indicadores.estatisticas import presenca_do_paciente
+from indicadores.periodo import MESES_POR_EXTENSO, Periodo
 
 register = template.Library()
 
 
 @register.simple_tag
 def frequencia_do_paciente(paciente):
-    """`Presenca` com presentes, faltas, canceladas e remarcadas de todas as sessões do paciente."""
-    return presenca_do_paciente(paciente)
+    """A frequência do paciente em dois recortes, para a ficha alternar entre eles (pedido da usuária).
+
+    `mes` é o mês corrente (o que aparece primeiro); `total`, o histórico inteiro desde que o paciente começou. Cada
+    um é um `Presenca` com presentes, faltas, canceladas e remarcadas. `rotulo_mes` nomeia o mês para o botão."""
+    hoje = timezone.localdate()
+    return {
+        "mes": presenca_do_paciente(paciente, Periodo(hoje.year, hoje.month)),
+        "total": presenca_do_paciente(paciente),
+        "rotulo_mes": MESES_POR_EXTENSO[hoje.month - 1],
+    }
 
 
 def _soma(cobrancas) -> Decimal:

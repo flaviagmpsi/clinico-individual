@@ -20,11 +20,9 @@ from dataclasses import dataclass, field
 from datetime import date, datetime
 from decimal import Decimal
 
-from django.db.models import Q
 from django.utils import timezone
 
 from agenda import compromissos
-from agenda.models import Recorrencia
 from atendimentos.models import Consulta
 from financeiro.despesas import Fluxo, fluxo_do_ano
 from indicadores.periodo import Periodo
@@ -86,9 +84,15 @@ def presenca_de(consultas) -> Presenca:
     return presenca
 
 
-def presenca_do_paciente(paciente) -> Presenca:
-    """A frequência de um paciente, em todas as sessões dele — individuais e de casal ou família."""
-    return presenca_de(Consulta.objects.filter(caso__participacoes__paciente=paciente))
+def presenca_do_paciente(paciente, periodo: "Periodo | None" = None) -> Presenca:
+    """A frequência de um paciente, em todas as sessões dele — individuais e de casal ou família.
+
+    Sem `periodo`, é o histórico inteiro (desde que o paciente começou). Com `periodo`, só as sessões daquele mês ou
+    ano — é o que a ficha usa para mostrar o mês corrente por padrão e deixar alternar para o total (ADR-084)."""
+    consultas = Consulta.objects.filter(caso__participacoes__paciente=paciente)
+    if periodo is not None:
+        consultas = consultas.filter(inicio__gte=periodo.inicio, inicio__lt=periodo.fim)
+    return presenca_de(consultas)
 
 
 def presenca_total_por_caso(caso_ids) -> dict:
@@ -229,18 +233,42 @@ class ResultadoPrevisto:
 
 def _composicao() -> Composicao:
     """Os atendimentos **em curso** hoje, pela frequência combinada. Sem regra aberta, é avulso (ADR-053)."""
+    composicao, _, _ = _frequencia_em_curso()
+    return composicao
+
+
+def _frequencia_em_curso(periodo: Periodo | None = None):
+    """Os atendimentos **em curso** hoje, pela frequência, e — com `periodo` — a hora e o dia da regra de cada um.
+
+    Uma passada só pelos casos (nota de consultas em lote): alimenta o donut de composição e os destaques "horário
+    mais usado" e "dia que mais atende". **Conta cada caso uma vez**, e esse é o conserto: antes os destaques somavam
+    `Recorrencia` cruas que cruzam o período, então um caso que **trocou de frequência no período** entrava duas
+    vezes (regra velha + nova) e um caso **encerrado no período** ainda contava — o destaque divergia do donut e podia
+    apontar hora/dia errados. Aqui a regra aberta diz se é semanal, quinzenal ou avulso (ADR-053); a regra em vigor no
+    período (a mais recente, se houve troca) diz a hora e o dia. Caso encerrado (desfecho em aberto) fica de fora, como
+    no donut — não é paciente fixo de hoje.
+    """
     composicao = Composicao()
+    por_hora, por_dia = Counter(), Counter()
     for caso in Caso.objects.prefetch_related("recorrencias", "desfechos"):
         if caso.desfecho_aberto() is not None:
             continue
         regra = caso.regra_aberta()
         if regra is None:
             composicao.avulsos += 1
-        elif regra.frequencia == regra.Frequencia.QUINZENAL:
+            continue
+        if regra.frequencia == regra.Frequencia.QUINZENAL:
             composicao.quinzenais += 1
         else:
             composicao.semanais += 1
-    return composicao
+        if periodo is not None:
+            no_periodo = [r for r in caso.recorrencias.all()
+                          if r.inicio <= periodo.ultimo_dia and (r.fim is None or r.fim > periodo.primeiro_dia)]
+            if no_periodo:
+                vigente = max(no_periodo, key=lambda r: r.inicio)
+                por_hora[vigente.hora.hour] += 1
+                por_dia[vigente.dia_semana] += 1
+    return composicao, por_hora, por_dia
 
 
 def _consultas(periodo: Periodo):
@@ -281,15 +309,10 @@ def retrato_da_agenda(periodo: Periodo) -> RetratoDaAgenda:
     # e o mês marcava 32h40 de trabalho no dia 14.
     ate = min(periodo.ultimo_dia, timezone.localdate())
     fora = compromissos.do_periodo(periodo.primeiro_dia, ate) if ate >= periodo.primeiro_dia else []
-    # "Dia que mais atende" e "Horário mais usado": pelos pacientes cadastrados (a regra fixa de cada um), não só
-    # pelas sessões realizadas. Cada atendimento de paciente em vigor conta uma vez no seu dia e na sua hora. Só as
-    # regras **em vigor no período** — um mês ou ano passado não deve mostrar o padrão de hoje.
-    por_hora, por_dia = Counter(), Counter()
-    ativas = (Recorrencia.objects.filter(inicio__lte=periodo.ultimo_dia)
-              .filter(Q(fim__isnull=True) | Q(fim__gt=periodo.primeiro_dia)))
-    for hora, dia_semana in ativas.values_list("hora", "dia_semana"):
-        por_hora[hora.hour] += 1
-        por_dia[dia_semana] += 1
+    # "Dia que mais atende" e "Horário mais usado": pelos pacientes **em curso** (a regra fixa de cada um), não pelas
+    # sessões realizadas — mostram o padrão real da semana mesmo num mês com poucas sessões. Cada caso conta uma vez,
+    # pela regra em vigor no período; a mesma população do donut de composição, numa passada só (ver `_frequencia_em_curso`).
+    composicao, por_hora, por_dia = _frequencia_em_curso(periodo)
     return RetratoDaAgenda(
         periodo=periodo,
         horarios=_faixa_de_horas(horas),
@@ -297,7 +320,7 @@ def retrato_da_agenda(periodo: Periodo) -> RetratoDaAgenda:
         dias=[(_DIAS[dia], dias[dia]) for dia in range(7) if dia < 5 or dias[dia]],
         horarios_agendados=[(f"{h:02d}h", por_hora[h]) for h in sorted(por_hora)],
         dias_agendados=[(_DIAS[d], por_dia[d]) for d in range(7) if por_dia[d]],
-        composicao=_composicao(),
+        composicao=composicao,
         minutos_de_sessao=minutos_de_sessao,
         minutos_fora_da_clinica=sum(item.duracao for item in fora),
     )

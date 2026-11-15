@@ -4117,6 +4117,12 @@ que num paciente que some há semanas dava um número enganoso. Agora vem de `pr
 a item). O gráfico/seletor de período ao lado continua respondendo "como foi este mês" — são duas perguntas
 diferentes, e cada uma tem a sua escala. A barra da ficha do paciente (`frequencia_do_paciente`) já era o total.
 
+**Atualização (2026-11-15), a pedido da usuária:** a ficha passou a mostrar **os dois recortes** — o **mês corrente por
+padrão** e um alternador ("Desde o início") para o **histórico inteiro**. `frequencia_do_paciente` agora devolve
+`{mes, total, rotulo_mes}` (dois `Presenca`); `presenca_do_paciente(paciente, periodo=None)` recorta por período
+quando pedido. O alternador é CSS puro (`:has()`, como a ADR-142), sem JavaScript; sem suporte a `:has()`, fica no mês,
+que é o padrão. Os dois recortes usam o parcial `pacientes/_frequencia.html`, para mês e total se lerem iguais.
+
 **Adendo à ADR-131:** cadastrar remarcação/cancelamento antes do horário já funcionava; o que travava na prática era
 o formulário da sessão prevista vir com "Presente" pré-marcado — escolha que a tela recusa numa sessão futura. Agora,
 quando a sessão **ainda não aconteceu** (inclusive mais tarde hoje), o form não pré-seleciona estado e mostra um

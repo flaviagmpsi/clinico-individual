@@ -104,6 +104,33 @@ class BlocosDoPeriodo(BaseEstatisticas):
         self.assertNotIn("20h", [rotulo for rotulo, _ in e.horarios])  # a sessão do Bruno não aparece
         self.assertEqual((e.composicao.semanais, e.composicao.quinzenais, e.composicao.avulsos), (0, 1, 1))
 
+    def test_destaque_conta_cada_caso_uma_vez_apesar_de_troca_e_encerramento(self):
+        """Regressão: o destaque conta cada caso em curso UMA vez, pela regra em vigor.
+
+        O bug: os destaques somavam `Recorrencia` cruas que cruzam o período. Um caso que **trocou de frequência no
+        período** contava duas vezes (regra velha + nova, em dias/horas diferentes), e um caso **encerrado no período**
+        ainda contava — o destaque inflava e podia apontar o horário/dia errado, divergindo do donut "em curso".
+        """
+        with contexto.como(self.ana.pk):
+            # Trocou de frequência dentro do ano: regra velha (segunda 10h) encerrada, nova (segunda 16h) em vigor.
+            trocou = cadastrar_paciente(Paciente(nome="Troca", data_nascimento=date(1990, 1, 1)))
+            Recorrencia.objects.create(caso=trocou, frequencia=Recorrencia.Frequencia.SEMANAL, dia_semana=0,
+                                       hora=time(10), duracao=50, inicio=date(2026, 2, 1), fim=date(2026, 6, 1))
+            Recorrencia.objects.create(caso=trocou, frequencia=Recorrencia.Frequencia.SEMANAL, dia_semana=0,
+                                       hora=time(16), duracao=50, inicio=date(2026, 6, 1))
+            # Encerrado dentro do ano, mas tinha regra (sexta 16h): não é paciente fixo de hoje, sai do destaque.
+            encerrou = cadastrar_paciente(Paciente(nome="Encerrou", data_nascimento=date(1990, 1, 1)))
+            Recorrencia.objects.create(caso=encerrou, frequencia=Recorrencia.Frequencia.SEMANAL, dia_semana=4,
+                                       hora=time(16), duracao=50, inicio=date(2026, 2, 1))
+            agenda.registrar_desfecho(encerrou, tipo=Desfecho.Tipo.DESISTENCIA, data=date(2026, 7, 1))
+            e = estatisticas.retrato_da_agenda(self.ano())
+        # Júlia (quarta 9h) + Troca contado uma vez na regra NOVA (segunda 16h). A regra velha (10h) e a sexta do
+        # caso encerrado não aparecem.
+        self.assertEqual(dict(e.horarios_agendados), {"09h": 1, "16h": 1})
+        self.assertEqual(dict(e.dias_agendados), {"Segunda": 1, "Quarta": 1})
+        # Consistente com o donut: Júlia quinzenal, Troca semanal, Marcos avulso; Encerrou e Pedro fora.
+        self.assertEqual((e.composicao.semanais, e.composicao.quinzenais, e.composicao.avulsos), (1, 1, 1))
+
     def test_presenca_por_paciente_vem_da_menor_para_a_maior(self):
         with contexto.como(self.ana.pk):
             e = estatisticas.presenca_dos_pacientes(self.ano())
@@ -159,6 +186,18 @@ class BlocosDoPeriodo(BaseEstatisticas):
         with contexto.como(self.ana.pk):
             presenca = estatisticas.presenca_do_paciente(self.marcos)
         self.assertEqual((presenca.presentes, presenca.faltas, presenca.canceladas, presenca.remarcadas), (2, 1, 1, 0))
+
+    def test_frequencia_do_paciente_por_periodo_e_total(self):
+        """Pedido da usuária: a ficha mostra o mês por padrão e deixa ver o histórico inteiro — o backend recorta
+        por período quando pedido, e soma tudo quando não."""
+        with contexto.como(self.ana.pk):
+            total = estatisticas.presenca_do_paciente(self.marcos)
+            setembro = estatisticas.presenca_do_paciente(self.marcos, Periodo(2026, 9))
+            outubro = estatisticas.presenca_do_paciente(self.marcos, Periodo(2026, 10))
+        # Todas as sessões do Marcos são de setembro: total e setembro coincidem; outubro é vazio.
+        self.assertEqual((total.presentes, total.esperadas, total.percentual), (2, 3, 67))
+        self.assertEqual((setembro.presentes, setembro.esperadas, setembro.percentual), (2, 3, 67))
+        self.assertEqual((outubro.total, outubro.percentual), (0, None))
 
 
 class SituacaoFinanceiraNaFicha(BaseEstatisticas):
@@ -264,6 +303,20 @@ class Telas(TransactionTestCase):
         self.assertContains(resposta, "Aniversário hoje")
         self.assertContains(resposta, "Rita do Dia")
         self.assertNotContains(resposta, "Carla Alheia")
+
+    def test_ficha_tem_alternador_de_mes_e_total(self):
+        """Pedido da usuária: a ficha mostra o mês por padrão e um alternador deixa ver o total desde o início."""
+        from indicadores.periodo import MESES_POR_EXTENSO
+        hoje = timezone.localdate()
+        self.entrar(self.ana)
+        resposta = self.client.get(reverse("pacientes:detalhe", args=[self.marcos.pk]))
+        # O alternador: o mês corrente como rótulo padrão e a opção de ver o histórico inteiro.
+        self.assertContains(resposta, MESES_POR_EXTENSO[hoje.month - 1].capitalize())
+        self.assertContains(resposta, "Desde o início")
+        # Os dois recortes são renderizados (o CSS escolhe qual aparece); o do total traz os 50% do Marcos.
+        self.assertContains(resposta, "freq-painel-mes")
+        self.assertContains(resposta, "freq-painel-total")
+        self.assertContains(resposta, "50%</strong> de presença · 1 de 2")
 
     def test_ficha_mostra_frequencia_e_situacao_financeira(self):
         self.entrar(self.ana)

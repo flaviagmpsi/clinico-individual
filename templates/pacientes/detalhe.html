@@ -219,29 +219,31 @@
     <div class="card">
       <div class="card-body">
         {% frequencia_do_paciente paciente as freq %}
-        <div class="d-flex align-items-center mb-2">
-          <span class="fw-semibold">Frequência</span>
-          <span class="text-muted small ms-2">todas as sessões cadastradas</span>
-          <a href="{% url 'atendimentos:agenda' %}" class="ms-auto small text-decoration-none">agenda</a>
-        </div>
-        {% if freq.total %}
-          <div class="row g-2 text-center small mb-2">
-            <div class="col"><div class="border rounded py-2"><div class="h5 mb-0 text-success">{{ freq.presentes }}</div>presente{{ freq.presentes|pluralize }}</div></div>
-            <div class="col"><div class="border rounded py-2"><div class="h5 mb-0 {% if freq.faltas %}text-danger{% endif %}">{{ freq.faltas }}</div>ausente{{ freq.faltas|pluralize }}</div></div>
-            <div class="col"><div class="border rounded py-2"><div class="h5 mb-0">{{ freq.canceladas }}</div>cancelada{{ freq.canceladas|pluralize }}</div></div>
-            <div class="col"><div class="border rounded py-2"><div class="h5 mb-0">{{ freq.remarcadas }}</div>remarcada{{ freq.remarcadas|pluralize }}</div></div>
-          </div>
-          {% if freq.percentual is not None %}
-            <div class="d-flex align-items-center gap-2 small">
-              <div class="progress flex-grow-1" style="height:8px"><div class="progress-bar {% if freq.percentual < 70 %}bg-warning{% else %}bg-success{% endif %}" style="width:{{ freq.percentual }}%"></div></div>
-              <span class="text-nowrap"><strong>{{ freq.percentual }}%</strong> de presença · {{ freq.presentes }} de {{ freq.esperadas }}</span>
+        {# Alternador mês/total em CSS puro (:has(), como a ADR-142): mostra o mês por padrão; o botão "Desde o
+           início" troca para o histórico inteiro, sem JavaScript. Sem suporte a :has(), fica no mês — o padrão. #}
+        <style>
+          .freq-escopo .freq-painel-total { display: none; }
+          .freq-escopo:has(.freq-check-total:checked) .freq-painel-mes { display: none; }
+          .freq-escopo:has(.freq-check-total:checked) .freq-painel-total { display: block; }
+        </style>
+        <div class="freq-escopo">
+          <div class="d-flex align-items-center flex-wrap gap-2 mb-2">
+            <span class="fw-semibold">Frequência</span>
+            <div class="btn-group btn-group-sm" role="group" aria-label="Período da frequência">
+              <input type="radio" class="btn-check" name="freq-escopo" id="freq-mes" autocomplete="off" checked>
+              <label class="btn btn-outline-secondary" for="freq-mes">{{ freq.rotulo_mes|capfirst }}</label>
+              <input type="radio" class="btn-check freq-check-total" name="freq-escopo" id="freq-total" autocomplete="off">
+              <label class="btn btn-outline-secondary" for="freq-total">Desde o início</label>
             </div>
-            <div class="form-text small">Ausente é quem faltou sem avisar. Na presença contam presentes, faltas e o que o
-              paciente cancelou ({{ freq.canceladas_pelo_cliente }}); o que você cancelou ({{ freq.canceladas_pelo_profissional }}) e o que foi remarcado ficam de fora.</div>
-          {% endif %}
-        {% else %}
-          <div class="text-muted small mb-2">Nenhuma sessão cadastrada ainda.</div>
-        {% endif %}
+            <a href="{% url 'atendimentos:agenda' %}" class="ms-auto small text-decoration-none">agenda</a>
+          </div>
+          <div class="freq-painel freq-painel-mes">
+            {% include "pacientes/_frequencia.html" with freq=freq.mes escopo="neste mês" %}
+          </div>
+          <div class="freq-painel freq-painel-total">
+            {% include "pacientes/_frequencia.html" with freq=freq.total escopo="cadastrada ainda" %}
+          </div>
+        </div>
 
         <hr class="my-3">
 

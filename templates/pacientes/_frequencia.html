@@ -1,0 +1,23 @@
+{% comment %}
+A frequência de um paciente num recorte (o mês corrente ou o histórico inteiro), para a ficha (ADR-084). Recebe
+`freq` (um `Presenca`) e `escopo` (texto para a mensagem de vazio). Os dois recortes usam este mesmo parcial, para
+mês e total se lerem exatamente iguais — só muda o número.
+{% endcomment %}
+{% if freq.total %}
+  <div class="row g-2 text-center small mb-2">
+    <div class="col"><div class="border rounded py-2"><div class="h5 mb-0 text-success">{{ freq.presentes }}</div>presente{{ freq.presentes|pluralize }}</div></div>
+    <div class="col"><div class="border rounded py-2"><div class="h5 mb-0 {% if freq.faltas %}text-danger{% endif %}">{{ freq.faltas }}</div>ausente{{ freq.faltas|pluralize }}</div></div>
+    <div class="col"><div class="border rounded py-2"><div class="h5 mb-0">{{ freq.canceladas }}</div>cancelada{{ freq.canceladas|pluralize }}</div></div>
+    <div class="col"><div class="border rounded py-2"><div class="h5 mb-0">{{ freq.remarcadas }}</div>remarcada{{ freq.remarcadas|pluralize }}</div></div>
+  </div>
+  {% if freq.percentual is not None %}
+    <div class="d-flex align-items-center gap-2 small">
+      <div class="progress flex-grow-1" style="height:8px"><div class="progress-bar {% if freq.percentual < 70 %}bg-warning{% else %}bg-success{% endif %}" style="width:{{ freq.percentual }}%"></div></div>
+      <span class="text-nowrap"><strong>{{ freq.percentual }}%</strong> de presença · {{ freq.presentes }} de {{ freq.esperadas }}</span>
+    </div>
+    <div class="form-text small">Ausente é quem faltou sem avisar. Na presença contam presentes, faltas e o que o
+      paciente cancelou ({{ freq.canceladas_pelo_cliente }}); o que você cancelou ({{ freq.canceladas_pelo_profissional }}) e o que foi remarcado ficam de fora.</div>
+  {% endif %}
+{% else %}
+  <div class="text-muted small mb-2">Nenhuma sessão {{ escopo }}.</div>
+{% endif %}
