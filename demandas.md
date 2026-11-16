@@ -1,4 +1,4 @@
-# Demandas — Hamilton Individual
+,,,# Demandas — Hamilton Individual
 
 Documento vivo. User Stories derivadas das decisões em [complicacoes.md](complicacoes.md).
 Cada história é rastreável até a ADR que a originou — se a ADR mudar, a história muda.
@@ -15,6 +15,71 @@ Cada história é rastreável até a ADR que a originou — se a ADR mudar, a hi
 
 A esmagadora maioria das linhas está `✅ / ⚪`: **decidida e não construída**. O planejamento
 correu 27 rodadas antes da primeira linha de código, de propósito.
+
+---
+
+## 🆘 Pendências abertas para resolver (atualizado 2026-11-16)
+
+> Consolidado para um colega dev pegar e resolver. Em ordem de prioridade. O que está **✅ resolvido** abaixo é só
+> registro — não reabrir.
+
+### 1. 🔴 WhatsApp não entrega lembretes — bloqueado pelo pagamento na conta Meta (ADR-144)
+
+A feature de lembretes por WhatsApp está **pronta no código** e rodando em **modo simulado** (`WHATSAPP_ATIVO=False`).
+Teste de ponta a ponta em 2026-11-15 mostrou que **ela não vai funcionar ao vivo ainda**, por um problema **na conta
+Meta, não no código**:
+
+- **Mensagem de sessão** (texto livre, dentro da janela de 24h) **entrega** ✅.
+- **Template** (todo lembrete do sistema é template) **NÃO entrega** ❌. A Meta aceita (devolve `wamid` sem erro) e
+  **descarta antes de enviar**.
+- **Causa confirmada** pelo campo `health_status` da Graph API (não precisa de login, só do token do `.env`):
+  a WABA está `can_send_message: BLOCKED`, erro **`141006` — "There is an error with the payment method. This will
+  block business initiated conversations."** O cartão posto em 2026-11-04 falhou / não foi aceito.
+- O número também tem *display name not approved yet* — isso **só limita o volume**, não é o bloqueio.
+
+**Dados da conta** (todos lidos pela API): Business ID `1691816692170162` · app **Polaris** `1161658156725329` ·
+WABA **Polaris** `1068509042871904` · phone number id `1413166918549157` (+55 31 8779-6335) · API `v26.0` ·
+token do `.env` pertence ao **system user "Sofia_bot"**.
+
+**Problema 1 (o nó de verdade): acesso à conta Meta Business.** A Flávia não consegue logar
+(business.facebook.com → "conta errada ou não existe", provavelmente e-mail errado). O dono/admin do business pode
+ser **outro e-mail** — a pista é o `Sofia_bot`: a conta parece da mesma leva da "Sofia", então quem configurou a
+Sofia (provavelmente o Paulo) deve saber o login. **→ Descobrir qual conta/e-mail administra o business `1691816692170162`
+e recuperar o acesso.**
+
+**Problema 2: corrigir o método de pagamento.** Logado na conta: **Configurações do Negócio → Pagamentos** →
+adicionar/corrigir o cartão. Só dá logado — a API não mexe em pagamento.
+
+**Como verificar que destravou** (qualquer dev, só com o token, sem login):
+`GET https://graph.facebook.com/v26.0/{PHONE_NUMBER_ID}?fields=health_status&access_token=...` → esperar
+`can_send_message: AVAILABLE`.
+
+**Depois de `AVAILABLE`, para ir ao ar (nesta ordem):**
+1. Confirmar entrega: reenviar um template de teste e checar `analytics` da WABA (enviadas vs entregues) — ou o
+   WhatsApp Manager.
+2. Pôr **`WHATSAPP_APP_SECRET`** no Environment do Render (valida a assinatura `X-Hub-Signature-256` dos POSTs reais;
+   sem ele o webhook rejeita os callbacks da Meta).
+3. Virar **`WHATSAPP_ATIVO=True`** e fazer um teste controlado (só o próprio número primeiro).
+
+**Pendência menor dentro disso:** os dois modelos reescritos em 2026-11-13 (`lembrete_compromisso`, `aviso_pagamento`)
+foram reenviados e ficaram `PENDING` na Meta — **conferir se já estão `APPROVED`** (os outros 5 estão). O código não
+muda (variáveis e ordem idênticas).
+
+### 2. 🟠 Confirmar deploy no Render exige a `RENDER_API_KEY`
+
+A chave **não está** nos `.env` locais nem no ambiente do shell — então não dá pra confirmar por API qual commit está
+publicado. Com a chave, o comando está no `DEPLOY.md`:
+`curl -H "Authorization: Bearer $RENDER_API_KEY" "https://api.render.com/v1/services/srv-davgmavavr4c73bun6jg/deploys?limit=3"`.
+O deploy é automático no push; o site responde em `/saude/` (200 "ok"). **→ Guardar a `RENDER_API_KEY` num lugar
+acessível (ou documentar quem a tem).**
+
+### 3. ✅ Estatísticas (resolvido 2026-11-16, commit `b7c4671` — só registro, não reabrir)
+
+- **Bug corrigido:** "Horário mais usado" / "Dia que mais atende" contavam `Recorrencia` cruas que cruzam o período
+  (um caso que trocou de frequência no mês contava 2x; um caso encerrado no mês ainda contava). Agora
+  `indicadores.estatisticas._frequencia_em_curso(periodo)` conta cada caso em curso uma vez, pela regra em vigor.
+- **Melhoria:** a frequência na ficha do paciente mostra o **mês por padrão** e um alternador (CSS `:has()`, sem JS)
+  para o **total desde o início**. Testes de regressão para os dois; 22 testes de `indicadores` verdes.
 
 ---
 
