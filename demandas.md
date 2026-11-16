@@ -23,7 +23,14 @@ correu 27 rodadas antes da primeira linha de código, de propósito.
 > Consolidado para um colega dev pegar e resolver. Em ordem de prioridade. O que está **✅ resolvido** abaixo é só
 > registro — não reabrir.
 
-### 1. 🔴 WhatsApp não entrega lembretes — bloqueado pelo pagamento na conta Meta (ADR-144)
+### 1. 🟢 WhatsApp destravado — falta só ligar no Render (ADR-144)
+
+> ✅ **Resolvido em 2026-11-16:** o cartão foi trocado na conta Meta (conta do Alan, Business `1691816692170162`) e o
+> `health_status` da WABA Polaris voltou a `AVAILABLE`, sem o erro `141006`. Teste real com `agenda_do_dia`,
+> `pendencias_da_semana` e `lembrete_compromisso` **chegou** no celular. Os 7 modelos estão `APPROVED`.
+> **Falta:** gravar no Environment do Render `WHATSAPP_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_WABA_ID`,
+> `WHATSAPP_API_VERSION` e `WHATSAPP_ATIVO=True` (hoje só `WHATSAPP_APP_SECRET`, `WHATSAPP_WEBHOOK_VERIFY_TOKEN` e
+> `WHATSAPP_CRON_SEGREDO` estão lá). O histórico abaixo fica só como registro.
 
 A feature de lembretes por WhatsApp está **pronta no código** e rodando em **modo simulado** (`WHATSAPP_ATIVO=False`).
 Teste de ponta a ponta em 2026-11-15 mostrou que **ela não vai funcionar ao vivo ainda**, por um problema **na conta
@@ -62,7 +69,7 @@ adicionar/corrigir o cartão. Só dá logado — a API não mexe em pagamento.
 3. Virar **`WHATSAPP_ATIVO=True`** e fazer um teste controlado (só o próprio número primeiro).
 
 **Pendência menor dentro disso:** os dois modelos reescritos em 2026-11-13 (`lembrete_compromisso`, `aviso_pagamento`)
-foram reenviados e ficaram `PENDING` na Meta — **conferir se já estão `APPROVED`** (os outros 5 estão). O código não
+foram reenviados e ficaram `PENDING` na Meta — ✅ **conferido em 2026-11-16: os 7 estão `APPROVED`**. O código não
 muda (variáveis e ordem idênticas).
 
 ### 2. 🟠 Confirmar deploy no Render exige a `RENDER_API_KEY`
