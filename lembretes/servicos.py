@@ -64,6 +64,13 @@ def _primeiro_nome(psicologo) -> str:
     return (psicologo.nome_completo or psicologo.email).split()[0]
 
 
+def _horarios_em_texto(horarios: list) -> str:
+    """Lê a lista de horários como uma frase: "09:00", "09:00 e 10:00", "09:00, 10:00 e 15:00"."""
+    if len(horarios) <= 1:
+        return horarios[0] if horarios else ""
+    return f"{', '.join(horarios[:-1])} e {horarios[-1]}"
+
+
 def _ja_saiu(assunto: str) -> bool:
     return LembreteEnviado.objects.filter(assunto=assunto).exists()
 
@@ -85,9 +92,13 @@ def _agenda_da_manha(psicologo, agora) -> bool:
     painel = montar_painel(agora)
     if not painel.hoje_itens:
         return False
-    primeiro = timezone.localtime(painel.hoje_itens[0].inicio).strftime("%H:%M")
+    # Todos os horários do dia, sem nome de paciente (ADR-144: o WhatsApp nunca leva conteúdo clínico). Ordenados —
+    # "%H:%M" com zero à esquerda ordena na ordem do relógio.
+    horarios = sorted(timezone.localtime(item.inicio).strftime("%H:%M") for item in painel.hoje_itens)
+    n = len(painel.hoje_itens)
+    contagem = "1 sessão" if n == 1 else f"{n} sessões"
     envio = meta.enviar_modelo(psicologo.telefone, "agenda_do_dia",
-                               [_primeiro_nome(psicologo), len(painel.hoje_itens), primeiro])
+                               [_primeiro_nome(psicologo), contagem, _horarios_em_texto(horarios)])
     if envio.ok:
         _registrar(assunto, envio)
         return True

@@ -9,18 +9,29 @@ from datetime import datetime, time, timedelta
 from decimal import Decimal
 from unittest.mock import patch
 
-from django.test import TransactionTestCase, override_settings
+from django.test import SimpleTestCase, TransactionTestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 
 from atendimentos.servicos import cadastrar_avulsa
 from contas.models import Psicologo
 from core import contexto
+from lembretes import servicos
 from lembretes.models import LembreteEnviado
 from pacientes.models import CondicaoCobranca, Paciente
 from pacientes.servicos import cadastrar_paciente
 
 SENHA = "senha-de-teste-123"
+
+
+class HorariosEmTexto(SimpleTestCase):
+    """O lembrete da agenda lista todos os horários do dia, sem nome de paciente (ADR-144)."""
+
+    def test_formata_a_lista_como_frase(self):
+        self.assertEqual(servicos._horarios_em_texto([]), "")
+        self.assertEqual(servicos._horarios_em_texto(["09:00"]), "09:00")
+        self.assertEqual(servicos._horarios_em_texto(["09:00", "10:00"]), "09:00 e 10:00")
+        self.assertEqual(servicos._horarios_em_texto(["09:00", "10:00", "15:00"]), "09:00, 10:00 e 15:00")
 
 
 @override_settings(WHATSAPP_CRON_SEGREDO="segredo-do-cron", WHATSAPP_SIMULADO=True)
